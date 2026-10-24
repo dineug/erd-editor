@@ -33,7 +33,11 @@ export type {
   FC,
   FunctionalComponent,
 } from '@/render/part/node/component/observableComponent';
-export { defineCustomElement } from '@/render/part/node/component/webComponent';
+export {
+  createCustomElement,
+  type CustomElementClass,
+  defineCustomElement,
+} from '@/render/part/node/component/webComponent';
 export {
   closestElement,
   queryShadowSelector,

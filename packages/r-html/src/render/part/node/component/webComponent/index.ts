@@ -27,10 +27,23 @@ import { addCSSHost, removeCSSHost } from '@/template/vCSSStyleSheet';
 
 const PROPS = Symbol.for('https://github.com/dineug/r-html#props');
 
-export function defineCustomElement<P = {}, C = HTMLElement>(
-  name: string,
-  options: Options<P, C>
-) {
+/**
+ * Written out because the class carries private fields, which a declaration
+ * file cannot name, so an inferred return type would not emit.
+ */
+export interface CustomElementClass<C extends HTMLElement = HTMLElement> {
+  new (): C;
+  readonly observedAttributes: string[];
+}
+
+/**
+ * Builds the element class without registering it, so a caller can pick the
+ * tag name and decide when to define it; new throws until the class is defined.
+ */
+export function createCustomElement<
+  P = {},
+  C extends HTMLElement = HTMLElement,
+>(options: Options<P, C>): CustomElementClass<C> {
   options.shadow ?? (options.shadow = 'open');
 
   const observedPropNames = getPropNames(options.observedProps);
@@ -142,5 +155,12 @@ export function defineCustomElement<P = {}, C = HTMLElement>(
     });
   });
 
-  customElements.define(name, C);
+  return C as unknown as CustomElementClass<C>;
+}
+
+export function defineCustomElement<P = {}, C = HTMLElement>(
+  name: string,
+  options: Options<P, C>
+) {
+  customElements.define(name, createCustomElement<P, C & HTMLElement>(options));
 }

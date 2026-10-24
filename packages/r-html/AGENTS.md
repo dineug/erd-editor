@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-18 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-24 -->
 
 # r-html
 
 ## Purpose
 
-`@dineug/r-html` (private) is the rendering framework `@dineug/erd-editor` is built on and inlines; `mcp-server` imports its store's action types. It provides `html` / `svg` / `css` tagged templates, Proxy reactivity batched by a microtask scheduler, function components with lifecycle hooks and `defineCustomElement`, and a Redux-like `createStore`. The renderer is host-neutral: `createHostTemplate(adapter)` builds an `html` / `svg` / `render` triple over any `HostAdapter`. The DOM adapter ships here, and `@dineug/r-html-konva` (`packages/r-html-konva/src/host.ts`) is the second production host, the one every Konva scene renders through. A change keeps the DOM behaviour the frozen specs pin (Testing Requirements) and the host adapter contract both hosts rest on (Rules).
+`@dineug/r-html` (private) is the rendering framework `@dineug/erd-editor` is built on and inlines; `mcp-server` imports its store's action types. It provides `html` / `svg` / `css` tagged templates, Proxy reactivity batched by a microtask scheduler, function components with lifecycle hooks, `createCustomElement` (a component as an unregistered element class) and `defineCustomElement` (that class registered under a tag), and a Redux-like `createStore`. The renderer is host-neutral: `createHostTemplate(adapter)` builds an `html` / `svg` / `render` triple over any `HostAdapter`. The DOM adapter ships here, and `@dineug/r-html-konva` (`packages/r-html-konva/src/host.ts`) is the second production host, the one every Konva scene renders through. A change keeps the DOM behaviour the frozen specs pin (Testing Requirements) and the host adapter contract both hosts rest on (Rules).
 
 ## Making a Change
 
@@ -60,7 +60,9 @@
 - **`./jsx-runtime` ships types only.** `exports` is asymmetric on purpose: `.` ships `types` and `default`, `./jsx-runtime` `types` alone. A build that lost its JSX transform then fails on `ERR_PACKAGE_PATH_NOT_EXPORTED` instead of rendering wrongly.
 - **`src/jsx-runtime.ts` stays a `.ts` file with a namespace.** `jsxImportSource` reads a `JSX` namespace, and `vite-plugin-dts` does not copy a hand-written `.d.ts`. That is why the root `vite.config.ts` exempts the file from `typescript/no-namespace`.
 - **`src/index.ts` is the runtime contract.** Anything it does not re-export is private.
-- **`removeCSSHost` stays out of `src/index.ts` on purpose.** Only the element `defineCustomElement` registers calls it, from its `disconnectedCallback`.
+- **`createCustomElement` registers nothing; `defineCustomElement` stays its `void` wrapper.** `defineCustomElement(name, options)` is `customElements.define(name, createCustomElement(options))` with its signature unchanged, so the caller of `createCustomElement` picks the tag and the moment to define it, and `new` on the class throws a `TypeError` until then. Each call builds a new class and still mutates `options.shadow` to `'open'` when unset.
+- **`createCustomElement` returns the written `CustomElementClass<C>`** (`new (): C` and `observedAttributes`). The class's `#private` fields make an inferred return type fail declaration emit (TS4094), and `C extends HTMLElement` is what lets `customElements.define` take it; `defineCustomElement` keeps its unconstrained `C` and narrows it to `C & HTMLElement` inside.
+- **`removeCSSHost` stays out of `src/index.ts` on purpose.** Only the element class `createCustomElement` builds calls it, from its `disconnectedCallback`.
 
 ### Templates and markers
 
