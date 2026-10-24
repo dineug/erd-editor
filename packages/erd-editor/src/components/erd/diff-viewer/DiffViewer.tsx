@@ -6,8 +6,8 @@ import {
   appDestroy,
   createAppContext,
 } from '@/components/appContext';
+import DiffErdViewer from '@/components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer';
 import DiffTree from '@/components/erd/diff-viewer/diff-tree/DiffTree';
-import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import { readerNameViewAction } from '@/components/erd/readerNameView';
 import { dropRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import { localized } from '@/components/localized/Localized';
@@ -148,10 +148,14 @@ const DiffViewer: FC<DiffViewerProps> = (props, ctx) => {
           onResize={handleResize}
         />
         <div class={styles.viewport}>
-          <ErdViewer app={prevApp} diff={Diff.delete} diffMap={prevDiffMap} />
+          <DiffErdViewer
+            app={prevApp}
+            diff={Diff.delete}
+            diffMap={prevDiffMap}
+          />
         </div>
         <div class={styles.viewport}>
-          <ErdViewer app={app} diff={Diff.insert} diffMap={diffMap} />
+          <DiffErdViewer app={app} diff={Diff.insert} diffMap={diffMap} />
         </div>
       </div>
     </div>

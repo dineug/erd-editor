@@ -12,8 +12,8 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { useDiffMap } from '@/components/diffContext';
-import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
-import * as styles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
+import DiffErdViewer from '@/components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer';
+import * as styles from '@/components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer.styles';
 import {
   isRelationshipHighlighted,
   setRelationshipHighlight,
@@ -57,7 +57,7 @@ async function mountViewer(
   app: AppContext = createApp()
 ) {
   mounted = await mountAndFlush(
-    html`<${ErdViewer} app=${app} diff=${diff} diffMap=${diffMap} />`
+    html`<${DiffErdViewer} app=${app} diff=${diff} diffMap=${diffMap} />`
   );
   const root = mounted.container.querySelector<HTMLElement>(
     `.${String(styles.root)}`
@@ -72,8 +72,8 @@ const VIEWER_SOURCE = readFileSync(
     'components',
     'erd',
     'diff-viewer',
-    'erd-viewer',
-    'ErdViewer.tsx'
+    'diff-erd-viewer',
+    'DiffErdViewer.tsx'
   ),
   'utf8'
 );
@@ -123,7 +123,7 @@ function wheelAt(
   return event;
 }
 
-describe('ErdViewer', () => {
+describe('DiffErdViewer', () => {
   it('tags the root with the insert scope class for an insert viewer', async () => {
     const { root } = await mountViewer(Diff.insert);
 
@@ -151,7 +151,7 @@ describe('ErdViewer', () => {
     };
 
     mounted = await mountAndFlush(
-      html`<${ErdViewer}
+      html`<${DiffErdViewer}
           app=${createApp()}
           diff=${Diff.insert}
           diffMap=${diffMap}

@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import { seedDiff } from '@/__test-utils__/diffSeed';
 import { type AppContext, appContext } from '@/components/appContext';
-import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
+import DiffErdViewer from '@/components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer';
 import Erd from '@/components/erd/Erd';
 import { themeContext } from '@/components/themeContext';
 import { ReferentialAction } from '@/constants/schema';
@@ -188,7 +188,7 @@ async function mountStage(
 /** One pane the way DiffViewer mounts it, which provides its own app. */
 const mountPane = (app: AppContext, diff: number, diffMap: DiffMap) =>
   mountStage(
-    html`<${ErdViewer} app=${app} diff=${diff} diffMap=${diffMap} />`,
+    html`<${DiffErdViewer} app=${app} diff=${diff} diffMap=${diffMap} />`,
     null
   );
 
@@ -258,7 +258,7 @@ const outlinesOf = (stage: Stage) =>
       stroke: node.getAttr('stroke'),
     }));
 
-describe('ErdViewer - what a diff pane marks, in text colour and outlines (AC-D20)', () => {
+describe('DiffErdViewer - what a diff pane marks, in text colour and outlines (AC-D20)', () => {
   it('colours what the saved document lost or changed, and nothing it kept', async () => {
     const { saved } = await mountPanes();
     const changed = theme.diffModifyForeground;

@@ -120,7 +120,7 @@ const OUTSIDE_REFERENCES = [
   'components/erd/Erd.tsx @/components/erd/canvas/EditOverlay',
   'components/erd/Erd.tsx @/components/erd/canvas/editingLayers',
   'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
-  'components/erd/diff-viewer/erd-viewer/ErdViewer.tsx @/components/erd/canvas/Canvas',
+  'components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer.tsx @/components/erd/canvas/Canvas',
   // Rename opens the name editor a title bar's double click opens, which sits
   // beside the bar so the scene reaches no group command.
   'components/erd/erd-context-menu/ErdContextMenu.tsx @/components/erd/canvas/table-group/tableGroupNameEditor',

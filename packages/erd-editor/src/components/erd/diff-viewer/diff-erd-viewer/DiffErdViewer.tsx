@@ -21,15 +21,15 @@ import { closeColorPickerAction } from '@/utils/emitter';
 import { drag$, DragMove } from '@/utils/globalEventObservable';
 import { isMod } from '@/utils/keyboard-shortcut';
 
-import * as styles from './ErdViewer.styles';
+import * as styles from './DiffErdViewer.styles';
 
-export type ErdViewerProps = {
+export type DiffErdViewerProps = {
   app: AppContext;
   diff: number;
   diffMap: DiffMap;
 };
 
-const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
+const DiffErdViewer: FC<DiffErdViewerProps> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   const canvas = createRef<HTMLDivElement>();
   const app = props.app;
@@ -173,4 +173,4 @@ const ErdViewer: FC<ErdViewerProps> = (props, ctx) => {
   };
 };
 
-export default ErdViewer;
+export default DiffErdViewer;

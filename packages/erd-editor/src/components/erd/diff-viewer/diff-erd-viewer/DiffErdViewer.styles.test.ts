@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import * as styles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
+import * as styles from '@/components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer.styles';
 
-describe('ErdViewer.styles', () => {
+describe('DiffErdViewer.styles', () => {
   it('compiles the root export to a non empty class identifier', () => {
     expect(String(styles.root)).toMatch(/\S/);
   });

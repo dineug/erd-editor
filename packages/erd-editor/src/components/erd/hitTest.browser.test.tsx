@@ -16,8 +16,8 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import { type AppContext, appContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
-import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
-import * as viewerStyles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
+import DiffErdViewer from '@/components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer';
+import * as viewerStyles from '@/components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer.styles';
 import Erd from '@/components/erd/Erd';
 import * as erdStyles from '@/components/erd/Erd.styles';
 import {
@@ -954,7 +954,11 @@ async function mountViewer(): Promise<Editor> {
 
   render(
     container,
-    html`<${ErdViewer} app=${app} diff=${Diff.insert} diffMap=${new Map()} />`
+    html`<${DiffErdViewer}
+      app=${app}
+      diff=${Diff.insert}
+      diffMap=${new Map()}
+    />`
   );
 
   teardowns.push(() => {
@@ -976,7 +980,7 @@ async function mountViewer(): Promise<Editor> {
   return { app, root, stage };
 }
 
-describe('ErdViewer - routing what the scene answered', () => {
+describe('DiffErdViewer - routing what the scene answered', () => {
   it('keeps the grab cursor and the selection for a press inside a table', async () => {
     const viewer = await mountViewer();
     viewer.app.store.dispatchSync(selectTableAction$('t1', false));
