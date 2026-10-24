@@ -7,7 +7,7 @@ import {
 } from '@/components/erd/content-compass/compassGeometry';
 import Icon from '@/components/primitives/icon/Icon';
 
-import * as styles from './FloatingToolbar.styles';
+import * as styles from './viewControls.styles';
 
 export type ToolbarCompassOptions = {
   compass: ContentCompass | null;

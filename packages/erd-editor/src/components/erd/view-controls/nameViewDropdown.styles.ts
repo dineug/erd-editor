@@ -1,6 +1,6 @@
 import { css } from '@dineug/r-html';
 
-import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
+import * as controls from '@/components/erd/view-controls/viewControls.styles';
 import { typography } from '@/styles/typography.styles';
 
 /*
@@ -9,7 +9,7 @@ import { typography } from '@/styles/typography.styles';
  * and its neighbours stay one bar.
  */
 export const trigger = css`
-  ${floating.menu}
+  ${controls.menu}
   width: auto;
   padding: 0 6px;
   gap: 4px;

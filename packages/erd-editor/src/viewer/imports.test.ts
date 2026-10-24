@@ -51,12 +51,18 @@ const packageOf = (specifier: string) =>
 
 const modulePathOf = (file: string) => file.replace(/\.tsx?$/, '');
 
-/** What the view mounts and reads: its canvas, scrollbars, map and palette, its store and its fit. */
+/**
+ * What the view mounts and reads: its canvas, scrollbars, map, controls and
+ * palette, its store and its fit.
+ */
 const ROOTS = [
   'components/erd/canvas/Canvas.tsx',
   'components/erd/canvas/CanvasScene.tsx',
   'components/erd/virtual-scroll/VirtualScroll.tsx',
   'components/erd/minimap/Minimap.tsx',
+  'components/erd/view-controls/zoomControls.tsx',
+  'components/erd/view-controls/nameViewDropdown.tsx',
+  'components/erd/view-controls/ToolbarCompass.template.tsx',
   'components/quick-search/QuickSearch.tsx',
   'components/appContext.ts',
   'konva/scene/fitZoom.ts',

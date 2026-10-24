@@ -80,7 +80,7 @@
     },
     {
       "path": "components/erd/floating-toolbar",
-      "why": "The editor's floating bar. The zoom cluster, the compass and the name view menu leave for view controls the viewer shares."
+      "why": "The editor's floating bar: the hand and select tools, the adds, the notations and zen mode. The zoom cluster, the compass and the name view menu it composes are view controls the viewer shares."
     },
     {
       "path": "components/erd/table-group",
