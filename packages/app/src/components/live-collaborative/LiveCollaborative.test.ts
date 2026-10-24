@@ -18,7 +18,7 @@ const guest = vi.hoisted(() => ({
 }));
 
 // The real element needs a browser, and a guest a relay, where e2e runs both.
-vi.mock('@dineug/erd-editor', () => ({}));
+vi.mock('@dineug/erd-editor/erd-editor.js', () => ({}));
 vi.mock('@/services/indexeddb', () => ({ getAppDatabaseService: () => null }));
 vi.mock('@sentry/react', () => ({ captureException: vi.fn() }));
 vi.mock('@/services/collaborative/guest', () => ({

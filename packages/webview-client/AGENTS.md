@@ -5,7 +5,7 @@
 
 ## Purpose
 
-`mountWebview(host)` puts `<erd-editor>` into an IDE webview and wires the whole host protocol: the `webview-bridge` commands in both directions, the replica worker from `replication-store-worker`, and file export as base64. `vscode-webview` and `intellij-webview` are thin adapters over it that supply only a `WebviewHost`. The package is `private: true`. A change here keeps the mount order, the `'auto'` / `'system'` mapping and the unchanged relay of the replica's saves intact, and constructs no worker (Rules).
+`mountWebview(host)` puts `<erd-editor>`, which `src/mountWebview.ts` defines by importing `@dineug/erd-editor/erd-editor.js`, into an IDE webview and wires the whole host protocol: the `webview-bridge` commands in both directions, the replica worker from `replication-store-worker`, and file export as base64. `vscode-webview` and `intellij-webview` are thin adapters over it that supply only a `WebviewHost`. The package is `private: true`. A change here keeps the mount order, the `'auto'` / `'system'` mapping and the unchanged relay of the replica's saves intact, and constructs no worker (Rules).
 
 ## Making a Change
 
@@ -92,7 +92,7 @@
 
 ## Testing Requirements
 
-- **The `test` task runs the spec in happy-dom** (Making a Change, steps 3 and 4). The spec mocks `@dineug/erd-editor` and `@dineug/erd-editor-replication-store-worker`, and stubs `document.createElement('erd-editor')` with a node carrying spies. So it needs no Konva, shadow root or real worker; the bridge is real.
+- **The `test` task runs the spec in happy-dom** (Making a Change, steps 3 and 4). The spec mocks `@dineug/erd-editor`, its `erd-editor.js` entry (checking that the mount loads it) and `@dineug/erd-editor-replication-store-worker`, and stubs `document.createElement('erd-editor')` with a node carrying spies. So it needs no Konva, shadow root or real worker; the bridge is real.
 - **The one spec of every command lives here.** The two webview bundles have none of their own, so a new command or `WebviewHost` field gets its case in `src/mountWebview.test.ts`.
 - **`vuerd-vscode`'s e2e drives the built VS Code bundle.** Its Extension Host spec `test/integration/agent-hub.test.ts` (`pnpm --filter vuerd-vscode e2e`, outside `pnpm test`) asserts this wiring end to end:
   - the `hostInitialCommand` that makes a webview ready;
@@ -107,7 +107,7 @@
 
 ### Internal
 
-`@dineug/erd-editor`, `@dineug/erd-editor-replication-store-worker` and `@dineug/erd-editor-webview-bridge`, all `dependencies` and all external; the webview bundle resolves them (root § Working In This Directory, Externals).
+`@dineug/erd-editor`, `@dineug/erd-editor-replication-store-worker` and `@dineug/erd-editor-webview-bridge`, all `dependencies` and all external; the webview bundle resolves them (root § Working In This Directory, Externals). From `@dineug/erd-editor` the mount takes the file callbacks and the element's type from the package root and imports `./erd-editor.js` for its side effect alone: the definition rides on that bare import, which `dist/` keeps for the webview bundle to resolve.
 
 ### External
 

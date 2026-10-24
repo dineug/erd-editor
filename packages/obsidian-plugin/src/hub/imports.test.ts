@@ -1,6 +1,8 @@
 /// <reference types="vite/types/importMeta.d.ts" />
 import { describe, expect, it } from 'vite-plus/test';
 
+import { imports } from '@/__test-utils__/imports';
+
 // Read through the bundler, as mcp-server's import spec does. A glob never
 // matches the file that declares it, so this spec is left out of its own scan.
 const hubSources = import.meta.glob<string>('./*.ts', {
@@ -14,25 +16,9 @@ const allSources = import.meta.glob<string>('../**/*.ts', {
   eager: true,
 });
 
-/** Every import or export statement with the module it names, type-only ones marked. */
-const STATEMENT =
-  /^\s*(import|export)\s+(type\s+)?[^'"]*?from\s+['"]([^'"]+)['"]|^\s*import\s+['"]([^'"]+)['"]/gm;
-
-/** A require or a dynamic import of a literal module, which loads it at runtime all the same. */
-const CALL = /\b(?:require|import)\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
-
-function imports(source: string): Array<{ module: string; typeOnly: boolean }> {
-  return [
-    ...Array.from(source.matchAll(STATEMENT), match => ({
-      module: match[3] ?? match[4],
-      typeOnly: Boolean(match[2]),
-    })),
-    ...Array.from(source.matchAll(CALL), match => ({
-      module: match[1],
-      typeOnly: false,
-    })),
-  ];
-}
+/** Obsidian, and the modules that reach it or the editor, which needs a window. */
+const OBSIDIAN_ONLY =
+  /\s(?:obsidian|@\/ErdView|@\/main|@\/loadErdEditor|@\/erdEditorModule)$/;
 
 /** The entries effect's package.json names; platform-node by module path only. */
 const EFFECT_ENTRY = /^effect(?:\/(?!index$|schema$|sql$)[a-z-]+)?$/;
@@ -73,11 +59,7 @@ describe('src/hub runs outside Obsidian', () => {
     );
 
     expect(runtimeImports.length).toBeGreaterThan(0);
-    expect(
-      runtimeImports.filter(line =>
-        /\s(?:obsidian|@\/ErdView|@\/main|@\/loadErdEditor)$/.test(line)
-      )
-    ).toEqual([]);
+    expect(runtimeImports.filter(line => OBSIDIAN_ONLY.test(line))).toEqual([]);
   });
 
   it('imports effect only from its documented entries, anywhere in src', () => {

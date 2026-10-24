@@ -1,3 +1,5 @@
+import '@dineug/erd-editor/erd-editor.js';
+
 import {
   type ErdEditorElement,
   setExportFileCallback,

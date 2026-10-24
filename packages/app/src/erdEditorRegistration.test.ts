@@ -1,8 +1,8 @@
 /// <reference types="node" />
 
-// The editor registers <erd-editor> as it evaluates. A file that creates the
-// element while importing only the ErdEditorElement type drops the import
-// entirely and mounts an element nothing upgraded.
+// The package's erd-editor.js entry registers <erd-editor> as it evaluates. A
+// file that creates the element while importing only the ErdEditorElement type
+// drops the import entirely and mounts an element nothing upgraded.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
@@ -14,7 +14,10 @@ const SOURCE_ROOT = join(process.cwd(), 'src');
 const CREATES_ELEMENT = /createElement\(\s*'erd-editor'\s*\)/;
 
 /** The import that carries the registration, and the only form that survives a build. */
-const SIDE_EFFECT_IMPORT = /^import '@dineug\/erd-editor';$/m;
+const SIDE_EFFECT_IMPORT = /^import '@dineug\/erd-editor\/erd-editor\.js';$/m;
+
+/** A bare import of the package root, which no registration may rely on. */
+const BARREL_IMPORT = /^import '@dineug\/erd-editor';$/m;
 
 /** Where the element is built today, so a rename cannot leave the check matching nothing. */
 const CALLERS = [
@@ -53,5 +56,13 @@ describe('erd-editor registration', () => {
     );
 
     expect(missing).toEqual([]);
+  });
+
+  it('no caller relies on the barrel alone', () => {
+    const barrelOnly = sourceFiles(SOURCE_ROOT)
+      .filter(file => BARREL_IMPORT.test(readFileSync(file, 'utf8')))
+      .map(file => relative(SOURCE_ROOT, file).split(sep).join('/'));
+
+    expect(barrelOnly).toEqual([]);
   });
 });
