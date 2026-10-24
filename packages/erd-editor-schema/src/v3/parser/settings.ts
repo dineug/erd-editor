@@ -7,6 +7,7 @@ import {
   isPlainObject,
   isString,
   pick,
+  uniq,
 } from 'es-toolkit';
 
 import { assign, validNumber, validString } from '@/helper';
@@ -68,6 +69,22 @@ const LOCKED_FIELDS = LockSettingTypeList.flatMap(
 export const toLockedValues = (settings: LockedValues): LockedValues =>
   pick(settings, LOCKED_FIELDS);
 
+/**
+ * A new document's column order, which a parse also reads the place of each
+ * column type an order lacks from.
+ */
+const DEFAULT_COLUMN_ORDER: ReadonlyArray<number> = [
+  ColumnType.columnLogicalName,
+  ColumnType.columnName,
+  ColumnType.columnDataType,
+  ColumnType.columnDomain,
+  ColumnType.columnNotNull,
+  ColumnType.columnUnique,
+  ColumnType.columnAutoIncrement,
+  ColumnType.columnDefault,
+  ColumnType.columnComment,
+];
+
 const createSettings = (): Settings => {
   const settings: Omit<Settings, 'lockedValues'> = {
     originX: 0,
@@ -82,17 +99,7 @@ const createSettings = (): Settings => {
     columnNameCase: NameCase.camelCase,
     bracketType: BracketType.none,
     relationshipDataTypeSync: true,
-    columnOrder: [
-      ColumnType.columnLogicalName,
-      ColumnType.columnName,
-      ColumnType.columnDataType,
-      ColumnType.columnDomain,
-      ColumnType.columnNotNull,
-      ColumnType.columnUnique,
-      ColumnType.columnAutoIncrement,
-      ColumnType.columnDefault,
-      ColumnType.columnComment,
-    ],
+    columnOrder: [...DEFAULT_COLUMN_ORDER],
     maxWidthComment: -1,
     lockSettings: LOCK_ALL,
     ddlScripts: { before: '', after: '' },
@@ -101,13 +108,6 @@ const createSettings = (): Settings => {
   return { ...settings, lockedValues: toLockedValues(settings) };
 };
 
-/** The column types of a document saved before the logical name and domain. */
-const SEVEN_COLUMN_TYPES = ColumnTypeList.filter(
-  columnType =>
-    columnType !== ColumnType.columnLogicalName &&
-    columnType !== ColumnType.columnDomain
-);
-
 const isOrderOf = (
   columnTypes: ReadonlyArray<number>,
   order: ReadonlyArray<unknown>
@@ -115,23 +115,52 @@ const isOrderOf = (
   order.length === columnTypes.length &&
   difference(columnTypes, order as number[]).length === 0;
 
+const isKnownColumnType = (value: unknown): value is number =>
+  (ColumnTypeList as ReadonlyArray<unknown>).includes(value);
+
+/** Where in the order the first of the column types given that it holds stands, or -1. */
+function indexOfHeld(
+  order: ReadonlyArray<number>,
+  columnTypes: ReadonlyArray<number>
+): number {
+  for (const columnType of columnTypes) {
+    const index = order.indexOf(columnType);
+    if (index !== -1) return index;
+  }
+  return -1;
+}
+
 /**
- * A saved column order as the full one: seven entries take the logical name
- * just before the name and the domain just after the data type, every column
- * type in any order stays as it is, and anything else is null.
+ * A saved column order as the full one: each column type this release knows,
+ * once and as ordered, and each it lacks next to its neighbour in the default
+ * order. An order naming no column type this release knows is null.
  */
 export function toFullColumnOrder(order: unknown): number[] | null {
   if (!Array.isArray(order)) return null;
   if (isOrderOf(ColumnTypeList, order)) return order;
-  if (!isOrderOf(SEVEN_COLUMN_TYPES, order)) return null;
 
-  return order.flatMap((columnType: number) =>
-    columnType === ColumnType.columnName
-      ? [ColumnType.columnLogicalName, columnType]
-      : columnType === ColumnType.columnDataType
-        ? [columnType, ColumnType.columnDomain]
-        : [columnType]
-  );
+  const full = uniq(order.filter(isKnownColumnType));
+  if (!full.length) return null;
+
+  DEFAULT_COLUMN_ORDER.forEach((columnType, index) => {
+    if (full.includes(columnType)) return;
+
+    // Just after the nearest type before it in the default order that the
+    // order holds, or with none just before the nearest one after it.
+    const before = indexOfHeld(
+      full,
+      DEFAULT_COLUMN_ORDER.slice(0, index).reverse()
+    );
+    full.splice(
+      before === -1
+        ? indexOfHeld(full, DEFAULT_COLUMN_ORDER.slice(index + 1))
+        : before + 1,
+      0,
+      columnType
+    );
+  });
+
+  return full;
 }
 
 /**
