@@ -1,5 +1,3 @@
-import '@/erd-editor';
-
 export { dictionaryRowChords } from '@/components/dictionary/dictionaryKeys';
 export {
   defineErdEditor,

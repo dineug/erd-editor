@@ -7,6 +7,7 @@ import {
   defineErdViewer,
   ErdViewerElement,
 } from '@/components/erd-viewer/ErdViewer';
+import * as index from '@/index';
 
 describe('@dineug/erd-editor/erd-viewer.js', () => {
   it('defines <erd-viewer> as the exported class', () => {
@@ -56,5 +57,12 @@ describe('@dineug/erd-editor/erd-viewer.js', () => {
     expect(() => defineErdViewer()).not.toThrow();
     expect(() => defineErdViewer()).not.toThrow();
     expect(customElements.get('erd-viewer')).toBe(ErdViewerElement);
+  });
+
+  it('shares its class with the package root, whose defineErdViewer is then quiet too', () => {
+    expect(index.ErdViewerElement).toBe(ErdViewerElement);
+    expect(() => index.defineErdViewer()).not.toThrow();
+    expect(customElements.get('erd-viewer')).toBe(ErdViewerElement);
+    expect(customElements.get('erd-editor')).toBeUndefined();
   });
 });

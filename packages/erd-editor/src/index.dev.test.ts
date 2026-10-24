@@ -1,5 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 
+import { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
+
 const mocks = vi.hoisted(() => ({
   begin: vi.fn(),
   end: vi.fn(),
@@ -57,6 +59,13 @@ describe('index.dev', () => {
     expect(mocks.begin).toHaveBeenCalledTimes(1);
     expect(mocks.end).toHaveBeenCalledTimes(1);
     expect(frames.length).toBe(framesBefore + 1);
+  });
+
+  it('defines <erd-editor> through its own entry, so the editor it mounts is upgraded', () => {
+    const editors = document.body.querySelectorAll('erd-editor');
+
+    expect(customElements.get('erd-editor')).toBe(ErdEditorElement);
+    expect(editors[0]).toBeInstanceOf(ErdEditorElement);
   });
 
   it('mounts a single erd-editor with the theme builder, locale picker and welcome screen enabled', () => {

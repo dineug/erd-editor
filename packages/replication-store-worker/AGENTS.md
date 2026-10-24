@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-25 -->
 
 # replication-store-worker
 
@@ -34,7 +34,7 @@ A private package (`private: true`) holding a headless replica of the open docum
 
 ### Imports
 
-- **Import `@dineug/erd-editor/engine.js`, never the package root.** `engine.js` is DOM-free, while the root registers custom elements and throws in a worker. `tsconfig.json` sets `lib: ["ES2022", "WebWorker"]`, so a reference to `document` fails the type check.
+- **Import `@dineug/erd-editor/engine.js`, never the package root.** `engine.js` is DOM-free, while the root builds the element classes, which extend `HTMLElement`, and throws in a worker. `tsconfig.json` sets `lib: ["ES2022", "WebWorker"]`, so a reference to `document` fails the type check.
 
 ### Worker Construction
 

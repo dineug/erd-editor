@@ -1,7 +1,7 @@
 // A document that an element empties as it is destroyed must not raise the
 // welcome screen over a provider that is already gone.
 
-import '@/index';
+import '@/erd-editor';
 
 import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';

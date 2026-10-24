@@ -344,7 +344,8 @@ marks every column a relationship in the document ends on.
 `ErdEditor.tsx` declares `shadow: 'closed'`, so Playwright locators (`getByRole`
 and ARIA snapshots included) and `document.querySelector` all stop at the host
 element. `e2e/fixture/index.html` patches `Element.prototype.attachShadow` to
-force `mode: 'open'` **before** the editor module registers the custom element.
+force `mode: 'open'` **before** `src/erd-editor.ts`, which `main.ts` imports,
+defines the custom element.
 
 The fixture deviates from production in two ways. One is this reopened root.
 The other is the scene mirror of section 2, whose divs take real pointer events

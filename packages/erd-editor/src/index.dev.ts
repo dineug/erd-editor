@@ -1,4 +1,4 @@
-import './index';
+import './erd-editor';
 
 // @ts-ignore
 import Stats from 'stats.js';
