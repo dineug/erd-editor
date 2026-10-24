@@ -12,6 +12,7 @@ import {
   BracketType,
   CanvasType,
   ColumnType,
+  ColumnTypeList,
   Database,
   isSettingLocked,
   Language,
@@ -521,6 +522,12 @@ describe('createAndMergeSettings', () => {
   });
 
   describe('columnOrder', () => {
+    it('holds every column type in the default order, where a parse finds the place of one an order lacks', () => {
+      expect(
+        [...createAndMergeSettings({}).columnOrder].sort((a, b) => a - b)
+      ).toEqual(ColumnTypeList);
+    });
+
     it('accepts a permutation of every column type', () => {
       const columnOrder = [...defaultColumnOrder].reverse();
       const settings = createAndMergeSettings({ columnOrder });
@@ -529,27 +536,105 @@ describe('createAndMergeSettings', () => {
       expect(settings.columnOrder).toBe(columnOrder);
     });
 
-    it('rejects an array with the wrong length', () => {
+    it('drops a column type it does not know and keeps the order of the rest', () => {
+      const columnOrder = [
+        ColumnType.columnComment,
+        512,
+        ColumnType.columnDefault,
+        ColumnType.columnAutoIncrement,
+        ColumnType.columnUnique,
+        ColumnType.columnNotNull,
+        ColumnType.columnDomain,
+        'columnName',
+        ColumnType.columnDataType,
+        ColumnType.columnName,
+        1.5,
+        ColumnType.columnLogicalName,
+      ];
+
+      expect(
+        createAndMergeSettings({ columnOrder: columnOrder as number[] })
+          .columnOrder
+      ).toEqual([...defaultColumnOrder].reverse());
+    });
+
+    it('keeps the first entry of a column type named twice', () => {
+      const columnOrder = [
+        ...[...defaultColumnOrder].reverse(),
+        ColumnType.columnComment,
+        ColumnType.columnName,
+      ];
+
+      expect(createAndMergeSettings({ columnOrder }).columnOrder).toEqual(
+        [...defaultColumnOrder].reverse()
+      );
+    });
+
+    it('puts a column type the order lacks just after the one before it in the default order', () => {
+      const columnOrder = [
+        ColumnType.columnComment,
+        ColumnType.columnDefault,
+        ColumnType.columnLogicalName,
+        ColumnType.columnName,
+        ColumnType.columnDataType,
+        ColumnType.columnDomain,
+        ColumnType.columnNotNull,
+        ColumnType.columnUnique,
+      ];
+
+      expect(createAndMergeSettings({ columnOrder }).columnOrder).toEqual([
+        ColumnType.columnComment,
+        ColumnType.columnDefault,
+        ColumnType.columnLogicalName,
+        ColumnType.columnName,
+        ColumnType.columnDataType,
+        ColumnType.columnDomain,
+        ColumnType.columnNotNull,
+        ColumnType.columnUnique,
+        ColumnType.columnAutoIncrement,
+      ]);
+    });
+
+    it('puts the first column type of the default order just before the nearest one after it the order holds', () => {
+      const columnOrder = [
+        ColumnType.columnComment,
+        ColumnType.columnDataType,
+        ColumnType.columnDomain,
+        ColumnType.columnName,
+        ColumnType.columnDefault,
+        ColumnType.columnNotNull,
+        ColumnType.columnUnique,
+        ColumnType.columnAutoIncrement,
+      ];
+
+      expect(createAndMergeSettings({ columnOrder }).columnOrder).toEqual([
+        ColumnType.columnComment,
+        ColumnType.columnDataType,
+        ColumnType.columnDomain,
+        ColumnType.columnLogicalName,
+        ColumnType.columnName,
+        ColumnType.columnDefault,
+        ColumnType.columnNotNull,
+        ColumnType.columnUnique,
+        ColumnType.columnAutoIncrement,
+      ]);
+    });
+
+    it('fills every column type around the one an order of a single entry names', () => {
       expect(
         createAndMergeSettings({ columnOrder: [ColumnType.columnName] })
           .columnOrder
       ).toEqual(defaultColumnOrder);
     });
 
-    it('rejects an array of the right length that is missing a member', () => {
-      const columnOrder = [
-        ColumnType.columnName,
-        ColumnType.columnName,
-        ColumnType.columnDataType,
-        ColumnType.columnNotNull,
-        ColumnType.columnUnique,
-        ColumnType.columnAutoIncrement,
-        ColumnType.columnDefault,
-      ];
-
-      expect(createAndMergeSettings({ columnOrder }).columnOrder).toEqual(
-        defaultColumnOrder
-      );
+    it.each([
+      ['no entry', []],
+      ['no column type it knows', [512, 'columnName', null]],
+    ])('reads an order of %s as the default', (_, columnOrder) => {
+      expect(
+        createAndMergeSettings({ columnOrder: columnOrder as number[] })
+          .columnOrder
+      ).toEqual(defaultColumnOrder);
     });
 
     it('rejects a non-array', () => {
@@ -594,19 +679,22 @@ describe('createAndMergeSettings', () => {
       );
     });
 
-    it.each([
-      ['eight entries', defaultColumnOrder.slice(1)],
-      [
-        'seven entries naming a new column type',
-        defaultColumnOrder.slice(0, 7),
-      ],
-      [
-        'nine entries naming one twice',
-        [...defaultColumnOrder.slice(0, 8), ColumnType.columnName],
-      ],
-    ])('rejects %s', (_, columnOrder) => {
+    it('keeps the order a later release saved for the column types it knows', () => {
+      const known = [
+        ColumnType.columnDataType,
+        ColumnType.columnDomain,
+        ColumnType.columnName,
+        ColumnType.columnLogicalName,
+        ColumnType.columnNotNull,
+        ColumnType.columnUnique,
+        ColumnType.columnAutoIncrement,
+        ColumnType.columnDefault,
+        ColumnType.columnComment,
+      ];
+      const columnOrder = [...known.slice(0, 5), 1024, ...known.slice(5), 512];
+
       expect(createAndMergeSettings({ columnOrder }).columnOrder).toEqual(
-        defaultColumnOrder
+        known
       );
     });
   });

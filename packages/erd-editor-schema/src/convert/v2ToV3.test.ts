@@ -448,7 +448,7 @@ describe('v2ToV3', () => {
       ]);
     });
 
-    it('keeps the default columnOrder when the v2 order is incomplete', () => {
+    it('fills an incomplete v2 order around the column types it names', () => {
       const schemaV2 = createSchemaV2();
       schemaV2.canvas.setting.columnOrder = ['columnName'] as any;
 
