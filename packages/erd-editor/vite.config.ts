@@ -45,11 +45,21 @@ export default defineConfig({
       },
       formats: ['es'],
     },
+    // One file per module, unminified, so a consumer prunes by the package's
+    // sideEffects list and minifies once, as with the private libraries.
+    minify: false,
     rolldownOptions: {
       // Runtime dependencies stay bare imports for the consumer's bundler to
       // resolve, dedupe and tree-shake by their own sideEffects fields. The
       // private workspace libraries are not on npm, so they still inline.
       external,
+      output: {
+        preserveModules: true,
+        preserveModulesRoot: join(packageDir, 'src'),
+        // The declarations keep the JSDoc. pnpm peer-graph reads this text, so
+        // only the pure annotations a consumer prunes by and licences stay.
+        comments: { jsdoc: false, annotation: true, legal: true },
+      },
     },
   },
   resolve: {

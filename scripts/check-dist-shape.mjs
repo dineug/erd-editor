@@ -55,12 +55,12 @@ const INLINED_WORKER_MARKERS = [/new SharedWorker\(/, /data:text\/javascript;bas
 const STUBBED_WORKERS = ['exportPng.shared-worker.js', 'elkLayout.shared-worker.js'];
 
 /**
- * The stub's guard and the write it opens, in any quote, written out or as a
- * minifier writes it: an if on typeof document === "undefined" whose block
- * starts with Reflect.set(globalThis, "document", ...), or typeof document > "u" &&.
+ * The stub's guard and the write it opens, in any quote: an if on typeof document
+ * === "undefined" whose block or lone statement starts with Reflect.set(globalThis,
+ * "document", ...), or as a minifier writes it, typeof document > "u" &&.
  */
 const STUB =
-  /typeof document\s*(?:===?\s*(["'`])undefined\1|>\s*(["'`])u\2)\s*(?:\)\s*\{|&&\s*\(?)\s*Reflect\.set\(globalThis,\s*(["'`])document\3/;
+  /typeof document\s*(?:===?\s*(["'`])undefined\1|>\s*(["'`])u\2)\s*(?:\)\s*\{?|&&\s*\(?)\s*Reflect\.set\(globalThis,\s*(["'`])document\3/;
 
 /** Every url worker, whatever its spelling. */
 const ANY_URL_WORKER = /new (?:Shared)?Worker\(new URL\(/g;

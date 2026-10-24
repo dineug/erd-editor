@@ -24,7 +24,7 @@
    pnpm --filter @dineug/grid --fail-if-no-match test:coverage
    ```
 
-5. **Run root step 5**, `pnpm check` then `pnpm build`. Then run `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size`, since `erd-editor`'s build inlines this package: the size gate counts it in the chunk of `erd-editor`'s `dist/` that holds the element, and the peer graph holds that `peer.js` never reaches it. Look at a change a person would see on the demo page (`pnpm --filter @dineug/grid dev`), which mounts `Grid` over a million rows with its selection, editing, a column's own editor, both themes and frozen columns. For a change that moves what a frame costs, run `pnpm --filter @dineug/grid bench` and report what it prints (Testing Requirements).
+5. **Run root step 5**, `pnpm check` then `pnpm build`. Then run `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size`, since `erd-editor`'s build inlines this package: its modules ship under `erd-editor`'s `dist/grid/dist/`, the size gate counts them in every record whose bundle reaches the Dictionary tab, and the peer graph holds that `peer.js` never reaches it. Look at a change a person would see on the demo page (`pnpm --filter @dineug/grid dev`), which mounts `Grid` over a million rows with its selection, editing, a column's own editor, both themes and frozen columns. For a change that moves what a frame costs, run `pnpm --filter @dineug/grid bench` and report what it prints (Testing Requirements).
 6. **Report as root step 7 says.**
 
 ## Key Files

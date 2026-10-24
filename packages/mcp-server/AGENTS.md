@@ -190,6 +190,6 @@
 ### External
 
 - `effect` (the core modules from `effect`, `TestClock` from `effect/testing`, `McpServer`, `McpSchema`, `McpProtocol`, `Tool` and `Toolkit` from `effect/ai`, `Socket` from `effect/socket`), `@effect/platform-node` by module path (`NodeRuntime`, `NodeStdio`, `NodeFileSystem`, `NodePath`), `es-toolkit` (and `/compat`).
-- `graphql` arrives with the engine and stays: its parser sits in the engine chunk, so dropping the import tools would not shed it.
+- `graphql` arrives with the engine and stays: the editor module's generators reach its parser, and `peer.js` hands them over as one `editorActions$` object, so dropping the import tools would not shed it.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

@@ -34,6 +34,14 @@
     "dist",
     "!dist/**/*.map"
   ],
+  "sideEffects": [
+    "./dist/erd-editor.js",
+    "./dist/erd-viewer.js",
+    "**/erd-editor.ts",
+    "**/erd-viewer.ts",
+    "**/workerDomStubs.*",
+    "**/elkWorkerRealm.*"
+  ],
   "keywords": [
     "vuerd",
     "editor",
