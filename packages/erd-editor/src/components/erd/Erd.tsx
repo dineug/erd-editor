@@ -92,6 +92,8 @@ export type ErdProps = {
   enableWelcomeScreen?: boolean;
   enableThemeBuilder?: boolean;
   enableLocalePicker?: boolean;
+  /** Whether the canvas takes a wheel, a pinch or a touch; true if unset. */
+  interactive?: () => boolean;
 };
 
 /**
@@ -164,10 +166,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     );
   };
 
+  const interactive = () => props.interactive?.() ?? true;
+
   const pinch = usePinchZoom({
     app: () => app.value,
     root,
     enabled: () => !getShowOverLayout(),
+    interactive,
   });
 
   const groupDraw = useTableGroupDraw({ app: () => app.value, root });
@@ -242,7 +247,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   const handleWheel = (event: WheelEvent) => {
-    if (pinch.handleWheel(event) || getShowOverLayout()) return;
+    if (pinch.handleWheel(event) || !interactive() || getShowOverLayout()) {
+      return;
+    }
     event.preventDefault();
 
     const $mod = isMod(event);

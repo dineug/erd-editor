@@ -182,6 +182,7 @@
   - A touch pinch is two fingers, and Safari sends gesture events.
   - Each holds its centre through `pinchZoomAction$`, streamed so one pinch is one undo entry.
   - The roots carry `touch-action: none`; otherwise the page zooms instead.
+  - `interactive` (an `Erd` prop, an option of `usePinchZoom` and `createPinch`) is true unless given. While it is false, no wheel, pinch wheel, gesture or two-finger press is prevented or spent, so the page keeps each.
   - `getZoomTransform` hands back the store's own object, so snapshot what a gesture holds.
 - **Drags freeze their geometry.** Entity drags (`canvas/entityDrag.ts`), scrollbar drags (`virtual-scroll/useVirtualScroll.ts`) and the minimap drag (`minimap/useMinimapScroll.ts`) freeze the content rect and origin via `src/konva/scene/viewFreeze.ts`.
   - They thaw in the finalizer and on unmount.
