@@ -12,6 +12,7 @@ import {
 import {
   ColumnOption,
   Database,
+  NameViewMode,
   OrderType,
   RelationshipType,
   Show,
@@ -87,6 +88,7 @@ import {
 import {
   changeDatabaseAction,
   changeDatabaseNameAction,
+  changeNameViewModeAction,
   changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
@@ -681,6 +683,27 @@ describe('focusMoveTableAction$', () => {
     expect(tableOf(store, 't1').columnIds).toHaveLength(2);
   });
 
+  it('tabs into the logical name of the column it adds in the view of both', () => {
+    seedTable(store, 't1');
+    store.dispatchSync(
+      changeNameViewModeAction({
+        value: NameViewMode.both,
+        shared: false,
+        editorId: store.state.editor.id,
+      })
+    );
+    store.dispatchSync(
+      focusTableAction({ tableId: 't1', focusType: FocusType.tableComment })
+    );
+
+    store.dispatchSync(focusMoveTableAction$(MoveKey.Tab, false));
+
+    expect(store.state.editor.focusTable).toMatchObject({
+      columnId: tableOf(store, 't1').columnIds[0],
+      focusType: FocusType.columnLogicalName,
+    });
+  });
+
   it('moves the focus when the table field is not the last one', () => {
     seedTable(store, 't1');
     store.dispatchSync(
@@ -798,6 +821,24 @@ describe('drawStartAddRelationshipAction$', () => {
       tableId: 't1',
       x: 30,
       y: 40,
+    });
+  });
+
+  it('focuses the logical name of the primary key column it creates in the view of both', () => {
+    seedTable(store, 't1');
+    store.dispatchSync(
+      changeNameViewModeAction({
+        value: NameViewMode.both,
+        shared: false,
+        editorId: store.state.editor.id,
+      })
+    );
+
+    store.dispatchSync(drawStartAddRelationshipAction$('t1'));
+
+    expect(store.state.editor.focusTable).toMatchObject({
+      columnId: tableOf(store, 't1').columnIds[0],
+      focusType: FocusType.columnLogicalName,
     });
   });
 

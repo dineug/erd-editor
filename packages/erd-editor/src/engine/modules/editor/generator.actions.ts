@@ -121,6 +121,7 @@ import {
 } from './utils/duplicate';
 import { findRelationshipColumn } from './utils/findRelationshipColumn';
 import {
+  getFirstColumnType,
   getFocusedColumnIds,
   isColumns,
   isLastColumn,
@@ -938,7 +939,8 @@ export const drawStartRelationshipAction$ = (
 export const drawStartAddRelationshipAction$ = (
   tableId: string
 ): GeneratorAction =>
-  function* ({ collections }) {
+  function* (state) {
+    const { collections } = state;
     const table = query(collections)
       .collection('tableEntities')
       .selectById(tableId);
@@ -964,7 +966,7 @@ export const drawStartAddRelationshipAction$ = (
       yield focusColumnAction({
         tableId,
         columnId,
-        focusType: FocusType.columnName,
+        focusType: getFirstColumnType(state),
         $mod: false,
         shiftKey: false,
       });
