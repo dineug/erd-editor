@@ -30,7 +30,8 @@
 | `messages/messages.test.ts` | Holds each language to English key for key and shape for shape |
 | `messages/fit.browser.test.ts` | Measures the fixed-width texts in every language, on a Mac only |
 | `imports.test.ts` | Holds the peer, engine and worker graphs to the rules under Peer and worker graphs |
-| `src/components/erd-editor/useErdEditorAttachElement.ts` | `localeState`, `resolveLocaleOption()`, `applyLocale`, `setLocale` and `setSystemLocale` |
+| `src/components/element-host/localeHost.ts` | `useLocaleHost`: `localeState`, `resolveLocaleOption()`, `applyLocale`, `setLocale` and `setSystemLocale`, over the dictionary source, the tags `system` reads and the fallback option its element hands it |
+| `src/components/erd-editor/useErdEditorAttachElement.ts` | The editor's call of `useLocaleHost`, with `messagesOf`, `useNavigatorLanguages()` and its fallback, and the `changeLocale` a pick fires |
 | `src/components/localeContext.ts` | `localeContext` and `useI18n` |
 | `src/components/localized/Localized.tsx` | `localized(key, params)`, a template read where it renders |
 | `src/components/locale-picker/` | The locale picker |
@@ -43,17 +44,17 @@
 ### The option on the element
 
 - **Keep the option out of the document.** It lives on the element. The language enters no store, history, peer or file. Each host keeps the option where it keeps the theme. These are owner decisions (2026-10-06).
-- **`useErdEditorAttachElement.ts` holds the option.** It is `localeState.option`: a code, `system`, or null until `setLocale` or a pick sets one.
-- **`resolveLocaleOption()` gives the option in force.** It is the option set, else `system` while `enableLocalePicker` is on and `en` while it is off, an owner decision (2026-10-06). So an element no host configures keeps the English it always showed, whatever the browser's language.
+- **`src/components/element-host/localeHost.ts` holds the option.** `useLocaleHost` keeps it in `localeState.option`: a code, `system`, or null until `setLocale` or a pick sets one. It imports no dictionary: its element hands it the dictionary source, the tags `system` reads and the fallback option, and the editor's `useErdEditorAttachElement.ts` hands it `messagesOf`, `useNavigatorLanguages()` and the fallback below.
+- **`resolveLocaleOption()` gives the option in force.** It is the option set, else the element's fallback. The editor's is `system` while `enableLocalePicker` is on and `en` while it is off, an owner decision (2026-10-06). So an editor no host configures keeps the English it always showed, whatever the browser's language.
 - **Read the option through `resolveLocaleOption()`.** Never read `localeState.option` for it, which is null before a call. The picker's check and the palette's read it through `resolveLocaleOption()`.
-- **`system` follows the named tag, else the browser.** It is `resolveLocale` over the tag `setSystemLocale` named, else over `navigator.languages`. `src/hooks/useNavigatorLanguages.ts` copies that array on mount and on `languagechange`, since Chromium's array is frozen and r-html's `observable` never tracks it.
+- **`system` follows the named tag, else the browser.** It is `resolveLocale` over the tag `setSystemLocale` named, else over the tags the element hands in, `navigator.languages` for the editor, applied again when that observable source changes. `src/hooks/useNavigatorLanguages.ts` copies the array on mount and on `languagechange`, since Chromium's array is frozen and r-html's `observable` never tracks it.
 - **The setters apply before they return.** `setLocale` and `setSystemLocale` apply at once, and `onBeforeMount` resolves again. So a language set, or a picker turned on, before `appendChild` is in the first frame. Toggling `enableLocalePicker` re-applies the language.
 - **`setLocale` ignores a value that is no option.** Only a code from `LOCALES` or `system` changes the option.
 - **`changeLocale` fires for a pick alone.** It carries `{ locale }`, the option picked. It fires for a pick from the picker or the palette, the option already in force included. It never fires for a setter.
 
 ### One I18n object
 
-- **Change the one `I18n` object in place.** `ErdEditor.tsx` provides `localeContext` on the host beside `themeContext`. `applyLocale` assigns a new language into that shallow observable, never through `provider.set()`, which a component mounted after a switch would miss.
+- **Change the one `I18n` object in place.** `ErdEditor.tsx` provides `localeContext` on the host beside `themeContext`. `applyLocale` (`localeHost.ts`) assigns a new language into that shallow observable, never through `provider.set()`, which a component mounted after a switch would miss.
 - **Freeze nothing in i18n.** The element assigns into the object.
 - **Set `lang` and `dir` on `div.root` alone.** Nothing is set on the host element or the page.
 - **Read `t` inside the render function.** A component takes `useI18n(ctx)` at setup and reads `i18n.value.t` inside its render function. A string read at setup keeps the language the component mounted in.

@@ -53,7 +53,8 @@ const modulePathOf = (file: string) => file.replace(/\.tsx?$/, '');
 
 /**
  * What the view mounts and reads: its canvas, scrollbars, map, controls and
- * palette, its store, keys, press mode and measure, its fit and its lights.
+ * palette, its store, keys, press mode and measure, its fit and its lights,
+ * and the theme and language its element takes from a page.
  */
 const ROOTS = [
   'components/erd/canvas/Canvas.tsx',
@@ -72,6 +73,8 @@ const ROOTS = [
   'konva/scene/fitZoom.ts',
   'components/erd/relationshipHighlight.ts',
   'components/erd/canvas/highlightTransition.ts',
+  'components/element-host/themeHost.ts',
+  'components/element-host/localeHost.ts',
 ];
 
 /**

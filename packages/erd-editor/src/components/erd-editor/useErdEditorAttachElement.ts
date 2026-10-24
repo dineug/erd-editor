@@ -1,15 +1,11 @@
 import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
-import {
-  observable,
-  onBeforeMount,
-  onMounted,
-  Ref,
-  watch,
-} from '@dineug/r-html';
-import { cloneDeep, isString, omit } from 'es-toolkit';
+import { onMounted, Ref, watch } from '@dineug/r-html';
+import { cloneDeep, omit } from 'es-toolkit';
 import { get, isEmpty } from 'es-toolkit/compat';
 
 import { AppContext, appDestroy } from '@/components/appContext';
+import { useLocaleHost } from '@/components/element-host/localeHost';
+import { useThemeHost } from '@/components/element-host/themeHost';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';
 import {
   clearAction,
@@ -27,33 +23,12 @@ import {
   type SchemaImportType,
 } from '@/engine/modules/editor/generator.actions';
 import { createSharedStore, SharedStore } from '@/engine/shared-store';
-import { useDarkMode } from '@/hooks/useDarkMode';
 import { useNavigatorLanguages } from '@/hooks/useNavigatorLanguages';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import {
-  hasLocaleOption,
-  LocaleCode,
-  LocaleOption,
-  SYSTEM_LOCALE,
-} from '@/i18n/locales';
+import { LocaleOption, SYSTEM_LOCALE } from '@/i18n/locales';
 import { messagesOf } from '@/i18n/messages/index';
-import { resolveLocale } from '@/i18n/resolveLocale';
-import { createI18n, I18n } from '@/i18n/translate';
 import { Unsubscribe } from '@/internal-types';
-import {
-  AccentColor,
-  AccentColorList,
-  Appearance,
-  AppearanceList,
-  AppearanceOptionList,
-  createTheme,
-  GrayColor,
-  GrayColorList,
-  ResolvedThemeOptions,
-  SYSTEM_APPEARANCE,
-  ThemeOptions,
-} from '@/themes/radix-ui-theme';
-import { Theme, ThemeTokens } from '@/themes/tokens';
+import { SYSTEM_APPEARANCE } from '@/themes/radix-ui-theme';
 import { arrayHas } from '@/utils/arrayHas';
 import {
   mouseTrackerEndAction,
@@ -98,17 +73,6 @@ const ExternalKeyBindingNameList = KeyBindingNameList.filter(
   key => !hasOmitKeyBindingName(key)
 );
 
-const defaultThemeOptions: ResolvedThemeOptions = {
-  grayColor: GrayColor.slate,
-  accentColor: AccentColor.indigo,
-  appearance: Appearance.dark,
-} as const;
-
-const hasGrayColor = arrayHas<string>(GrayColorList);
-const hasAccentColor = arrayHas<string>(AccentColorList);
-const hasAppearance = arrayHas<string>(AppearanceList);
-const hasAppearanceOption = arrayHas<string>(AppearanceOptionList);
-
 type Props = {
   props: ErdEditorProps;
   ctx: ErdEditorElement;
@@ -119,94 +83,24 @@ type Props = {
 export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   const { store, keyBindingMap, emitter, shortcut$, keydown$ } = app;
   const getReadonly = () => props.readonly;
-  const themeState = observable<{
-    options: ThemeOptions;
-    /** What system shows once a host names it; null follows the OS color scheme. */
-    systemAppearance: Appearance | null;
-    preset: Theme;
-    custom: Partial<Theme>;
-  }>({
-    options: { ...defaultThemeOptions },
-    systemAppearance: null,
-    preset: createTheme(defaultThemeOptions),
-    custom: {},
-  });
-
-  const theme = observable<Theme>(
-    {
-      ...themeState.preset,
-      ...themeState.custom,
-    },
-    { shallow: true }
-  );
-
-  const darkMode = useDarkMode();
+  const themeHost = useThemeHost();
+  const { themeState, resolveAppearance, followsSystem } = themeHost;
   const navigatorLanguages = useNavigatorLanguages();
   const { addUnsubscribe } = useUnmounted();
 
-  const localeState = observable<{
-    /** The option a host or a pick last set; null until either sets one. */
-    option: LocaleOption | null;
-    /** What system means once a host names its own language; null reads the browser's. */
-    systemTag: string | null;
-  }>({
-    option: null,
-    systemTag: null,
+  const localeHost = useLocaleHost({
+    messagesOf,
+    languages: navigatorLanguages,
+    /**
+     * With no option set it is system while the element offers its picker and
+     * English while it does not, so an element no host configures keeps the
+     * English it always showed (an owner decision of 2026-10-06).
+     */
+    fallbackOption: (): LocaleOption =>
+      props.enableLocalePicker ? SYSTEM_LOCALE : 'en',
   });
+  const { localeState, applyLocale } = localeHost;
 
-  /**
-   * The option in force. With none set it is system while the element offers
-   * its picker and English while it does not, so an element no host configures
-   * keeps the English it always showed (an owner decision of 2026-10-06).
-   */
-  const resolveLocaleOption = (): LocaleOption =>
-    localeState.option ?? (props.enableLocalePicker ? SYSTEM_LOCALE : 'en');
-
-  const resolveSystemLocale = (): LocaleCode =>
-    resolveLocale(localeState.systemTag ?? navigatorLanguages.state.languages);
-
-  const resolveCurrentLocale = (): LocaleCode => {
-    const option = resolveLocaleOption();
-    return option === SYSTEM_LOCALE ? resolveSystemLocale() : option;
-  };
-
-  // Resolved here and again just before each mount, so a language a host sets
-  // or a picker it turns on before appending the element is in its first render.
-  const initialLocale = resolveCurrentLocale();
-  const i18n = observable<I18n>(
-    { ...createI18n(initialLocale, messagesOf(initialLocale)) },
-    { shallow: true }
-  );
-
-  /**
-   * Assigns the language into the object every component already reads, never
-   * a new one through the provider, which a component mounted later would miss.
-   */
-  const applyLocale = () => {
-    const code = resolveCurrentLocale();
-    if (code === i18n.locale) return;
-
-    Object.assign(i18n, createI18n(code, messagesOf(code)));
-  };
-
-  onBeforeMount(applyLocale);
-
-  const resolveAppearance = (): Appearance => {
-    const { options, systemAppearance } = themeState;
-    if (options.appearance !== SYSTEM_APPEARANCE) return options.appearance;
-    if (systemAppearance) return systemAppearance;
-    return darkMode.state.isDark ? Appearance.dark : Appearance.light;
-  };
-
-  const applyPreset = () => {
-    Object.assign(
-      themeState.preset,
-      createTheme({ ...themeState.options, appearance: resolveAppearance() })
-    );
-  };
-
-  const followsSystem = () =>
-    themeState.options.appearance === SYSTEM_APPEARANCE;
   const sharedStoreSet = new Set<SharedStore>();
   let presenceTrackerUnsubscribe: Unsubscribe | null = null;
   let presenceTrackerIntervalId: any = -1;
@@ -295,27 +189,8 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
         themeState.options.appearance = resolveAppearance();
       }
     }),
-    watch(darkMode.state).subscribe(propName => {
-      if (propName !== 'isDark' || !followsSystem()) return;
-      if (themeState.systemAppearance) return;
-
-      applyPreset();
-    }),
-    watch(themeState.options).subscribe(applyPreset),
-    watch(themeState.preset).subscribe(() => {
-      Object.assign(theme, themeState.preset, themeState.custom);
-    }),
-    watch(themeState).subscribe(propName => {
-      if (propName === 'systemAppearance') {
-        followsSystem() && applyPreset();
-        return;
-      }
-      if (propName !== 'custom') return;
-
-      Object.assign(theme, themeState.preset, themeState.custom);
-    }),
-    watch(localeState).subscribe(applyLocale),
-    watch(navigatorLanguages.state).subscribe(applyLocale),
+    themeHost.destroy,
+    localeHost.destroy,
   ]);
 
   onMounted(() => {
@@ -384,55 +259,11 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     store.resetHistory();
   };
 
-  ctx.setPresetTheme = newThemeOptions => {
-    if (
-      isString(newThemeOptions.grayColor) &&
-      hasGrayColor(newThemeOptions.grayColor)
-    ) {
-      themeState.options.grayColor = newThemeOptions.grayColor;
-    }
-    if (
-      isString(newThemeOptions.accentColor) &&
-      hasAccentColor(newThemeOptions.accentColor)
-    ) {
-      themeState.options.accentColor = newThemeOptions.accentColor;
-    }
-    if (
-      isString(newThemeOptions.appearance) &&
-      hasAppearanceOption(newThemeOptions.appearance)
-    ) {
-      themeState.options.appearance = newThemeOptions.appearance;
-    }
-  };
-
-  ctx.setSystemAppearance = appearance => {
-    themeState.systemAppearance =
-      isString(appearance) && hasAppearance(appearance) ? appearance : null;
-  };
-
-  // Both apply before they return, so a host that names the language before it
-  // appends the element paints it in that language from the first frame.
-  ctx.setLocale = locale => {
-    if (!isString(locale) || !hasLocaleOption(locale)) return;
-
-    localeState.option = locale;
-    applyLocale();
-  };
-
-  ctx.setSystemLocale = locale => {
-    const tag = isString(locale) ? locale.trim() : '';
-    localeState.systemTag = tag || null;
-    applyLocale();
-  };
-
-  ctx.setTheme = newTheme => {
-    const customTheme: Partial<Theme> = {};
-    ThemeTokens.forEach(key => {
-      const value = get(newTheme, key);
-      isString(value) && Reflect.set(customTheme, key, value);
-    });
-    themeState.custom = customTheme;
-  };
+  ctx.setPresetTheme = themeHost.setPresetTheme;
+  ctx.setSystemAppearance = themeHost.setSystemAppearance;
+  ctx.setLocale = localeHost.setLocale;
+  ctx.setSystemLocale = localeHost.setSystemLocale;
+  ctx.setTheme = themeHost.setTheme;
 
   ctx.setKeyBindingMap = newKeyBindingMap => {
     ExternalKeyBindingNameList.forEach(key => {
@@ -542,13 +373,13 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   });
 
   return {
-    theme,
+    theme: themeHost.theme,
     themeState,
-    i18n,
+    i18n: localeHost.i18n,
     localeState,
-    resolveLocaleOption,
-    resolveSystemLocale,
+    resolveLocaleOption: localeHost.resolveLocaleOption,
+    resolveSystemLocale: localeHost.resolveSystemLocale,
     destroySet,
-    hasDarkMode: () => resolveAppearance() === Appearance.dark,
+    hasDarkMode: themeHost.hasDarkMode,
   };
 }
