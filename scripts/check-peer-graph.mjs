@@ -29,10 +29,7 @@ const BARE_ALLOWLIST = new Set([
   'rxjs',
 ]);
 
-/**
- * A relative script in emitted code: check-bundle-size.mjs's import, dynamic
- * import and worker url, plus a side effect import, which that walk skips.
- */
+/** A relative script in emitted code: a static, side effect or dynamic import, or a worker url. */
 const RELATIVE_SCRIPT =
   /(?:\bfrom\s*|\bimport\s*\(?\s*)["'](\.{1,2}\/[^"']+\.js)["']|new URL\(["'](\.{1,2}\/[^"']+\.js)["'],\s*import\.meta\.url\)/g;
 

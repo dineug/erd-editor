@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
 
 # i18n
 
@@ -79,7 +79,7 @@
   - A `common.placeholder.*` measures no wider than an empty column (`COLUMN_MIN_WIDTH`), measured as `src/utils/text.ts` measures a value. So a shorter standard word or a standard abbreviation stands in for a long one (`по умолч.`, `obs.`). Where a language has neither, the SQL keyword stands in (Hebrew's `DEFAULT`).
   - `toolbar.databaseName` fits the toolbar's input (`TOOLBAR_DATABASE_NAME_WIDTH`).
   - The three labels of each Schema SQL options segment group fit 207 px of the 300 px panel (`SCHEMA_SQL_PANEL_WIDTH`). The groups are Statements (the literals `Create`, `If not exists` and `Drop & re-create`) and Header (`common.none` beside the literals `USE` and `CREATE + USE`).
-- **Import every dictionary statically.** `messages/index.ts` imports each one statically, never with `import()`. Obsidian loads one `main.js`, the UMD build is one file, and `pnpm size` counts a dynamic chunk too.
+- **Import every dictionary statically.** `messages/index.ts` imports each one statically, never with `import()`. Obsidian loads one `main.js` and each UMD build is one file, so a dynamic chunk would load with the rest there anyway, and `pnpm size` still reports it, under `lazyGzip`.
 - **Only the element and specs import `messagesOf`.** Peer and worker graphs, below, keeps `messages/index.ts` out of the peer, engine and SharedWorker graphs.
 
 ### Keys and parameters
