@@ -48,12 +48,6 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import { columnMarkFill } from '@/components/erd/canvas/table/dictionaryMarks';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
-import {
-  COLUMN_KEY_PATH,
-  type DiffPaths,
-  diffTextColor,
-  ENTITY_PATH,
-} from '@/components/erd/diff-viewer/diff';
 import { useI18n } from '@/components/localeContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -93,6 +87,12 @@ import type { Column } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 import { tableRowHeight } from '@/utils/calcTable';
+import {
+  COLUMN_KEY_PATH,
+  type DiffPaths,
+  diffTextColor,
+  ENTITY_PATH,
+} from '@/utils/diff/diff';
 import {
   isMainButtonPress,
   isMultiTouch,

@@ -9,12 +9,12 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import { diffContext } from '@/components/diffContext';
 import {
   dictionaryMarkFill,
   readableMarkFill,
 } from '@/components/erd/canvas/table/dictionaryMarks';
 import Table from '@/components/erd/canvas/table/Table';
-import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import { NameViewMode, Show } from '@/constants/schema';
 import {
   addDictionaryAction,

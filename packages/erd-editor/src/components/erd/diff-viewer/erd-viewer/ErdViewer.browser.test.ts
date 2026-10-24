@@ -13,7 +13,6 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import { seedDiff } from '@/__test-utils__/diffSeed';
 import { type AppContext, appContext } from '@/components/appContext';
-import { Diff, type DiffMap } from '@/components/erd/diff-viewer/diff';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import Erd from '@/components/erd/Erd';
 import { themeContext } from '@/components/themeContext';
@@ -32,6 +31,7 @@ import {
   changeColumnNotNullAction,
 } from '@/engine/modules/table-column/atom.actions';
 import { diffDocuments } from '@/utils/diff';
+import { Diff, type DiffMap } from '@/utils/diff/diff';
 
 const VIEWPORT = { width: 1200, height: 700 };
 

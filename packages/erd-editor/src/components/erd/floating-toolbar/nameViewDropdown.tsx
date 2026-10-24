@@ -9,7 +9,7 @@ import {
 import { fromEvent } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
-import { menus as NAME_VIEWS } from '@/components/erd/erd-context-menu/menus/nameViewMenus';
+import { nameViewOptions } from '@/components/erd/nameViewOptions';
 import { useI18n } from '@/components/localeContext';
 import ContextMenuContent from '@/components/primitives/context-menu/context-menu-content/ContextMenuContent';
 import ContextMenu from '@/components/primitives/context-menu/ContextMenu';
@@ -146,7 +146,7 @@ export function useNameViewDropdown(ctx: Ctx): NameViewDropdown {
         on:click={toggle}
       >
         <div class={styles.label}>
-          {NAME_VIEWS.map(view => (
+          {nameViewOptions.map(view => (
             <span
               class={view.value === current ? null : styles.hidden}
               aria-hidden={view.value === current ? 'false' : 'true'}
@@ -174,7 +174,7 @@ export function useNameViewDropdown(ctx: Ctx): NameViewDropdown {
           y={state.y}
           children={
             <>
-              {NAME_VIEWS.map(view => (
+              {nameViewOptions.map(view => (
                 <ContextMenu.Item
                   onClick={pick(view.value)}
                   children={

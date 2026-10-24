@@ -4,6 +4,7 @@ import { FC, observable, onUnmounted } from '@dineug/r-html';
 import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { useAppContext } from '@/components/appContext';
+import { useDiffMap } from '@/components/diffContext';
 import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import MemoSash from '@/components/erd/canvas/memo/memo-sash/MemoSash';
 import {
@@ -37,12 +38,6 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
-import {
-  diffOutline,
-  diffTextColor,
-  MEMO_VALUE_PATH,
-} from '@/components/erd/diff-viewer/diff';
-import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -58,6 +53,7 @@ import {
 import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import type { Memo } from '@/internal-types';
 import { getMemoRect } from '@/konva/scene/metrics';
+import { diffOutline, diffTextColor, MEMO_VALUE_PATH } from '@/utils/diff/diff';
 import { openColorPickerAction } from '@/utils/emitter';
 import { isMod } from '@/utils/keyboard-shortcut';
 import { isPinchWheel } from '@/utils/pinch';

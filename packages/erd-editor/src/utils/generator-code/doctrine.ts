@@ -5,16 +5,15 @@ import { PrimitiveType } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { Name, referentialActionSupport } from '@/utils/schema-sql/utils';
 import {
   autoNameIgnoreCase,
   isDelimitedPart,
-  Name,
   orderByNameASC,
-  referentialActionSupport,
   splitNameParts,
   tableNamePart,
   unquoteNamePart,
-} from '@/utils/schema-sql/utils';
+} from '@/utils/tableName';
 
 import { enumMembers, POSTGRES_BIT_TYPES } from './columnTypes';
 import { DOCTRINE_RESERVED_WORDS } from './doctrineReservedWords';

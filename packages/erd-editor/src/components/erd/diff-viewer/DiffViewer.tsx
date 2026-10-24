@@ -22,11 +22,11 @@ import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { diffDocuments } from '@/utils/diff';
+import { Diff } from '@/utils/diff/diff';
 import { openToastAction } from '@/utils/emitter';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { closePromise } from '@/utils/promise';
 
-import { Diff } from './diff';
 import * as styles from './DiffViewer.styles';
 
 export type DiffViewerProps = {

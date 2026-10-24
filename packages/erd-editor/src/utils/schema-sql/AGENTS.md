@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-20 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
 
 # schema-sql
 
@@ -9,16 +9,17 @@
 
 - The Schema SQL tab, its options panel, its Tables choice by table group and its script editors: `src/components/schema-sql/AGENTS.md`.
 - The scripts as document content (`settings.ddlScripts`): `src/engine/AGENTS.md`.
-- The code generators, which import this directory's referential action table, foreign key pairs and `autoNameIgnoreCase`: `src/utils/generator-code/AGENTS.md`.
+- The code generators, which import this directory's referential action table and foreign key pairs, and the automatic names of `src/utils/tableName.ts`: `src/utils/generator-code/AGENTS.md`.
 - How the importer reads this output back: `packages/schema-sql-parser/AGENTS.md`.
 
 ## Making a Change
 
 1. **Read the files on the other side.** Purpose names them. Modules outside this directory import from it, so a change to one of these reaches them:
    - `referentialActionSupport`: the code generators and the relationship context menu (`src/components/erd/erd-context-menu/menus/relationshipMenus.ts`).
-   - `toForeignKeyPairs`, `autoNameIgnoreCase`, `orderByNameASC` and `SQLite.ts`'s `isIntegerFamily`: the code generators.
-   - `autoName` and `primaryKeyColumns`: the code generators and the GraphQL, DBML and AML importers (`src/utils/schema-{graphql,dbml,aml}-parser/convert.ts`).
-   - `tableNamePart`: `src/utils/tableKeys.ts`, `src/utils/map-columns/prefill.ts` and `doctrine.ts`; `splitsTableName`: `src/utils/tableKeys.ts`.
+   - `toForeignKeyPairs` and `SQLite.ts`'s `isIntegerFamily`: the code generators.
+   - The name helpers the writers import live in `src/utils/tableName.ts`, outside this directory, since modules that never reach the writers read them too. A change to one reaches:
+     - `autoName`, `autoNameIgnoreCase`, `orderByNameASC` and `primaryKeyColumns`: the code generators; `autoName` and `primaryKeyColumns` also the GraphQL, DBML and AML importers (`src/utils/schema-{graphql,dbml,aml}-parser/convert.ts`), and `orderByNameASC` Find and Replace, the diff, the Explorer's tree and the palette.
+     - `tableNamePart`: `src/utils/tableKeys.ts`, `src/utils/map-columns/prefill.ts` and `doctrine.ts`; `splitsTableName`: `src/utils/tableKeys.ts`.
    - `createSchemaSQL`, `SchemaSQLStatementsList` and `SchemaSQLHeaderList`: `peer.js`, through which `mcp-server`'s `erd_read` writes DDL (`src/peer/AGENTS.md`, `packages/mcp-server/AGENTS.md`).
 2. **Update the fixture with the bytes.** `compose.test.ts` and the vendor specs compare the output with the files under `__fixtures__/options/<vendor>/` (Testing Requirements). A change to what a combination or a rule file writes updates that file in the same change.
 3. **Run the output on its database.** Root step 6 names the docker loop for generated SQL (`docker/<vendor>/` with `data/*.sql`). Snowflake and Databricks have no container, so their output follows their documentation, unmeasured.
@@ -30,7 +31,8 @@
 | --- | --- |
 | `index.ts` | `createSchemaSQL` and `CreateSchemaSQLOptions`: the parts in order, the table filter, the scripts |
 | `options.ts` | `SchemaSQLOptions`, `schemaSQLSupport`, `resolveSchemaSQLOptions`, `HEADER_NAME_PATTERN`, `formatScript` |
-| `utils.ts` | What the writers share: `commentToWrite`, `toStringLiteral`, `formatDefault`, the name split (`splitNameParts`, `unquoteNamePart`, `splitTableName`, `tableNamePart`, `splitsTableName`), `autoName` and `autoNameIgnoreCase`, `toForeignKeyPairs`, `toSchemaEntities`, `selectIndexColumns`, `referentialActionSupport` |
+| `utils.ts` | What the writers share: `commentToWrite`, `toStringLiteral`, `formatDefault`, `toForeignKeyPairs`, `toSchemaEntities`, `selectIndexColumns`, `referentialActionSupport` |
+| `src/utils/tableName.ts` | The name helpers the writers share with the scene's key rows and the importers, outside this directory: `getBracket`, the name split (`splitNameParts`, `unquoteNamePart`, `splitTableName`, `tableNamePart`, `splitsTableName`), `autoName` and `autoNameIgnoreCase`, `primaryKeyColumns`, `orderByNameASC` |
 | `MySQL.ts`, `MariaDB.ts`, `PostgreSQL.ts`, `MSSQL.ts`, `Oracle.ts`, `SQLite.ts`, `Snowflake.ts`, `Databricks.ts` | One writer per database; `Oracle.ts` also holds `oracleLongNames` |
 | `__fixtures__/options/<vendor>/` | The bytes each combination writes, and the bytes of a few rules on their own |
 
@@ -90,7 +92,7 @@
 
 ### Dotted table names
 
-- **Build automatic names from the table part.** An unquoted table name with a dot is schema and table. So SQL Server, Oracle, MySQL, MariaDB and PostgreSQL build an automatic constraint or index name from its last part (`tableNamePart`, `utils.ts`). `sales.users` writes `PK_users`, `UQ_users_email`, `FK_users_TO_orders` and `IDX_users`. Each of those databases refused these names with the dot in them.
+- **Build automatic names from the table part.** An unquoted table name with a dot is schema and table. So SQL Server, Oracle, MySQL, MariaDB and PostgreSQL build an automatic constraint or index name from its last part (`tableNamePart`, `src/utils/tableName.ts`). `sales.users` writes `PK_users`, `UQ_users_email`, `FK_users_TO_orders` and `IDX_users`. Each of those databases refused these names with the dot in them.
 - **SQLite builds only `IDX_users` that way.** SQLite names no constraint: it writes its primary key, unique and foreign key clauses bare. So the only automatic name it builds from the table part is `IDX_users`. It refused that name with the dot in it too.
 - **Split as `MSSQL.ts` reads its levels.** The name splits by the rule `MSSQL.ts` reads its `MS_Description` levels with; both use `splitNameParts` and `unquoteNamePart`. It splits at a dot outside brackets or double quotes. The last part loses one enclosing pair, and a doubled closing character inside reads as one.
   - `[sales].[users]` and `"sales"."users"` write `PK_users` too.
@@ -100,7 +102,7 @@
 - **Measured on 2026-10-05 for `"sales"."users"`.** The export ran clean on PostgreSQL 17, Oracle 23ai Free (in a user `"sales"`, the trigger filling the key on insert) and SQLite 3.54. Under `ANSI_QUOTES` it ran clean on MySQL 8.4 and MariaDB 11.8. Each refused the `IDX_"users"` or `PK_"users"` an earlier split wrote.
 - **The Indexes tab splits for the same six.** `splitsTableName` names the six databases that build names from the table part (SQL Server, Oracle, MySQL, MariaDB, PostgreSQL and SQLite) for the Indexes tab's key rows (`getColumnKeys`, `src/utils/tableKeys.ts`). Under Snowflake and Databricks the rows keep the whole name, as their DDL does.
 - **Two schemas, one table name.** The export repeats the primary key and unique names of a table name two schemas hold; every database that names them keeps them in the table's schema. It numbers the foreign key and index names across the whole export. SQL Server 2022, Oracle 23ai Free, MySQL 8.4, MariaDB 11, PostgreSQL 17 and SQLite ran that script clean.
-- **Number names that differ only in case.** Those six number an automatic index name that repeats an earlier one, or repeats it but for case, quoted or not (`autoNameIgnoreCase`, `utils.ts`), as the owner decided. The five that name foreign keys number an automatic foreign key name the same way.
+- **Number names that differ only in case.** Those six number an automatic index name that repeats an earlier one, or repeats it but for case, quoted or not (`autoNameIgnoreCase`, `src/utils/tableName.ts`), as the owner decided. The five that name foreign keys number an automatic foreign key name the same way.
   - `sales.users` and `hr.Users` referenced from `sales.orders` write `FK_users_TO_orders` and `FK_Users_TO_orders1`. Those five refused the unnumbered pair and ran the numbered script clean. SQLite, which writes no foreign key name, ran either script.
   - MySQL and MariaDB refused the unnumbered pair for a quoted `users` and `Users` too, since a foreign key's index name folds. PostgreSQL and Oracle ran that pair either way, and SQL Server and SQLite refuse its second table.
 - **Other numbering compares exactly.** A name differing in more than case keeps its bytes. Snowflake, Databricks, Oracle's sequence names, the importers and the code generators but `doctrine.ts` number through `autoName`, which compares exactly. `doctrine.ts` numbers a blank index name with `autoNameIgnoreCase`, as its Indexes rule says (`src/utils/generator-code/AGENTS.md`, `doctrine.ts`).

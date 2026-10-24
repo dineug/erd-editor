@@ -78,13 +78,11 @@ const PENDING: Record<string, string> = {
   'components/theme-builder':
     "The palette's commands import the theme builder.",
   'components/erd/erd-context-menu':
-    "The palette's commands import the canvas menu's lists, the name view list among them.",
-  'components/erd/diff-viewer':
-    "The scene's tables, memos, connectors and groups read the diff marks and their context from the diff pane's directory.",
+    "The palette's commands import the canvas menu's database, relationship and placement lists.",
   'components/erd/automatic-table-placement':
     "The palette's import commands place what they import through the placement modules.",
   'components/erd/table-group':
-    "The palette and a group's title bar open the name editor from the group commands.",
+    "The palette's commands add a group and open its name editor through the group commands.",
   'components/erd-editor':
     "The Explorer's commands, which the palette imports, read the editor shell's viewport layout.",
   services:
@@ -92,7 +90,7 @@ const PENDING: Record<string, string> = {
   workers: 'The services the palette reaches spawn their workers.',
   'utils/file': "The palette's commands import file import and export.",
   'utils/schema-sql':
-    'The palette, the key derivation the scene draws, Find and Replace and the importers read the table name helpers beside the DDL writers.',
+    "The palette's Schema SQL commands read the DDL options beside the writers.",
   comlink: 'The worker boundary of the services the palette reaches.',
 };
 

@@ -4,9 +4,15 @@ import { uuid25 } from '@dineug/uuid';
 import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
-
 import {
   autoNameIgnoreCase,
+  getBracket,
+  primaryKeyColumns,
+  splitTableName,
+  tableNamePart,
+} from '@/utils/tableName';
+
+import {
   commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
@@ -17,15 +23,11 @@ import {
   formatSize,
   formatSpace,
   FormatTableOptions,
-  getBracket,
   ifNotExists,
   Name,
   primaryKey,
-  primaryKeyColumns,
   referentialActionSupport,
   selectIndexColumns,
-  splitTableName,
-  tableNamePart,
   toForeignKeyPairs,
   toOrderName,
   toSchemaEntities,

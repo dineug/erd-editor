@@ -25,8 +25,8 @@ import { createRelationship } from '@/utils/collection/relationship.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
 import { toReferentialAction } from '@/utils/referentialAction';
-import { autoName, primaryKeyColumns } from '@/utils/schema-sql/utils';
 import { findByName } from '@/utils/schema-sql-parser/utils';
+import { autoName, primaryKeyColumns } from '@/utils/tableName';
 import { textInRange, toSafeString } from '@/utils/validation';
 
 import { enumCommentSuffix, resolveDataType } from './dataType';

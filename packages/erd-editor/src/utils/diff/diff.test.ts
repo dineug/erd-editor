@@ -7,7 +7,7 @@ import {
   type DiffPaths,
   diffTextColor,
   ENTITY_PATH,
-} from '@/components/erd/diff-viewer/diff';
+} from '@/utils/diff/diff';
 
 const theme = createTestTheme();
 const paths = (entries: Array<[string, number]>): DiffPaths => new Map(entries);

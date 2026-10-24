@@ -60,7 +60,7 @@
     },
     {
       "path": "components/erd/diff-viewer",
-      "why": "The diff pane. The diff geometry the scene reads leaves for the canvas."
+      "why": "The diff pane. The diff marks the scene reads leave for utils/diff/diff and components/diffContext."
     },
     {
       "path": "components/erd/time-travel",

@@ -1,7 +1,7 @@
 import { createContext, useContext } from '@dineug/r-html';
 
-import type { DiffMap } from '@/components/erd/diff-viewer/diff';
 import { Ctx } from '@/internal-types';
+import type { DiffMap } from '@/utils/diff/diff';
 
 /**
  * The changes a diff pane tints its cells by. ErdViewer alone provides one, so

@@ -1,13 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
 
-import {
-  COLUMN_KEY_PATH,
-  Diff,
-  type DiffMap,
-  ENTITY_PATH,
-  MEMO_VALUE_PATH,
-  TABLE_GROUP_NAME_PATH,
-} from '@/components/erd/diff-viewer/diff';
 import { FocusType } from '@/engine/modules/editor/state';
 import type { RootState } from '@/engine/state';
 import type {
@@ -17,8 +9,16 @@ import type {
   Relationship,
   Table,
 } from '@/internal-types';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
+import {
+  COLUMN_KEY_PATH,
+  Diff,
+  type DiffMap,
+  ENTITY_PATH,
+  MEMO_VALUE_PATH,
+  TABLE_GROUP_NAME_PATH,
+} from '@/utils/diff/diff';
 import { getTableIndexIds } from '@/utils/tableKeys';
+import { orderByNameASC } from '@/utils/tableName';
 
 import {
   compareColumns,

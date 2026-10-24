@@ -5,10 +5,10 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { autoName, primaryKeyColumns } from '@/utils/tableName';
 
 import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
-  autoName,
   commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
@@ -22,7 +22,6 @@ import {
   ifNotExists,
   Name,
   primaryKey,
-  primaryKeyColumns,
   referentialActionSupport,
   selectIndexColumns,
   toForeignKeyPairs,

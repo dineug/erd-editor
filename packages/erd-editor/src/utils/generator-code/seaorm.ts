@@ -11,13 +11,15 @@ import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { isIntegerFamily } from '@/utils/schema-sql/SQLite';
 import {
+  referentialActionSupport,
+  toForeignKeyPairs,
+} from '@/utils/schema-sql/utils';
+import {
   isDelimitedPart,
   orderByNameASC,
-  referentialActionSupport,
   splitNameParts,
-  toForeignKeyPairs,
   unquoteNamePart,
-} from '@/utils/schema-sql/utils';
+} from '@/utils/tableName';
 
 import { stripIdWord } from './graphql';
 import { toSnakeCase, toUpperCamelCase } from './heck';

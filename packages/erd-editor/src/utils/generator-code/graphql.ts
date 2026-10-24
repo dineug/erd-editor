@@ -5,7 +5,7 @@ import { isSingleWord } from '@/engine/modules/relationship/fkColumns';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
+import { orderByNameASC } from '@/utils/tableName';
 
 import {
   ColumnScalar,

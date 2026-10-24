@@ -11,8 +11,7 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import { Diff, DiffMap } from '@/components/erd/diff-viewer/diff';
-import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
+import { useDiffMap } from '@/components/diffContext';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import * as styles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
 import {
@@ -26,6 +25,7 @@ import {
 import { SelectType } from '@/engine/modules/editor/state';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { Diff, DiffMap } from '@/utils/diff/diff';
 
 let mounted: Mounted | null = null;
 

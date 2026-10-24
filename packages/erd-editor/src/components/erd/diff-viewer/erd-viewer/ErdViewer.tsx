@@ -1,10 +1,9 @@
 import { createRef, FC, observable, ref, useProvider } from '@dineug/r-html';
 
 import { AppContext, appContext } from '@/components/appContext';
+import { diffContext } from '@/components/diffContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import ContentCompass from '@/components/erd/content-compass/ContentCompass';
-import { Diff, DiffMap } from '@/components/erd/diff-viewer/diff';
-import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import { ownsPress, sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import { clearRelationshipHighlight } from '@/components/erd/relationshipHighlight';
@@ -16,6 +15,7 @@ import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.acti
 import { usePinchZoom } from '@/hooks/usePinchZoom';
 import { useUnmounted } from '@/hooks/useUnmounted';
 import { hasContent } from '@/konva/scene/contentBounds';
+import { Diff, DiffMap } from '@/utils/diff/diff';
 import { isMiddleButtonPress, onPrevent } from '@/utils/domEvent';
 import { closeColorPickerAction } from '@/utils/emitter';
 import { drag$, DragMove } from '@/utils/globalEventObservable';

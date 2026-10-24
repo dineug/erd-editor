@@ -15,17 +15,12 @@ import {
   stepTransitions,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import { diffContext } from '@/components/diffContext';
 import {
   getColumnCellSlots,
   getHeaderCellSlots,
 } from '@/components/erd/canvas/table/cellLayout';
 import Table from '@/components/erd/canvas/table/Table';
-import {
-  Diff,
-  type DiffMap,
-  type DiffPaths,
-} from '@/components/erd/diff-viewer/diff';
-import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { TABLE_BORDER } from '@/constants/layout';
 import { NameViewMode, Show } from '@/constants/schema';
@@ -72,6 +67,7 @@ import { Tag } from '@/engine/tag';
 import { getTableRect, getTableWidths } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
+import { Diff, type DiffMap, type DiffPaths } from '@/utils/diff/diff';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 type Mode = (typeof NameViewMode)[keyof typeof NameViewMode];

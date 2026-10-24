@@ -121,6 +121,9 @@ const OUTSIDE_REFERENCES = [
   'components/erd/Erd.tsx @/components/erd/canvas/editingLayers',
   'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
   'components/erd/diff-viewer/erd-viewer/ErdViewer.tsx @/components/erd/canvas/Canvas',
+  // Rename opens the name editor a title bar's double click opens, which sits
+  // beside the bar so the scene reaches no group command.
+  'components/erd/erd-context-menu/ErdContextMenu.tsx @/components/erd/canvas/table-group/tableGroupNameEditor',
   'components/erd/goToErdTarget.test.ts @/components/erd/canvas/table/cellLayout',
   'components/erd/goToErdTarget.ts @/components/erd/canvas/table/cellLayout',
   'components/erd/hitTest.browser.test.tsx @/components/erd/canvas/CanvasScene',
@@ -131,6 +134,8 @@ const OUTSIDE_REFERENCES = [
   'components/erd/minimap/MinimapScene.tsx @/components/erd/canvas/table-group/tableGroupBox',
   'components/erd/minimap/table-group/TableGroup.browser.test.tsx @/components/erd/canvas/entityDrag',
   'components/erd/minimap/table-group/TableGroup.tsx @/components/erd/canvas/table-group/tableGroupBox',
+  // A group a draw or Group selected tables just added opens that editor too.
+  'components/erd/table-group/tableGroupName.ts @/components/erd/canvas/table-group/tableGroupNameEditor',
   'components/erd/time-travel/TimeTravel.tsx @/components/erd/canvas/Canvas',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/high-level-table/HighLevelTable',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/table/Table',
@@ -178,7 +183,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the twenty-six references that own a reason to', () => {
+  it('is reached from outside by the twenty-eight references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

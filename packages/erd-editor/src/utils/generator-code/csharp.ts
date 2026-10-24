@@ -4,7 +4,7 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { PrimitiveTypeMap } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
+import { orderByNameASC } from '@/utils/tableName';
 
 import {
   BINARY_TYPES,

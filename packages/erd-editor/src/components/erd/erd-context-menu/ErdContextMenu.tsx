@@ -2,10 +2,8 @@ import { query } from '@dineug/erd-editor-schema';
 import { FC, onMounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import {
-  addTableGroupAndRename,
-  openTableGroupNameEditor,
-} from '@/components/erd/table-group/tableGroupName';
+import { openTableGroupNameEditor } from '@/components/erd/canvas/table-group/tableGroupNameEditor';
+import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
 import { toggleExplorerSearch } from '@/components/explorer/explorerCommands';
 import { useI18n } from '@/components/localeContext';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';

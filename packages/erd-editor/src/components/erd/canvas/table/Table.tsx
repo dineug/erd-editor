@@ -7,6 +7,7 @@ import type { Stage } from 'konva/lib/Stage';
 import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useDiffMap } from '@/components/diffContext';
 import {
   beginColumnDragPointer,
   endColumnDragPointer,
@@ -62,8 +63,6 @@ import {
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
-import { diffOutline, diffTextColor } from '@/components/erd/diff-viewer/diff';
-import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { focusFlowView } from '@/components/flowCenters';
 import { useI18n } from '@/components/localeContext';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
@@ -117,6 +116,7 @@ import {
 } from '@/konva/scene/viewLayout';
 import type { Theme } from '@/themes/tokens';
 import { tableHeaderHeight } from '@/utils/calcTable';
+import { diffOutline, diffTextColor } from '@/utils/diff/diff';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
 import { CURSOR_GRABBING } from '@/utils/stageCursor';

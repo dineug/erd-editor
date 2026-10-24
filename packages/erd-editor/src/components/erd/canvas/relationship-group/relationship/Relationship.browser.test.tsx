@@ -19,13 +19,8 @@ import {
   whenPainted,
 } from '@/__test-utils__';
 import { type AppContext } from '@/components/appContext';
+import { diffContext } from '@/components/diffContext';
 import Relationship from '@/components/erd/canvas/relationship-group/relationship/Relationship';
-import {
-  Diff,
-  type DiffMap,
-  ENTITY_PATH,
-} from '@/components/erd/diff-viewer/diff';
-import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import {
   clearRelationshipHighlight,
   setRelationshipHighlight,
@@ -51,6 +46,7 @@ import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { Point, Relationship as RelationshipType_ } from '@/internal-types';
 import { renderScene } from '@/konva/scene/renderScene';
 import { createRelationship } from '@/utils/collection/relationship.entity';
+import { Diff, type DiffMap, ENTITY_PATH } from '@/utils/diff/diff';
 import { CIRCLE_RADIUS } from '@/utils/draw-relationship';
 import { ROUTE_CORNER_SEGMENTS } from '@/utils/draw-relationship/corner';
 import { LOOP_SEGMENTS } from '@/utils/draw-relationship/loop';

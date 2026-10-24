@@ -3,6 +3,7 @@
 import { FC, observable, onUnmounted } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { useDiffMap } from '@/components/diffContext';
 import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import { sceneIcon } from '@/components/erd/canvas/SceneIcon.template';
 import {
@@ -24,6 +25,7 @@ import {
   getDrawnTableGroupRect,
   type TableGroupLinks,
 } from '@/components/erd/canvas/table-group/tableGroupBox';
+import { openTableGroupNameEditor } from '@/components/erd/canvas/table-group/tableGroupNameEditor';
 import TableGroupSash from '@/components/erd/canvas/table-group/TableGroupSash';
 import {
   getTableGroupIconBox,
@@ -32,13 +34,6 @@ import {
 } from '@/components/erd/canvas/table-group/titleLayout';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
-import {
-  diffOutline,
-  diffTextColor,
-  TABLE_GROUP_NAME_PATH,
-} from '@/components/erd/diff-viewer/diff';
-import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
-import { openTableGroupNameEditor } from '@/components/erd/table-group/tableGroupName';
 import { useI18n } from '@/components/localeContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
@@ -48,6 +43,11 @@ import { removeTableGroupAction$ } from '@/engine/modules/table-group/generator.
 import type { Table, TableGroup } from '@/internal-types';
 import type { Rect } from '@/konva/scene/metrics';
 import type { Theme } from '@/themes/tokens';
+import {
+  diffOutline,
+  diffTextColor,
+  TABLE_GROUP_NAME_PATH,
+} from '@/utils/diff/diff';
 import { getTableGroupColors, type TableGroupColors } from '@/utils/tableGroup';
 
 /** The width of the line around the box. */

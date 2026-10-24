@@ -4,9 +4,9 @@ import type { ActionType } from '@/engine/actions';
 import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
 import { isMemoShown } from '@/utils/memo';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { isTableGroupShown } from '@/utils/tableGroup';
 import { getTableIndexIds } from '@/utils/tableKeys';
+import { orderByNameASC } from '@/utils/tableName';
 
 import { Matcher } from './matcher';
 

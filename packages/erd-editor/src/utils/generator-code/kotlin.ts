@@ -3,7 +3,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
+import { orderByNameASC } from '@/utils/tableName';
 
 import { formatLineComment, getJvmType, JvmType } from './java';
 import { FormatColumnOptions, FormatTableOptions, getNameCase } from './utils';

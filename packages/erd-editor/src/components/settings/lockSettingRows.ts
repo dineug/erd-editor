@@ -1,7 +1,7 @@
 import type { LockSettingType as LockSettingBit } from '@dineug/erd-editor-schema';
 
 import { formatDistance } from '@/components/erd/content-compass/compassGeometry';
-import { menus as nameViewMenus } from '@/components/erd/erd-context-menu/menus/nameViewMenus';
+import { nameViewOptions } from '@/components/erd/nameViewOptions';
 import { menus as columnNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/columnNameCaseMenus';
 import { menus as languageMenus } from '@/components/generator-code/generator-code-context-menu/menus/languageMenus';
 import { menus as tableNameCaseMenus } from '@/components/generator-code/generator-code-context-menu/menus/tableNameCaseMenus';
@@ -42,7 +42,7 @@ const canvasTypeText = (canvasType: string, i18n: Translator) => {
 };
 
 const nameViewModeText = (nameViewMode: string, i18n: Translator) => {
-  const menu = nameViewMenus.find(menu => menu.value === nameViewMode);
+  const menu = nameViewOptions.find(menu => menu.value === nameViewMode);
   return menu ? i18n.t(menu.labelKey) : nameViewMode;
 };
 

@@ -6,9 +6,9 @@ import Fues from 'fuse.js';
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
 import { menus as drawRelationshipMenus } from '@/components/erd/erd-context-menu/menus/drawRelationshipMenus';
-import { menus as nameViewMenus } from '@/components/erd/erd-context-menu/menus/nameViewMenus';
 import { menus as tablePlacementMenus } from '@/components/erd/erd-context-menu/menus/tablePlacementMenus';
 import { goToErdTarget } from '@/components/erd/goToErdTarget';
+import { nameViewOptions } from '@/components/erd/nameViewOptions';
 import { addTableGroupAndRename } from '@/components/erd/table-group/tableGroupName';
 import { toggleExplorerSearch } from '@/components/explorer/explorerCommands';
 import { fieldIcon } from '@/components/explorer/fieldIcon';
@@ -89,8 +89,8 @@ import {
 } from '@/utils/find-replace';
 import { isMemoShown } from '@/utils/memo';
 import { resolveSchemaSQLOptions, schemaSQLSupport } from '@/utils/schema-sql';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { isTableGroupShown } from '@/utils/tableGroup';
+import { orderByNameASC } from '@/utils/tableName';
 import { isTakenOver } from '@/utils/takeover';
 
 import { HangulQuery, hangulQueryOf, HangulTier, hangulTier } from './hangul';
@@ -355,7 +355,7 @@ export function createScopeActions(
     },
     {
       ...submenuNamed(i18n, 'common.nameView'),
-      next: nameViewMenus.map<Action>(menu => ({
+      next: nameViewOptions.map<Action>(menu => ({
         ...checkOf(menu.value === settings.nameViewMode),
         ...named(i18n, menu.labelKey),
         perform: ({ store }) => {

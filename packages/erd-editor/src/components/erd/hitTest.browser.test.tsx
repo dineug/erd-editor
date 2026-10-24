@@ -16,7 +16,6 @@ import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
 import { type AppContext, appContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
-import { Diff } from '@/components/erd/diff-viewer/diff';
 import ErdViewer from '@/components/erd/diff-viewer/erd-viewer/ErdViewer';
 import * as viewerStyles from '@/components/erd/diff-viewer/erd-viewer/ErdViewer.styles';
 import Erd from '@/components/erd/Erd';
@@ -52,6 +51,7 @@ import {
 import { addColumnAction$ } from '@/engine/modules/table-column/generator.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { renderScene } from '@/konva/scene/renderScene';
+import { Diff } from '@/utils/diff/diff';
 
 const VIEWPORT = { width: 1200, height: 700 };
 

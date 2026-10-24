@@ -4,14 +4,13 @@ import { FC, observable, onUnmounted } from '@dineug/r-html';
 import type { KonvaEventObject } from 'konva/lib/Node';
 
 import { useAppContext } from '@/components/appContext';
+import { useDiffMap } from '@/components/diffContext';
 import {
   progressOf,
   transitionKey,
   transitionTo,
 } from '@/components/erd/canvas/highlightTransition';
 import { mixColor } from '@/components/erd/canvas/mixColor';
-import { diffOutline } from '@/components/erd/diff-viewer/diff';
-import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { isRelationshipHighlighted } from '@/components/erd/relationshipHighlight';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
@@ -20,6 +19,7 @@ import { Direction, StartRelationshipType } from '@/constants/schema';
 import { hoverColumnMapAction } from '@/engine/modules/editor/atom.actions';
 import { Point, Relationship as RelationshipType } from '@/internal-types';
 import { getSceneTransform } from '@/konva/scene/viewport';
+import { diffOutline } from '@/utils/diff/diff';
 import {
   type Anchor,
   type Anchors,

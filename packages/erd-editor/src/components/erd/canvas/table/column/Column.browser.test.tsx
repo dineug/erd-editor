@@ -35,11 +35,6 @@ import {
 import { getColumnCellSlots } from '@/components/erd/canvas/table/cellLayout';
 import Column from '@/components/erd/canvas/table/column/Column';
 import {
-  COLUMN_KEY_PATH,
-  Diff,
-  type DiffPaths,
-} from '@/components/erd/diff-viewer/diff';
-import {
   COLUMN_DELETE_WIDTH,
   COLUMN_DRAG_HANDLE_GAP,
   COLUMN_DRAG_HANDLE_HEIGHT,
@@ -77,6 +72,7 @@ import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 import type { ColumnWidth } from '@/utils/calcTable';
+import { COLUMN_KEY_PATH, Diff, type DiffPaths } from '@/utils/diff/diff';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 
 type SceneProps = {

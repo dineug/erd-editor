@@ -2,7 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
+import { orderByNameASC } from '@/utils/tableName';
 
 import { getJsonShape, isNullableColumn, JsonShape } from './jsonShape';
 import { getNameCase } from './utils';

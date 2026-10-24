@@ -4,7 +4,7 @@ import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { IndexEntities, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { splitsTableName, tableNamePart } from '@/utils/schema-sql/utils';
+import { splitsTableName, tableNamePart } from '@/utils/tableName';
 
 type KeyState = Pick<RootState, 'doc' | 'collections'>;
 
