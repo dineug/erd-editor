@@ -27,6 +27,12 @@ peerDependencyRules:
     # Storybook's optional peer stops at vite-plus 0.2, but all it reads is
     # vite-plus/versions, which 1.0 still exports; build:storybook passes on it.
     storybook>vite-plus: '1'
+    # unplugin-dts names @rspack/core ^1 as an optional peer for its Rspack
+    # plugin's types alone: none of its modules imports Rspack, whether
+    # vite-plugin-dts loads its root or its Vite entry. The root's Rspack 2,
+    # which pnpm consumer-bundles bundles with, answers that peer in every
+    # package that builds declarations.
+    unplugin-dts>@rspack/core: '2'
 packageExtensions:
   # redis backs only platform-node's Redis layers, which nothing here imports.
   # Left required, auto-install-peers would lock redis, five @redis/* packages
