@@ -63,4 +63,9 @@ export type {
   CSSDiagnosticHandler,
 } from '@/template/cssDiagnostics';
 export { setCSSDiagnostics } from '@/template/cssDiagnostics';
-export { addCSSHost, setGlobalStyleOrder } from '@/template/vCSSStyleSheet';
+export {
+  addCSSHost,
+  adoptHostSheet,
+  canAdoptStyleSheets,
+  setGlobalStyleOrder,
+} from '@/template/vCSSStyleSheet';

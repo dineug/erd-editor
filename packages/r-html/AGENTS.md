@@ -37,7 +37,7 @@
 | `src/render/part/node/text/helper.ts` | `PartType`, `getPartType`, `isPartMap`, `partMap` |
 | `src/jsx-runtime.ts` | The `JSX` namespace `jsxImportSource` reads |
 | `src/constants.ts` | `MARKER` (random suffix per load), its regexps, `TAttrType`, the lifecycle `Symbol.for` keys |
-| `src/template/vCSSStyleSheet.ts` | Adopted-stylesheet registry with a `<style>` fallback |
+| `src/template/vCSSStyleSheet.ts` | Adopted-stylesheet registry with a `<style>` fallback, and the host sheets `adoptHostSheet` adopts ahead of the shared ones in the root an element joined with, which `addCSSHost` records by its element so a closed root is reached too |
 | `src/index.dev.ts` | Demo entry for `pnpm --filter @dineug/r-html dev`; not the e2e fixture |
 
 ## Subdirectories

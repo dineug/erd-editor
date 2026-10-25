@@ -76,6 +76,9 @@ Every name below comes from `src/index.ts`.
   into registered shadow roots: the one a `createCustomElement` element attaches (`shadow: 'open'`
   by default) or one you pass to `addCSSHost(shadowRoot)`. A `css` class used in the document's own
   tree matches no rule. `setGlobalStyleOrder([...])` pins the cascade order of `css.global` sheets.
+  `adoptHostSheet(element, sheet)` adopts a constructed sheet of one element's own shadow root,
+  closed ones too, ahead of the shared sheets, as a `<style>` of its tree would apply, and returns
+  what drops it, or `null` where `canAdoptStyleSheets()` is false or the root never joined.
   `setCSSDiagnostics(true | handler)` sends the CSS compiler's diagnostics to the console or your
   handler, `false` turns them off, and `null` leaves it to a `__RHTML_CSS_DIAGNOSTICS__` global.
 - **Reactivity** — `observable(state, { shallow })`, `observer(fn)` (returns an unsubscribe) and
