@@ -1294,6 +1294,38 @@ const EDIT_TOOLBAR = [
   'Zen Mode',
 ];
 
+/** The rows of the menu a right press raised, top to bottom, each by its name less its chord. */
+const menuRowsOf = (container: HTMLElement) =>
+  Array.from(
+    container.querySelector('.context-menu-content[data-id="root"]')
+      ?.children ?? [],
+    row => {
+      const chord = row.querySelector('.kbd')?.textContent ?? '';
+      return (row.textContent ?? '').replace(chord, '').trim();
+    }
+  );
+
+/** What a readonly editor's canvas menu keeps, the rows that change nothing in the document. */
+const READ_CANVAS_MENU = ['View Option', 'Name View', 'Export', 'Diff Viewer'];
+
+/** What a writable editor's canvas menu holds over the same document. */
+const EDIT_CANVAS_MENU = [
+  'New Table',
+  'New Memo',
+  'New Table Group',
+  'Toggle Explorer',
+  'Relationship',
+  'View Option',
+  'Name View',
+  'Derive Physical Names Again',
+  'Database',
+  'Import',
+  'Import and Add',
+  'Export',
+  'Auto Layout',
+  'Diff Viewer',
+];
+
 const originOf = ({ app }: Reader) => {
   const { originX, originY } = app.store.state.settings;
   return { originX, originY };
@@ -1343,7 +1375,7 @@ describe('Erd - a readonly editor reads its scene', () => {
     expect(app.store.state.editor.focusTable).not.toBeNull();
   });
 
-  it('raises the table menu for a right press on a table alone, selecting nothing for any', async () => {
+  it('raises the table menu for a right press on a table alone, Table Properties its one row, selecting nothing for any', async () => {
     const reader = await mountReader();
     const { stage, container } = reader;
     const menu = () => container.querySelector('.context-menu-content');
@@ -1361,8 +1393,19 @@ describe('Erd - a readonly editor reads its scene', () => {
 
     await rightClickAt(stage, columnCellOf(stage, 'users.id'));
     expect(menu()).toBeTruthy();
+    expect(menuRowsOf(container)).toEqual(['Table Properties']);
     expect(editsOf(reader)).toEqual([]);
     expect(reader.app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('keeps View Option, Name View, Export and Diff Viewer alone in the canvas menu', async () => {
+    const reader = await mountReader();
+    const { stage, container } = reader;
+
+    await rightClickAt(stage, bareOf(stage));
+
+    expect(menuRowsOf(container)).toEqual(READ_CANVAS_MENU);
+    expect(editsOf(reader)).toEqual([]);
   });
 
   it('draws no control that edits, on a scene mounted readonly, a focused row’s drag handle among them', async () => {
@@ -1907,6 +1950,39 @@ describe('Erd - an editor turned readonly at run time', () => {
     await settleScene();
     expect(app.store.state.editor.selectedMap).toEqual({});
     expect(reader.sent.map(({ type }) => type)).not.toContain('editor.select');
+  });
+
+  it('takes away a menu over a relationship, a memo or a group as it turns readonly, and redraws a table or canvas menu’s rows either way', async () => {
+    const reader = await mountReader({ readonly: false });
+    const { stage, container } = reader;
+    const menu = () => container.querySelector('.context-menu-content');
+
+    for (const selector of [
+      '.relationship-hit-area',
+      '.memo-textarea',
+      '.table-group-title-bar',
+      '.table-group-body',
+    ]) {
+      await rightClickAt(stage, nodeCenter(stage, selector));
+      expect(menuRowsOf(container)).toContain('Delete');
+      await turnReader(true);
+      expect(menu()).toBeNull();
+      await turnReader(false);
+    }
+
+    await rightClickAt(stage, columnCellOf(stage, 'users.id'));
+    expect(menuRowsOf(container)).toContain('Primary Key');
+    await turnReader(true);
+    expect(menuRowsOf(container)).toEqual(['Table Properties']);
+    await turnReader(false);
+    expect(menuRowsOf(container)).toContain('Primary Key');
+
+    await rightClickAt(stage, bareOf(stage));
+    expect(menuRowsOf(container)).toEqual(EDIT_CANVAS_MENU);
+    await turnReader(true);
+    expect(menuRowsOf(container)).toEqual(READ_CANVAS_MENU);
+    await turnReader(false);
+    expect(menuRowsOf(container)).toEqual(EDIT_CANVAS_MENU);
   });
 
   it('gives a View Option row back as it turns writable, laying the connectors out again', async () => {

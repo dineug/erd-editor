@@ -245,10 +245,15 @@ test.describe('Import and Add', () => {
     await erd.press('Escape');
     await expect(palette).toHaveCount(0);
 
+    // A reader's canvas menu keeps the rows that change nothing in the
+    // document, so neither import is one of them.
     await erd.openContextMenuAt(MENU_ORIGIN.x, MENU_ORIGIN.y);
     await expect(
-      erd.contextMenu.getByText('Import', { exact: true })
+      erd.contextMenu.getByText('Export', { exact: true })
     ).toBeVisible();
+    await expect(
+      erd.contextMenu.getByText('Import', { exact: true })
+    ).toHaveCount(0);
     await expect(
       erd.contextMenu.getByText('Import and Add', { exact: true })
     ).toHaveCount(0);

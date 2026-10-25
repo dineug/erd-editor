@@ -25,6 +25,7 @@ import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import DrawTargetButtons from '@/components/erd/draw-target/DrawTargetButtons';
 import ErdContextMenu, {
   ErdContextMenuType,
+  READING_MENU_TYPES,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
 import {
@@ -255,12 +256,17 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   /**
    * The scene's own part of a readonly turn, the element ending the store's
    * edit state: the hover follows the press rule, what it lit goes out either
-   * way, and readonly ends a table group draw.
+   * way, and readonly ends a table group draw and a menu with no row to read.
    */
   const handleReadonlyTurn = () => {
     listenHover(props.readonly);
     readPress.reset();
-    if (props.readonly) cancelTableGroupDraw();
+    if (!props.readonly) return;
+
+    cancelTableGroupDraw();
+    if (!READING_MENU_TYPES.has(state.contextMenuType)) {
+      contextMenu.state.show = false;
+    }
   };
 
   // The press that ends the draw mode for another button is spent on that, so
@@ -276,10 +282,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (!event.target || getShowOverLayout()) return;
 
     const hit = sceneHit(canvas.value, event);
+    const type: ErdContextMenuType = hit?.kind ?? ErdContextMenuType.ERD;
 
-    // A readonly reader has nothing to do on a relationship, a memo or a
-    // group, so none raises a menu, and no group is selected for one.
-    if (props.readonly && hit && hit.kind !== 'table') {
+    // A menu that keeps no row for a readonly reader is never raised for one,
+    // and no group is selected for it either.
+    if (props.readonly && !READING_MENU_TYPES.has(type)) {
       event.preventDefault();
       return;
     }
@@ -287,13 +294,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (hit?.kind === 'table') {
       state.tableId = hit.id;
       state.columnId = hit.columnId;
-      state.contextMenuType = ErdContextMenuType.table;
     } else if (hit?.kind === 'memo') {
       state.memoId = hit.id;
-      state.contextMenuType = ErdContextMenuType.memo;
     } else if (hit?.kind === 'relationship') {
       state.relationshipId = hit.id;
-      state.contextMenuType = ErdContextMenuType.relationship;
     } else if (hit?.kind === 'tableGroup') {
       // A Mac Ctrl+click and a long touch are main presses, which read the
       // body as canvas and unselect, so the menu they raise selects the group
@@ -303,10 +307,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         store.dispatch(selectTableGroupAction$(hit.id, false));
       }
       state.tableGroupId = hit.id;
-      state.contextMenuType = ErdContextMenuType.tableGroup;
-    } else {
-      state.contextMenuType = ErdContextMenuType.ERD;
     }
+    state.contextMenuType = type;
 
     contextMenu.onContextmenu(event);
   };
