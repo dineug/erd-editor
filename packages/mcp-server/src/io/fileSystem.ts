@@ -125,18 +125,21 @@ export class FileAccess extends Context.Service<FileAccess, FileAccessShape>()(
 export type RunIcacls = (args: readonly string[]) => Promise<void>;
 
 /** Windows' own icacls, never one found first on the PATH. */
-const ICACLS = join(
+export const ICACLS = join(
   process.env.SystemRoot ?? 'C:\\Windows',
   'System32',
   'icacls.exe'
 );
 
-/** A program run with no shell and no window, for 5 s at most. */
+/**
+ * A program run with no shell and no window, for 5 s at most; a timeout of 0
+ * runs it to its end.
+ */
 export const runProgram =
-  (file: string): RunIcacls =>
+  (file: string, timeout = 5_000): RunIcacls =>
   args =>
     new Promise((resolve, reject) =>
-      execFile(file, [...args], { windowsHide: true, timeout: 5_000 }, error =>
+      execFile(file, [...args], { windowsHide: true, timeout }, error =>
         error ? reject(error) : resolve()
       )
     );

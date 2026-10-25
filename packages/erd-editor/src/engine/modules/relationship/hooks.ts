@@ -198,7 +198,7 @@ const reachesLayout = (
   return true;
 };
 
-const relationshipSortHook: HookEffect = (action$, getState) =>
+const relationshipSortHook: HookEffect = (action$, getState, ctx) =>
   action$
     .pipe(
       // An index changes no width while the marks are hidden, and a checkbox
@@ -219,7 +219,7 @@ const relationshipSortHook: HookEffect = (action$, getState) =>
       throttle(sortWindow, { leading: false, trailing: true })
     )
     .subscribe(() => {
-      relationshipSort(getState());
+      relationshipSort(getState(), 'document', { route: ctx.routes !== false });
     });
 
 /**
