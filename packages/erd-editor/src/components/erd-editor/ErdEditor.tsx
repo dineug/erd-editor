@@ -439,6 +439,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
           <ExplorerController />
           <QuickSearch
             topLevel={createScopeActions}
+            readonly={props.readonly}
             appearance={
               props.enableThemeBuilder
                 ? themeState.options.appearance

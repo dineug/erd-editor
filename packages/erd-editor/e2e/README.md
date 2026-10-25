@@ -133,7 +133,8 @@ tables already there, which stay where they were, selected and taken back by one
 undo, a json file's tables and memo standing apart as the file has them with
 its settings left out, the ERD tab an append brings up from a Flow view, Graph
 mode, Schema SQL and Code Generator with the added table selected and on screen,
-and a read-only editor whose palette and menu offer no Import and Add.
+and a read-only editor whose palette and menu offer neither Import nor Import
+and Add, both offered again once it turns writable.
 
 `export-image-dialog.spec.ts` holds down the dialog every image export goes
 through, from the canvas menu and the palette: it opens on its defaults with

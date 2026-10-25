@@ -37,7 +37,7 @@
 - **Some cases land the grid without a word.** These are: fewer than two tables or no relationship, a failure, no `SharedWorker`, and Cancel on the toast a slow layout raises (`SLOW_LAYOUT_MS`). The stop key cancels only while that toast is up.
 - **The replace started last lands.** A load meanwhile, from anyone, supersedes a placed import. A placed replace started after it supersedes it too. An append supersedes nothing (Import and Add, below).
 - **The carried settings are read again on landing.** So a tab or setting changed while the import placed stays as changed.
-- **A readonly editor places nothing by any path.** The menu's and the palette's paths are included. `importSchemaPlaced` reads `store.getReadonly()` before it parses, because the readonly filter drops the load only after the layout, and the toast a slow one raises, have run.
+- **A readonly editor places nothing by any path.** Neither the menu nor the palette offers Import while it is readonly, and a host's call is refused as well: `importSchemaPlaced` reads `store.getReadonly()` before it parses, because the readonly filter drops the load only after the layout, and the toast a slow one raises, have run.
 - **`placeByFlow` answers points from the block's corner.** The points start at the corner of the block the tables make, so a caller placing the block elsewhere moves it.
 - **`mcp-server`'s imports keep the grid.** elkjs is outside the peer graph's allowlist and its bundle budget.
 

@@ -52,6 +52,7 @@ import { useErdEditorAttachElement } from '@/components/erd-editor/useErdEditorA
 import ExplorerPanel from '@/components/explorer/explorer-panel/ExplorerPanel';
 import { createScopeActions } from '@/components/quick-search/actions';
 import QuickSearch from '@/components/quick-search/QuickSearch';
+import * as quickSearchStyles from '@/components/quick-search/QuickSearch.styles';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { RelationshipType, Show } from '@/constants/schema';
@@ -967,7 +968,7 @@ const ReaderShell: FC<{ readonly: boolean }> = (props, ctx) => {
           readonly={props.readonly}
         />
       </div>
-      <QuickSearch topLevel={createScopeActions} />
+      <QuickSearch topLevel={createScopeActions} readonly={props.readonly} />
     </div>
   );
 };
@@ -1244,6 +1245,31 @@ async function jumpThroughPalette({ container, shell }: Reader, query: string) {
   await settleScene();
 }
 
+/** Opens the palette on the keyboard root with nothing typed, as a reader asks for its commands. */
+async function openPalette({ shell }: Reader) {
+  shell.focus();
+  chordOn(shell, 'k', 'KeyK', { mod: true });
+  await settleScene();
+}
+
+/** The names of the rows an open palette draws, top to bottom, each less its keywords and chord. */
+const paletteRowsOf = ({ container }: Reader) =>
+  Array.from(
+    container.querySelectorAll(
+      `.quick-search-row .${String(quickSearchStyles.name)}`
+    ),
+    row => (row.textContent ?? '').trim()
+  );
+
+/** Picks the row of an open palette by its name, as a reader clicks it. */
+async function pickPaletteRow(reader: Reader, name: string) {
+  const rows = reader.container.querySelectorAll('.quick-search-row');
+  rows[paletteRowsOf(reader).indexOf(name)].dispatchEvent(
+    new MouseEvent('click', { bubbles: true })
+  );
+  await settleScene();
+}
+
 /** The cell a jump to the orders table's foreign key column leaves focused. */
 const FOCUSED_COLUMN = { tableId: 'orders', columnId: 'orders.user' };
 
@@ -1292,6 +1318,35 @@ const EDIT_TOOLBAR = [
   'One N',
   'Name View',
   'Zen Mode',
+];
+
+/** What a readonly editor's palette lists on the ERD tab with nothing typed: the rows that edit nothing. */
+const READ_PALETTE = [
+  'Tab',
+  'Name View',
+  'Database',
+  'Export',
+  'Toggle Explorer',
+];
+
+/** What a writable editor's palette lists over the same document, every row drawn at once. */
+const EDIT_PALETTE = [
+  'Tab',
+  'Name View',
+  'Derive Physical Names Again',
+  'Database',
+  'Import',
+  'Import and Add',
+  'Export',
+  'New Table',
+  'New Memo',
+  'New Table Group',
+  'Zero One',
+  'Zero N',
+  'One Only',
+  'One N',
+  'Auto Layout',
+  'Toggle Explorer',
 ];
 
 /** The rows of the menu a right press raised, top to bottom, each by its name less its chord. */
@@ -1405,6 +1460,15 @@ describe('Erd - a readonly editor reads its scene', () => {
     await rightClickAt(stage, bareOf(stage));
 
     expect(menuRowsOf(container)).toEqual(READ_CANVAS_MENU);
+    expect(editsOf(reader)).toEqual([]);
+  });
+
+  it('lists in the palette the tabs, the name view, the database, Export and the Explorer, and no row that edits', async () => {
+    const reader = await mountReader();
+
+    await openPalette(reader);
+
+    expect(paletteRowsOf(reader)).toEqual(READ_PALETTE);
     expect(editsOf(reader)).toEqual([]);
   });
 
@@ -1983,6 +2047,39 @@ describe('Erd - an editor turned readonly at run time', () => {
     expect(menuRowsOf(container)).toEqual(READ_CANVAS_MENU);
     await turnReader(false);
     expect(menuRowsOf(container)).toEqual(EDIT_CANVAS_MENU);
+  });
+
+  it('lists an open palette’s rows anew at each turn, the rows that edit back once writable', async () => {
+    const reader = await mountReader();
+    await openPalette(reader);
+    expect(paletteRowsOf(reader)).toEqual(READ_PALETTE);
+
+    await turnReader(false);
+    expect(paletteRowsOf(reader)).toEqual(EDIT_PALETTE);
+
+    await turnReader(true);
+    expect(paletteRowsOf(reader)).toEqual(READ_PALETTE);
+    expect(editsOf(reader)).toEqual([]);
+  });
+
+  it('takes a palette held open on Import back to its top level as it turns readonly', async () => {
+    const reader = await mountReader({ readonly: false });
+    await openPalette(reader);
+    await pickPaletteRow(reader, 'Import');
+    expect(paletteRowsOf(reader)).toEqual([
+      'json',
+      'Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+    ]);
+
+    await turnReader(true);
+    expect(paletteRowsOf(reader)).toEqual(READ_PALETTE);
+
+    await turnReader(false);
+    expect(paletteRowsOf(reader)).toEqual(EDIT_PALETTE);
+    expect(editsOf(reader)).toEqual([]);
   });
 
   it('gives a View Option row back as it turns writable, laying the connectors out again', async () => {

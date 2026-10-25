@@ -92,9 +92,13 @@ const submenuNamed = (
   ...named(i18n, key, keywordsKey),
 });
 
-/** The five formats under Import, or under Import and Add for an append. */
+/**
+ * The five formats under Import, or under Import and Add for an append, each
+ * listed only while its parent is, so none shows in a submenu still open as the
+ * editor turns readonly.
+ */
 function createImportActions(mode: ImportMode, i18n: I18n): Action[] {
-  return [
+  const formats: Action[] = [
     {
       icon: <Icon name="braces" size={16} />,
       name: 'json',
@@ -131,6 +135,7 @@ function createImportActions(mode: ImportMode, i18n: I18n): Action[] {
       },
     },
   ];
+  return formats.map(action => ({ ...action, filter: isWritableErdTab }));
 }
 
 /** A submenu row's check, drawn beside the option in force, which the submenu opens on. */
@@ -199,20 +204,13 @@ export function createScopeActions(
       icon: <Icon name="file-input" size={16} />,
       ...submenuNamed(i18n, 'common.import'),
       next: createImportActions('replace', i18n),
-      filter: ({ store }) => {
-        return store.state.settings.canvasType === CanvasType.ERD;
-      },
+      filter: isWritableErdTab,
     },
     {
       icon: <Icon name="file-input" size={16} />,
       ...submenuNamed(i18n, 'common.importAndAdd'),
       next: createImportActions('append', i18n),
-      filter: ({ store }) => {
-        return (
-          store.state.settings.canvasType === CanvasType.ERD &&
-          !store.getReadonly()
-        );
-      },
+      filter: isWritableErdTab,
     },
     {
       icon: <Icon name="file-output" size={16} />,
@@ -252,9 +250,7 @@ export function createScopeActions(
       perform: ({ store }) => {
         store.dispatch(addTableAction$());
       },
-      filter: ({ store }) => {
-        return store.state.settings.canvasType === CanvasType.ERD;
-      },
+      filter: isWritableErdTab,
     },
     {
       icon: <Icon name="sticky-note" size={16} />,
@@ -263,12 +259,7 @@ export function createScopeActions(
       perform: ({ store }) => {
         store.dispatch(addMemoAction$());
       },
-      filter: ({ store }) => {
-        return (
-          store.state.settings.canvasType === CanvasType.ERD &&
-          isMemoShown(store.state)
-        );
-      },
+      filter: app => isWritableErdTab(app) && isMemoShown(app.store.state),
     },
     {
       icon: <Icon name="group" size={16} />,
@@ -295,9 +286,7 @@ export function createScopeActions(
       perform: ({ store }) => {
         store.dispatch(drawStartRelationshipAction$(menu.relationshipType));
       },
-      filter: ({ store }) => {
-        return store.state.settings.canvasType === CanvasType.ERD;
-      },
+      filter: isWritableErdTab,
     })),
     {
       icon: <Icon name="wand-sparkles" size={16} />,
@@ -310,10 +299,9 @@ export function createScopeActions(
             openAutomaticTablePlacementAction({ placement: menu.placement })
           );
         },
+        filter: isWritableErdTab,
       })),
-      filter: ({ store }) => {
-        return store.state.settings.canvasType === CanvasType.ERD;
-      },
+      filter: isWritableErdTab,
     },
     {
       icon: <Icon name="brackets" size={16} />,
@@ -416,11 +404,17 @@ const isGeneratorCodeTab = ({ store }: AppContext) =>
 const readsBracketHere = (app: AppContext) =>
   isGeneratorCodeTab(app) && readsBracket(app.store.state.settings.language);
 
+/**
+ * The ERD tab of an editor that is not readonly, where alone the rows that
+ * write the document or open an editor show; a readonly one keeps those that
+ * read it or turn the reader's own screen, asked again each time the list draws.
+ */
+const isWritableErdTab = ({ store }: AppContext) =>
+  store.state.settings.canvasType === CanvasType.ERD && !store.getReadonly();
+
 /** Whether a group may be made: on the ERD tab, showing its groups, of an editor that is not readonly. */
-const canAddTableGroup = ({ store }: AppContext) =>
-  store.state.settings.canvasType === CanvasType.ERD &&
-  isTableGroupShown(store.state) &&
-  !store.getReadonly();
+const canAddTableGroup = (app: AppContext) =>
+  isWritableErdTab(app) && isTableGroupShown(app.store.state);
 
 const hasSelectedTable = ({ store }: AppContext) => {
   const { doc, editor } = store.state;
@@ -513,10 +507,7 @@ function createRederiveActions(i18n: Pick<I18n, 't'>): Action[] {
       const target = targetOf(store.state);
       if (target) store.dispatch(rederiveNamesAction$(target));
     },
-    filter: ({ store }) =>
-      store.state.settings.canvasType === CanvasType.ERD &&
-      !store.getReadonly() &&
-      targetOf(store.state) !== null,
+    filter: app => isWritableErdTab(app) && targetOf(app.store.state) !== null,
   }));
 }
 
