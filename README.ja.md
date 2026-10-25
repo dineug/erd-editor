@@ -56,7 +56,7 @@ codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 | **VS Code** | [Marketplace](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) | `.erd.json` ファイルを開きます |
 | **IntelliJ** | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/23594-erd-editor) | IntelliJ 系 IDE で `.erd.json` ファイルを開きます |
 | **Obsidian** | [コミュニティプラグイン](https://community.obsidian.md/plugins/erd-editor) | 保管庫の `.erd` と `.erd.json` ファイルを開きます。デスクトップ専用 |
-| **自分のアプリ** | `npm install @dineug/erd-editor` | フレームワーク不要の `<erd-editor>` カスタム要素 |
+| **自分のアプリ** | `npm install @dineug/erd-editor` | フレームワーク不要の `<erd-editor>` カスタム要素と読み取り専用の `<erd-viewer>` |
 | **コーディングエージェント** | [`@dineug/erd-editor-mcp`](./packages/mcp-server) | Claude Code、Codex などの MCP クライアント向けサーバー |
 
 IDE では、拡張子 `.erd.json` の空ファイルを作って開きます。Obsidian では **ERD Editor: Create new diagram** を実行し、Google Drive では **新規 → その他 → ERD Editor** を選びます。
@@ -108,7 +108,7 @@ npm install @dineug/erd-editor
 ```
 
 ```js
-import '@dineug/erd-editor';
+import '@dineug/erd-editor/erd-editor.js';
 
 const editor = document.createElement('erd-editor');
 // エディターはコンテナーいっぱいに広がり、カスタム要素は既定で inline です
@@ -116,12 +116,14 @@ Object.assign(editor.style, { display: 'block', width: '100%', height: '100vh' }
 document.body.appendChild(editor);
 ```
 
+編集せずに図を表示するだけなら、`@dineug/erd-editor/erd-viewer.js` をインポートして `<erd-viewer src="diagram.erd.json" style="display: block; height: 480px"></erd-viewer>` を置きます。スタイルで決めた枠の中で、図のパン、ズーム、検索ができます。パッケージのルートをインポートするだけでは、どちらの要素も定義されません。
+
 どのフレームワークからでも、フレームワークなしでも使えます。属性と要素の API は [`packages/erd-editor`](./packages/erd-editor) を参照してください。
 
 ## ドキュメント
 
 - [編集ガイド](https://docs.erd-editor.io/docs/category/guides) — エディターのすべての機能
-- [要素 API](https://docs.erd-editor.io/docs/api/erd-editor-element) — 自分のアプリに組み込む `<erd-editor>`
+- [要素 API](https://docs.erd-editor.io/docs/api/erd-editor-element) — 自分のアプリに組み込む `<erd-editor>`。`<erd-viewer>` は [`packages/erd-editor`](./packages/erd-editor) を参照
 - [MCP](https://docs.erd-editor.io/docs/mcp/introduction) — MCP サーバーとツール
 - [ドキュメント](https://docs.erd-editor.io)
 
@@ -134,7 +136,7 @@ pnpm ワークスペースです。[`@dineug/erd-editor`](./packages/erd-editor)
 
 | フォルダー | npm 名 | 説明 |
 | --- | --- | --- |
-| [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | エディターのコア: `<erd-editor>` カスタム要素と、ヘッドレスの `engine.js`、`peer.js` エントリー |
+| [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | エディターのコア: `<erd-editor>` カスタム要素、読み取り専用の `<erd-viewer>`、ヘッドレスの `engine.js`、`peer.js` エントリー |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | `@dineug/erd-editor-schema` | v2/v3 ドキュメントスキーマ、パース、シリアライザー、クエリ、LWW 演算子 |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | `@dineug/schema-sql-parser` | SQL インポートに使う寛容な DDL パーサー |
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7 と Uuid25 エンコーディング。エディターが発行する id |

@@ -70,7 +70,7 @@ Other clients and the tool list: [its README](./packages/mcp-server).
 | **VS Code** | [Marketplace](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) | Opens `.erd.json` files |
 | **IntelliJ** | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/23594-erd-editor) | Opens `.erd.json` files in IntelliJ-based IDEs |
 | **Obsidian** | [Community plugins](https://community.obsidian.md/plugins/erd-editor) | Opens `.erd` and `.erd.json` files in a vault, desktop only |
-| **Your app** | `npm install @dineug/erd-editor` | The `<erd-editor>` custom element, no framework needed |
+| **Your app** | `npm install @dineug/erd-editor` | The `<erd-editor>` custom element and the read-only `<erd-viewer>`, no framework needed |
 | **Coding agents** | [`@dineug/erd-editor-mcp`](./packages/mcp-server) | MCP server for Claude Code, Codex and other clients |
 
 In an IDE, create an empty `.erd.json` file and open it. In Obsidian, run
@@ -130,13 +130,18 @@ npm install @dineug/erd-editor
 ```
 
 ```js
-import '@dineug/erd-editor';
+import '@dineug/erd-editor/erd-editor.js';
 
 const editor = document.createElement('erd-editor');
 // the editor fills its container, and a custom element is inline by default
 Object.assign(editor.style, { display: 'block', width: '100%', height: '100vh' });
 document.body.appendChild(editor);
 ```
+
+To show a diagram without editing it, import `@dineug/erd-editor/erd-viewer.js` and place
+`<erd-viewer src="diagram.erd.json" style="display: block; height: 480px"></erd-viewer>`, which
+pans, zooms and searches it within the box its style gives it. Importing the package root defines
+neither element.
 
 It works from any framework or from none. Attributes and the element API:
 [`packages/erd-editor`](./packages/erd-editor).
@@ -145,7 +150,7 @@ It works from any framework or from none. Attributes and the element API:
 
 - [Editing Guide](https://docs.erd-editor.io/docs/category/guides) — every editor feature
 - [Element API](https://docs.erd-editor.io/docs/api/erd-editor-element) — `<erd-editor>` for your
-  own app
+  own app; `<erd-viewer>` is in [`packages/erd-editor`](./packages/erd-editor)
 - [MCP](https://docs.erd-editor.io/docs/mcp/introduction) — the MCP server and its tools
 - [Documentation](https://docs.erd-editor.io)
 
@@ -161,7 +166,7 @@ in.
 
 | Folder | npm name | Description |
 | --- | --- | --- |
-| [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | The editor core: the `<erd-editor>` custom element and the headless `engine.js` and `peer.js` entries |
+| [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | The editor core: the `<erd-editor>` custom element, the read-only `<erd-viewer>` and the headless `engine.js` and `peer.js` entries |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | `@dineug/erd-editor-schema` | The v2/v3 document schema, parsing, serializers, queries and LWW operators |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | `@dineug/schema-sql-parser` | Permissive DDL parser used for SQL import |
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7 and the Uuid25 encoding, the ids the editor mints |

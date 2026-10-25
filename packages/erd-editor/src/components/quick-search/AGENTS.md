@@ -11,7 +11,7 @@
 
 1. **Read the files on the other side.** A change to the Toggle Explorer row or to what the search opens on reads `src/components/explorer/AGENTS.md`. A change to the list's range reads `src/components/primitives/AGENTS.md` (The tree), which shares `src/utils/virtualRange.ts`. A change to Display Language or to a translated row's name reads `src/i18n/AGENTS.md`.
 2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The specs here run in that test task, `QuickSearch.browser.test.ts` in real Chromium.
-3. **Change a pinned rule and its spec together.** `QuickSearch.test.ts` pins the search over the level's whole list on each keystroke. `actions.test.ts` pins what `SEARCH_THRESHOLD` takes and lets go. `scopedActions.test.ts` bounds the Hangul spellings a keystroke makes.
+3. **Change a pinned rule and its spec together.** `QuickSearch.test.ts` pins the search over the level's whole list on each keystroke. `actions.test.ts` pins `SEARCH_THRESHOLD`, which `documentSearch.tsx` sets, and what it takes and lets go among the editor's commands. `scopedActions.test.ts` bounds the Hangul spellings a keystroke makes.
 4. **Run the e2e for a visible change.** `e2e/specs/find-replace.spec.ts` drives the palette's field rows in the real element and types through Chromium's own IME (Testing Requirements). `pnpm --filter @dineug/erd-editor e2e` builds the package and runs every Playwright spec, this one included.
 
 ## Key Files
@@ -26,7 +26,7 @@
 | `paletteQuery.ts` | The prefix grammar and `WIDE_PREFIXES` |
 | `hangul.ts` | The Hangul letter matching and ranking, `clearHangulForms`, `hitRange` |
 | `QuickSearch.test.ts` | Pins the search over the level's whole list on each keystroke |
-| `actions.test.ts` | Pins what `SEARCH_THRESHOLD` takes (`tabel`, `imprt`) and lets go (`talbe`, `mmeo`) |
+| `actions.test.ts` | Pins `documentSearch.tsx`'s `SEARCH_THRESHOLD` at 0.4 and, over the editor's commands, what it takes (`tabel`, `imprt`) and lets go (`talbe`, `mmeo`) |
 | `documentSearch.test.ts` | The fuzzy search and the Hangul ranking over rows of its own, with no command |
 | `scopedActions.test.ts` | Bounds the spellings of the document's texts over 200 Korean tables |
 | `QuickSearch.browser.test.ts` | Types through Chromium's own IME over CDP |

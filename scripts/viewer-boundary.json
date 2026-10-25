@@ -8,7 +8,7 @@
     },
     {
       "path": "components/explorer",
-      "why": "The docked tree and Find and Replace. The helpers the palette's document search shares leave this directory for components/erd."
+      "why": "The docked tree and Find and Replace. The helpers the palette's document search shares moved out to components/erd/erdTarget and components/erd/fieldIcon."
     },
     {
       "path": "components/dictionary",
@@ -56,11 +56,11 @@
     },
     {
       "path": "components/erd/erd-context-menu",
-      "why": "The canvas context menu, whose items edit. The name view list it shows leaves for a module the viewer reads."
+      "why": "The canvas context menu, whose items edit. The name view list it shows moved out to components/erd/nameViewOptions, which the viewer reads."
     },
     {
       "path": "components/erd/diff-viewer",
-      "why": "The diff pane. The diff marks the scene reads leave for utils/diff/diff and components/diffContext."
+      "why": "The diff pane. The diff marks the scene reads moved out to utils/diff/diff and components/diffContext."
     },
     {
       "path": "components/erd/time-travel",
@@ -80,11 +80,11 @@
     },
     {
       "path": "components/erd/floating-toolbar",
-      "why": "The editor's floating bar: the hand and select tools, the adds, the notations and zen mode. The zoom cluster, the compass and the name view menu it composes are view controls the viewer shares."
+      "why": "The editor's floating bar: the hand and select tools, the adds, the notations and zen mode. The zoom cluster, the compass and the name view menu it composes moved out to components/erd/view-controls, which the viewer composes too."
     },
     {
       "path": "components/erd/table-group",
-      "why": "The DOM side of table groups: naming a group and its sash."
+      "why": "The table group commands: drawing a new group and naming it. The groups' scene, with their sash and their name editor, lives in components/erd/canvas/table-group."
     },
     {
       "path": "components/erd/canvas/EditOverlay",
@@ -140,7 +140,7 @@
     },
     {
       "path": "utils/schema-sql",
-      "why": "The DDL writers. The table name helpers the scene and the search read leave for utils/tableName."
+      "why": "The DDL writers. The table name helpers the scene and the search read moved out to utils/tableName."
     },
     {
       "path": "i18n/messages/index",
@@ -237,7 +237,7 @@
     },
     {
       "path": "i18n/loadMessages",
-      "why": "The viewer's dictionary loader, which requests a chunk over the network, against the plugin's no network request disclosure."
+      "why": "The viewer's dictionary loader, which only <erd-viewer> calls. main.js already holds every dictionary through the editor, so the loader's import() calls would resolve inside it and request nothing; reaching it would ship the viewer's loader, and the element that calls it, into a plugin that mounts the editor alone."
     }
   ]
 }

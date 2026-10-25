@@ -68,7 +68,7 @@ codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 | **VS Code** | [Marketplace](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) | `.erd.json` 파일을 엽니다 |
 | **IntelliJ** | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/23594-erd-editor) | IntelliJ 계열 IDE에서 `.erd.json` 파일을 엽니다 |
 | **Obsidian** | [커뮤니티 플러그인](https://community.obsidian.md/plugins/erd-editor) | 보관소의 `.erd`와 `.erd.json` 파일을 엽니다. 데스크톱 전용 |
-| **직접 만든 앱** | `npm install @dineug/erd-editor` | 프레임워크가 필요 없는 `<erd-editor>` 커스텀 엘리먼트 |
+| **직접 만든 앱** | `npm install @dineug/erd-editor` | 프레임워크가 필요 없는 `<erd-editor>` 커스텀 엘리먼트와 읽기 전용 `<erd-viewer>` |
 | **코딩 에이전트** | [`@dineug/erd-editor-mcp`](./packages/mcp-server) | Claude Code, Codex 등 MCP 클라이언트용 서버 |
 
 IDE에서는 확장자가 `.erd.json`인 빈 파일을 만들어 여세요. Obsidian에서는
@@ -127,13 +127,18 @@ npm install @dineug/erd-editor
 ```
 
 ```js
-import '@dineug/erd-editor';
+import '@dineug/erd-editor/erd-editor.js';
 
 const editor = document.createElement('erd-editor');
 // 편집기는 컨테이너를 채우고, 커스텀 엘리먼트는 기본이 inline입니다
 Object.assign(editor.style, { display: 'block', width: '100%', height: '100vh' });
 document.body.appendChild(editor);
 ```
+
+편집하지 않고 다이어그램을 보여 주기만 하려면 `@dineug/erd-editor/erd-viewer.js`를 가져오고
+`<erd-viewer src="diagram.erd.json" style="display: block; height: 480px"></erd-viewer>`를
+두세요. 스타일로 정한 상자 안에서 다이어그램을 이동하고 확대하고 검색할 수 있습니다. 패키지 루트를
+가져오는 것만으로는 어느 엘리먼트도 정의되지 않습니다.
 
 어떤 프레임워크에서도, 프레임워크 없이도 동작합니다. 속성과 엘리먼트 API는
 [`packages/erd-editor`](./packages/erd-editor)를 보세요.
@@ -142,7 +147,7 @@ document.body.appendChild(editor);
 
 - [편집 가이드](https://docs.erd-editor.io/docs/category/guides) — 편집기의 모든 기능
 - [엘리먼트 API](https://docs.erd-editor.io/docs/api/erd-editor-element) — 여러분의 앱에 넣는
-  `<erd-editor>`
+  `<erd-editor>`; `<erd-viewer>`는 [`packages/erd-editor`](./packages/erd-editor)를 보세요
 - [MCP](https://docs.erd-editor.io/docs/mcp/introduction) — MCP 서버와 도구
 - [문서](https://docs.erd-editor.io)
 
@@ -157,7 +162,7 @@ pnpm 워크스페이스입니다. [`@dineug/erd-editor`](./packages/erd-editor)�
 
 | 폴더 | npm 이름 | 설명 |
 | --- | --- | --- |
-| [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | 편집기 코어: `<erd-editor>` 커스텀 엘리먼트와 헤드리스 `engine.js`·`peer.js` 진입점 |
+| [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | 편집기 코어: `<erd-editor>` 커스텀 엘리먼트, 읽기 전용 `<erd-viewer>`, 헤드리스 `engine.js`·`peer.js` 진입점 |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | `@dineug/erd-editor-schema` | v2/v3 문서 스키마, 파싱, 직렬화, 조회, LWW 연산자 |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | `@dineug/schema-sql-parser` | SQL 가져오기에 쓰는 관대한 DDL 파서 |
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7과 Uuid25 인코딩, 편집기가 만드는 id |

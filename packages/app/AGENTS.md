@@ -63,7 +63,7 @@
 ### The editor element
 
 - **The editor is a custom element**, not a React component. `viewer/editor/Editor.tsx` creates `<erd-editor>` and drives it through its methods.
-- **Register it with a bare `import '@dineug/erd-editor/erd-editor.js';`**, the entry that defines `<erd-editor>`. A type-only import of `ErdEditorElement` is elided, and an unupgraded element mounts (`getSharedStore is not a function`) past `tsc` and the build. `erdEditorRegistration.test.ts` pins it beside every caller and finds no file importing the package root for its side effect.
+- **Register it by importing `@dineug/erd-editor/erd-editor.js` for its effect** (`import '@dineug/erd-editor/erd-editor.js';`), the entry that defines `<erd-editor>`. A type-only import of `ErdEditorElement` is elided, and an unupgraded element mounts (`getSharedStore is not a function`) past `tsc` and the build. `erdEditorRegistration.test.ts` pins it beside every caller and finds no file importing the package root for its side effect.
 
 ### Schemas and fingerprints
 
