@@ -1,5 +1,5 @@
 import { createSchema } from '@dineug/erd-editor-schema';
-import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 
 import { flush } from '@/__test-utils__/index';
 import { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
@@ -26,13 +26,30 @@ vi.mock('stats.js', () => ({
 
 const frames: FrameRequestCallback[] = [];
 
+// The page mounts a whole editor, whose debounced work, the explorer's search
+// among it, can still be waiting as the file ends. On a fake clock it runs
+// before the realm goes, where a real one could fire after and throw there.
 beforeAll(async () => {
+  vi.useFakeTimers({
+    toFake: [
+      'setTimeout',
+      'clearTimeout',
+      'setInterval',
+      'clearInterval',
+      'Date',
+    ],
+  });
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
     frames.push(callback);
     return frames.length;
   });
 
   await import('@/index.dev');
+});
+
+afterAll(async () => {
+  await vi.runAllTimersAsync();
+  vi.useRealTimers();
 });
 
 /** A document holding one table, as the editor's value writes one. */
