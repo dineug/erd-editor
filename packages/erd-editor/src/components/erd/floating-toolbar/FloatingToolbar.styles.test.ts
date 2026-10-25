@@ -40,7 +40,8 @@ describe('FloatingToolbar.styles', () => {
   });
 
   /** One declaration each, so the bars and the controls in them never part. */
-  it("draws the bar's tools in the view controls' own pill, divider, readout and compass", () => {
+  it("draws the bar and its tools in the view controls' own row, pill, divider, readout and compass", () => {
+    expect(styles.root).toBe(controls.bar);
     expect(styles.menu).toBe(controls.menu);
     expect(styles.divider).toBe(controls.divider);
     expect(styles.readout).toBe(controls.readout);

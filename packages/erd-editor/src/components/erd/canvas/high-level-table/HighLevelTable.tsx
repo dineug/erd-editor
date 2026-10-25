@@ -23,6 +23,7 @@ import { useMoveTable } from '@/components/erd/canvas/table/useMoveTable';
 import { useSharedFocusTable } from '@/components/erd/canvas/table/useSharedFocusTable';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
 import { useI18n } from '@/components/localeContext';
+import { useSceneInteraction } from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_BORDER } from '@/constants/layout';
@@ -67,6 +68,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
+  const interaction = useSceneInteraction(ctx);
   const diffMapRef = useDiffMap(ctx);
   const { sharedFocusTableColor } = useSharedFocusTable(ctx, props.table.id);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.table.id);
@@ -184,6 +186,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           kind="table-header-color"
           data={getColorEdgePath(rect.height)}
           fill={table.ui.color}
+          listening={interaction.value !== 'read'}
           on:click={mainButtonClick(handleOpenColorPicker)}
           on:mouseenter={(event: SceneMouseEvent) => {
             setSceneCursor(event, CURSOR_POINTER);

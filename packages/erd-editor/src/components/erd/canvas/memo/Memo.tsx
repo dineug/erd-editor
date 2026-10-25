@@ -38,6 +38,7 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
+import { useSceneInteraction } from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -74,6 +75,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const interaction = useSceneInteraction(ctx);
   const diffMapRef = useDiffMap(ctx);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.memo.id);
   const { onMoveStart } = useMoveMemo(ctx, props, sourceRef);
@@ -123,7 +125,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
    * body is scrolled, which is where it was folded, so the mapping holds anywhere.
    */
   const handleEditValue = (event: SceneMouseEvent) => {
-    if (props.preview) return;
+    if (props.preview || interaction.value === 'read') return;
 
     const { store } = app.value;
     const { memo } = props;
@@ -146,7 +148,8 @@ const Memo: FC<MemoProps> = (props, ctx) => {
   };
 
   const handleValueMouseenter = (event: SceneMouseEvent) => {
-    cursor.set(event, props.preview ? CURSOR_INHERIT : CURSOR_TEXT);
+    const edits = !props.preview && interaction.value !== 'read';
+    cursor.set(event, edits ? CURSOR_TEXT : CURSOR_INHERIT);
   };
 
   const handleValueMouseleave = (event: SceneMouseEvent) => {
@@ -159,7 +162,9 @@ const Memo: FC<MemoProps> = (props, ctx) => {
    * unspent, as it was there; a pinch goes on to zoom wherever the fingers are.
    */
   const handleValueWheel = (event: KonvaEventObject<WheelEvent>) => {
-    if (isPinchWheel(event.evt)) return;
+    // A read scene's root takes every wheel, so the page keeps one while it
+    // holds no focus, and the body scrolls nothing there.
+    if (isPinchWheel(event.evt) || interaction.value === 'read') return;
     event.evt.stopPropagation();
     event.evt.preventDefault();
     if (props.preview || isMod(event.evt)) return;
@@ -190,6 +195,9 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     const bodyInset = MEMO_BORDER / 2;
     const ringInset = RING_WIDTH / 2;
     const diffPaths = diffMapRef.value?.get(memo.id);
+    // A read scene draws no remove button and no sash, and its colour bar
+    // opens nothing.
+    const read = interaction.value === 'read';
 
     return (
       <k-group
@@ -257,6 +265,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             height={MEMO_HEADER_COLOR_HEIGHT}
             cornerRadius={[MEMO_CORNER_RADIUS, MEMO_CORNER_RADIUS, 0, 0]}
             fill={memo.ui.color}
+            listening={!read}
             on:click={mainButtonClick(handleOpenColorPicker)}
             on:mouseenter={(event: SceneMouseEvent) => {
               cursor.set(event, CURSOR_POINTER);
@@ -265,22 +274,24 @@ const Memo: FC<MemoProps> = (props, ctx) => {
               cursor.set(event, CURSOR_INHERIT);
             }}
           />
-          {sceneIcon({
-            icon: 'x',
-            name: 'memo-remove',
-            kind: 'icon',
-            size: HEADER_ICON_HEIGHT,
-            color: state.hover
-              ? state.removeHover
-                ? theme.active
-                : theme.foreground
-              : TRANSPARENT,
-            x: MEMO_PADDING + memo.ui.width - HEADER_ICON_HEIGHT,
-            y: MEMO_PADDING,
-            click: handleRemoveMemo,
-            mouseenter: handleRemoveMouseenter,
-            mouseleave: handleRemoveMouseleave,
-          })}
+          {read
+            ? null
+            : sceneIcon({
+                icon: 'x',
+                name: 'memo-remove',
+                kind: 'icon',
+                size: HEADER_ICON_HEIGHT,
+                color: state.hover
+                  ? state.removeHover
+                    ? theme.active
+                    : theme.foreground
+                  : TRANSPARENT,
+                x: MEMO_PADDING + memo.ui.width - HEADER_ICON_HEIGHT,
+                y: MEMO_PADDING,
+                click: handleRemoveMemo,
+                mouseenter: handleRemoveMouseenter,
+                mouseleave: handleRemoveMouseleave,
+              })}
           <k-group
             name="memo-text-clip"
             kind="memo-textarea"
@@ -320,7 +331,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
               wrap="none"
             />
           </k-group>
-          <MemoSash memo={memo} top={height} left={width} />
+          {read ? null : <MemoSash memo={memo} top={height} left={width} />}
         </k-group>
       </k-group>
     );

@@ -13,6 +13,7 @@ import {
   getDrawnTableGroupRect,
   type TableGroupLinks,
 } from '@/components/erd/canvas/table-group/tableGroupBox';
+import { useSceneInteraction } from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_GROUP_TITLE_HEIGHT } from '@/constants/layout';
@@ -37,6 +38,7 @@ const TableGroupBody: FC<TableGroupBodyProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const interaction = useSceneInteraction(ctx);
 
   const handleMouseenter = () => {
     props.links.setHover(props.group.id, 'body', true);
@@ -52,6 +54,8 @@ const TableGroupBody: FC<TableGroupBodyProps> = (props, ctx) => {
   const handleBodyPress = (event: ScenePointerEvent) => {
     const { group, links } = props;
     links.guardOf(group.id).track('body', event as SceneMouseEvent);
+    // A read scene's root takes every press, so no button selects the group there.
+    if (interaction.value === 'read') return;
     if (isMainButtonPress(event.evt) || isMultiTouch(event.evt)) return;
 
     const { store } = app.value;

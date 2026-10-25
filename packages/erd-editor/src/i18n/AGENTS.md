@@ -56,7 +56,7 @@
 
 - **Change the one `I18n` object in place.** `ErdEditor.tsx` provides `localeContext` on the host beside `themeContext`. `applyLocale` (`localeHost.ts`) assigns a new language into that shallow observable, never through `provider.set()`, which a component mounted after a switch would miss.
 - **Freeze nothing in i18n.** The element assigns into the object.
-- **Set `lang` and `dir` on `div.root` alone.** Nothing is set on the host element or the page.
+- **Set `lang` and `dir` on the root alone.** That is the editor's `div.root` and the read-only view's root (`src/components/erd-view/ErdView.tsx`). Nothing is set on the host element or the page.
 - **Read `t` inside the render function.** A component takes `useI18n(ctx)` at setup and reads `i18n.value.t` inside its render function. A string read at setup keeps the language the component mounted in.
 - **Hand a template on with `localized`.** Code outside a component that hands a template on, such as a toast, writes `localized(key, params)` (`src/components/localized/Localized.tsx`). It is read where it renders, so it follows a switch too.
 - **Hand functions needing text the live `I18n`.** A function that needs a string now takes `i18n: I18n = sourceI18n` as its last parameter. Its caller passes the live one.
@@ -109,10 +109,10 @@
 
 ### The canvas stays left to right
 
-- **Give each stage root `dir="ltr"`.** Each root that owns an on-screen stage carries it, since konva's `Text` reads the direction through its canvas. The roots are `Canvas.tsx`, `Minimap.tsx` and `VisualizationGraph.tsx`. The Flow view, the diff viewer, time travel and the placement preview reuse `Canvas.tsx`. The Dictionary tab's grid needs none from the editor: `@dineug/grid` sets `dir="ltr"` on its own container and draws its text on a left-to-right context.
+- **Give each stage root `dir="ltr"`.** Each root that owns an on-screen stage carries it, since konva's `Text` reads the direction through its canvas. The roots are `Canvas.tsx`, `Minimap.tsx` and `VisualizationGraph.tsx`. The Flow view, the diff viewer, time travel, the placement preview and the read-only view reuse `Canvas.tsx`. The Dictionary tab's grid needs none from the editor: `@dineug/grid` sets `dir="ltr"` on its own container and draws its text on a left-to-right context.
 - **The export stage resolves to `ltr`.** It is detached, so it takes no direction from a root.
 - **Give left-to-right parts `dir="ltr"` too.** The parts that read left to right in any language carry it on their roots:
-  - the floating and Visualization toolbars, and through their root the view controls they hold (`src/components/erd/view-controls/`), the content compass and the scrollbars;
+  - the floating and Visualization toolbars and the read-only view's controls bar (`.view-controls`, `src/components/erd-view/ErdView.tsx`), and through their root the view controls they hold (`src/components/erd/view-controls/`), the content compass and the scrollbars;
   - the column data type cell and Map Columns' data types;
   - the code block;
   - the Schema SQL and Code Generator tabs' rows of code and options panel (`SchemaSQL.tsx`, `GeneratorCode.tsx`), each panel taking the reader's direction back on its own root;

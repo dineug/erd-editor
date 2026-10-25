@@ -180,6 +180,36 @@ function entityUnder(target: KonvaNode | null): SceneHit | null {
 }
 
 /**
+ * Namespaced as the press tracking is, so the teardown drops these listeners
+ * alone. The stage hears its own leave alone, as the pointer leaves its content.
+ */
+const HOVER_EVENTS = 'mouseover.sceneHover mouseleave.sceneHover';
+
+/**
+ * Tells the entity the pointer comes onto over the stage mounted in a container,
+ * as konva finds it, and null for bare canvas or off the stage, and returns the
+ * teardown. Nothing is told while no stage is mounted there.
+ *
+ * @example
+ * addUnsubscribe(listenSceneHover(canvas.value, handleHover));
+ */
+export function listenSceneHover(
+  container: HTMLElement,
+  onHover: (hit: SceneHit | null) => void
+): () => void {
+  const stage = findStage(container);
+  if (!stage) return () => {};
+
+  stage.on(HOVER_EVENTS, (event: KonvaEventObject<Event>) => {
+    onHover(event.target === stage ? null : entityUnder(event.target));
+  });
+
+  return () => {
+    stage.off(HOVER_EVENTS);
+  };
+}
+
+/**
  * Whether a press over the scene belongs to what it landed on, so the canvas
  * under it neither pans, draws a marquee nor unselects: a table, a memo, a
  * group's title bar or sash, and any part of a group for any other button.

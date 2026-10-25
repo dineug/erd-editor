@@ -13,7 +13,12 @@ import type { Text } from 'konva/lib/shapes/Text';
 import { type Stage, stages } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
+import {
+  createTestAppContext,
+  createTestTheme,
+  flush,
+  moveScenePointer,
+} from '@/__test-utils__';
 import { type AppContext, appContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
 import DiffErdViewer from '@/components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer';
@@ -21,6 +26,7 @@ import * as viewerStyles from '@/components/erd/diff-viewer/diff-erd-viewer/Diff
 import Erd from '@/components/erd/Erd';
 import * as erdStyles from '@/components/erd/Erd.styles';
 import {
+  listenSceneHover,
   ownsPress,
   type SceneHit,
   sceneHit,
@@ -551,6 +557,40 @@ describe('ownsPress', () => {
     expect(ownsPress(group('sash'), main)).toBe(true);
     expect(ownsPress(group('body'), main)).toBe(false);
     expect(ownsPress(group('body'), right)).toBe(true);
+  });
+});
+
+describe('listenSceneHover - the entity a pointer comes onto', () => {
+  it('tells the table, then bare canvas, then off the stage, and nothing once torn down', async () => {
+    const fixture = await setup();
+    const { stage, container } = fixture;
+    const heard: Array<SceneHit | null> = [];
+    const stop = listenSceneHover(container, hit => heard.push(hit));
+    const table = tableTopEdge(stage, 't1');
+
+    moveScenePointer(stage, table.x, table.y);
+    moveScenePointer(stage, BARE_CANVAS.x, BARE_CANVAS.y);
+    moveScenePointer(stage, table.x, table.y);
+    stage.content.dispatchEvent(new MouseEvent('mouseleave'));
+    stop();
+    moveScenePointer(stage, table.x, table.y);
+
+    expect(heard).toStrictEqual([
+      { kind: 'table', id: 't1' },
+      null,
+      { kind: 'table', id: 't1' },
+      null,
+    ]);
+  });
+
+  it('tells nothing while no stage is mounted in the container', () => {
+    const heard: Array<SceneHit | null> = [];
+    const stop = listenSceneHover(document.createElement('div'), hit =>
+      heard.push(hit)
+    );
+    stop();
+
+    expect(heard).toEqual([]);
   });
 });
 

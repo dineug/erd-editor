@@ -52,11 +52,13 @@ const packageOf = (specifier: string) =>
 const modulePathOf = (file: string) => file.replace(/\.tsx?$/, '');
 
 /**
- * What the view mounts and reads: its canvas, scrollbars, map, controls and
- * palette, its store, keys, press mode and measure, its fit and its lights,
- * and the theme and language its element takes from a page.
+ * The view and what it mounts and reads: its press rule, canvas, scrollbars,
+ * map, controls and palette, its store, keys, press mode and measure, its fit
+ * and its lights, and the theme and language its element takes from a page.
  */
 const ROOTS = [
+  'components/erd-view/ErdView.tsx',
+  'components/erd-view/pressHandler.ts',
   'components/erd/canvas/Canvas.tsx',
   'components/erd/canvas/CanvasScene.tsx',
   'components/erd/virtual-scroll/VirtualScroll.tsx',

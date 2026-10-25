@@ -197,6 +197,11 @@ export type ColumnProps = {
   preview?: boolean;
   editorFocused?: boolean;
   /**
+   * Whether the row stands in a read scene, which the table resolved for its
+   * rows: no cell focuses or edits there and no remove button is drawn.
+   */
+  read?: boolean;
+  /**
    * Whether the row carries the handle a column drag starts from, outside the
    * table's left edge. The table gives it to its focused row alone, and only
    * where a reader can reorder: the document, unlocked, never a copy.
@@ -434,7 +439,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   const handleFocus = (focusType: FocusType, event: SceneMouseEvent) => {
     // A view holds no focus: the cell a reader presses there is not a cell of
     // the document, and the underline it would light belongs to the ERD tab.
-    if (props.source !== 'document') return;
+    if (props.source !== 'document' || props.read) return;
 
     focusedPress = event.evt;
     const { store } = app.value;
@@ -453,7 +458,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     if (!doubleClick.isDouble(focusType, event)) return;
     // A view edits nothing, and this is both halves of it: the document
     // overlay on a text cell, and a write straight to the document on a flag.
-    if (props.source !== 'document') return;
+    if (props.source !== 'document' || props.read) return;
 
     const { store } = app.value;
     const { column } = props;
@@ -977,7 +982,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
             listening={false}
           />
         ) : null}
-        {view
+        {view || props.read
           ? null
           : sceneIcon({
               icon: 'x',

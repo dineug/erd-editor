@@ -3,6 +3,28 @@ import { css } from '@dineug/r-html';
 import { typography } from '@/styles/typography.styles';
 
 /*
+ * The row a floating bar's tools stand in, over the middle of the bottom edge of
+ * the canvas, clear of the scrollbar track under it and of the minimap in the
+ * corner: the editor's two bars and the read-only view's controls alike.
+ */
+export const bar = css`
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 4px;
+  gap: 2px;
+  border: 1px solid var(--toast-border);
+  border-radius: 8px;
+  background-color: var(--toast-background);
+  box-shadow: 0 1px 6px -3px var(--minimap-shadow);
+  z-index: 1;
+`;
+
+/*
  * The pill a tool of a floating bar is drawn in, the view controls' and the
  * bar's own alike. The bars take it from here, so the controls and the tools
  * beside them stay one bar.

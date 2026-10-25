@@ -18,7 +18,7 @@
 
 | File | Description |
 | --- | --- |
-| `QuickSearch.tsx` | The palette: the top level its host builds (`topLevel`, a `PaletteTopLevel`; the editor hands in `createScopeActions`), `rebuild`, the virtual list, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount. It imports no command, which `src/viewer/imports.test.ts` holds it to as a module the read-only view composes |
+| `QuickSearch.tsx` | The palette: the top level its host builds (`topLevel`, a `PaletteTopLevel`; the editor hands in `createScopeActions`, and the read-only view `createTableActions` alone), `rebuild`, the virtual list, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount. It imports no command, which `src/viewer/imports.test.ts` holds it to as a module the read-only view composes |
 | `paletteList.ts` | `PALETTE_ROW_HEIGHT` (45, which the row style matches), `PALETTE_LIST_MAX_HEIGHT` (400) and `paletteListHeight` |
 | `documentSearch.tsx` | `Action`, `PalettePreferences`, `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, the Hangul ranking, `createMatchAction`, and the table rows (`createTableActions`), which jump through `goToErdTarget` |
 | `actions.tsx` | `createScopeActions` (the editor's top level, which ends with `createTableActions`' rows), `createPreferenceActions`, `createRederiveActions`, and the rows of the imports, the Schema SQL tab and the tabs |
@@ -37,6 +37,7 @@
 ### The palette with no prefix
 
 - **With no prefix, list commands alone.** The empty input and every keyword list only what the tab offers (`scopeBase`). They never list a table, column, comment or memo row. The document is searched only under a prefix. This is an owner decision.
+  - The read-only view's level holds no command: `src/components/erd-view/ErdView.tsx` hands in `createTableActions` alone. So its empty input shows the prefix hint, a keyword with no prefix shows `No commands match` over the prefix rows, and `#`, `@` and `:` search the document as in the editor.
 - **The top level still ends with table jumps.** `createScopeActions` still ends with a jump per table, which only `#` hands to Fuse. A table row's `Table` keyword stays out of Fuse's keys (`tableId`), since it fuzzes to most words.
 - **Search the level's whole list each keystroke.** Every keystroke runs Fuse over the level's whole list (`scopeBase`), as VS Code's palette does, never inside its last hits. This holds with no prefix, under a prefix and in a submenu alike. It is an owner decision, pinned in `QuickSearch.test.ts`.
   - What a word lists owes nothing to what was typed before it. So `auto` typed over `qqqq` finds Auto Layout.

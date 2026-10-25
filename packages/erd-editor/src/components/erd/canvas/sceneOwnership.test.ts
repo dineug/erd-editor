@@ -137,6 +137,12 @@ const OUTSIDE_REFERENCES = [
   // A group a draw or Group selected tables just added opens that editor too.
   'components/erd/table-group/tableGroupName.ts @/components/erd/canvas/table-group/tableGroupNameEditor',
   'components/erd/time-travel/TimeTravel.tsx @/components/erd/canvas/Canvas',
+  // The read-only view mounts the canvas with no overlay and no layers, and
+  // drops its editor's highlight transitions as it goes, which CanvasScene
+  // never does for the document.
+  'components/erd-view/ErdView.browser.test.tsx @/components/erd/canvas/highlightTransition',
+  'components/erd-view/ErdView.tsx @/components/erd/canvas/Canvas',
+  'components/erd-view/ErdView.tsx @/components/erd/canvas/highlightTransition',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/high-level-table/HighLevelTable',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/table/Table',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/table/column/Column',
@@ -183,7 +189,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the twenty-eight references that own a reason to', () => {
+  it('is reached from outside by the thirty-one references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

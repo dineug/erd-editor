@@ -9,6 +9,7 @@ const staticText = (literals: { strings: TemplateStringsArray }) =>
 describe('viewControls.styles', () => {
   it('compiles every export to its own class identifier', () => {
     const names = [
+      styles.bar,
       styles.menu,
       styles.readout,
       styles.divider,
