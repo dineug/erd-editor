@@ -143,6 +143,9 @@ const OUTSIDE_REFERENCES = [
   'components/erd-view/ErdView.browser.test.tsx @/components/erd/canvas/highlightTransition',
   'components/erd-view/ErdView.tsx @/components/erd/canvas/Canvas',
   'components/erd-view/ErdView.tsx @/components/erd/canvas/highlightTransition',
+  // The read-only view's press rule lives under this root, not beside the view,
+  // since Obsidian's loader, which bundles the editor, may not reach the view.
+  'components/erd-view/ErdView.tsx @/components/erd/canvas/readPress',
   // The viewer element's destroy takes that view down at once, which its spec
   // reads off the transitions the view's editor left.
   'components/erd-viewer/ErdViewer.test.ts @/components/erd/canvas/highlightTransition',
@@ -192,7 +195,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the thirty-two references that own a reason to', () => {
+  it('is reached from outside by the thirty-three references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

@@ -142,7 +142,7 @@ describe('the view source graph', () => {
         ...ROOTS.map(modulePathOf),
         'components/erd-viewer/ErdViewer',
         'components/erd-view/ErdView',
-        'components/erd-view/pressHandler',
+        'components/erd/canvas/readPress',
         'components/element-host/themeHost',
         'components/element-host/localeHost',
         'i18n/loadMessages',

@@ -15,6 +15,7 @@ import {
 } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
 import { stopTransitions } from '@/components/erd/canvas/highlightTransition';
+import { createViewPress } from '@/components/erd/canvas/readPress';
 import {
   getContentCompass,
   scrollToNearestContent,
@@ -55,7 +56,6 @@ import { isMod } from '@/utils/keyboard-shortcut';
 import { createText } from '@/utils/text';
 
 import * as styles from './ErdView.styles';
-import { createViewPress } from './pressHandler';
 import { measureViewport } from './viewportMeasure';
 
 /** What a host's load of the document is doing, which a notice over the canvas tells the reader. */
