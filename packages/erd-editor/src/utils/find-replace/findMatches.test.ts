@@ -55,10 +55,10 @@ import {
   rematchField,
   ReplaceRun,
   resumeRun,
-  toFieldAction,
   treeOrderOf,
   walkFields,
 } from '@/utils/find-replace';
+import { toFieldAction } from '@/utils/find-replace/replaceActions';
 
 let app: AppContext;
 

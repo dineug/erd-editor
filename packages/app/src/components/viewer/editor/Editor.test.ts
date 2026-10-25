@@ -13,7 +13,7 @@ import Editor from '@/components/viewer/editor/Editor';
 import type { SchemaEntity } from '@/services/indexeddb/modules/schema';
 
 // The real element needs a browser, where e2e runs it; this pins the calls.
-vi.mock('@dineug/erd-editor', () => ({}));
+vi.mock('@dineug/erd-editor/erd-editor.js', () => ({}));
 vi.mock('@/services/indexeddb', () => ({ getAppDatabaseService: () => null }));
 vi.mock('@sentry/react', () => ({ captureException: vi.fn() }));
 

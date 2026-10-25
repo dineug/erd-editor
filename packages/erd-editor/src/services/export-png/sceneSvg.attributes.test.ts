@@ -154,7 +154,9 @@ describe('what the export scene sets, against what the svg writer reads', () => 
     expect(
       modules.filter(
         path =>
-          path.startsWith('utils/diff/') ||
+          // The marks every scene tints by sit beside the engine, and import
+          // none of it.
+          (path.startsWith('utils/diff/') && path !== 'utils/diff/diff.ts') ||
           path.startsWith('components/primitives/tree/') ||
           path.startsWith('components/explorer/')
       )

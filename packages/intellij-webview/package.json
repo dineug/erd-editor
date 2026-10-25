@@ -12,8 +12,8 @@
     "@dineug/erd-editor-webview-client": "workspace:*"
   },
   "devDependencies": {
-    "core-js": "^3.36.1",
-    "typescript": "7.0.2",
+    "core-js": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

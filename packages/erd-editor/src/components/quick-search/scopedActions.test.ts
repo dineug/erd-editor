@@ -24,11 +24,11 @@ import {
   pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import { createScopeActions } from '@/components/quick-search/actions';
 import {
   Action,
-  createScopeActions,
   searchActions,
-} from '@/components/quick-search/actions';
+} from '@/components/quick-search/documentSearch';
 import { clearHangulForms } from '@/components/quick-search/hangul';
 import {
   PaletteScope,

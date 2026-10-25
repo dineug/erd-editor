@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Measures what the replica side of erd-editor weighs, as JSON; not a gate.
-// pnpm size walks the union of the exports, so it cannot see ./engine.js alone
-// or the consumer chunks built from it. Run after pnpm build.
+// pnpm size bundles ./engine.js with the dist files it reaches, listing none of
+// them, and never sees the chunks the hosts build from it. Run after pnpm build.
 import fs from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';

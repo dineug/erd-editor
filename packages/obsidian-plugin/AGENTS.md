@@ -29,15 +29,17 @@ Deltas from root § Making a Change.
 | `src/keys.ts` | `scopeKeysOf` / `toScopeKey`: the editor's chords as `Scope.register` modifiers and key, each press once; `editorScopeKeys`, every press the loaded module listens for |
 | `src/readableDiagram.ts` | `isReadableDiagram`: whether a file's text is a diagram the tab can read (Unreadable files open read-only) |
 | `src/icon.ts` | `ERD_ICON` / `ERD_ICON_SVG`, for the tab and the New ERD menu item |
-| `src/loadErdEditor.ts` | Requires `@dineug/erd-editor` once per window (§ Build) |
+| `src/loadErdEditor.ts` | Requires `erdEditorModule.ts` and defines `<erd-editor>` once per window (§ Build). The root's `pnpm dist-shape` bundles it by this path and fails when its graph reaches the viewer or the viewer's dictionary loader (root § Testing Requirements) |
+| `src/erdEditorModule.ts` | The one module that imports `@dineug/erd-editor` as a value: the five members `ErdEditorModule` names, taken by name (§ Build) |
 | `src/hub/registry.ts` | `DocumentRegistry` (§ Coding-agent hub), with `seedWhenQuiet`, `setActive` / `keepActive`, `shutdown` |
 | `src/hub/handlers.ts` | `createDocumentHandler`: `listDocuments`, `openDocument`, `join`, `applyActions`, `leave`, `save`, `disconnect` |
 | `src/hub/host.ts` | `HubSwitch` (the Coding agents setting, with listeners), `createObsidianHost`, `pidSandbox` |
 | `src/hub/runtime.ts` | `createHubRuntime`: a `ManagedRuntime` of the registry's layers and `documentHubLayer`; `start`, `dispose`, `releaseSync` |
 | `src/hub/lifecycle.ts` | `HubLifecycle`: start, ordered stop, `releaseSync` |
 | `src/hub/types.ts` | `HubTab`, `HubVault`, `VaultFile`, `CreateOutcome` |
-| `src/hub/imports.test.ts` | No runtime `obsidian`, `@/ErdView`, `@/main` or `@/loadErdEditor` in `src/hub/`; effect's named entries only in `src/` |
+| `src/hub/imports.test.ts` | No runtime `obsidian`, `@/ErdView`, `@/main`, `@/loadErdEditor` or `@/erdEditorModule` in `src/hub/`; effect's named entries only in `src/` |
 | `src/__test-utils__/hub.ts` | `createHubHarness` (registry and handler on a memory disk and vault double), `FakeTab`, connection doubles, `servePeer` (shipping `serveConnection` on a real socket) |
+| `src/__test-utils__/imports.ts` | `imports`: the modules a source names, type-only ones marked, for the two import specs |
 | `src/__test-utils__/diagram.ts` | `createDiagram` (a headless `PeerStore` from `erd-editor`'s `peer.js`: a tab's editor and replica, or an agent), `usersDiagram`, `removeTable`, `receiveAll`, `shownTable` |
 | `vite.config.ts` / `vitest.config.ts` | CommonJS library build: `inlineUrlWorkers`, `base64InlineWorkers`, `pluginFiles`, `noBrowserExternal`, `run.tasks.build` / `.test`; Vitest in Node, coverage (Testing Requirements) |
 | `manifest.json` / `versions.json` | Plugin metadata; the release repository copies both to its root |
@@ -50,7 +52,7 @@ Deltas from root § Making a Change.
 
 - **Every worker is inlined**: Obsidian loads `main.js` alone, with no file beside it to spawn one from. `inlineUrlWorkers` rewrites each `new SharedWorker(new URL(…, import.meta.url))` / `new Worker(…)` in `erd-editor`'s and `replication-store-worker`'s `dist/` (as `tools/vite/worker-url.ts` spells it) to `?sharedworker&inline` / `?worker&inline`, failing the build if one survives. `base64InlineWorkers` (`tools/vite/inline-worker.ts`, as in `erd-editor`'s UMD build) re-encodes a shared worker's data URL under Chromium's URL cap; the replica starts from a blob. `worker.format` is `es` with `codeSplitting: false`, as module workers cannot load a chunk from a data or blob URL.
 - **Node builtins stay external, prefixed or bare.** The renderer runs Node (`nodeIntegration`); the hub and `@effect/platform-node` import `node:net`, `node:fs`, `node:fs/promises`, `node:os`, `node:crypto`, `node:path`. `builtinModules` lists almost no `node:` names, and a missed builtin becomes Vite's empty browser stub with only a warning: a `net` without `createServer`. `noBrowserExternal` fails the build when a chunk's `moduleIds` name `__vite-browser-external`, since minified code keeps no trace of the stub.
-- **`<erd-editor>` is defined once per window**, as importing defines it and `customElements.define` cannot repeat. So `loadErdEditor` requires it once (`require()`, which Rolldown initializes lazily) and keeps the module on a global symbol: a re-enabled plugin reuses it and a new build needs an Obsidian restart. The lazy form splits each inline worker's source from its declaration, so `readStringLiteral` also reads a bare assignment.
+- **`<erd-editor>` is defined once per window**, as `customElements.define` cannot repeat. So `loadErdEditor` requires `erdEditorModule.ts` once (`require()`, which Rolldown initializes lazily, so the editor evaluates as the plugin loads, not with `main.js`), calls its `defineErdEditor()` and keeps that object on a global symbol: a re-enabled plugin reuses it, never evaluating or defining from a second copy, and a new build needs an Obsidian restart. The object holds five members taken by name (`createKeyBindingMap`, `defineErdEditor`, `dictionaryRowChords`, `setExportFileCallback`, `setImportFileCallback`), not the package's namespace, which a bundler could not prune once kept on a global. The lazy form splits each inline worker's source from its declaration, so `readStringLiteral` also reads a bare assignment.
 - **Desktop only.** `isDesktopOnly` is true: mobile is unchecked, Chrome on Android has no SharedWorker, and the hub needs Node.
 - **Main window only.** Popouts are unsupported, as `<erd-editor>` is defined in the main window's registry only. On 1.12.7 a popout tab's element, with the editor's API, threw `Sharing constructed stylesheets in multiple documents is not allowed` rendering; nothing further was checked. `applyTheme` and `applyLocale` still reach such a tab.
 
@@ -170,11 +172,12 @@ Measured on macOS unless Windows is named.
 
 ## Testing Requirements
 
-- **The specs measure the pure modules.** The `test` task (`tsc --noEmit`, then Vitest in Node) and `test:coverage` cover `src/hub/`, `src/keys.ts`, `src/settings.ts` and `src/tabSave.ts`. `main.ts`, `ErdView.ts` and `loadErdEditor.ts` run only inside Obsidian (`obsidian` ships types, no runtime; the editor needs a window), so the smoke covers them (Making a Change step 2).
+- **The specs measure the pure modules.** The `test` task (`tsc --noEmit`, then Vitest in Node) and `test:coverage` cover `src/hub/`, `src/keys.ts`, `src/settings.ts`, `src/tabSave.ts` and `src/erdEditorModule.ts` (on a mocked editor). `main.ts`, `ErdView.ts` and `loadErdEditor.ts` run only inside Obsidian (`obsidian` ships types, no runtime; the editor needs a window), so the smoke covers them (Making a Change step 2).
 - **What the specs pin.**
   - `settings.test.ts`: the defaults, the fallback of unknown values, and every function and constant the `src/settings.ts` row names.
   - `tabSave.test.ts`: what a tab hands Obsidian to save, a tab waiting to load among them, what `exitSave` does as the window goes, and what `seedValue` gives a tab opened beside others.
   - `keys.test.ts`: how each spelling the editor's shortcuts use becomes a scope key, and that the row chords the loaded module derives join its map's presses.
+  - `erdEditorModule.test.ts`: the five members `erdEditorModule.ts` keeps, and that no other file under `src/` imports `@dineug/erd-editor` as a value (its subpaths and type imports aside).
   - The hub specs: `registry.test.ts` (tabs, relays, quiet waits, seeding, content, the runtime value, the lock's documents, shutdown), `join.test.ts` (the join window, an agent joining after a removal the tab then undoes, and over a real socket, a named pipe on Windows, the response ahead of queued actions), `handlers.test.ts` and `runtime.test.ts` run the registry and the handler over `createHubHarness`, beside `host.test.ts`, `lifecycle.test.ts` and `imports.test.ts`.
   - `runtime.test.ts` uses its own memory doubles of `agent-hub-host`'s `HubEnvironment`, `HubListener` and `LockFile` services, never the node layers, which would write a lock under the real home.
 - **`smoke` runs by hand**, on macOS or Windows with Obsidian installed: it is the check that the plugin works, and CI does not run it.
@@ -216,7 +219,7 @@ OBSIDIAN_ASAR="$HOME/Library/Application Support/obsidian/obsidian-1.13.7.asar" 
 
 ### Internal
 
-All devDependencies, bundled, whose `dist/**/*.d.ts` the build and test tasks read: `@dineug/erd-editor` (the element; specs load its `peer.js`), `@dineug/erd-editor-replication-store-worker` (the replica), `@dineug/erd-editor-webview-bridge` (replica commands, `GrayColor` / `AccentColor`, `LocaleLabel` codes and names), `@dineug/erd-editor-agent-hub-host` and `@dineug/erd-editor-agent-hub` (the hub). The smoke also runs `@dineug/erd-editor-mcp`'s build, which it does not build, and reads `@radix-ui/colors` through `erd-editor`'s package, undeclared here.
+All devDependencies, bundled, whose `dist/**/*.d.ts` the build and test tasks read: `@dineug/erd-editor` (the element, through `erdEditorModule.ts`'s named imports; specs load its `peer.js`), `@dineug/erd-editor-replication-store-worker` (the replica), `@dineug/erd-editor-webview-bridge` (replica commands, `GrayColor` / `AccentColor`, `LocaleLabel` codes and names), `@dineug/erd-editor-agent-hub-host` and `@dineug/erd-editor-agent-hub` (the hub). The smoke also runs `@dineug/erd-editor-mcp`'s build, which it does not build, and reads `@radix-ui/colors` through `erd-editor`'s package, undeclared here.
 
 ### External
 

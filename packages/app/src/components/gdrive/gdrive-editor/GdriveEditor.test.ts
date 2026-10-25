@@ -14,7 +14,7 @@ import GdriveEditor from '@/components/gdrive/gdrive-editor/GdriveEditor';
 import type { DocumentController, EditorAdapter } from '@/services/gdrive';
 
 // The real element needs a browser, where e2e runs it; this pins the calls.
-vi.mock('@dineug/erd-editor', () => ({}));
+vi.mock('@dineug/erd-editor/erd-editor.js', () => ({}));
 vi.mock('@sentry/react', () => ({ captureException: vi.fn() }));
 
 const VALUE = '{"version":"3.0.0"}';

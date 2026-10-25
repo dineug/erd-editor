@@ -5,10 +5,16 @@ import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import {
+  autoNameIgnoreCase,
+  getBracket,
+  primaryKeyColumns,
+  splitTableName,
+  tableNamePart,
+} from '@/utils/tableName';
 
 import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
-  autoNameIgnoreCase,
   commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
@@ -21,15 +27,11 @@ import {
   formatSize,
   formatSpace,
   FormatTableOptions,
-  getBracket,
   ifNotExists,
   Name,
   primaryKey,
-  primaryKeyColumns,
   referentialActionSupport,
   selectIndexColumns,
-  splitTableName,
-  tableNamePart,
   toForeignKeyPairs,
   toOrderName,
   toSchemaEntities,

@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-20 | Updated: 2026-10-21 -->
+<!-- Generated: 2026-10-20 | Updated: 2026-10-25 -->
 
 # dictionary
 
@@ -10,7 +10,7 @@
 ## Making a Change
 
 1. **Read the files on the other side.** A change to how the tab drives the grid (`version`, the handle, `onCommit`, `isEditing`) reads `packages/grid/AGENTS.md`, and a change to a write reads `src/engine/AGENTS.md`. `stopsAtPanel` (`src/utils/keyboard-shortcut/index.ts`) is shared with the Explorer, the diff tree and the color picker, so a change there reaches this tab's keys; a change to the find chord reads `src/components/explorer/AGENTS.md`.
-2. **Import the grid from `src/components/` alone.** `@dineug/grid` is a devDependency the build inlines, so its code ships in the element's `index.js` and the UMD build and counts in `pnpm size`. The peer graph must never reach it: `src/peer/imports.test.ts` fails on a graph that reaches `components/` or names a fifth inlined library, and `pnpm peer-graph` on a browser global in what `peer.js` reaches.
+2. **Import the grid from `src/components/` alone.** `@dineug/grid` is a devDependency the build inlines, so its code ships under `dist/grid/dist/`, which this tab's `Dictionary.js` alone imports and `index.js` and `erd-editor.js` reach through the element, and in the editor's UMD build, and counts in `pnpm size`. The peer graph must never reach it: `src/peer/imports.test.ts` fails on a graph that reaches `components/` or names a fifth inlined library, and `pnpm peer-graph` on a browser global in what `peer.js` reaches.
 3. **Run the package's checks.** Making a Change in the package file (`packages/erd-editor/AGENTS.md`) gives the test task and the coverage run. `Dictionary.browser.test.tsx` runs in real Chromium in that task.
 
 ## Key Files

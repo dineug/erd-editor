@@ -1,31 +1,33 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
 
 # quick-search
 
 ## Purpose
 
-`src/components/quick-search/` holds the command palette: `QuickSearch.tsx`, the commands and table rows in `actions.tsx`, the prefix grammar in `paletteQuery.ts`, the document scopes in `scopedActions.tsx`, the list's row height in `paletteList.ts` and the Hangul letter matching in `hangul.ts`. A scoped list holds every row it finds and draws only those in view; the Explorer and its search, which its Toggle Explorer row opens, have their rules in `src/components/explorer/AGENTS.md`. Its Display Language entry offers the languages the locale picker lists, and the picker's rules are in `src/i18n/AGENTS.md`. A change here keeps the owner decisions below: commands alone with no prefix, Fuse over the level's whole list on each keystroke, the Fuse threshold, `:` for comments and memos, and the Theme and Display Language entries.
+`src/components/quick-search/` holds the command palette: `QuickSearch.tsx`, which opens on the top level its host hands it; the editor's commands in `actions.tsx`; what a document search needs, the rows, the fuzzy search and the table rows, in `documentSearch.tsx`, which imports no command; the prefix grammar in `paletteQuery.ts`; the document scopes in `scopedActions.tsx`; the list's row height in `paletteList.ts`; and the Hangul letter matching in `hangul.ts`. A scoped list holds every row it finds and draws only those in view; the Explorer and its search, which its Toggle Explorer row opens, have their rules in `src/components/explorer/AGENTS.md`. Its Display Language entry offers the languages the locale picker lists, and the picker's rules are in `src/i18n/AGENTS.md`. A change here keeps the owner decisions below: commands alone with no prefix, Fuse over the level's whole list on each keystroke, the Fuse threshold, `:` for comments and memos, and the Theme and Display Language entries.
 
 ## Making a Change
 
 1. **Read the files on the other side.** A change to the Toggle Explorer row or to what the search opens on reads `src/components/explorer/AGENTS.md`. A change to the list's range reads `src/components/primitives/AGENTS.md` (The tree), which shares `src/utils/virtualRange.ts`. A change to Display Language or to a translated row's name reads `src/i18n/AGENTS.md`.
 2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The specs here run in that test task, `QuickSearch.browser.test.ts` in real Chromium.
-3. **Change a pinned rule and its spec together.** `QuickSearch.test.ts` pins the search over the level's whole list on each keystroke. `actions.test.ts` pins what `SEARCH_THRESHOLD` takes and lets go. `scopedActions.test.ts` bounds the Hangul spellings a keystroke makes.
+3. **Change a pinned rule and its spec together.** `QuickSearch.test.ts` pins the search over the level's whole list on each keystroke. `actions.test.ts` pins `SEARCH_THRESHOLD`, which `documentSearch.tsx` sets, and what it takes and lets go among the editor's commands. `scopedActions.test.ts` bounds the Hangul spellings a keystroke makes.
 4. **Run the e2e for a visible change.** `e2e/specs/find-replace.spec.ts` drives the palette's field rows in the real element and types through Chromium's own IME (Testing Requirements). `pnpm --filter @dineug/erd-editor e2e` builds the package and runs every Playwright spec, this one included.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `QuickSearch.tsx` | The palette: `rebuild`, the virtual list, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount |
+| `QuickSearch.tsx` | The palette: the top level its host builds (`topLevel`, a `PaletteTopLevel`; the editor hands in `createScopeActions`, and the read-only view `createTableActions` alone), `rebuild`, the virtual list, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount. It imports no command, which `src/viewer/imports.test.ts` holds it to as a module the read-only view composes |
 | `paletteList.ts` | `PALETTE_ROW_HEIGHT` (45, which the row style matches), `PALETTE_LIST_MAX_HEIGHT` (400) and `paletteListHeight` |
-| `actions.tsx` | `createScopeActions` (the top level), `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, `createPreferenceActions`, `createRederiveActions`, and the table rows, which jump through `goToErdTarget` |
+| `documentSearch.tsx` | `Action`, `PalettePreferences`, `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, the Hangul ranking, `createMatchAction`, and the table rows (`createTableActions`), which jump through `goToErdTarget` |
+| `actions.tsx` | `createScopeActions` (the editor's top level, which ends with `createTableActions`' rows), `createPreferenceActions`, `createRederiveActions`, and the rows of the imports, the Schema SQL tab and the tabs |
 | `scopedActions.tsx` | `scopeBase`, `createPrefixActions`, `createFieldActions` and the rows it builds as they are drawn (`lazyMatchAction`), `rankTableActions` |
 | `paletteQuery.ts` | The prefix grammar and `WIDE_PREFIXES` |
 | `hangul.ts` | The Hangul letter matching and ranking, `clearHangulForms`, `hitRange` |
 | `QuickSearch.test.ts` | Pins the search over the level's whole list on each keystroke |
-| `actions.test.ts` | Pins what `SEARCH_THRESHOLD` takes (`tabel`, `imprt`) and lets go (`talbe`, `mmeo`) |
+| `actions.test.ts` | Pins `documentSearch.tsx`'s `SEARCH_THRESHOLD` at 0.4 and, over the editor's commands, what it takes (`tabel`, `imprt`) and lets go (`talbe`, `mmeo`) |
+| `documentSearch.test.ts` | The fuzzy search and the Hangul ranking over rows of its own, with no command |
 | `scopedActions.test.ts` | Bounds the spellings of the document's texts over 200 Korean tables |
 | `QuickSearch.browser.test.ts` | Types through Chromium's own IME over CDP |
 | `e2e/specs/find-replace.spec.ts` | The Playwright spec of Find and Replace and the palette's field rows; it also types through Chromium's own IME over CDP |
@@ -35,6 +37,7 @@
 ### The palette with no prefix
 
 - **With no prefix, list commands alone.** The empty input and every keyword list only what the tab offers (`scopeBase`). They never list a table, column, comment or memo row. The document is searched only under a prefix. This is an owner decision.
+  - The read-only view's level holds no command: `src/components/erd-view/ErdView.tsx` hands in `createTableActions` alone. So its empty input shows the prefix hint, a keyword with no prefix shows `No commands match` over the prefix rows, and `#`, `@` and `:` search the document as in the editor.
 - **The top level still ends with table jumps.** `createScopeActions` still ends with a jump per table, which only `#` hands to Fuse. A table row's `Table` keyword stays out of Fuse's keys (`tableId`), since it fuzzes to most words.
 - **Search the level's whole list each keystroke.** Every keystroke runs Fuse over the level's whole list (`scopeBase`), as VS Code's palette does, never inside its last hits. This holds with no prefix, under a prefix and in a submenu alike. It is an owner decision, pinned in `QuickSearch.test.ts`.
   - What a word lists owes nothing to what was typed before it. So `auto` typed over `qqqq` finds Auto Layout.
@@ -45,7 +48,7 @@
 
 ### Fuse
 
-- **Fuse runs at `SEARCH_THRESHOLD` 0.4.** It is set in `actions.tsx`, an owner decision, and `actions.test.ts` pins it.
+- **Fuse runs at `SEARCH_THRESHOLD` 0.4.** It is set in `documentSearch.tsx`, an owner decision, and `actions.test.ts` pins it.
   - fuse.js's default 0.6 fuzzed most words to some command: `memo` to Import and the relationships, `#us` to orders, `users` to Zero One and Zero N.
   - 0.4 still takes a near typo: `tabel` to New Table, `imprt` to Import.
   - 0.4 lets go of a typo no closer than an unrelated command: `talbe`, `mmeo`.

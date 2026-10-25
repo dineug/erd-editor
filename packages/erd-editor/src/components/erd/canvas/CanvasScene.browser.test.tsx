@@ -4,7 +4,7 @@
 // css one and the culling that keeps a table never seen out of the tree, and
 // hides one that scrolled off rather than building it again on the way back.
 
-import { createRef, useProvider } from '@dineug/r-html';
+import { createRef, type FC, useProvider } from '@dineug/r-html';
 import { whenDrawn } from '@dineug/r-html-konva';
 import type { Container } from 'konva/lib/Container';
 import type { Layer } from 'konva/lib/Layer';
@@ -20,12 +20,16 @@ import {
   whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
-import CanvasScene from '@/components/erd/canvas/CanvasScene';
+import CanvasScene, {
+  type CanvasLayers,
+} from '@/components/erd/canvas/CanvasScene';
+import { editingLayers } from '@/components/erd/canvas/editingLayers';
 import {
   beginEntityDrag,
   endEntityDrag,
 } from '@/components/erd/canvas/entityDrag';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
+import ParticleLayer from '@/components/visualization/particles/ParticleLayer';
 import { RelationshipType, Show } from '@/constants/schema';
 import {
   changeViewportAction,
@@ -85,11 +89,14 @@ type MountOptions = {
   app?: AppContext;
   /** Hung on the shell around the Stage, the way the editor mounts a scene. */
   source?: GeometrySource;
+  /** What the host hands the scene: the ERD tab's own unless a case says otherwise. */
+  layers?: CanvasLayers;
 };
 
 async function mountScene({
   app = createTestAppContext(),
   source,
+  layers = editingLayers,
 }: MountOptions = {}): Promise<Mounted> {
   const $root = document.createElement('div');
   const shell = document.createElement('div');
@@ -111,7 +118,9 @@ async function mountScene({
   const scene = renderScene({
     app,
     container,
-    scene: <CanvasScene root={createRef<HTMLDivElement>($root)} />,
+    scene: (
+      <CanvasScene root={createRef<HTMLDivElement>($root)} layers={layers} />
+    ),
     width: VIEWPORT,
     height: VIEWPORT,
     theme: createTestTheme(),
@@ -732,6 +741,150 @@ describe('the bottom layer', () => {
 });
 
 /**
+ * A probe in each slot, so a case reads where the scene puts what its host
+ * hands in, and that a host handing in nothing gets the scene's own layers.
+ */
+describe('the layers a host hands in', () => {
+  const Beneath: FC = () => () => (
+    <k-layer name="probe-beneath" listening={false} />
+  );
+  const DropTarget: FC = () => () => <k-rect name="probe-drop-target" />;
+  const PresenceA: FC = () => () => <k-rect name="probe-presence-a" />;
+  const PresenceB: FC = () => () => <k-rect name="probe-presence-b" />;
+
+  const layerNamesOf = (stage: Stage) =>
+    stage.getLayers().map(layer => layer.name());
+
+  const childNamesOf = (stage: Stage, layer: string) =>
+    stage
+      .findOne<Layer>(`.${layer}`)!
+      .getChildren()
+      .map(node => node.name());
+
+  it('roots the bottom layer and the scene alone for a host that hands in none', async () => {
+    const { stage } = await mountScene({ layers: {} });
+
+    expect(layerNamesOf(stage)).toEqual(['canvas-background', 'scene']);
+  });
+
+  it('roots each layer it is handed in its place, the presence parts in order on top', async () => {
+    const roots: HTMLDivElement[] = [];
+    const Marquee: NonNullable<CanvasLayers['marquee']> = props => {
+      roots.push(props.root.value);
+      return () => <k-rect name="probe-marquee" />;
+    };
+    const { stage } = await mountScene({
+      layers: {
+        beneath: Beneath,
+        marquee: Marquee,
+        presence: [PresenceA, PresenceB],
+      },
+    });
+
+    expect(layerNamesOf(stage)).toEqual([
+      'canvas-background',
+      'probe-beneath',
+      'scene',
+      'overlay-marquee',
+      'presence',
+    ]);
+    expect(childNamesOf(stage, 'overlay-marquee')).toEqual(['probe-marquee']);
+    expect(childNamesOf(stage, 'presence')).toEqual([
+      'probe-presence-a',
+      'probe-presence-b',
+    ]);
+    expect(roots).toHaveLength(1);
+    expect(roots[0]).toBeInstanceOf(HTMLDivElement);
+  });
+
+  it('draws the relationship draw it is handed once the draw has a start, given the draw', async () => {
+    const draws: unknown[] = [];
+    const RelationshipDraw: NonNullable<
+      CanvasLayers['relationshipDraw']
+    > = props => {
+      draws.push(props.draw);
+      return () => <k-rect name="probe-draw" />;
+    };
+    const { app, stage } = await mountScene({
+      layers: { relationshipDraw: RelationshipDraw },
+    });
+    seedTable(app, 't1', 100);
+
+    app.store.dispatchSync(
+      drawStartRelationshipAction({
+        relationshipType: RelationshipType.ZeroOne,
+      })
+    );
+    await flush();
+    expect(stage.find('.probe-draw')).toHaveLength(0);
+
+    app.store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
+    await flush();
+    expect(stage.find('.probe-draw')).toHaveLength(1);
+    expect(draws).toEqual([app.store.state.editor.drawRelationship]);
+  });
+
+  it('draws no relationship preview for a host that hands in none', async () => {
+    const { app, stage } = await mountScene({ layers: {} });
+    seedTable(app, 't1', 100);
+
+    app.store.dispatchSync(
+      drawStartRelationshipAction({
+        relationshipType: RelationshipType.ZeroOne,
+      }),
+      drawStartAddRelationshipAction({ tableId: 't1' })
+    );
+    await flush();
+
+    expect(app.store.state.editor.drawRelationship?.start).toBeTruthy();
+    expect(stage.find('.draw-relationship')).toHaveLength(0);
+  });
+
+  it('draws the drop target it is handed under what a drag carries over shown groups', async () => {
+    const { app, stage } = await mountScene({
+      layers: { dropTarget: DropTarget },
+    });
+    seedGroup(app, 'g1', 1);
+    seedTable(app, 't1', 100);
+    app.store.dispatchSync(selectAction({ t1: SelectType.table }));
+    beginEntityDrag(app.store.state);
+    await flush();
+
+    try {
+      expect(childNamesOf(stage, 'drag-entity')[0]).toBe('probe-drop-target');
+
+      app.store.dispatchSync(
+        changeShowAction({ show: Show.hideTableGroup, value: true })
+      );
+      await flush();
+      expect(stage.find('.probe-drop-target')).toHaveLength(0);
+    } finally {
+      endEntityDrag(app.store.state);
+    }
+  });
+
+  it('draws no drop target for a host that hands in none', async () => {
+    const { app, stage } = await mountScene({ layers: {} });
+    seedGroup(app, 'g1', 1);
+    seedTable(app, 't1', 100);
+    app.store.dispatchSync(selectAction({ t1: SelectType.table }));
+    beginEntityDrag(app.store.state);
+    await flush();
+
+    try {
+      expect(
+        stage
+          .findOne<Layer>('.drag-entity')!
+          .getChildren()
+          .map(node => node.id())
+      ).toEqual(['table-t1']);
+    } finally {
+      endEntityDrag(app.store.state);
+    }
+  });
+});
+
+/**
  * AC-11, AC-12 and the scene halves of AC-61 and AC-64, the minimap, bars and
  * compass of AC-61 being each in its own spec. The source the context names
  * picks what a scene shows and which points it stands them at.
@@ -787,12 +940,20 @@ describe('a scene the context points at a view', () => {
     );
   }
 
+  /**
+   * The Flow's particles with the ERD tab's layers handed in beside them, so
+   * the scene's own gates are what keep presence and a draw's preview out.
+   */
   async function mountNarrowedScene(): Promise<Mounted> {
     const app = createTestAppContext();
     seedDocument(app);
     narrowView(app);
 
-    return mountScene({ app, source: 'flow' });
+    return mountScene({
+      app,
+      source: 'flow',
+      layers: { ...editingLayers, beneath: ParticleLayer },
+    });
   }
 
   const tableOf = (stage: Stage, tableId: string) =>

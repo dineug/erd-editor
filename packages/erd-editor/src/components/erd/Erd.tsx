@@ -17,6 +17,8 @@ import AutomaticTablePlacement, {
 import { toPlacementActions } from '@/components/erd/automatic-table-placement/placementActions';
 import { runElkPlacement } from '@/components/erd/automatic-table-placement/runElkPlacement';
 import Canvas from '@/components/erd/canvas/Canvas';
+import { editingLayers } from '@/components/erd/canvas/editingLayers';
+import EditOverlay from '@/components/erd/canvas/EditOverlay';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import DrawTargetButtons from '@/components/erd/draw-target/DrawTargetButtons';
 import ErdContextMenu, {
@@ -90,6 +92,8 @@ export type ErdProps = {
   enableWelcomeScreen?: boolean;
   enableThemeBuilder?: boolean;
   enableLocalePicker?: boolean;
+  /** Whether the canvas takes a wheel, a pinch or a touch; true if unset. */
+  interactive?: () => boolean;
 };
 
 /**
@@ -162,10 +166,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     );
   };
 
+  const interactive = () => props.interactive?.() ?? true;
+
   const pinch = usePinchZoom({
     app: () => app.value,
     root,
     enabled: () => !getShowOverLayout(),
+    interactive,
   });
 
   const groupDraw = useTableGroupDraw({ app: () => app.value, root });
@@ -240,7 +247,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   const handleWheel = (event: WheelEvent) => {
-    if (pinch.handleWheel(event) || getShowOverLayout()) return;
+    if (pinch.handleWheel(event) || !interactive() || getShowOverLayout()) {
+      return;
+    }
     event.preventDefault();
 
     const $mod = isMod(event);
@@ -636,7 +645,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         on:touchstart={handleDragSelect}
         on:wheel={handleWheel}
       >
-        <Canvas root={root} canvas={canvas} grabMove={handTool || drawsGroup} />
+        <Canvas
+          root={root}
+          canvas={canvas}
+          grabMove={handTool || drawsGroup}
+          overlay={EditOverlay}
+          layers={editingLayers}
+        />
         <DrawTargetButtons root={root} readonly={props.readonly} />
         {drawsGroup ? <TableGroupDraft draw={groupDraw.state} /> : null}
         {zenMode ? null : <VirtualScroll />}

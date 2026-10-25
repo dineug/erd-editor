@@ -559,4 +559,6 @@ export const ruRU = {
     'Столбцы после последнего не вставлены',
   'dictionary.toast.tooManyCells':
     'Ничего не сделано: выделено слишком много ячеек',
+  'viewer.loading': 'Загрузка диаграммы',
+  'viewer.loadError': 'Не удалось загрузить диаграмму',
 } satisfies Messages;

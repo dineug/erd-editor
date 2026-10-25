@@ -115,8 +115,15 @@ const DOM_TAG = /<(div|svg)\b/;
 const OUTSIDE_REFERENCES = [
   '__test-utils__/index.ts @/components/erd/canvas/highlightTransition',
   'components/erd/Erd.tsx @/components/erd/canvas/Canvas',
+  // The ERD tab hands its canvas the cell editor and the scene's editing and
+  // presence parts, which a canvas that edits nothing is never handed.
+  'components/erd/Erd.tsx @/components/erd/canvas/EditOverlay',
+  'components/erd/Erd.tsx @/components/erd/canvas/editingLayers',
   'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
-  'components/erd/diff-viewer/erd-viewer/ErdViewer.tsx @/components/erd/canvas/Canvas',
+  'components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer.tsx @/components/erd/canvas/Canvas',
+  // Rename opens the name editor a title bar's double click opens, which sits
+  // beside the bar so the scene reaches no group command.
+  'components/erd/erd-context-menu/ErdContextMenu.tsx @/components/erd/canvas/table-group/tableGroupNameEditor',
   'components/erd/goToErdTarget.test.ts @/components/erd/canvas/table/cellLayout',
   'components/erd/goToErdTarget.ts @/components/erd/canvas/table/cellLayout',
   'components/erd/hitTest.browser.test.tsx @/components/erd/canvas/CanvasScene',
@@ -127,13 +134,26 @@ const OUTSIDE_REFERENCES = [
   'components/erd/minimap/MinimapScene.tsx @/components/erd/canvas/table-group/tableGroupBox',
   'components/erd/minimap/table-group/TableGroup.browser.test.tsx @/components/erd/canvas/entityDrag',
   'components/erd/minimap/table-group/TableGroup.tsx @/components/erd/canvas/table-group/tableGroupBox',
+  // A group a draw or Group selected tables just added opens that editor too.
+  'components/erd/table-group/tableGroupName.ts @/components/erd/canvas/table-group/tableGroupNameEditor',
   'components/erd/time-travel/TimeTravel.tsx @/components/erd/canvas/Canvas',
+  // The read-only view mounts the canvas with no overlay and no layers, and
+  // drops its editor's highlight transitions as it goes, which CanvasScene
+  // never does for the document.
+  'components/erd-view/ErdView.browser.test.tsx @/components/erd/canvas/highlightTransition',
+  'components/erd-view/ErdView.tsx @/components/erd/canvas/Canvas',
+  'components/erd-view/ErdView.tsx @/components/erd/canvas/highlightTransition',
+  // The viewer element's destroy takes that view down at once, which its spec
+  // reads off the transitions the view's editor left.
+  'components/erd-viewer/ErdViewer.test.ts @/components/erd/canvas/highlightTransition',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/high-level-table/HighLevelTable',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/table/Table',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/table/column/Column',
   'components/sceneSourceContext.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/themeContext.browser.test.tsx @/components/erd/canvas/memo/Memo',
   'components/visualization/VisualizationFlow.tsx @/components/erd/canvas/Canvas',
+  // The Flow hands its canvas the marquee a modifier press opens.
+  'components/visualization/VisualizationFlow.tsx @/components/erd/canvas/drag-select/DragSelect',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/memo/Memo',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/relationship-group/RelationshipGroup',
   'services/export-png/ExportScene.tsx @/components/erd/canvas/table/Table',
@@ -172,7 +192,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the twenty-three references that own a reason to', () => {
+  it('is reached from outside by the thirty-two references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

@@ -6,12 +6,11 @@ import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import {
-  autoName,
   Name,
-  orderByNameASC,
   ReferentialActionSupport,
   referentialActionSupport,
 } from '@/utils/schema-sql/utils';
+import { autoName, orderByNameASC } from '@/utils/tableName';
 
 import {
   BINARY_TYPES,

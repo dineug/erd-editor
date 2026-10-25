@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import { RootState } from '@/engine/state';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
+import { orderByNameASC } from '@/utils/tableName';
 
 import { ColumnScalar, ColumnType, getColumnType } from './columnTypes';
 import {

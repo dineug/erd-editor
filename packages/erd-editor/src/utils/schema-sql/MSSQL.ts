@@ -4,10 +4,18 @@ import { uuid25 } from '@dineug/uuid';
 import { ColumnOption, Database } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { bHas } from '@/utils/bit';
+import {
+  autoNameIgnoreCase,
+  getBracket,
+  isDelimitedPart,
+  primaryKeyColumns,
+  splitNameParts,
+  tableNamePart,
+  unquoteNamePart,
+} from '@/utils/tableName';
 
 import { SchemaSQLHeader } from './options';
 import {
-  autoNameIgnoreCase,
   commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
@@ -19,22 +27,16 @@ import {
   formatSize,
   formatSpace,
   FormatTableOptions,
-  getBracket,
-  isDelimitedPart,
   Name,
   primaryKey,
-  primaryKeyColumns,
   referentialActionSupport,
   selectIndexColumns,
-  splitNameParts,
-  tableNamePart,
   toForeignKeyPairs,
   toOrderName,
   toSchemaEntities,
   toStringLiteral,
   unique,
   uniqueColumns,
-  unquoteNamePart,
   WrittenObjects,
 } from './utils';
 

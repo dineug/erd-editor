@@ -6,12 +6,8 @@ import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import { isIntegerFamily } from '@/utils/schema-sql/SQLite';
-import {
-  autoName,
-  Name,
-  orderByNameASC,
-  referentialActionSupport,
-} from '@/utils/schema-sql/utils';
+import { Name, referentialActionSupport } from '@/utils/schema-sql/utils';
+import { autoName, orderByNameASC } from '@/utils/tableName';
 
 import {
   BINARY_TYPES,

@@ -12,10 +12,11 @@ export const SOURCE_ROOT = join(PACKAGE_ROOT, 'src');
 
 /**
  * A static import or re-export with its type keyword, if any, the bindings it
- * names and its specifier; a bare side effect import; a dynamic import.
+ * names and its specifier; a bare side effect import; a dynamic import. The
+ * last two never follow a dot or a quote, as the key 'common.import' would.
  */
 export const IMPORT_FORM =
-  /\b(import|export)\s+(type\s+)?([^;]*?)\bfrom\s*'([^']+)'|\bimport\s*'([^']+)'|\bimport\s*\(\s*'([^']+)'\s*\)/g;
+  /\b(import|export)\s+(type\s+)?([^;]*?)\bfrom\s*'([^']+)'|(?<![.'"])\bimport\s*'([^']+)'|(?<![.'"])\bimport\s*\(\s*'([^']+)'\s*\)/g;
 
 /** The globals a Node realm lacks, read as a member access or named outright. */
 export const DOM_TOKEN =
@@ -44,8 +45,8 @@ export const stripComments = (source: string) =>
 
 /**
  * Whether a file binds the name itself, as a parameter or a declaration, so a
- * member access on it is a local and not the global. The graphql importer
- * calls its AST parameter document, which the build renames on the way out.
+ * member access on it is a local and not the global. Unminified, the built text
+ * keeps such a name, which pnpm peer-graph reads as the global.
  */
 export const bindsLocally = (source: string, name: string) =>
   new RegExp(
@@ -56,6 +57,8 @@ export type Graph = {
   files: string[];
   bare: Map<string, string[]>;
   domTokens: string[];
+  /** The files only an import() reaches, which a bundler splits into chunks loaded later. */
+  dynamic: string[];
 };
 
 /**
@@ -64,6 +67,20 @@ export type Graph = {
  * braces counts as a value import, as a bundler that keeps the module would.
  */
 export function walk(entry: string, sourceRoot = SOURCE_ROOT): Graph {
+  const all = walkFrom(entry, sourceRoot, true);
+  const statics = new Set(walkFrom(entry, sourceRoot, false).files);
+
+  return {
+    ...all,
+    dynamic: all.files.filter(file => !statics.has(file)),
+  };
+}
+
+function walkFrom(
+  entry: string,
+  sourceRoot: string,
+  followDynamic: boolean
+): Omit<Graph, 'dynamic'> {
   const seen = new Set<string>();
   const bare = new Map<string, string[]>();
   const domTokens: string[] = [];
@@ -83,6 +100,7 @@ export function walk(entry: string, sourceRoot = SOURCE_ROOT): Graph {
       if (typeOnly || (match[1] === 'export' && /^\s*type\b/.test(bindings))) {
         continue;
       }
+      if (match[6] !== undefined && !followDynamic) continue;
 
       if (specifier.startsWith('@/')) {
         pending.push(resolveSource(join(sourceRoot, specifier.slice(2))));

@@ -7,20 +7,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 
+import { rolldown } from 'vite/rolldown';
+
+import { createExternal } from '../tools/vite/package-metadata.ts';
+
 const root = path.resolve(import.meta.dirname, '..');
 const packageDir = path.join(root, 'packages', 'erd-editor');
 const baselinePath = path.join(packageDir, '.size-baseline.json');
 
 /**
- * The one gated artifact: every script a consumer can reach from the exports
- * map, walked from each entry through its static and dynamic imports and the
- * worker files it names, then concatenated in path order and compressed.
+ * The script-tag builds, each recorded under umd:<name> and measured as
+ * built, since a page loads it whole.
  */
-const ENTRIES = ['dist (reachable from exports)'];
+const UMD_FILES = [
+  { key: 'umd:erd-editor', file: './dist/erd-editor.umd.js' },
+  { key: 'umd:erd-viewer', file: './dist/erd-viewer.umd.js' },
+];
 
-/** A relative script reference in emitted code: an import, a dynamic import, or a worker url. */
-const RELATIVE_SCRIPT =
-  /(?:from\s*|import\(\s*)"(\.{1,2}\/[^"]+\.js)"|new URL\("(\.{1,2}\/[^"]+\.js)",\s*import\.meta\.url\)/g;
+/** The two records the ratio line compares. */
+const VIEWER_KEY = './erd-viewer.js';
+const EDITOR_KEY = './erd-editor.js';
+
+/** A worker file a module names, in whichever quote the minifier picked. */
+const WORKER_URL =
+  /new URL\(\s*(["'`])(\.{1,2}\/[^"'`]+?\.js)\1\s*,\s*import\.meta\.url\s*\)/g;
 
 /**
  * Compression level every recorded number is measured at. It is stored in the
@@ -30,20 +40,29 @@ const GZIP_LEVEL = 9;
 
 const USAGE = `Usage: node scripts/check-bundle-size.mjs [options]
 
+  Each exports key of @dineug/erd-editor is bundled from dist/ as a consumer
+  would, its dependencies and peers external and the output minified. gzip
+  sums the entry chunk, the chunks it imports statically and the worker files
+  those name, each worker bundled on its own and every file compressed on its
+  own; lazyGzip sums the chunks reached only through import() and the workers
+  only they name. The two umd files are measured as they are, under the keys
+  umd:erd-editor and umd:erd-viewer.
+
   (no options)            Verify dist against ${path.relative(root, baselinePath)}.
-  --set-budget            Rewrite only the budget fields. The recorded
-                          measurement and baseCommit are left alone, so the
-                          delta against the pre-migration bundle survives.
-  --update-baseline       Re-record the measurement from the current dist.
-                          This moves what every delta is measured from.
-  --budget-gzip <bytes>   Set the gzip budget. Pass "none" to leave it
-                          undetermined.
-  --budget-note <text>    Why that budget is the budget. Printed on every run,
-                          so whoever the gate stops reads the reasoning next
-                          to the number.
-  --base-commit <sha>     With --update-baseline: set baseCommit on a first
-                          write. An existing baseCommit is never overwritten
-                          without this flag.
+  --set-budget            Rewrite only one record's budget fields. The recorded
+                          measurement and baseCommit are left alone.
+  --entry <key>           With --set-budget: the record to rewrite, an exports
+                          key or umd:<name> as the baseline names it.
+  --budget-gzip <bytes>   With --set-budget: the gzip budget. Pass "none" to
+                          leave it undetermined, so the record only prints.
+  --budget-note <text>    With --set-budget: why that budget is the budget.
+                          Printed on every run, so whoever the gate stops
+                          reads the reasoning next to the number.
+  --update-baseline       Re-record every measurement from the current dist,
+                          keeping each record's budget and note. This moves
+                          what every delta is measured from.
+  --base-commit <sha>     With --update-baseline: set baseCommit. An existing
+                          baseCommit is never overwritten without this flag.
   --help                  Print this text.`;
 
 function parseArgs(argv) {
@@ -51,9 +70,15 @@ function parseArgs(argv) {
     update: false,
     setBudget: false,
     help: false,
+    entry: undefined,
     budgetGzip: undefined,
     budgetNote: undefined,
     baseCommit: undefined,
+  };
+
+  const valueAt = (i, arg) => {
+    if (argv[i] === undefined) throw new Error(`${arg} needs a value`);
+    return argv[i];
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -64,12 +89,14 @@ function parseArgs(argv) {
       options.setBudget = true;
     } else if (arg === '--help' || arg === '-h') {
       options.help = true;
+    } else if (arg === '--entry') {
+      options.entry = valueAt(++i, arg);
     } else if (arg === '--budget-gzip') {
-      options.budgetGzip = argv[++i];
+      options.budgetGzip = valueAt(++i, arg);
     } else if (arg === '--budget-note') {
-      options.budgetNote = argv[++i];
+      options.budgetNote = valueAt(++i, arg);
     } else if (arg === '--base-commit') {
-      options.baseCommit = argv[++i];
+      options.baseCommit = valueAt(++i, arg);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
@@ -78,15 +105,20 @@ function parseArgs(argv) {
   if (options.update && options.setBudget) {
     throw new Error('--set-budget and --update-baseline are exclusive');
   }
-  if (options.setBudget && options.budgetGzip === undefined) {
-    throw new Error('--set-budget needs --budget-gzip');
-  }
-  if (!options.update && !options.setBudget) {
-    if (options.budgetGzip !== undefined) {
-      throw new Error('--budget-gzip requires --set-budget or --update-baseline');
+  if (options.setBudget) {
+    if (options.entry === undefined) {
+      throw new Error('--set-budget needs --entry');
     }
-    if (options.budgetNote !== undefined) {
-      throw new Error('--budget-note requires --set-budget or --update-baseline');
+    if (options.budgetGzip === undefined) {
+      throw new Error('--set-budget needs --budget-gzip');
+    }
+  } else {
+    for (const [flag, value] of [
+      ['--entry', options.entry],
+      ['--budget-gzip', options.budgetGzip],
+      ['--budget-note', options.budgetNote],
+    ]) {
+      if (value !== undefined) throw new Error(`${flag} requires --set-budget`);
     }
   }
   if (!options.update && options.baseCommit !== undefined) {
@@ -98,7 +130,6 @@ function parseArgs(argv) {
 
 /** Parses a --budget-gzip value into a byte count, or null for undetermined. */
 function parseBudget(value) {
-  if (value === undefined) return undefined;
   if (value === 'none') return null;
   const bytes = Number(value);
   if (!Number.isInteger(bytes) || bytes <= 0) {
@@ -110,55 +141,189 @@ function parseBudget(value) {
 const MISSING_OUTPUT =
   'Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build';
 
-/** The scripts the exports map points at, as absolute paths. */
-function exportedEntries() {
-  const manifest = JSON.parse(
+function readManifest() {
+  return JSON.parse(
     fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8')
   );
-  return Object.values(manifest.exports)
-    .map(target => (typeof target === 'string' ? target : target.default))
-    .filter(Boolean)
-    .map(target => path.join(packageDir, target));
+}
+
+function ensureBuilt(file) {
+  if (!fs.existsSync(file)) {
+    throw new Error(
+      `Missing build output: ${path.relative(root, file)}. ${MISSING_OUTPUT}`
+    );
+  }
+}
+
+/** The records in print order: every exports key, then the umd files. */
+function targetsOf(manifest) {
+  const exported = Object.entries(manifest.exports).map(([key, target]) => ({
+    key,
+    file: path.join(
+      packageDir,
+      typeof target === 'string' ? target : target.default
+    ),
+    kind: 'module',
+  }));
+  const umd = UMD_FILES.map(({ key, file }) => ({
+    key,
+    file: path.join(packageDir, file),
+    kind: 'umd',
+  }));
+  return [...exported, ...umd];
+}
+
+const gzipOf = code => gzipSync(code, { level: GZIP_LEVEL }).byteLength;
+
+const sum = (files, field) =>
+  files.reduce((total, file) => total + file[field], 0);
+
+/**
+ * Bundles one built file as a consumer's production build would: the
+ * package's dependencies and peers stay imports, the rest is inlined and
+ * minified. Nothing is written.
+ */
+async function bundle(file, external) {
+  ensureBuilt(file);
+  const build = await rolldown({
+    input: file,
+    cwd: packageDir,
+    external,
+    platform: 'browser',
+    logLevel: 'silent',
+    transform: { define: { 'process.env.NODE_ENV': '"production"' } },
+  });
+  try {
+    const { output } = await build.generate({
+      format: 'es',
+      minify: true,
+      entryFileNames: '[name].js',
+      chunkFileNames: '[name].js',
+    });
+    return output.filter(item => item.type === 'chunk');
+  } finally {
+    await build.close();
+  }
 }
 
 /**
- * Every script reachable from the exported entries. A stale chunk a cache
- * replay left beside the live one is unreachable and so never counts, and a
- * file the build stopped emitting fails here rather than in a consumer.
+ * Splits a bundle into what loads with its entry and what waits for an
+ * import(), and finds the worker files each half names. A worker named from
+ * both halves loads with the entry.
  */
-function filesOf() {
-  const reached = new Set();
-  const pending = exportedEntries();
-
+function splitBundle(chunks, nameOf) {
+  const byName = new Map(chunks.map(chunk => [chunk.fileName, chunk]));
+  const eager = new Set();
+  const pending = chunks
+    .filter(chunk => chunk.isEntry)
+    .map(chunk => chunk.fileName);
   while (pending.length) {
-    const file = pending.pop();
-    if (reached.has(file)) continue;
-    if (!fs.existsSync(file)) {
-      throw new Error(
-        `Missing build output: ${path.relative(root, file)}. ${MISSING_OUTPUT}`
-      );
-    }
-    reached.add(file);
-    const code = fs.readFileSync(file, 'utf8');
-    for (const match of code.matchAll(RELATIVE_SCRIPT)) {
-      pending.push(path.resolve(path.dirname(file), match[1] ?? match[2]));
-    }
+    const name = pending.pop();
+    if (eager.has(name)) continue;
+    eager.add(name);
+    pending.push(...byName.get(name).imports.filter(next => byName.has(next)));
   }
 
-  return [...reached].sort();
+  const workers = new Map();
+  const part = chunk => ({
+    name: nameOf(chunk),
+    bytes: Buffer.byteLength(chunk.code),
+    gzip: gzipOf(chunk.code),
+  });
+  const result = { eager: [], lazy: [], workers };
+  for (const chunk of chunks) {
+    const isEager = eager.has(chunk.fileName);
+    (isEager ? result.eager : result.lazy).push(part(chunk));
+    for (const [id, module] of Object.entries(chunk.modules)) {
+      for (const match of (module.code ?? '').matchAll(WORKER_URL)) {
+        const worker = path.resolve(path.dirname(id), match[2]);
+        workers.set(worker, workers.get(worker) || isEager);
+      }
+    }
+  }
+  return result;
 }
 
-function measure() {
-  const source = Buffer.concat(filesOf().map(file => fs.readFileSync(file)));
+/** Measures one exports key, bundling each worker file its code names on its own. */
+async function measureModule(file, external, workerCache) {
+  const main = splitBundle(
+    await bundle(file, external),
+    chunk => chunk.fileName
+  );
+  const eager = [...main.eager];
+  const lazy = [...main.lazy];
+
+  for (const [worker, isEager] of main.workers) {
+    if (!workerCache.has(worker)) {
+      const label = path
+        .relative(packageDir, worker)
+        .split(path.sep)
+        .join('/');
+      const nameOf = chunk =>
+        chunk.isEntry ? label : `${label} > ${chunk.fileName}`;
+      workerCache.set(worker, splitBundle(await bundle(worker, external), nameOf));
+    }
+    const measured = workerCache.get(worker);
+    (isEager ? eager : lazy).push(...measured.eager);
+    lazy.push(...measured.lazy);
+  }
+
+  return { eager, lazy };
+}
+
+/** A umd file loads whole from a script tag, so it is measured as built. */
+function measureUmd(file) {
+  ensureBuilt(file);
+  const code = fs.readFileSync(file);
   return {
-    bytes: source.byteLength,
-    gzip: gzipSync(source, { level: GZIP_LEVEL }).byteLength,
+    eager: [
+      { name: path.basename(file), bytes: code.byteLength, gzip: gzipOf(code) },
+    ],
+    lazy: [],
   };
+}
+
+async function measureAll() {
+  const manifest = readManifest();
+  const external = createExternal(manifest);
+  const workerCache = new Map();
+  const measured = [];
+
+  for (const target of targetsOf(manifest)) {
+    const parts =
+      target.kind === 'umd'
+        ? measureUmd(target.file)
+        : await measureModule(target.file, external, workerCache);
+    measured.push({
+      key: target.key,
+      parts,
+      bytes: sum(parts.eager, 'bytes'),
+      gzip: sum(parts.eager, 'gzip'),
+      lazyGzip: sum(parts.lazy, 'gzip'),
+    });
+  }
+
+  return measured;
 }
 
 function readBaseline() {
   if (!fs.existsSync(baselinePath)) return null;
   return JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+}
+
+function requireBaseline() {
+  const baseline = readBaseline();
+  if (!baseline) {
+    throw new Error(
+      `No baseline at ${path.relative(root, baselinePath)}. Record one with: node scripts/check-bundle-size.mjs --update-baseline`
+    );
+  }
+  return baseline;
+}
+
+function writeBaseline(baseline) {
+  fs.writeFileSync(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
+  console.log(`Wrote ${path.relative(root, baselinePath)}`);
 }
 
 function headCommit() {
@@ -177,16 +342,45 @@ function signed(delta) {
   return `${sign}${delta.toLocaleString('en-US')} B`;
 }
 
-function verify() {
-  const baseline = readBaseline();
-  if (!baseline) {
-    throw new Error(
-      `No baseline at ${path.relative(root, baselinePath)}. Record one with: node scripts/check-bundle-size.mjs --update-baseline`
-    );
+function budgetText(record) {
+  return typeof record.budgetGzip === 'number'
+    ? format(record.budgetGzip)
+    : 'undetermined';
+}
+
+function printParts(parts) {
+  for (const part of parts) {
+    console.log(`           ${format(part.gzip)}  ${part.name}`);
   }
+}
+
+/** The one line the viewer's weight is read from, beside the editor's. */
+function printRatio(measured) {
+  const viewer = measured.find(entry => entry.key === VIEWER_KEY);
+  const editor = measured.find(entry => entry.key === EDITOR_KEY);
+  if (!viewer || !editor) return;
+  const ratio = ((viewer.gzip / editor.gzip) * 100).toFixed(1);
+  console.log(
+    `${VIEWER_KEY} gzip ${format(viewer.gzip)}, lazyGzip ${format(viewer.lazyGzip)}; ${EDITOR_KEY} gzip ${format(editor.gzip)}; ratio ${ratio}%`
+  );
+}
+
+async function verify() {
+  const baseline = requireBaseline();
   if (baseline.gzipLevel !== GZIP_LEVEL) {
     throw new Error(
       `Baseline was recorded at gzip level ${baseline.gzipLevel}, this script measures at ${GZIP_LEVEL}`
+    );
+  }
+
+  const measured = await measureAll();
+  const recordedKeys = Object.keys(baseline.entries ?? {});
+  const stale = recordedKeys.filter(
+    key => !measured.some(entry => entry.key === key)
+  );
+  if (stale.length) {
+    throw new Error(
+      `Baseline records ${stale.join(', ')}, which the build no longer has. Re-record with --update-baseline`
     );
   }
 
@@ -194,29 +388,34 @@ function verify() {
   console.log(`recorded   ${baseline.recordedAt}`);
 
   let failed = false;
-  let pending = false;
+  let unbudgeted = 0;
 
-  for (const entry of ENTRIES) {
-    const recorded = baseline.entries?.[entry];
+  for (const current of measured) {
+    const recorded = baseline.entries?.[current.key];
     if (!recorded) {
       throw new Error(
-        `Baseline has no entry for ${entry}. Re-record with --update-baseline`
+        `Baseline has no record for ${current.key}. Re-record with --update-baseline`
       );
     }
 
-    const current = measure(entry);
-    const delta = current.gzip - recorded.gzip;
-    const budget = recorded.budgetGzip;
     console.log('');
-    console.log(entry);
+    console.log(current.key);
     console.log(`  gzip     ${format(current.gzip)}`);
-    console.log(`  baseline ${format(recorded.gzip)}  delta ${signed(delta)}`);
+    console.log(
+      `  baseline ${format(recorded.gzip)}  delta ${signed(current.gzip - recorded.gzip)}`
+    );
     console.log(`  raw      ${format(current.bytes)}`);
+    printParts(current.parts.eager);
+    console.log(
+      `  lazyGzip ${format(current.lazyGzip)}  baseline ${format(recorded.lazyGzip)}  delta ${signed(current.lazyGzip - recorded.lazyGzip)}`
+    );
+    printParts(current.parts.lazy);
 
+    const budget = recorded.budgetGzip;
     if (typeof budget !== 'number') {
-      pending = true;
+      unbudgeted++;
       console.log(
-        '  budget   undetermined (set one with --set-budget --budget-gzip)'
+        '  budget   undetermined, reported only (set one with --set-budget)'
       );
       continue;
     }
@@ -233,105 +432,83 @@ function verify() {
   }
 
   console.log('');
+  printRatio(measured);
+  console.log('');
   if (failed) {
     console.log('Bundle size gate: FAIL');
     console.log(
       'The budget watches for an abnormal jump, not for every byte. Find what'
     );
     console.log(
-      'grew, or re-pin it with --set-budget --budget-gzip <bytes>.'
+      'grew, or re-pin it with --set-budget --entry <key> --budget-gzip <bytes>.'
     );
     return 1;
   }
-  if (pending) {
-    console.log('Bundle size gate: reported only, no budget is set yet');
-  } else {
-    console.log('Bundle size gate: pass');
-  }
+  console.log(
+    `Bundle size gate: pass, ${unbudgeted} of ${measured.length} records reported only with no budget`
+  );
   return 0;
 }
 
-function updateBaseline(options) {
+async function updateBaseline(options) {
   const previous = readBaseline();
-  const budget = parseBudget(options.budgetGzip);
-  const note = options.budgetNote;
-  const baseCommit =
-    options.baseCommit ?? previous?.baseCommit ?? headCommit();
+  const measured = await measureAll();
   const entries = {};
 
-  for (const entry of ENTRIES) {
-    const current = measure(entry);
-    const carried = previous?.entries?.[entry];
-    entries[entry] = {
+  for (const current of measured) {
+    const carried = previous?.entries?.[current.key];
+    entries[current.key] = {
       bytes: current.bytes,
       gzip: current.gzip,
-      budgetGzip: budget !== undefined ? budget : (carried?.budgetGzip ?? null),
-      budgetNote: note !== undefined ? note : (carried?.budgetNote ?? null),
+      lazyGzip: current.lazyGzip,
+      budgetGzip: carried?.budgetGzip ?? null,
+      budgetNote: carried?.budgetNote ?? null,
     };
   }
 
   const baseline = {
-    baseCommit,
+    baseCommit: options.baseCommit ?? previous?.baseCommit ?? headCommit(),
     recordedAt: new Date().toISOString(),
     gzipLevel: GZIP_LEVEL,
     entries,
   };
 
-  fs.writeFileSync(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
-  console.log(`Wrote ${path.relative(root, baselinePath)}`);
-  for (const entry of ENTRIES) {
-    const recorded = baseline.entries[entry];
-    const budgetText =
-      typeof recorded.budgetGzip === 'number'
-        ? format(recorded.budgetGzip)
-        : 'undetermined';
-    console.log(`  ${entry}  gzip ${format(recorded.gzip)}  budget ${budgetText}`);
-  }
-  return 0;
-}
-
-/**
- * Rewrites the budget without touching the recorded measurement. Splitting this
- * from --update-baseline is what keeps the delta against the pre-migration
- * bundle readable after a budget is re-pinned.
- */
-function setBudget(options) {
-  const baseline = readBaseline();
-  if (!baseline) {
-    throw new Error(
-      `No baseline at ${path.relative(root, baselinePath)}. Record one with: node scripts/check-bundle-size.mjs --update-baseline`
+  writeBaseline(baseline);
+  for (const [key, record] of Object.entries(baseline.entries)) {
+    console.log(
+      `  ${key}  gzip ${format(record.gzip)}  lazyGzip ${format(record.lazyGzip)}  budget ${budgetText(record)}`
     );
   }
-  const budget = parseBudget(options.budgetGzip);
-
-  for (const entry of ENTRIES) {
-    const recorded = baseline.entries?.[entry];
-    if (!recorded) {
-      throw new Error(
-        `Baseline has no entry for ${entry}. Re-record with --update-baseline`
-      );
-    }
-    recorded.budgetGzip = budget;
-    if (options.budgetNote !== undefined) {
-      recorded.budgetNote = options.budgetNote;
-    }
-  }
-
-  fs.writeFileSync(baselinePath, `${JSON.stringify(baseline, null, 2)}\n`);
-  console.log(`Wrote ${path.relative(root, baselinePath)}`);
-  for (const entry of ENTRIES) {
-    const recorded = baseline.entries[entry];
-    const budgetText =
-      typeof recorded.budgetGzip === 'number'
-        ? format(recorded.budgetGzip)
-        : 'undetermined';
-    console.log(`  ${entry}  budget ${budgetText}`);
-    console.log(`  ${entry}  measurement left at gzip ${format(recorded.gzip)}`);
-  }
+  console.log('');
+  printRatio(measured);
   return 0;
 }
 
-function main() {
+/** Rewrites one record's budget without touching any recorded measurement. */
+function setBudget(options) {
+  const baseline = requireBaseline();
+  const budget = parseBudget(options.budgetGzip);
+  const record = baseline.entries?.[options.entry];
+  if (!record) {
+    throw new Error(
+      `Baseline has no record for ${options.entry}. It records: ${Object.keys(baseline.entries ?? {}).join(', ')}`
+    );
+  }
+
+  record.budgetGzip = budget;
+  if (options.budgetNote !== undefined) {
+    record.budgetNote = options.budgetNote;
+  }
+
+  writeBaseline(baseline);
+  console.log(`  ${options.entry}  budget ${budgetText(record)}`);
+  console.log(
+    `  ${options.entry}  measurement left at gzip ${format(record.gzip)}`
+  );
+  return 0;
+}
+
+async function main() {
   let options;
   try {
     options = parseArgs(process.argv.slice(2));
@@ -348,13 +525,13 @@ function main() {
   }
 
   try {
-    if (options.update) return updateBaseline(options);
+    if (options.update) return await updateBaseline(options);
     if (options.setBudget) return setBudget(options);
-    return verify();
+    return await verify();
   } catch (error) {
     console.error(error.message);
     return 1;
   }
 }
 
-process.exit(main());
+process.exit(await main());

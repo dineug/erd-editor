@@ -1,6 +1,6 @@
 /**
  * Where the three SharedWorkers are constructed, in the one spelling a
- * consumer's bundler bundles from inside a dependency. The umd build swaps this
+ * consumer's bundler bundles from inside a dependency. Each umd build swaps this
  * module for spawn.inline.ts by alias, so nothing else in src names a worker.
  */
 export function spawnExportPngWorker(name: string): SharedWorker {

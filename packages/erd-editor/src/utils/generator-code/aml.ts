@@ -4,8 +4,9 @@ import { ColumnOption } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { autoName, Name, orderByNameASC } from '@/utils/schema-sql/utils';
+import { Name } from '@/utils/schema-sql/utils';
 import { toAMLColor } from '@/utils/tableColor';
+import { autoName, orderByNameASC } from '@/utils/tableName';
 
 import {
   FormatTableOptions,

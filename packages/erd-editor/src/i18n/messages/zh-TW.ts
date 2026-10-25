@@ -487,4 +487,6 @@ export const zhTW = {
   'dictionary.toast.multiRangeCopy': '未複製：這些範圍沒有共同的列或欄',
   'dictionary.toast.pasteBeyondColumns': '超出最後一欄的欄未貼上',
   'dictionary.toast.tooManyCells': '未執行：選取的儲存格過多',
+  'viewer.loading': '正在載入圖表',
+  'viewer.loadError': '無法載入圖表',
 } satisfies Messages;

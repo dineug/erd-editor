@@ -1,0 +1,176 @@
+import { createRef, FC, observable, ref, useProvider } from '@dineug/r-html';
+
+import { AppContext, appContext } from '@/components/appContext';
+import { diffContext } from '@/components/diffContext';
+import Canvas from '@/components/erd/canvas/Canvas';
+import ContentCompass from '@/components/erd/content-compass/ContentCompass';
+import { ownsPress, sceneHit } from '@/components/erd/hitTest';
+import Minimap from '@/components/erd/minimap/Minimap';
+import { clearRelationshipHighlight } from '@/components/erd/relationshipHighlight';
+import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
+import { sceneSourceContext } from '@/components/sceneSourceContext';
+import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
+import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
+import { streamZoomLevelAction$ } from '@/engine/modules/settings/generator.actions';
+import { usePinchZoom } from '@/hooks/usePinchZoom';
+import { useUnmounted } from '@/hooks/useUnmounted';
+import { hasContent } from '@/konva/scene/contentBounds';
+import { Diff, DiffMap } from '@/utils/diff/diff';
+import { isMiddleButtonPress, onPrevent } from '@/utils/domEvent';
+import { closeColorPickerAction } from '@/utils/emitter';
+import { drag$, DragMove } from '@/utils/globalEventObservable';
+import { isMod } from '@/utils/keyboard-shortcut';
+
+import * as styles from './DiffErdViewer.styles';
+
+export type DiffErdViewerProps = {
+  app: AppContext;
+  diff: number;
+  diffMap: DiffMap;
+};
+
+const DiffErdViewer: FC<DiffErdViewerProps> = (props, ctx) => {
+  const root = createRef<HTMLDivElement>();
+  const canvas = createRef<HTMLDivElement>();
+  const app = props.app;
+  const provider = useProvider(ctx, appContext, app);
+  // Each pane is a document of its own, so it names the document source
+  // rather than inheriting whatever scene the diff was opened over.
+  const sceneSource = useProvider(ctx, sceneSourceContext, 'document');
+  // The pane's changes reach the cells the scene draws, which tint by them.
+  const diffMap = useProvider(ctx, diffContext, props.diffMap);
+  const state = observable({
+    grabCursor: 'grab',
+  });
+  const { addUnsubscribe } = useUnmounted();
+  const pinch = usePinchZoom({ app: () => props.app, root });
+
+  addUnsubscribe(() => {
+    diffMap.destroy();
+    sceneSource.destroy();
+    provider.destroy();
+  });
+
+  const resetScroll = () => {
+    if (root.value.scrollTop === 0 && root.value.scrollLeft === 0) {
+      return;
+    }
+    root.value.scrollTop = 0;
+    root.value.scrollLeft = 0;
+  };
+
+  const handleWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    if (pinch.handleWheel(event)) return;
+
+    const $mod = isMod(event);
+    const { store } = app;
+
+    store.dispatch(
+      $mod
+        ? streamZoomLevelAction$(event.deltaY < 0 ? 0.1 : -0.1)
+        : streamScrollToAction({
+            movementX: event.deltaX * -1,
+            movementY: event.deltaY * -1,
+          })
+    );
+  };
+
+  const handleMove = ({ event, movementX, movementY }: DragMove) => {
+    const { store } = app;
+    event.type === 'mousemove' && event.preventDefault();
+    if (movementX === 0 && movementY === 0) {
+      return;
+    }
+    store.dispatch(streamScrollToAction({ movementX, movementY }));
+    resetScroll();
+  };
+
+  const handleDragSelect = (event: MouseEvent | TouchEvent) => {
+    const el = event.target as HTMLElement | null;
+    if (!el || pinch.handleTouchstart(event)) return;
+
+    const canHideColorPicker = !el.closest('.color-picker');
+    // A group's body is canvas to the main button: it pans, takes a marquee
+    // and unselects; its title bar and sashes, like a table or memo, do not.
+    const onEntity = ownsPress(sceneHit(canvas.value, event), event);
+
+    const canUnselectAll =
+      !onEntity &&
+      !el.closest('.edit-overlay') &&
+      !el.closest('.edit-input') &&
+      !el.closest('.context-menu-content') &&
+      canHideColorPicker;
+
+    const canDrag =
+      canUnselectAll &&
+      canHideColorPicker &&
+      !el.closest('.content-compass') &&
+      !el.closest('.minimap') &&
+      !el.closest('.minimap-viewport') &&
+      !el.closest('.virtual-scroll');
+
+    // A middle pan keeps the pane's selection as it keeps the canvas's; Erd,
+    // which every takeover stands in, prevents the press and its lift.
+    const middlePan = canDrag && isMiddleButtonPress(event);
+
+    if (canUnselectAll && !middlePan) {
+      const { store } = app;
+      store.dispatch(unselectAllAction$());
+    }
+
+    // As on the canvas: a press that changes the pane's selection puts out a
+    // jump's light, and a middle pan leaves it on.
+    if (
+      (canUnselectAll && !middlePan) ||
+      (onEntity && !isMiddleButtonPress(event))
+    ) {
+      clearRelationshipHighlight(app.store.state.editor.id);
+    }
+
+    if (canHideColorPicker) {
+      const { emitter } = app;
+      emitter.emit(closeColorPickerAction());
+    }
+
+    if (!canDrag) return;
+
+    state.grabCursor = 'grabbing';
+
+    drag$.subscribe({
+      next: handleMove,
+      complete: () => {
+        state.grabCursor = 'grab';
+      },
+    });
+  };
+
+  return () => {
+    // As in Erd: an empty document draws no scrollbar and no map either.
+    const showMinimap = hasContent(app.store.state);
+
+    return (
+      <div
+        class={[
+          styles.root,
+          props.diff === Diff.insert
+            ? 'diff-viewer-insert'
+            : 'diff-viewer-delete',
+        ]}
+        style={{ cursor: state.grabCursor }}
+        use:ref={ref(root)}
+        on:contextmenu={onPrevent}
+        on:mousedown={handleDragSelect}
+        on:touchstart={handleDragSelect}
+        on:wheel={handleWheel}
+      >
+        <Canvas root={root} canvas={canvas} grabMove={true} />
+        <VirtualScroll />
+        {showMinimap ? <Minimap /> : null}
+        <ContentCompass />
+      </div>
+    );
+  };
+};
+
+export default DiffErdViewer;

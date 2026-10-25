@@ -539,4 +539,6 @@ export const nlNL = {
     'Kolommen na de laatste zijn niet geplakt',
   'dictionary.toast.tooManyCells':
     'Niets gedaan: de selectie beslaat te veel cellen',
+  'viewer.loading': 'Diagram wordt geladen',
+  'viewer.loadError': 'Kan het diagram niet laden',
 } satisfies Messages;

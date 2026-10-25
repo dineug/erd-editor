@@ -5,14 +5,14 @@ import {
   getContentCompass,
   scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
-import { useNameViewDropdown } from '@/components/erd/floating-toolbar/nameViewDropdown';
-import { toolbarCompass } from '@/components/erd/floating-toolbar/ToolbarCompass.template';
+import { useNameViewDropdown } from '@/components/erd/view-controls/nameViewDropdown';
+import { toolbarCompass } from '@/components/erd/view-controls/ToolbarCompass.template';
+import { useZoomControls } from '@/components/erd/view-controls/zoomControls';
 import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { NotationIconName } from '@/components/primitives/icon/icons';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { RelationshipType } from '@/constants/schema';
-import { ZOOM_RESET, ZOOM_STEP } from '@/constants/zoom';
 import {
   changeDrawTableGroupAction,
   changeHandToolAction,
@@ -20,16 +20,11 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { drawStartRelationshipAction$ } from '@/engine/modules/editor/generator.actions';
 import { addMemoAction$ } from '@/engine/modules/memo/generator.actions';
-import {
-  changeZoomLevelAction$,
-  streamZoomLevelAction$,
-} from '@/engine/modules/settings/generator.actions';
 import { addTableAction$ } from '@/engine/modules/table/generator.actions';
 import type { PlainMessageKey } from '@/i18n/translate';
 import { KeyBindingName, toShortcutTitle } from '@/utils/keyboard-shortcut';
 import { isMemoShown } from '@/utils/memo';
 import { isTableGroupShown } from '@/utils/tableGroup';
-import { toZoomFormat } from '@/utils/validation';
 
 import * as styles from './FloatingToolbar.styles';
 
@@ -83,6 +78,7 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
+  const zoom = useZoomControls(ctx);
   const nameView = useNameViewDropdown(ctx);
 
   // Select is the plain pointer, so it ends a table group draw armed as well,
@@ -130,17 +126,6 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
     );
   };
 
-  const handleZoomStep = (step: number) => () => {
-    const { store } = app.value;
-    store.dispatch(streamZoomLevelAction$(step));
-  };
-
-  // Absolute, the way the reset chord is, so it holds the middle of the screen.
-  const handleZoomReset = () => {
-    const { store } = app.value;
-    store.dispatch(changeZoomLevelAction$(ZOOM_RESET));
-  };
-
   const handleCompass = () => {
     scrollToNearestContent(app.value.store, sourceRef.value);
   };
@@ -153,7 +138,7 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
   return () => {
     const { store, keyBindingMap } = app.value;
     const { t } = i18n.value;
-    const { editor, settings } = store.state;
+    const { editor } = store.state;
     const drawing = editor.drawRelationship?.relationshipType;
     const compass = getContentCompass(store.state, sourceRef.value);
     const title = (labelKey: PlainMessageKey, keyBindingName: KeyBindingName) =>
@@ -217,27 +202,7 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
               <div class={styles.divider}></div>
             </>
           )}
-          <div
-            class={styles.menu}
-            title={title('floatingToolbar.zoomOut', KeyBindingName.zoomOut)}
-            on:click={handleZoomStep(-ZOOM_STEP)}
-          >
-            <Icon name="minus" size={ICON_SIZE} />
-          </div>
-          <div
-            class={['zoom-level', styles.readout]}
-            title={title('floatingToolbar.resetZoom', KeyBindingName.zoomReset)}
-            on:click={handleZoomReset}
-          >
-            {toZoomFormat(settings.zoomLevel)}
-          </div>
-          <div
-            class={styles.menu}
-            title={title('floatingToolbar.zoomIn', KeyBindingName.zoomIn)}
-            on:click={handleZoomStep(ZOOM_STEP)}
-          >
-            <Icon name="plus" size={ICON_SIZE} />
-          </div>
+          {zoom()}
           <div class={styles.divider}></div>
           {NOTATIONS.map(notation => (
             <div

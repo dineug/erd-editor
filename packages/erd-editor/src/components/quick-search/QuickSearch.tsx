@@ -11,7 +11,7 @@ import {
 import { isEmpty } from 'es-toolkit/compat';
 import { filter } from 'rxjs';
 
-import { useAppContext } from '@/components/appContext';
+import { type AppContext, useAppContext } from '@/components/appContext';
 import { useI18n } from '@/components/localeContext';
 import HighlightedText from '@/components/primitives/highlighted-text/HighlightedText';
 import Kbd from '@/components/primitives/kbd/Kbd';
@@ -20,6 +20,7 @@ import { Open } from '@/constants/open';
 import { changeOpenMapAction } from '@/engine/modules/editor/atom.actions';
 import { isEditingText } from '@/engine/modules/editor/state';
 import { useUnmounted } from '@/hooks/useUnmounted';
+import type { I18n } from '@/i18n/translate';
 import { arrayHas } from '@/utils/arrayHas';
 import { lastCursorFocus } from '@/utils/focus';
 import { focusEvent } from '@/utils/internalEvents';
@@ -31,11 +32,10 @@ import {
 } from '@/utils/virtualRange';
 
 import {
-  Action,
-  createScopeActions,
-  PalettePreferences,
+  type Action,
+  type PalettePreferences,
   searchActions,
-} from './actions';
+} from './documentSearch';
 import { clearHangulForms, findPaletteChunks } from './hangul';
 import { PALETTE_ROW_HEIGHT, paletteListHeight } from './paletteList';
 import {
@@ -47,7 +47,17 @@ import {
 import * as styles from './QuickSearch.styles';
 import { paletteRows, scopeBase } from './scopedActions';
 
-export type QuickSearchProps = PalettePreferences;
+/** What builds the palette's top level in the language shown, with the options of the pickers the element offers. */
+export type PaletteTopLevel = (
+  app: AppContext,
+  i18n: I18n,
+  preferences: PalettePreferences
+) => Action[];
+
+export type QuickSearchProps = PalettePreferences & {
+  /** The rows the palette opens on, which its host decides: the editor hands in its commands and table jumps. */
+  topLevel: PaletteTopLevel;
+};
 
 const hasAutocompleteKey = arrayHas([
   'ArrowUp',
@@ -87,8 +97,12 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   const isOpen = () =>
     Boolean(app.value.store.state.editor.openMap[Open.search]);
 
-  /** The top level in the language shown, Theme and Display Language with it while the element offers those pickers. */
-  const createTopLevel = () => createScopeActions(app.value, i18n.value, props);
+  /** The top level its host builds in the language shown, handed the options of the pickers the element offers. */
+  const createTopLevel = () =>
+    props.topLevel(app.value, i18n.value, {
+      appearance: props.appearance,
+      locale: props.locale,
+    });
 
   /** What the list shows: the level's commands or their fuzzy hits, at the top level the prefixes offered below them, or a scope's rows. */
   const getActions = () => byFilter(state.rows);
@@ -185,6 +199,10 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     return table ? [keyword, table] : [keyword];
   };
 
+  /** How much of the list shows: its height for so many rows, or less where a short host shrinks it. */
+  const shownHeight = (count: number) =>
+    Math.min(paletteListHeight(count), list.value?.clientHeight || Infinity);
+
   /** Brings the keyboard's row into view once the list holds it, drawn or not. */
   const scrollIntoView = () => {
     nextTick(() => {
@@ -194,7 +212,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
         offsetToShow(
           state.index,
           scroll.top,
-          paletteListHeight(count),
+          shownHeight(count),
           PALETTE_ROW_HEIGHT
         )
       );

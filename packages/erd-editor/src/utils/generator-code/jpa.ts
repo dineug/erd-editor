@@ -9,11 +9,8 @@ import {
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import {
-  orderByNameASC,
-  primaryKey,
-  primaryKeyColumns,
-} from '@/utils/schema-sql/utils';
+import { primaryKey } from '@/utils/schema-sql/utils';
+import { orderByNameASC, primaryKeyColumns } from '@/utils/tableName';
 
 import {
   ColumnScalar,

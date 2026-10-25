@@ -8,7 +8,7 @@ import {
 import { TablePlacement } from '@/constants/tablePlacement';
 import type { LocaleOption } from '@/i18n/locales';
 import { ValuesType } from '@/internal-types';
-import { ThemeOptions } from '@/themes/radix-ui-theme';
+import type { ThemeOptions } from '@/themes/radix-ui-theme';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { safeCallback } from '@/utils/safeCallback';
 

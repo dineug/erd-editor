@@ -567,4 +567,6 @@ export const arSA = {
   'dictionary.toast.pasteBeyondColumns':
     'لم تُلصق الأعمدة التي تتجاوز العمود الأخير',
   'dictionary.toast.tooManyCells': 'لم يُنفَّذ شيء: يشمل التحديد خلايا كثيرة جدًا',
+  'viewer.loading': 'جارٍ تحميل المخطط',
+  'viewer.loadError': 'تعذر تحميل المخطط',
 } satisfies Messages;

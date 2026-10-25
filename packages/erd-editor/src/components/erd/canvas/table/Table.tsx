@@ -7,11 +7,12 @@ import type { Stage } from 'konva/lib/Stage';
 import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useDiffMap } from '@/components/diffContext';
 import {
   beginColumnDragPointer,
   endColumnDragPointer,
   moveColumnDragPointer,
-} from '@/components/erd/canvas/column-drag-ghost/columnDragPointer';
+} from '@/components/erd/canvas/columnDragPointer';
 import { diffOutlineRect } from '@/components/erd/canvas/DiffOutline.template';
 import {
   progressOf,
@@ -62,11 +63,10 @@ import {
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
 import { goToErdTable } from '@/components/erd/canvas/table/goToErd';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
-import { diffOutline, diffTextColor } from '@/components/erd/diff-viewer/diff';
-import { useDiffMap } from '@/components/erd/diff-viewer/diffContext';
 import { focusFlowView } from '@/components/flowCenters';
 import { useI18n } from '@/components/localeContext';
 import type { LucideIconName } from '@/components/primitives/icon/icons';
+import { useSceneInteraction } from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -117,6 +117,7 @@ import {
 } from '@/konva/scene/viewLayout';
 import type { Theme } from '@/themes/tokens';
 import { tableHeaderHeight } from '@/utils/calcTable';
+import { diffOutline, diffTextColor } from '@/utils/diff/diff';
 import { dragendColumnAllAction, openColorPickerAction } from '@/utils/emitter';
 import { drag$ } from '@/utils/globalEventObservable';
 import { CURSOR_GRABBING } from '@/utils/stageCursor';
@@ -209,6 +210,7 @@ const Table: FC<TableProps> = (props, ctx) => {
   // Read only where a field is empty, so a switch redraws an unnamed table alone.
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
+  const interaction = useSceneInteraction(ctx);
   const diffMapRef = useDiffMap(ctx);
   const { hasEdit, hasFocus, hasSelectColumn, hasFocusColumn } = useFocusTable(
     ctx,
@@ -359,9 +361,10 @@ const Table: FC<TableProps> = (props, ctx) => {
   };
 
   const handleFocus = (focusType: FocusType) => {
-    // A view holds no focus, header cell included: the underline it would
-    // light is the ERD tab's mark on the document, not a mark a reader made here.
-    if (sourceRef.value !== 'document') return;
+    // A view holds no focus, header cell included: the underline would be the
+    // ERD tab's mark on the document, not one a reader made here. A read
+    // scene's root takes the press for itself.
+    if (sourceRef.value !== 'document' || interaction.value === 'read') return;
 
     const { store } = app.value;
     store.dispatch(focusTableAction({ tableId: props.table.id, focusType }));
@@ -371,7 +374,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     if (!doubleClick.isDouble(focusType, event)) return;
     // A view edits nothing: the editor this would open is the document
     // overlay's, which draws on the document placement and not on this cell.
-    if (sourceRef.value !== 'document') return;
+    if (sourceRef.value !== 'document' || interaction.value === 'read') return;
 
     const { store } = app.value;
     store.dispatch(editTableAction());
@@ -620,6 +623,8 @@ const Table: FC<TableProps> = (props, ctx) => {
     // colour edge takes no click, since the gate drops what the picker changes.
     // The edge is the card's last child, so no band or row tint covers it.
     const view = source !== 'document';
+    // A read scene draws no button that edits, and its colour edge opens nothing.
+    const read = interaction.value === 'read';
 
     // The header line, inside the header group the card's inset places. Both
     // sources keep the two buttons centred on it, in the room past the name
@@ -886,7 +891,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 })
               : null}
           </k-group>
-          {view
+          {view || read
             ? null
             : sceneIcon({
                 icon: 'plus',
@@ -903,7 +908,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 y: headerButtonY,
                 click: handleAddColumn,
               })}
-          {view
+          {view || read
             ? null
             : sceneIcon({
                 icon: 'x',
@@ -1030,6 +1035,7 @@ const Table: FC<TableProps> = (props, ctx) => {
                 checkMarks={checkMarks}
                 preview={props.preview}
                 editorFocused={props.editorFocused}
+                read={read}
                 onDragstart={handleDragstartColumn}
                 onDragend={handleDragendColumn}
               />
@@ -1041,7 +1047,7 @@ const Table: FC<TableProps> = (props, ctx) => {
           kind="table-header-color"
           data={getColorEdgePath(rect.height)}
           fill={table.ui.color}
-          listening={!view}
+          listening={!view && !read}
           on:click={mainButtonClick(handleOpenColorPicker)}
           on:mouseenter={(event: SceneMouseEvent) => {
             setSceneCursor(event, CURSOR_POINTER);

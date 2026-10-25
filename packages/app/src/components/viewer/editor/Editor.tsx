@@ -1,4 +1,4 @@
-import '@dineug/erd-editor';
+import '@dineug/erd-editor/erd-editor.js';
 
 import type { ErdEditorElement } from '@dineug/erd-editor';
 import { useAtomValue } from 'jotai';

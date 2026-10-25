@@ -1,7 +1,13 @@
-import { html, observable } from '@dineug/r-html';
+import { addCSSHost, html, observable } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { flush, mountAndFlush, Mounted } from '@/__test-utils__/index';
+import {
+  createTestAppContext,
+  flush,
+  mount,
+  mountAndFlush,
+  Mounted,
+} from '@/__test-utils__/index';
 import Theme from '@/components/theme/Theme';
 import {
   AccentColor,
@@ -21,7 +27,7 @@ afterEach(() => {
 const styleText = (container: HTMLElement) =>
   container.querySelector('style')?.textContent ?? '';
 
-describe('Theme', () => {
+describe('Theme outside a shadow root', () => {
   it('renders a host style block from the given theme', async () => {
     const theme = { foreground: '#111111', active: '#222222' } as any;
     mounted = await mountAndFlush(html`<${Theme} theme=${theme} />`);
@@ -87,5 +93,68 @@ describe('Theme', () => {
 
     expect(text).toContain(':host');
     expect(text).not.toContain('--erd-editor-');
+  });
+});
+
+/** The theme mounted in a closed shadow root that joined the shared sheets, as both elements mount it. */
+async function mountInShadow(theme: any) {
+  const element = document.createElement('div');
+  document.body.append(element);
+  const shadow = element.attachShadow({ mode: 'closed' });
+  addCSSHost(shadow);
+  mounted = mount(
+    html`<${Theme} theme=${theme} />`,
+    createTestAppContext(),
+    shadow
+  );
+  await flush();
+  return shadow;
+}
+
+const sheetText = (sheet: CSSStyleSheet | undefined) =>
+  Array.from(sheet?.cssRules ?? [])
+    .map(rule => rule.cssText)
+    .join('');
+
+describe('Theme in a shadow root', () => {
+  it('puts the tokens in a sheet of the shadow root, ahead of the shared sheets, and renders no style element', async () => {
+    const shadow = await mountInShadow({
+      foreground: '#111111',
+      active: '#222222',
+    });
+    const [own] = shadow.adoptedStyleSheets;
+
+    expect(sheetText(own)).toContain(':host');
+    expect(sheetText(own)).toContain(
+      '--foreground: var(--erd-editor-foreground, #111111)'
+    );
+    expect(sheetText(own)).toContain(
+      '--active: var(--erd-editor-active, #222222)'
+    );
+    expect(shadow.querySelector('style')).toBeNull();
+  });
+
+  it('writes the sheet again when the observable theme changes', async () => {
+    const theme = observable({ foreground: '#000000' }) as any;
+    const shadow = await mountInShadow(theme);
+    const [own] = shadow.adoptedStyleSheets;
+
+    theme.foreground = '#ffffff';
+    await flush();
+
+    expect(shadow.adoptedStyleSheets[0]).toBe(own);
+    expect(sheetText(own)).toContain(
+      '--foreground: var(--erd-editor-foreground, #ffffff)'
+    );
+  });
+
+  it('drops its sheet from the shadow root as it unmounts', async () => {
+    const shadow = await mountInShadow({ foreground: '#111111' });
+    const [own] = shadow.adoptedStyleSheets;
+
+    mounted?.unmount();
+    mounted = null;
+
+    expect(shadow.adoptedStyleSheets).not.toContain(own);
   });
 });

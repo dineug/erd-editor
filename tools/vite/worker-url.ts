@@ -22,7 +22,7 @@ export function relativeWorkerUrl(chunkFileName: string, url: string): string {
 /**
  * Rewrites every worker URL in a library chunk into the one spelling webpack,
  * Rspack and Vite all resolve statically from inside a dependency and bundle
- * as an entry of their own: new URL("./workers/file.js", import.meta.url).
+ * as an entry of their own, relative to the chunk: new URL("./…", import.meta.url).
  */
 export function rewriteWorkerUrls(code: string, chunkFileName: string): string {
   return code.replace(

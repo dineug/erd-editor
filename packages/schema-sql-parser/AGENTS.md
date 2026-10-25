@@ -17,7 +17,7 @@
    - a type added to a `src/parser/dataType/` list goes into `packages/erd-editor/src/constants/sql/dataType/` too (Rules § Data types).
 3. Run `pnpm exec vp run --filter @dineug/schema-sql-parser --fail-if-no-match test` (root step 3). A change to `src/schema_sql_test_case.md` alone runs it too, since `index.test.ts` reads that file. A change to what `src/index.ts` exports, or to a statement type, runs `pnpm test` as well, because `erd-editor` type-checks against this package's `dist/**/*.d.ts`.
 4. Run `pnpm --filter @dineug/schema-sql-parser --fail-if-no-match test:coverage` where shipping source changed (root step 4). `vitest.config.ts` names what it measures, each file at 80%.
-5. Run root step 5 with `pnpm peer-graph` and `pnpm size`. `erd-editor` inlines this package, so a change to its shipping source changes `erd-editor`'s output.
+5. Run root step 5 with `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size`. `erd-editor` inlines this package, so a change to its shipping source changes `erd-editor`'s output.
 6. When a change alters the DDL an imported schema exports again, run that DDL on the vendor through the docker loop (root step 6). Rules § Data types records one such round trip.
 7. Report as root step 7 says.
 

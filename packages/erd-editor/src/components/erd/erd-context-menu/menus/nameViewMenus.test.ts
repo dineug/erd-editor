@@ -6,10 +6,8 @@ import {
   pseudoMessages,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
-import {
-  createNameViewMenus,
-  menus,
-} from '@/components/erd/erd-context-menu/menus/nameViewMenus';
+import { createNameViewMenus } from '@/components/erd/erd-context-menu/menus/nameViewMenus';
+import { nameViewOptions } from '@/components/erd/nameViewOptions';
 import { LockSettingType, NameViewMode } from '@/constants/schema';
 import { changeNameViewModeAction } from '@/engine/modules/settings/atom.actions';
 import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
@@ -56,7 +54,7 @@ function recordSwitches() {
 
 describe('nameViewMenus', () => {
   it('lists the three views in order, each named in the language it is handed', () => {
-    expect(menus.map(menu => menu.value)).toEqual([
+    expect(nameViewOptions.map(menu => menu.value)).toEqual([
       NameViewMode.physical,
       NameViewMode.logical,
       NameViewMode.both,

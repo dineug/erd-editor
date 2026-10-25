@@ -14,8 +14,8 @@ import {
   scrollToNearestContent,
 } from '@/components/erd/content-compass/compassGeometry';
 import * as floating from '@/components/erd/floating-toolbar/FloatingToolbar.styles';
-import { useNameViewDropdown } from '@/components/erd/floating-toolbar/nameViewDropdown';
-import { toolbarCompass } from '@/components/erd/floating-toolbar/ToolbarCompass.template';
+import { useNameViewDropdown } from '@/components/erd/view-controls/nameViewDropdown';
+import { toolbarCompass } from '@/components/erd/view-controls/ToolbarCompass.template';
 import {
   canStepFlowView,
   showAllFlowView,

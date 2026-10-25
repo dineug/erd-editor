@@ -13,6 +13,7 @@ import {
 } from '@/components/erd/minimap/minimapGeometry';
 import { renderMinimapScene } from '@/components/erd/minimap/MinimapScene';
 import Viewport from '@/components/erd/minimap/viewport/Viewport';
+import { useSceneActive } from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { MINIMAP_MARGIN, MINIMAP_SIZE } from '@/constants/layout';
 import { sceneScrollToAction } from '@/engine/modules/settings/atom.actions';
@@ -33,6 +34,7 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
   const canvas = createRef<HTMLDivElement>();
   const { state, onScrollStart } = useMinimapScroll(ctx);
   const sourceRef = useSceneSource(ctx);
+  const active = useSceneActive(ctx);
   const { addUnsubscribe } = useUnmounted();
   let stage: Stage | null = null;
 
@@ -83,6 +85,8 @@ const Minimap: FC<MinimapProps> = (props, ctx) => {
    * goes anywhere, and the map grows to hold the screen where the press sent it.
    */
   const handleMove = (event: MouseEvent | TouchEvent) => {
+    // A finger is the page's until the scene takes it, as on the handle.
+    if (!isMouseEvent(event) && !active.value()) return;
     // A tap is followed by a compatibility mouse press at the same pixel, and
     // the map has moved by then, so the second one centres somewhere else.
     if (!isMouseEvent(event)) event.preventDefault();

@@ -557,4 +557,6 @@ export const slSI = {
     'Stolpci za zadnjim niso bili prilepljeni',
   'dictionary.toast.tooManyCells':
     'Nič ni bilo storjeno: izbor zajema preveč celic',
+  'viewer.loading': 'Nalaganje diagrama',
+  'viewer.loadError': 'Diagrama ni bilo mogoče naložiti',
 } satisfies Messages;

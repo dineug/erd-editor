@@ -10,6 +10,7 @@ import {
 import { createTestAppContext } from '@/__test-utils__/index';
 import type {
   ErdEditorElement,
+  ErdViewerElement,
   LocaleCode,
   LocaleOption,
   SchemaSQLOptions,
@@ -26,91 +27,99 @@ afterEach(() => {
 describe('@dineug/erd-editor entry point', () => {
   it('exposes exactly the documented public surface', () => {
     expect(Object.keys(index).sort()).toEqual([
+      'ErdEditorElement',
+      'ErdViewerElement',
       'createKeyBindingMap',
+      'defineErdEditor',
+      'defineErdViewer',
       'dictionaryRowChords',
       'setExportFileCallback',
       'setImportFileCallback',
     ]);
   });
 
-  it('registers the <erd-editor> custom element as a side effect', () => {
-    expect(customElements.get('erd-editor')).toBeTypeOf('function');
+  it('defines neither tag, so neither class constructs until its define runs', () => {
+    expect(customElements.get('erd-editor')).toBeUndefined();
+    expect(customElements.get('erd-viewer')).toBeUndefined();
+    expect(() => new index.ErdEditorElement()).toThrow();
+    expect(() => new index.ErdViewerElement()).toThrow();
   });
 
-  it('creates an element that implements the editor API', () => {
-    const editor = document.createElement('erd-editor');
-
-    expect(editor).toBeInstanceOf(customElements.get('erd-editor') as any);
-    expect(editor.focus).toBeTypeOf('function');
-    expect(editor.blur).toBeTypeOf('function');
-    expect(editor.clear).toBeTypeOf('function');
-    expect(editor.destroy).toBeTypeOf('function');
-    expect(editor.setInitialValue).toBeTypeOf('function');
-    expect(editor.setKeyBindingMap).toBeTypeOf('function');
+  it('types each exported class by the interface it constructs, and both define functions', () => {
+    expectTypeOf<
+      InstanceType<typeof index.ErdEditorElement>
+    >().toEqualTypeOf<ErdEditorElement>();
+    expectTypeOf<
+      InstanceType<typeof index.ErdViewerElement>
+    >().toEqualTypeOf<ErdViewerElement>();
+    expectTypeOf(index.defineErdEditor).toEqualTypeOf<() => void>();
+    expectTypeOf(index.defineErdViewer).toEqualTypeOf<() => void>();
+    expect(index.ErdViewerElement.observedAttributes).toEqual([
+      'src',
+      'nameView',
+      'minimap',
+      'controls',
+      'name-view',
+    ]);
   });
 
   it('types value as the file form to set and runtimeValue as a read-only string', () => {
-    const editor = document.createElement('erd-editor');
-
     const assignRuntimeValue = (element: ErdEditorElement) => {
       // @ts-expect-error the runtime value is read, never assigned
       element.runtimeValue = '';
     };
 
-    expectTypeOf(editor.value).toEqualTypeOf<string>();
-    expectTypeOf(editor.runtimeValue).toEqualTypeOf<string>();
+    expectTypeOf<ErdEditorElement['value']>().toEqualTypeOf<string>();
+    expectTypeOf<ErdEditorElement['runtimeValue']>().toEqualTypeOf<string>();
     expect(assignRuntimeValue).toBeTypeOf('function');
   });
 
   it('types a schema setter as returning a Promise only where it places first', () => {
-    const editor = document.createElement('erd-editor');
     const placement = 'auto' as 'auto' | 'grid';
 
-    expectTypeOf(() =>
+    expectTypeOf((editor: ErdEditorElement) =>
       editor.setSchemaSQL('', { placement: 'auto' })
     ).returns.toEqualTypeOf<Promise<void>>();
-    expectTypeOf(() =>
+    expectTypeOf((editor: ErdEditorElement) =>
       editor.setSchemaGraphQL('', { placement: 'grid' })
     ).returns.toEqualTypeOf<void>();
-    expectTypeOf(() => editor.setSchemaDBML('')).returns.toEqualTypeOf<void>();
-    expectTypeOf(() =>
+    expectTypeOf((editor: ErdEditorElement) =>
+      editor.setSchemaDBML('')
+    ).returns.toEqualTypeOf<void>();
+    expectTypeOf((editor: ErdEditorElement) =>
       editor.setSchemaAML('', { placement })
     ).returns.toEqualTypeOf<Promise<void> | void>();
   });
 
   it('types the import mode on every schema setter and on setSchemaJSON', () => {
-    const editor = document.createElement('erd-editor');
-
-    expectTypeOf(() =>
+    expectTypeOf((editor: ErdEditorElement) =>
       editor.setSchemaSQL('', { mode: 'append', placement: 'auto' })
     ).returns.toEqualTypeOf<Promise<void>>();
-    expectTypeOf(() =>
+    expectTypeOf((editor: ErdEditorElement) =>
       editor.setSchemaDBML('', { mode: 'append' })
     ).returns.toEqualTypeOf<void>();
-    expectTypeOf(editor.setSchemaJSON).parameters.toEqualTypeOf<
+    expectTypeOf<ErdEditorElement['setSchemaJSON']>().parameters.toEqualTypeOf<
       [value: string, options?: { mode?: 'replace' | 'append' }]
     >();
-    expectTypeOf(editor.setSchemaJSON).returns.toEqualTypeOf<void>();
+    expectTypeOf<
+      ErdEditorElement['setSchemaJSON']
+    >().returns.toEqualTypeOf<void>();
   });
 
   it('types the display language setters, which the hosts check their own lists against', () => {
-    const editor = document.createElement('erd-editor');
-
-    expectTypeOf(editor.setLocale).parameter(0).toEqualTypeOf<LocaleOption>();
-    expectTypeOf(editor.setSystemLocale)
+    expectTypeOf<ErdEditorElement['setLocale']>()
+      .parameter(0)
+      .toEqualTypeOf<LocaleOption>();
+    expectTypeOf<ErdEditorElement['setSystemLocale']>()
       .parameter(0)
       .toEqualTypeOf<string | null>();
     expectTypeOf<LocaleOption>().toEqualTypeOf<LocaleCode | 'system'>();
     expectTypeOf<'ko-KR'>().toExtend<LocaleCode>();
     expectTypeOf<'ko'>().not.toExtend<LocaleCode>();
-    expect(editor.setLocale).toBeTypeOf('function');
-    expect(editor.setSystemLocale).toBeTypeOf('function');
   });
 
   it('types getSchemaSQL’s options as SchemaSQLOptions, the statements, the header and the logical name comments', () => {
-    const editor = document.createElement('erd-editor');
-
-    expectTypeOf(editor.getSchemaSQL)
+    expectTypeOf<ErdEditorElement['getSchemaSQL']>()
       .parameter(1)
       .toEqualTypeOf<SchemaSQLOptions | undefined>();
     expectTypeOf<SchemaSQLOptions>().toEqualTypeOf<{
@@ -118,7 +127,6 @@ describe('@dineug/erd-editor entry point', () => {
       header?: 'none' | 'use' | 'createAndUse';
       logicalNameAsComment?: boolean;
     }>();
-    expect(editor.getSchemaSQL).toBeTypeOf('function');
   });
 
   it('exports the default key bindings, a fresh map on every call', () => {

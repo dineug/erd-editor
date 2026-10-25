@@ -538,4 +538,6 @@ export const euES = {
     'Azkenaren ondoko zutabeak ez dira itsatsi',
   'dictionary.toast.tooManyCells':
     'Ez da ezer egin: hautapenak gelaxka gehiegi hartzen ditu',
+  'viewer.loading': 'Diagrama kargatzen',
+  'viewer.loadError': 'Ezin izan da diagrama kargatu',
 } satisfies Messages;

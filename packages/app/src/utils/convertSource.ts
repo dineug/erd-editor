@@ -1,4 +1,4 @@
-import '@dineug/erd-editor';
+import '@dineug/erd-editor/erd-editor.js';
 
 import type { SourceImport } from '@/utils/importFile';
 

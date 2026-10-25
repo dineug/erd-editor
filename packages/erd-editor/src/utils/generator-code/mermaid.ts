@@ -9,8 +9,8 @@ import {
 import { RootState } from '@/engine/state';
 import { Column, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { getUniqueIndexKeys } from '@/utils/tableKeys';
+import { orderByNameASC } from '@/utils/tableName';
 
 import { FormatTableOptions } from './utils';
 

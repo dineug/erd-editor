@@ -5,12 +5,8 @@ import { PrimitiveType } from '@/constants/sql/dataType';
 import { RootState } from '@/engine/state';
 import { Column, Relationship, Table } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import {
-  autoName,
-  Name,
-  orderByNameASC,
-  referentialActionSupport,
-} from '@/utils/schema-sql/utils';
+import { Name, referentialActionSupport } from '@/utils/schema-sql/utils';
+import { autoName, orderByNameASC } from '@/utils/tableName';
 
 import {
   ColumnScalar,

@@ -1,5 +1,5 @@
-import type { DiffMap } from '@/components/erd/diff-viewer/diff';
 import type { ValuesType } from '@/internal-types';
+import type { DiffMap } from '@/utils/diff/diff';
 
 export const DiffKind = {
   table: 'table',

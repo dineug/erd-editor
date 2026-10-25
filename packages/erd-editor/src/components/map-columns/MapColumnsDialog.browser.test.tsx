@@ -42,6 +42,7 @@ import { explorerViewOf } from '@/components/explorer/explorerView';
 import GlobalStyles from '@/components/global-styles/GlobalStyles';
 import MapColumnsDialog from '@/components/map-columns/MapColumnsDialog';
 import { openMapColumns } from '@/components/map-columns/openMapColumns';
+import { createScopeActions } from '@/components/quick-search/actions';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import { themeContext } from '@/components/themeContext';
 import ToastContainer from '@/components/toast-container/ToastContainer';
@@ -94,7 +95,7 @@ const Editor: FC = (_, ctx) => {
       <Erd isDarkMode={false} mouseTracking={false} readonly={false} />
       <MapColumnsDialog readonly={false} isDarkMode={false} />
       <ExplorerController />
-      <QuickSearch />
+      <QuickSearch topLevel={createScopeActions} />
       <ToastContainer />
     </div>
   );

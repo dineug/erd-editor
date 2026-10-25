@@ -33,7 +33,11 @@ export type {
   FC,
   FunctionalComponent,
 } from '@/render/part/node/component/observableComponent';
-export { defineCustomElement } from '@/render/part/node/component/webComponent';
+export {
+  createCustomElement,
+  type CustomElementClass,
+  defineCustomElement,
+} from '@/render/part/node/component/webComponent';
 export {
   closestElement,
   queryShadowSelector,
@@ -59,4 +63,9 @@ export type {
   CSSDiagnosticHandler,
 } from '@/template/cssDiagnostics';
 export { setCSSDiagnostics } from '@/template/cssDiagnostics';
-export { addCSSHost, setGlobalStyleOrder } from '@/template/vCSSStyleSheet';
+export {
+  addCSSHost,
+  adoptHostSheet,
+  canAdoptStyleSheets,
+  setGlobalStyleOrder,
+} from '@/template/vCSSStyleSheet';

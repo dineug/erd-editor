@@ -13,7 +13,7 @@
 2. Give the change what root step 2 asks. A new compile error gets its own case in `codegen.test.ts`, as each existing one has. The inline snapshot changes only as Testing Requirements allows.
 3. Run `pnpm exec vp run --filter @dineug/vite-plugin-r-html --fail-if-no-match test` (root step 3). After a codegen change, also run `pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match test`, because erd-editor's parity specs gate the compiled output. A change to `rHtml`, `transformJsxToTagged` or the option types runs `pnpm test`, as root step 3 says for anything a package hands its siblings.
 4. Run `pnpm --filter ./packages/vite-plugin-r-html --fail-if-no-match test:coverage` (root step 4).
-5. Run `pnpm check`, then `pnpm build` (root step 5). The root typecheck in `pnpm check` reads erd-editor's configs through this package's source (Rules, Type checking). A codegen change changes erd-editor's build output, so run `pnpm peer-graph` and `pnpm size` after the build.
+5. Run `pnpm check`, then `pnpm build` (root step 5). The root typecheck in `pnpm check` reads erd-editor's configs through this package's source (Rules, Type checking). A codegen change changes erd-editor's build output, so run `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size` after the build.
 6. A codegen change that alters what the editor renders also runs `pnpm --filter @dineug/erd-editor e2e` (root step 6). A refresh change gets the hand check in Testing Requirements, because no spec drives a hot update through the dev server.
 7. Report as root step 7 says. Name the dev-server hot-update check as run by hand or left out, with the reason.
 

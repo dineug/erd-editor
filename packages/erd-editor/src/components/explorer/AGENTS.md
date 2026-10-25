@@ -22,8 +22,9 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 | `explorerTree.ts` | `buildExplorerTree`: the document as `TreeNode<ExplorerNode>`s, its folders, order and counts; `buildSearchTree`, `searchExpanded`, `matchRowId` and `matchAncestorIds`, the tree a search shows and the rows above a match in it |
 | `explorerNavigation.ts` | `targetOf`, `jumpTo` and `activateNode`: where a row or a match goes, and the light a foreign key leaves |
 | `explorerSearch.ts` | The search's state machine over `(store, view)`: `openSearch`, `focusSearch`, `setQuery`, `toggleOption`, `toggleField`, `goToNext`, `goToPrevious`, `goToMatch`, `replaceOne`, `replaceAll`, `noteBatch`, `searchIfStale`, `countText`, `REGEX_INPUT_DELAY`, and the runtime no render reads (`searchRuntimeOf`) |
-| `matchTarget.ts` | `toErdTarget`, `withReplacement`, `showNextMatchAction$` |
-| `fieldIcon.tsx` | The icon of an excerpt row, which the palette's `#` rows share |
+| `matchTarget.ts` | `withReplacement`, `showNextMatchAction$` |
+| `src/components/erd/erdTarget.ts` | `toErdTarget`, where on the canvas a match's text is edited, which the palette's field rows share |
+| `src/components/erd/fieldIcon.tsx` | The icon of an excerpt row, which the palette's `#` rows share |
 | `Explorer.tsx` | The shell: the panel at the width the layout reaches, or nothing, and the keyboard handed back when it goes |
 | `explorer-panel/ExplorerPanel.tsx` | The panel: its header, the search, the tree, each kind of row, the keys it keeps and its edge |
 | `explorer-search/ExplorerSearch.tsx` | The search above the tree: the fields, the options, the count with its steps, the scopes |
@@ -32,7 +33,7 @@ A path starting with `src/` or `e2e/` is relative to `packages/erd-editor`; a ba
 | `src/utils/find-replace/findMatches.ts` | `FindField`, `DEFAULT_FIND_FIELDS`, `isTableLogicalName`, `FindTextActionTypes`, `FieldOrder`, `treeOrderOf`, `walkFields`, `findMatches`, `rematchField`, `ReplaceRun`, `resumeRun`, `nextReplace` |
 | `src/utils/find-replace/matcher.ts` | `createMatcher`, `toUnicodeSource`, `DEFAULT_FIND_OPTIONS`, the Whole Word wrapper |
 | `src/utils/find-replace/preserveCase.ts` | `preserveCase`, the Preserve Case (AB) rule |
-| `src/utils/find-replace/replaceActions.ts` | `toFieldAction`, `toReplaceActions` and its `replaced` count |
+| `src/utils/find-replace/replaceActions.ts` | `toFieldAction`, `toReplaceActions` and its `replaced` count. The directory's `index.ts` leaves it out, so a module that reads matches reaches none of the generators a replacement writes through, and a caller imports it by its path |
 | `src/utils/find-replace/present.ts` | What a match says: `FindFieldLabel`, `locationOf`, `describeMatch`, `snippetOf` |
 | `src/utils/keyboard-shortcut/index.ts` | `PANEL_PASSING_BINDINGS` and `stopsAtPanel`, shared with the color picker |
 | `src/hooks/useKeyBindingMap.ts` | `yields` and `YIELDS_TO_A_TAKEOVER` |

@@ -1,8 +1,19 @@
 import { clamp } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
-import { CANVAS_ZOOM_MIN } from '@/constants/schema';
+import {
+  getScrollToCenter,
+  getViewTransform,
+} from '@/components/erd/minimap/minimapGeometry';
+import { CANVAS_ZOOM_MAX, CANVAS_ZOOM_MIN } from '@/constants/schema';
 import type { Viewport } from '@/engine/modules/editor/state';
+import {
+  changeZoomLevelAction,
+  hasViewport,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
+import type { RxStore } from '@/engine/rx-store';
+import { getContentRect } from '@/konva/scene/contentBounds';
 import type { Rect } from '@/konva/scene/metrics';
 
 /**
@@ -30,4 +41,30 @@ export function previewZoomLevel(
   );
 
   return clamp(round(fit, 2), CANVAS_ZOOM_MIN, maxZoom);
+}
+
+/**
+ * Fits everything the document draws into the screen and centres it, no closer
+ * than the zoom given. A screen not yet measured or a document holding nothing
+ * leaves the zoom and the origin as they are.
+ */
+export function fitDocument(
+  store: RxStore,
+  maxZoom: number = CANVAS_ZOOM_MAX
+): void {
+  const { state } = store;
+  const { viewport } = state.editor;
+  const content = getContentRect(state);
+  if (!content || !hasViewport(viewport)) return;
+
+  const zoomLevel = previewZoomLevel(content, viewport, maxZoom);
+  const origin = getScrollToCenter(
+    { ...getViewTransform(state), zoomLevel },
+    { x: content.x + content.width / 2, y: content.y + content.height / 2 }
+  );
+
+  store.dispatchSync(
+    changeZoomLevelAction({ value: zoomLevel }),
+    scrollToAction({ originX: origin.x, originY: origin.y })
+  );
 }

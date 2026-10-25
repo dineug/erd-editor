@@ -553,4 +553,6 @@ export const skSK = {
   'dictionary.toast.pasteBeyondColumns': 'Stĺpce za posledným sa nevložili',
   'dictionary.toast.tooManyCells':
     'Nič sa nevykonalo: výber obsahuje príliš veľa buniek',
+  'viewer.loading': 'Načítava sa diagram',
+  'viewer.loadError': 'Diagram sa nepodarilo načítať',
 } satisfies Messages;

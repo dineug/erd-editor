@@ -6,6 +6,13 @@ import type { Stage } from 'konva/lib/Stage';
  */
 export type StageRegistry = Record<string, Stage>;
 
+/**
+ * Every live stage under each name, oldest first. Two elements on one page both
+ * claim a name and the registry holds only the newer, so a spec driving the
+ * other one picks its stage out of this list by the element that holds it.
+ */
+export type StageClaims = Record<string, Stage[]>;
+
 /** One live stage under a name, told apart from its siblings by its container. */
 type Claim = {
   container: HTMLElement;
@@ -26,6 +33,14 @@ function registryOf(): StageRegistry {
   return registry;
 }
 
+/** The published claim lists, created alongside the registry. */
+function claimsOf(): StageClaims {
+  const published: StageClaims =
+    Reflect.get(globalThis, '__erdStageClaims') ?? {};
+  Reflect.set(globalThis, '__erdStageClaims', published);
+  return published;
+}
+
 /**
  * Publishes the newest live claim on a name, and drops the name with the last
  * of them. The newest wins because a surface drawn over the canvas is the one a
@@ -33,23 +48,27 @@ function registryOf(): StageRegistry {
  */
 function publish(name: string): void {
   const registry = registryOf();
-  const live = claims.get(name);
-  const newest = live?.[live.length - 1];
+  const published = claimsOf();
+  const live = claims.get(name) ?? [];
+  const newest = live[live.length - 1];
 
   if (newest) {
     registry[name] = newest.stage;
+    published[name] = live.map(claim => claim.stage);
   } else {
     delete registry[name];
+    delete published[name];
   }
 }
 
 /**
- * Publishes the registry as __erdStages on the global object and returns it,
- * so the e2e fixture and the browser-mode specs can read a stage before the
- * first one mounts. Returns undefined outside dev and test.
+ * Publishes the registry as __erdStages and every claim as __erdStageClaims on
+ * the global object and returns the registry, so a spec can read a stage before
+ * the first one mounts. Returns undefined outside dev and test.
  */
 export function installStageTestHandle(): StageRegistry | undefined {
   if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
+    claimsOf();
     return registryOf();
   }
 

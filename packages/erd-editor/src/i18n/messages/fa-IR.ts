@@ -524,4 +524,6 @@ export const faIR = {
     'ستون‌های بعد از آخرین ستون جای‌گذاری نشدند',
   'dictionary.toast.tooManyCells':
     'کاری انجام نشد: انتخاب شامل سلول‌های بسیار زیادی است',
+  'viewer.loading': 'در حال بارگذاری نمودار',
+  'viewer.loadError': 'بارگذاری نمودار ممکن نشد',
 } satisfies Messages;

@@ -546,4 +546,6 @@ export const deDE = {
     'Spalten nach der letzten wurden nicht eingefügt',
   'dictionary.toast.tooManyCells':
     'Nichts geändert: Die Auswahl umfasst zu viele Zellen',
+  'viewer.loading': 'Diagramm wird geladen',
+  'viewer.loadError': 'Das Diagramm konnte nicht geladen werden',
 } satisfies Messages;

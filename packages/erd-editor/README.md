@@ -9,7 +9,8 @@ and renders into a closed shadow root, so it drops into React, Vue, Svelte or pl
 leaking styles either way. It is the same editor as [erd-editor.io](https://erd-editor.io), the
 [VS Code extension](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode), the
 [JetBrains plugin](https://plugins.jetbrains.com/plugin/23594-erd-editor) and the
-[Obsidian plugin](https://community.obsidian.md/plugins/erd-editor).
+[Obsidian plugin](https://community.obsidian.md/plugins/erd-editor). Beside it,
+[`<erd-viewer>`](#viewer) shows a diagram read-only, for a page that only displays one.
 
 ## Features
 
@@ -39,14 +40,21 @@ Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM, Swift, Zod, JSON Schem
 npm install @dineug/erd-editor
 ```
 
-The PNG and SVG export, the Flow and tree layouts and the syntax highlighting run in shared
-workers, which Vite, webpack and Rspack emit beside your chunks and esbuild does not. A strict CSP
-needs `worker-src 'self'`. Without a bundler, use the [script tag](#script-tag) build.
+The editor's PNG and SVG export, the Flow and tree layouts and the syntax highlighting run in shared
+workers, which Vite, webpack and Rspack emit beside your chunks and esbuild does not. webpack's
+experimental `experiments.outputModule` starts none of them, as each waits on a chunk split off it
+that nothing loads: keep webpack's default output, or set `optimization.splitChunks: false`. A
+strict CSP needs `worker-src 'self'`. `<erd-viewer>` starts no worker. Both elements style
+themselves with constructed stylesheets, which `style-src 'self'` allows, but the editor's code
+panels color their text with `style` attributes and its image export previews from a `blob:` url, so
+they need `style-src 'unsafe-inline'` and `img-src blob:`. A browser without constructed
+stylesheets, as Firefox before 101, gets `<style>` elements, which need `style-src 'unsafe-inline'`
+too. Without a bundler, use the [script tag](#script-tag) builds.
 
 ## Usage
 
 ```js
-import '@dineug/erd-editor';
+import '@dineug/erd-editor/erd-editor.js';
 
 const editor = document.createElement('erd-editor');
 // a custom element is inline, and the editor fills its box
@@ -59,49 +67,115 @@ editor.addEventListener('change', () => {
 });
 ```
 
+### Registering the elements
+
+`@dineug/erd-editor/erd-editor.js` defines `<erd-editor>` when imported, and
+`@dineug/erd-editor/erd-viewer.js` defines [`<erd-viewer>`](#viewer). Importing the package root
+defines neither. It exports both element classes, `ErdEditorElement` and `ErdViewerElement`, and
+`defineErdEditor()` and `defineErdViewer()`, which define their tag where you call them:
+
+```js
+import { defineErdEditor } from '@dineug/erd-editor';
+
+defineErdEditor();
+```
+
+A second call does nothing, and a call throws an `Error` naming the tag when another class already
+holds it.
+
+A bundle that holds both elements makes Vite and Rolldown warn 24 times of an
+`INEFFECTIVE_DYNAMIC_IMPORT`: the viewer loads each language but English with `import()`, and the
+editor imports every dictionary at once, so they stay in the editor's chunk and load with it.
+
+For a tag of your own, define the class yourself and add the tag to `HTMLElementTagNameMap`
+yourself, in a window that loads neither that element's entry nor its [script tag](#script-tag)
+build and calls no define function for it, since a class takes one name per window:
+
+```ts
+import { ErdEditorElement } from '@dineug/erd-editor';
+
+customElements.define('my-erd-editor', ErdEditorElement);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'my-erd-editor': ErdEditorElement;
+  }
+}
+```
+
+### Migrating from the bare import
+
+Importing the package root used to define `<erd-editor>`. It now defines nothing, so an element
+created after that import alone is a plain `HTMLElement` without the editor's methods. Import the
+entry for its effect instead, or call `defineErdEditor()`:
+
+```diff
+-import '@dineug/erd-editor';
++import '@dineug/erd-editor/erd-editor.js';
+ import { setExportFileCallback } from '@dineug/erd-editor';
+```
+
 ### Server-side rendering
 
-Importing the package registers the element, which needs a DOM, so in Next.js, Nuxt, SvelteKit or
-Astro import it on the client:
+Every entry but [`engine.js` and `peer.js`](#headless-replica) needs a DOM, the package root too,
+since evaluating it builds both element classes. So in Next.js, Nuxt, SvelteKit or Astro import
+the element on the client:
 
 ```js
 useEffect(() => {
-  import('@dineug/erd-editor');
+  import('@dineug/erd-editor/erd-editor.js');
 }, []);
 ```
 
 ### Vite
 
-In development, keep the editor out of Vite's pre-bundling and include the ELK bundle its layout
-worker imports, or the Flow and tree layouts fail. A production build needs nothing.
+In development, include the ELK bundle the editor's layout worker imports in Vite's
+pre-bundling, or the Flow and tree layouts fail. Vite 7 and older also need the editor kept out
+of pre-bundling, since their pre-bundle points the workers' URLs at files it never writes. A
+production build needs nothing.
 
 ```js
 // vite.config.js
 export default {
   optimizeDeps: {
-    exclude: ['@dineug/erd-editor'],
     include: ['@dineug/erd-editor > elkjs/lib/elk.bundled.js'],
+    // Vite 7 and older only:
+    // exclude: ['@dineug/erd-editor'],
   },
 };
 ```
 
 ### Script tag
 
-`dist/erd-editor.umd.js` bundles every dependency and worker, registers `<erd-editor>` and puts
-`setExportFileCallback`, `setImportFileCallback`, `createKeyBindingMap` and `dictionaryRowChords`
-on `window.ErdEditor`.
-Its workers are `data:` URLs, so a strict CSP needs `worker-src data:`. Pin a version beyond a demo.
+Two builds bundle every dependency, so a page loads one with no bundler. Pin a version beyond a
+demo.
+
+- `dist/erd-editor.umd.js` bundles the workers too, defines `<erd-editor>` and puts
+  `setExportFileCallback`, `setImportFileCallback`, `createKeyBindingMap`, `dictionaryRowChords`,
+  `ErdEditorElement` and `defineErdEditor` on `window.ErdEditor`. Its workers are `data:` URLs, so
+  a strict CSP needs `worker-src data:`.
+- `dist/erd-viewer.umd.js` defines `<erd-viewer>` and puts `ErdViewerElement` and
+  `defineErdViewer` on `window.ErdViewer`. It starts no worker and holds all 25 languages.
+
+The package's `unpkg` and `jsdelivr` fields name the editor's file, so a CDN URL without a path
+serves the editor.
 
 ```html
 <erd-editor style="display: block; width: 100%; height: 100vh"></erd-editor>
 <script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor/dist/erd-editor.umd.js"></script>
 ```
 
+```html
+<erd-viewer src="diagram.erd.json" style="display: block; height: 480px"></erd-viewer>
+<script src="https://cdn.jsdelivr.net/npm/@dineug/erd-editor/dist/erd-viewer.umd.js"></script>
+```
+
 ## API
 
-The element's type is exported as `ErdEditorElement`. The
+`ErdEditorElement` is exported as both the element's type and its class, beside
+`defineErdEditor()` ([Registering the elements](#registering-the-elements)). The
 [Element API docs](https://docs.erd-editor.io/docs/api/erd-editor-element) cover each member in
-full.
+full. The read-only element has a section of its own, [Viewer](#viewer).
 
 ### Attributes
 
@@ -175,6 +249,91 @@ An attribute is on when present with no value or `"true"`.
 
 The element starts dark and English and stores neither choice: `setPresetTheme` and `setLocale`
 set them, and your host keeps what `changePresetTheme` and `changeLocale` report.
+
+## Viewer
+
+`<erd-viewer>` shows a document read-only: a reader pans, zooms, searches and lights relationships,
+and nothing in it edits. It renders into a closed shadow root as the editor does, and several on one
+page each keep their own document and view.
+
+```js
+import '@dineug/erd-editor/erd-viewer.js';
+```
+
+```html
+<erd-viewer src="/diagrams/shop.erd.json" style="display: block; height: 480px"></erd-viewer>
+```
+
+### Viewer attributes and properties
+
+| Attribute | Property | Description |
+| --- | --- | --- |
+| `src` | `src` | The URL of a document as an `.erd.json` file saves it, in no other format, fetched with `GET` under the browser's CORS rules. |
+| `name-view` | `nameView` | `physical`, `logical` or `both`, shown over the name view the document saves, which `value` keeps. |
+| `minimap` | `minimap` | The minimap, which shows while the document has content. |
+| `controls` | `controls` | The controls bar: zoom out, the zoom level, which resets it, zoom in, Fit, the name view list, and an arrow to the nearest part of the diagram while none of it is on screen. |
+
+`minimap` and `controls` are on unless their value is `"false"`.
+
+| Property | Description |
+| --- | --- |
+| `value: string` | The document as an `.erd.json` file saves it, as the editor's `value` does: while the document locks its viewport, which a new document does, it keeps the zoom and scroll the file saved, and only with that lock off holds the reader's. Assigning one shows it and throws on text that does not parse; `''` shows an empty diagram. |
+
+Whichever of `value` and `src` is set last wins, so assigning `value` cancels a fetch still
+running. A `value`, `src`, `nameView`, `minimap` or `controls` set on the element before its tag is
+defined is taken up once it is, over the attributes its markup gave it.
+
+### Viewer methods
+
+| Method | Description |
+| --- | --- |
+| `setPresetTheme(options)` | Set `appearance` (`light`, `dark`, `system`), `grayColor` and `accentColor`. |
+| `setSystemAppearance(appearance)` | Name the light or dark `system` shows; `null` follows the OS. |
+| `setTheme(theme)` | Override theme tokens; each call replaces the earlier overrides. |
+| `setLocale(locale)` | Set the display language, `'system'` or a [code](#display-language). The `Promise` it returns resolves once that language's dictionary has loaded or failed to. |
+| `setSystemLocale(tag)` | Name the BCP 47 language `system` shows; `null` goes back to the page's languages. It resolves as `setLocale` does. |
+| `destroy()` | Take the view down, abort a fetch and stop watching the OS color scheme and the page's styles. A destroyed viewer draws nothing more, even when added to the page again. |
+
+### Viewer events
+
+| Event | Description |
+| --- | --- |
+| `load` | The document `src` names was fetched and shown. Assigning `value` fires none. |
+| `error` | Fetching `src`, its response or its document failed; `event.detail` holds the cause. The viewer shows an empty diagram and a notice. |
+
+### Loading, focus and language
+
+- **Loading.** A notice over the canvas shows while `src` loads and once it failed. A new `src`
+  aborts the fetch before it, removing the viewer from the page aborts the one running, and a
+  viewer put back fetches a `src` it has not shown. Each document is fitted to the viewer's box
+  as it lands, the zoom and scroll the file saved left aside.
+- **Focus.** The viewer takes no focus as it mounts. Until a click, a tap or the Tab key focuses
+  it, the wheel and a swipe from empty canvas scroll the page, a trackpad pinch passes to the
+  page, a finger pans nothing, and it answers no key. Once focused, the wheel pans it (`Shift`
+  across) and so does a finger, `Ctrl`/`Cmd` with the wheel or a pinch zooms, `Ctrl`/`Cmd`+`=`,
+  `-` and `0` zoom in, out and back, and `Ctrl`/`Cmd`+`K` opens a palette that searches the
+  document: `#` tables, `@` columns and `:` comments and memos. A mouse drag pans and a still click
+  or tap lights relationships, focused or not: a table's, or the one clicked; the table the pointer
+  rests on lights its own.
+- **Theme and language.** Both start on `system`: the OS color scheme, and the page's
+  `<html lang>`, then `navigator.languages`, read once as the viewer first connects. English is in
+  the entry. Each other language is a chunk of its own, which your bundler emits and the viewer
+  loads once a page asks for it, showing English until it lands and keeping English if it fails.
+  The palette and the notices follow a right-to-left language; the canvas and the controls stay
+  left to right.
+
+### What it adds to a page
+
+- `src` is the one `fetch` the package makes, so a strict CSP lists its origin in `connect-src`.
+  Besides it, a viewer requests only the dictionary chunk of a language other than English, from
+  your own bundle. Its styles are constructed stylesheets, which a strict CSP lets through, but for
+  a browser without them, which gets `<style>` elements.
+- It starts no worker and writes no storage. Importing it adds three listeners to `window` for
+  the life of the page, for `mousedown`, `touchstart` and an event of the package's own,
+  `@dineug/erd-editor/internal-forward-move-start`, and Konva, which draws the canvas, sets
+  `window.Konva` and, with its first stage, adds mouse and touch listeners to `window` and a
+  `visibilitychange` listener to `document`, which it never removes. The editor's entry adds the
+  same.
 
 ## Collaboration
 

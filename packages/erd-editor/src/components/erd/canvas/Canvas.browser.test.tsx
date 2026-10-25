@@ -5,7 +5,8 @@
 import { createRef, useProvider } from '@dineug/r-html';
 import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
-import type { Stage } from 'konva/lib/Stage';
+import { Layer } from 'konva/lib/Layer';
+import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
@@ -18,8 +19,10 @@ import {
   releasePointer,
   whenPainted,
 } from '@/__test-utils__';
-import Canvas from '@/components/erd/canvas/Canvas';
+import Canvas, { type CanvasProps } from '@/components/erd/canvas/Canvas';
 import * as styles from '@/components/erd/canvas/Canvas.styles';
+import { editingLayers } from '@/components/erd/canvas/editingLayers';
+import EditOverlay from '@/components/erd/canvas/EditOverlay';
 import { themeContext } from '@/components/themeContext';
 import {
   changeViewportAction,
@@ -39,14 +42,23 @@ afterEach(async () => {
 const stageRegistry = (): Record<string, Stage> =>
   Reflect.get(globalThis, '__erdStages') ?? {};
 
-async function mountCanvas(grabMove?: boolean): Promise<Mounted> {
+/** The shell alone, or with what a host hands it: a grab move, an overlay, layers. */
+async function mountCanvas(
+  options: Pick<CanvasProps, 'grabMove' | 'overlay' | 'layers'> = {}
+): Promise<Mounted> {
   const $root = document.createElement('div');
   document.body.append($root);
   const root = createRef<HTMLDivElement>($root);
   const canvas = createRef<HTMLDivElement>();
   const app = createTestAppContext();
   const mounted = mount(
-    <Canvas root={root} canvas={canvas} grabMove={grabMove} />,
+    <Canvas
+      root={root}
+      canvas={canvas}
+      grabMove={options.grabMove}
+      overlay={options.overlay}
+      layers={options.layers}
+    />,
     app
   );
   // useProvider takes a bare element at runtime and types only a component
@@ -113,7 +125,7 @@ describe('the canvas shell', () => {
   });
 
   it('disables pointer events on the controller while grab moving', async () => {
-    const mounted = await mountCanvas(true);
+    const mounted = await mountCanvas({ grabMove: true });
 
     expect(controllerOf(mounted).style.pointerEvents).toBe('none');
   });
@@ -127,8 +139,8 @@ describe('the canvas shell', () => {
     expect(stageRegistry().canvas.container()).toBe(el);
   });
 
-  it('mounts one Stage of four layers in the inner box, background first', async () => {
-    await mountCanvas();
+  it('mounts one Stage in the inner box, the layers it is handed among its own', async () => {
+    await mountCanvas({ layers: editingLayers });
     const stage = stageRegistry().canvas;
 
     expect(stage.getLayers().map(layer => layer.name())).toEqual([
@@ -137,6 +149,31 @@ describe('the canvas shell', () => {
       'overlay-marquee',
       'presence',
     ]);
+  });
+
+  it('mounts the bottom layer and the scene alone for a host that hands in none', async () => {
+    await mountCanvas();
+    const stage = stageRegistry().canvas;
+
+    expect(stage.getLayers().map(layer => layer.name())).toEqual([
+      'canvas-background',
+      'scene',
+    ]);
+  });
+
+  it('draws the overlay a host hands in after the Stage container, in the controller', async () => {
+    const mounted = await mountCanvas({ overlay: EditOverlay });
+    const controller = controllerOf(mounted);
+
+    expect(controller.children).toHaveLength(2);
+    expect(controller.firstElementChild).toBe(containerOf(mounted));
+    expect(controller.lastElementChild?.classList).toContain('edit-overlay');
+  });
+
+  it('draws nothing over the Stage without an overlay', async () => {
+    const mounted = await mountCanvas();
+
+    expect([...controllerOf(mounted).children]).toEqual([containerOf(mounted)]);
   });
 
   it('resizes the Stage with the viewport', async () => {
@@ -329,5 +366,74 @@ describe('a middle button press on the scene', () => {
     fire(stage, 'mousedown', pointOf(stage, '#table-t2'), MIDDLE);
 
     expect(closeColorPicker).toHaveBeenCalledOnce();
+  });
+});
+
+describe('a main click on the scene', () => {
+  it('needs its press on this stage, not on another stage of the same konva', async () => {
+    const { mounted, stage } = await mountScene();
+    const { store } = mounted.app;
+    const columns = () =>
+      store.state.collections.tableEntities.t1.columnIds.length;
+    const addColumn = () => pointOf(stage, '#table-t1', '.table-add-column');
+
+    fire(stage, 'mousedown', addColumn(), MAIN);
+    fire(stage, 'mouseup', addColumn(), MAIN);
+    await flush();
+    await whenDrawn();
+    await whenPainted();
+    expect(columns()).toBe(1);
+
+    // Another scene of the same konva, as a viewer beside the editor is: a
+    // press there and a lift over the button the editor was last pressed on.
+    const $other = document.createElement('div');
+    document.body.append($other);
+    const other = new Stage({ container: $other, width: 100, height: 100 });
+    other.add(new Layer());
+    teardowns.push(() => {
+      other.destroy();
+      $other.remove();
+    });
+    const { left, top } = other.content.getBoundingClientRect();
+
+    fire(other, 'mousedown', { clientX: left + 10, clientY: top + 10 }, MAIN);
+    fire(stage, 'mouseup', addColumn(), MAIN);
+    await flush();
+
+    expect(columns()).toBe(1);
+  });
+
+  it('reads as no double click after a click on another stage of the same konva', async () => {
+    const { stage } = await mountScene();
+    const at = pointOf(stage, '#table-t1');
+    const heard: string[] = [];
+    stage.findOne('#table-t1')!.on('click dblclick', event => {
+      heard.push(event.type);
+    });
+    const $other = document.createElement('div');
+    document.body.append($other);
+    const other = new Stage({ container: $other, width: 100, height: 100 });
+    other.add(new Layer());
+    teardowns.push(() => {
+      other.destroy();
+      $other.remove();
+    });
+    const { left, top } = other.content.getBoundingClientRect();
+    const corner = { clientX: left + 10, clientY: top + 10 };
+
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+    fire(other, 'mousedown', corner, MAIN);
+    fire(other, 'mouseup', corner, MAIN);
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+
+    expect(heard).toEqual(['click', 'click']);
+
+    // The same pair of clicks with nothing between them is a double click.
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+
+    expect(heard).toEqual(['click', 'click', 'click', 'dblclick']);
   });
 });

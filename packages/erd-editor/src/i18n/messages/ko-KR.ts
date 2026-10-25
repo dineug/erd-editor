@@ -506,4 +506,6 @@ export const koKR = {
     '마지막 열을 넘는 열은 붙여넣지 않았습니다',
   'dictionary.toast.tooManyCells':
     '실행하지 않았습니다: 선택한 셀이 너무 많습니다',
+  'viewer.loading': '다이어그램 불러오는 중',
+  'viewer.loadError': '다이어그램을 불러올 수 없습니다',
 } satisfies Messages;

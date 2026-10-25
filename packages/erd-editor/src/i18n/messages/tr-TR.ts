@@ -528,4 +528,6 @@ export const trTR = {
     'Son sütundan sonraki sütunlar yapıştırılmadı',
   'dictionary.toast.tooManyCells':
     'Hiçbir şey yapılmadı: seçim çok fazla hücre içeriyor',
+  'viewer.loading': 'Diyagram yükleniyor',
+  'viewer.loadError': 'Diyagram yüklenemedi',
 } satisfies Messages;

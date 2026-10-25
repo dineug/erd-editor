@@ -18,6 +18,11 @@ export type PinchZoomOptions = {
   source?: GeometrySource;
   /** Whether the scene zooms by a pinch now; an overlay over it does not. */
   enabled?: () => boolean;
+  /**
+   * Whether the scene takes a wheel, a pinch or a touch at all. While it does
+   * not, none is held off the page or spent here.
+   */
+  interactive?: () => boolean;
 };
 
 /**
@@ -34,6 +39,7 @@ export function usePinchZoom({
   root,
   source,
   enabled = () => true,
+  interactive = () => true,
 }: PinchZoomOptions) {
   const { addUnsubscribe } = useUnmounted();
 
@@ -68,16 +74,18 @@ export function usePinchZoom({
       const scene = toScenePoint(transform, center);
 
       return ({ scale, center: now }) => zoomTo(zoomLevel * scale, now, scene);
-    }
+    },
+    { interactive }
   );
 
   /**
    * Spends a pinch wheel, and says whether it was one. It zooms about the
-   * pointer while the scene takes a pinch, and is held off the page either
-   * way, which would otherwise zoom with it.
+   * pointer while the scene takes a pinch, and is held off the page, which
+   * would otherwise zoom with it, unless the scene takes no input at all.
    */
   const handleWheel = (event: WheelEvent): boolean => {
     if (!isPinchWheel(event)) return false;
+    if (!interactive()) return true;
     event.preventDefault();
     if (!enabled()) return true;
 

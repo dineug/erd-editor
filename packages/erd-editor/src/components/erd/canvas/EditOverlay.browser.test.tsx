@@ -14,6 +14,7 @@ import {
 } from '@/__test-utils__';
 import { type AppContext, appContext } from '@/components/appContext';
 import Canvas from '@/components/erd/canvas/Canvas';
+import EditOverlay from '@/components/erd/canvas/EditOverlay';
 import * as overlayStyles from '@/components/erd/canvas/EditOverlay.styles';
 import { getMemoScrollMax } from '@/components/erd/canvas/memo/memoScroll';
 import {
@@ -156,9 +157,9 @@ type Fixture = {
 };
 
 /**
- * The canvas with its overlay, under the scene source a view overlay would
- * provide. Every provider is hung before the render: a consumer asks for its
- * context at setup and once more before it mounts, and never again after.
+ * The canvas with the overlay the ERD tab hands it, under the scene source a
+ * view overlay would provide. Every provider is hung before the render: a
+ * consumer asks for its context at setup and once more before it mounts, never after.
  */
 async function setup(source: GeometrySource | null = null): Promise<Fixture> {
   const $root = document.createElement('div');
@@ -181,7 +182,10 @@ async function setup(source: GeometrySource | null = null): Promise<Fixture> {
     ? // oxlint-disable-next-line react-hooks/rules-of-hooks
       useProvider(container as any, sceneSourceContext, source)
     : null;
-  render(container, <Canvas root={root} canvas={canvas} />);
+  render(
+    container,
+    <Canvas root={root} canvas={canvas} overlay={EditOverlay} />
+  );
   const mounted: Mounted = {
     container,
     app,
@@ -341,6 +345,26 @@ describe('the editing overlay', () => {
     await flush();
     await editColumnName(fixture);
     expect(inputOf(fixture.mounted).placeholder).toBe('ko:column');
+  });
+
+  it('keeps the cell editor left to right under Arabic, as the canvas it is drawn in', async () => {
+    const i18n = createTestI18n('ar-SA');
+    const provider = provideI18n(document.body, i18n);
+    teardowns.push(() => provider.destroy());
+
+    const fixture = await setup();
+    // The element's root takes the direction of the language it shows.
+    fixture.mounted.container.dir = i18n.dir;
+    await editTableName(fixture);
+
+    const input = inputOf(fixture.mounted);
+    expect(i18n.dir).toBe('rtl');
+    expect(getComputedStyle(fixture.mounted.container).direction).toBe('rtl');
+    expect(
+      overlayOf(fixture.mounted).closest('[dir]')?.getAttribute('dir')
+    ).toBe('ltr');
+    expect(getComputedStyle(cellOf(fixture.mounted)).direction).toBe('ltr');
+    expect(getComputedStyle(input).direction).toBe('ltr');
   });
 
   it('closes the input when the edit ends', async () => {
@@ -1830,7 +1854,10 @@ async function setupStyled(): Promise<Fixture> {
   // itself puts them in. Without them an input keeps the browser's own border
   // and padding, and the box under test is nobody's.
   render(globals, <GlobalStyles />);
-  render(container, <Canvas root={root} canvas={canvas} />);
+  render(
+    container,
+    <Canvas root={root} canvas={canvas} overlay={EditOverlay} />
+  );
   // oxlint-disable-next-line react-hooks/rules-of-hooks
   const themeProvider = useProvider(
     container as any,
@@ -2312,7 +2339,10 @@ describe('the term list over a tinted header', () => {
     // oxlint-disable-next-line react-hooks/rules-of-hooks
     const themeProvider = useProvider(container as any, themeContext, theme);
     render(globals, <GlobalStyles />);
-    render(container, <Canvas root={root} canvas={canvas} />);
+    render(
+      container,
+      <Canvas root={root} canvas={canvas} overlay={EditOverlay} />
+    );
 
     const { store } = app;
     store.dispatchSync(addTableAction$());

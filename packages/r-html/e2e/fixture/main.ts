@@ -1,4 +1,5 @@
 import {
+  adoptHostSheet,
   css,
   type CSSTemplateLiterals,
   defineCustomElement,
@@ -63,6 +64,12 @@ const hosts = new Map<HostId, HTMLElement>();
 const literals = new Map<string, CSSTemplateLiterals>();
 let hostSeq = 0;
 let styleSeq = 0;
+/** Host sheets by handle, each with what drops it. */
+const hostSheets = new Map<
+  number,
+  { sheet: CSSStyleSheet; drop: () => void }
+>();
+let hostSheetSeq = 0;
 
 function hostElement(id: HostId): HTMLElement {
   const element = hosts.get(id);
@@ -188,6 +195,30 @@ const api: RHtmlE2E = {
     const shadowRoot = shadowOf(id);
     shadowRoot.adoptedStyleSheets.push(makeSheet(cssText));
     return shadowRoot.adoptedStyleSheets.length;
+  },
+
+  adoptHostSheet(id, cssText) {
+    const sheet = makeSheet(cssText);
+    const drop = adoptHostSheet(hostElement(id), sheet);
+    if (!drop) return null;
+    const handle = ++hostSheetSeq;
+    hostSheets.set(handle, { sheet, drop });
+    return handle;
+  },
+
+  replaceHostSheet(handle, cssText) {
+    hostSheets.get(handle)?.sheet.replaceSync(cssText);
+  },
+
+  dropHostSheet(handle) {
+    hostSheets.get(handle)?.drop();
+    hostSheets.delete(handle);
+  },
+
+  reattachHost(id) {
+    const element = hostElement(id);
+    element.remove();
+    app.appendChild(element);
   },
 
   computed(id, target, property) {

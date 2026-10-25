@@ -97,6 +97,7 @@ type Harness = {
     mouseTracking: boolean;
     readonly: boolean;
     enableWelcomeScreen: boolean;
+    interactive?: () => boolean;
   };
   actions: AnyAction[];
 };
@@ -126,6 +127,7 @@ async function setup(
           mouseTracking=${props.mouseTracking}
           readonly=${props.readonly}
           enableWelcomeScreen=${props.enableWelcomeScreen}
+          interactive=${props.interactive}
         />
       </div>`;
   };
@@ -587,6 +589,32 @@ describe('Erd - wheel', () => {
     expect(event.defaultPrevented).toBe(false);
     expect(app.store.state.settings.originX).toBe(0);
   });
+
+  it('lets every wheel through to the page while the canvas takes no input', async () => {
+    let interactive = false;
+    const { app, root } = await setup(
+      { interactive: () => interactive },
+      appWithContent()
+    );
+
+    const scroll = wheel(root, { deltaX: 100, deltaY: 50 });
+    const zoom = wheel(root, { deltaY: 100, ctrlKey: true, metaKey: true });
+    await flush();
+
+    expect([scroll, zoom].map(event => event.defaultPrevented)).toEqual([
+      false,
+      false,
+    ]);
+    expect(app.store.state.settings.originX).toBe(0);
+    expect(app.store.state.settings.zoomLevel).toBe(1);
+
+    interactive = true;
+    const taken = wheel(root, { deltaX: 100, deltaY: 50 });
+    await flush();
+
+    expect(taken.defaultPrevented).toBe(true);
+    expect(app.store.state.settings.originX).toBe(-100);
+  });
 });
 
 describe('Erd - pinch', () => {
@@ -718,6 +746,34 @@ describe('Erd - pinch', () => {
 
     expect(event.defaultPrevented).toBe(true);
     expect(app.store.state.settings.zoomLevel).toBe(1);
+  });
+
+  it('lets a pinch through to the page while the canvas takes no input', async () => {
+    const { app, root, actions } = await setup(
+      { interactive: () => false },
+      appWithContent()
+    );
+    actions.length = 0;
+
+    const event = pinchWheel(root, 1.08);
+    root.dispatchEvent(
+      touches('touchstart', [
+        { x: 150, y: 150 },
+        { x: 250, y: 150 },
+      ])
+    );
+    window.dispatchEvent(
+      touches('touchmove', [
+        { x: 100, y: 150 },
+        { x: 300, y: 150 },
+      ])
+    );
+    await flush();
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(actions).toEqual([]);
+    expect(app.store.state.settings.zoomLevel).toBe(1);
+    expect(app.store.state.settings.originX).toBe(0);
   });
 });
 

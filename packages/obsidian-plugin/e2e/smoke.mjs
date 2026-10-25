@@ -1603,14 +1603,17 @@ try {
     appearance: 'auto',
     accentColor: 'grass',
   });
-  // By place, as every label is in the editor's language: the builder's only
-  // icons are those of its appearance buttons, System, Light and Dark in turn.
+  // By place, as every label is in the editor's language: past the header's
+  // close button, the builder's icons are those of its appearance buttons,
+  // System, Light and Dark in turn.
   const pickAppearance = label =>
     clickInEditor(
       page,
       'theme-a.erd',
       (root, index) =>
-        root.querySelectorAll('.theme-builder .icon')[index]?.parentElement,
+        [...root.querySelectorAll('.theme-builder .icon')].filter(
+          icon => !icon.closest('.theme-builder-close')
+        )[index]?.parentElement,
       ['System', 'Light', 'Dark'].indexOf(label)
     );
   const appearancePicked = await pickAppearance(firstDark ? 'Light' : 'Dark');

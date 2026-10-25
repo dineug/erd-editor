@@ -1,4 +1,4 @@
-import '@/index';
+import '@/erd-editor';
 
 import { installStageTestHandle } from '@/konva/testHandle';
 

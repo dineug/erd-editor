@@ -90,6 +90,14 @@ export interface RHtmlE2E {
    * Returns the host's new adoptedStyleSheets.length.
    */
   pushRawSheet(id: HostId, cssText: string): number;
+  /** adoptHostSheet on the probe element with a sheet of that text; a handle, or null where it adopted none. */
+  adoptHostSheet(id: HostId, cssText: string): number | null;
+  /** Writes the text of a host sheet again, as its owner does. */
+  replaceHostSheet(handle: number, cssText: string): void;
+  /** Calls what adoptHostSheet handed back. */
+  dropHostSheet(handle: number): void;
+  /** Takes the probe off the page and puts it back, which leaves and joins the shared sheets. */
+  reattachHost(id: HostId): void;
 
   /** getComputedStyle(target).getPropertyValue(property). */
   computed(id: HostId, target: ProbeTarget, property: string): string;

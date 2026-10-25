@@ -1,3 +1,4 @@
+import { toErdTarget } from '@/components/erd/erdTarget';
 import {
   type ErdTarget,
   goToErdTarget,
@@ -13,7 +14,6 @@ import { FocusType } from '@/engine/modules/editor/state';
 import type { RxStore } from '@/engine/rx-store';
 
 import type { ExplorerNode } from './explorerTree';
-import { toErdTarget } from './matchTarget';
 
 /** Where on the canvas a row goes: none for a folder, which only folds and unfolds. */
 export function targetOf(node: ExplorerNode): ErdTarget | null {

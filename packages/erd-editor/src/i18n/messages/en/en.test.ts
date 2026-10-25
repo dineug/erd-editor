@@ -42,6 +42,7 @@ describe('the English dictionary', () => {
         'tableProperties',
         'themeBuilder',
         'toolbar',
+        'viewer',
         'visualization',
         'welcome',
       ].sort()

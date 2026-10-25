@@ -1,7 +1,7 @@
 import { query } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
-import { fieldIcon } from '@/components/explorer/fieldIcon';
+import { fieldIcon } from '@/components/erd/fieldIcon';
 import { RootState } from '@/engine/state';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n, MessageKey } from '@/i18n/translate';
@@ -21,7 +21,7 @@ import {
   keywordHolder,
   named,
   searchActions,
-} from './actions';
+} from './documentSearch';
 import {
   HangulQuery,
   hangulQueryOf,

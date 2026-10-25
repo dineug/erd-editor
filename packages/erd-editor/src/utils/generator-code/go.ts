@@ -5,7 +5,7 @@ import { ColumnOption, Database, NameCase } from '@/constants/schema';
 import { RootState } from '@/engine/state';
 import { Column } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
+import { orderByNameASC } from '@/utils/tableName';
 
 import {
   ColumnScalar,

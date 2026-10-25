@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-18 -->
+<!-- Generated: 2026-08-27 | Updated: 2026-10-24 -->
 
 # r-html
 
 ## Purpose
 
-`@dineug/r-html` (private) is the rendering framework `@dineug/erd-editor` is built on and inlines; `mcp-server` imports its store's action types. It provides `html` / `svg` / `css` tagged templates, Proxy reactivity batched by a microtask scheduler, function components with lifecycle hooks and `defineCustomElement`, and a Redux-like `createStore`. The renderer is host-neutral: `createHostTemplate(adapter)` builds an `html` / `svg` / `render` triple over any `HostAdapter`. The DOM adapter ships here, and `@dineug/r-html-konva` (`packages/r-html-konva/src/host.ts`) is the second production host, the one every Konva scene renders through. A change keeps the DOM behaviour the frozen specs pin (Testing Requirements) and the host adapter contract both hosts rest on (Rules).
+`@dineug/r-html` (private) is the rendering framework `@dineug/erd-editor` is built on and inlines; `mcp-server` imports its store's action types. It provides `html` / `svg` / `css` tagged templates, Proxy reactivity batched by a microtask scheduler, function components with lifecycle hooks, `createCustomElement` (a component as an unregistered element class) and `defineCustomElement` (that class registered under a tag), and a Redux-like `createStore`. The renderer is host-neutral: `createHostTemplate(adapter)` builds an `html` / `svg` / `render` triple over any `HostAdapter`. The DOM adapter ships here, and `@dineug/r-html-konva` (`packages/r-html-konva/src/host.ts`) is the second production host, the one every Konva scene renders through. A change keeps the DOM behaviour the frozen specs pin (Testing Requirements) and the host adapter contract both hosts rest on (Rules).
 
 ## Making a Change
 
@@ -19,7 +19,7 @@
    ```
 
 5. Run root step 4 as `pnpm --filter @dineug/r-html --fail-if-no-match test:coverage`. It measures every `src/**/*.ts` but the specs, `.d.ts` files, `src/internal-types/**`, `src/index.dev.ts` and the types-only `src/jsx-runtime.ts`. A drop under `src/css/` means a rule class no longer runs (Testing Requirements).
-6. Run root step 5 with `pnpm peer-graph` and `pnpm size` for any change to shipping source. `erd-editor` inlines this package and its `peer.js` reaches it (`src/peer/imports.test.ts` there lists it), so the peer graph rules in `packages/erd-editor/src/peer/AGENTS.md` hold for that code too.
+6. Run root step 5 with `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size` for any change to shipping source. `erd-editor` inlines this package and its `peer.js` reaches it (`src/peer/imports.test.ts` there lists it), so the peer graph rules in `packages/erd-editor/src/peer/AGENTS.md` hold for that code too.
 7. For root step 6, run `pnpm --filter @dineug/r-html e2e` after touching `src/template/vCSSStyleSheet.ts`. Run `pnpm --filter @dineug/r-html e2e:typecheck` after touching `e2e/`, `playwright.config.ts` or an export of `src/index.ts`. The fixture imports `@/index`, and no other program covers `e2e/`. A run that cannot start for want of Chromium is not done (root § Making a Change, after step 7). Run `pnpm --filter @dineug/erd-editor e2e` for a change a user would see in the editor.
 8. In the report (root step 7), say whether the r-html e2e ran, and the reason where it did not.
 
@@ -37,7 +37,7 @@
 | `src/render/part/node/text/helper.ts` | `PartType`, `getPartType`, `isPartMap`, `partMap` |
 | `src/jsx-runtime.ts` | The `JSX` namespace `jsxImportSource` reads |
 | `src/constants.ts` | `MARKER` (random suffix per load), its regexps, `TAttrType`, the lifecycle `Symbol.for` keys |
-| `src/template/vCSSStyleSheet.ts` | Adopted-stylesheet registry with a `<style>` fallback |
+| `src/template/vCSSStyleSheet.ts` | Adopted-stylesheet registry with a `<style>` fallback, and the host sheets `adoptHostSheet` adopts ahead of the shared ones in the root an element joined with, which `addCSSHost` records by its element so a closed root is reached too |
 | `src/index.dev.ts` | Demo entry for `pnpm --filter @dineug/r-html dev`; not the e2e fixture |
 
 ## Subdirectories
@@ -60,7 +60,9 @@
 - **`./jsx-runtime` ships types only.** `exports` is asymmetric on purpose: `.` ships `types` and `default`, `./jsx-runtime` `types` alone. A build that lost its JSX transform then fails on `ERR_PACKAGE_PATH_NOT_EXPORTED` instead of rendering wrongly.
 - **`src/jsx-runtime.ts` stays a `.ts` file with a namespace.** `jsxImportSource` reads a `JSX` namespace, and `vite-plugin-dts` does not copy a hand-written `.d.ts`. That is why the root `vite.config.ts` exempts the file from `typescript/no-namespace`.
 - **`src/index.ts` is the runtime contract.** Anything it does not re-export is private.
-- **`removeCSSHost` stays out of `src/index.ts` on purpose.** Only the element `defineCustomElement` registers calls it, from its `disconnectedCallback`.
+- **`createCustomElement` registers nothing; `defineCustomElement` stays its `void` wrapper.** `defineCustomElement(name, options)` is `customElements.define(name, createCustomElement(options))` with its signature unchanged, so the caller of `createCustomElement` picks the tag and the moment to define it, and `new` on the class throws a `TypeError` until then. Each call builds a new class and still mutates `options.shadow` to `'open'` when unset.
+- **`createCustomElement` returns the written `CustomElementClass<C>`** (`new (): C` and `observedAttributes`). The class's `#private` fields make an inferred return type fail declaration emit (TS4094), and `C extends HTMLElement` is what lets `customElements.define` take it; `defineCustomElement` keeps its unconstrained `C` and narrows it to `C & HTMLElement` inside.
+- **`removeCSSHost` stays out of `src/index.ts` on purpose.** Only the element class `createCustomElement` builds calls it, from its `disconnectedCallback`.
 
 ### Templates and markers
 
@@ -133,6 +135,6 @@ None: a leaf package. `@dineug/vite-plugin-r-html` pairs with `src/render/hmr.ts
 
 ### External
 
-`stylis` 4.4.0 is the only runtime dependency (the `css` pipeline).
+`stylis` (`^4.4.0` through the catalog) is the only runtime dependency (the `css` pipeline).
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

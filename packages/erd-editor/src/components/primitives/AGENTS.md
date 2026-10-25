@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
 
 # primitives
 
@@ -107,7 +107,7 @@
 - **An Escape the editor root hears closes it.** It closes on an Escape `shortcut$` hears, unless another handler takes that press (`handleColorPickerShortcut`, `Erd.tsx`). Those handlers are the palette, a cell, memo or group name editor, and a relationship or table group draw.
 - **Escape spent outside `Erd` first keeps it open.** An Escape that a panel outside `Erd` spends first leaves the picker open. The Explorer's own Escape, which hands the keyboard to the canvas, is one of them.
 - **`removeSelection` or `removeTable` closes it.** Either may just have taken what the picker paints. Each press still does what it does (`handleColorPickerShortcut`, `Erd.tsx`).
-- **A press elsewhere in `Erd` closes it.** `Erd.tsx` and `ErdViewer.tsx` tell a press inside it by its root class `color-picker`.
+- **A press elsewhere in `Erd` closes it.** `Erd.tsx` and `DiffErdViewer.tsx` tell a press inside it by its root class `color-picker`.
 - **A chord stops at the panel.** A keydown inside stops at the panel when it is a `keyBindingMap` chord outside `PANEL_PASSING_BINDINGS`, or an arrow or Tab, as in the Explorer. So Space and Enter press a button rather than reach the hand tool and `edit` bindings.
 - **Such a chord is also cancelled.** It is cancelled as the editor root cancels it, so a host page neither scrolls nor selects all. A field and a button's Space or Enter are the exceptions.
 - **Some chords still reach the editor.** Undo, redo, search, Find and Replace and the zoom still reach the editor, and none of them closes the picker.

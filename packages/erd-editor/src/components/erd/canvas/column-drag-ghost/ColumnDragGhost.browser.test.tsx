@@ -24,6 +24,7 @@ import {
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
+import { editingLayers } from '@/components/erd/canvas/editingLayers';
 import {
   COLUMN_DRAG_HANDLE_GAP,
   COLUMN_DRAG_HANDLE_WIDTH,
@@ -97,7 +98,12 @@ async function setup(): Promise<Fixture> {
   const rendered = renderScene({
     app,
     container,
-    scene: <CanvasScene root={createRef<HTMLDivElement>($root)} />,
+    scene: (
+      <CanvasScene
+        root={createRef<HTMLDivElement>($root)}
+        layers={editingLayers}
+      />
+    ),
     width: VIEWPORT,
     height: VIEWPORT,
     theme: createTestTheme(),

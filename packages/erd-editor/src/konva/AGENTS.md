@@ -1,11 +1,11 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-18 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
 
 # konva
 
 ## Purpose
 
-`src/konva/` holds the scene geometry over `@dineug/r-html-konva`, the second r-html host, which draws the ERD scene on a Konva `<canvas>` and holds the host adapter, the draw gate and the `k-*` intrinsics (`packages/r-html-konva/AGENTS.md`). This directory holds the scene theme, the stage test handle and the worker DOM stubs. `scene/` holds the scene geometry: the viewport, what a view shows, the drag freeze, fitting and content bounds. This file holds how konva is imported, how a Konva file compiles and what a view shows. It also holds two rules for files outside this directory: the lower-case scene roots and `ParticleLayer.tsx`. Other nested files touch the same scene: `src/components/erd/AGENTS.md` (the coordinate canon, frozen drags, `sceneKeyOf`), `src/components/AGENTS.md` (the `GeometrySource` a scene reads), `src/engine/AGENTS.md` (the view seams) and `src/services/AGENTS.md` (the scene the image exports draw). A bare file name or a path that starts with `scene/` is relative to this directory; a path that starts with `src/` is relative to `packages/erd-editor`.
+`src/konva/` holds the scene geometry over `@dineug/r-html-konva`, the second r-html host, which draws the ERD scene on a Konva `<canvas>` and holds the host adapter, the draw gate and the `k-*` intrinsics (`packages/r-html-konva/AGENTS.md`). This directory holds the scene theme, the stage test handle and the worker DOM stubs. `scene/` holds the scene geometry: the viewport, what a view shows, the drag freeze, fitting and content bounds. This file holds how konva is imported, how a Konva file compiles and what a view shows. It also holds three rules for files outside this directory: the lower-case scene roots, the parts a canvas host hands its scene, and `ParticleLayer.tsx`. Other nested files touch the same scene: `src/components/erd/AGENTS.md` (the coordinate canon, frozen drags, `sceneKeyOf`), `src/components/AGENTS.md` (the `GeometrySource` a scene reads), `src/engine/AGENTS.md` (the view seams) and `src/services/AGENTS.md` (the scene the image exports draw). A bare file name or a path that starts with `scene/` is relative to this directory; a path that starts with `src/` is relative to `packages/erd-editor`.
 
 ## Making a Change
 
@@ -28,6 +28,7 @@
 | `scene/viewport.ts` | The coordinate canon and the culling rect (rule in `src/components/erd/AGENTS.md`) |
 | `scene/viewFreeze.ts` | `sceneKeyOf` and the freeze a drag holds (rules in `src/components/erd/AGENTS.md`) |
 | `scene/konvaFlip.ts` | The column flip, the one shipped module that names `konva/lib/Tween` |
+| `scene/fitZoom.ts` | Fitting: `previewZoomLevel`, the zoom a fit opens at, and `fitDocument(store, maxZoom = CANVAS_ZOOM_MAX)`, which fits everything the document draws into the screen. It reads `getContentRect`, then that zoom, then the origin `getScrollToCenter` puts the content's middle at, and dispatches the zoom and the scroll; a screen not yet measured or an empty document leaves both as they are. Keep the module out of the engine and peer graphs, which need none of the minimap geometry it reads |
 | `scene/stacking.ts` | `stackTablesAndMemos`, the one order tables and memos paint in (rule in `src/components/erd/AGENTS.md`, The canvas and its presses) |
 | `scene/renderScene.browser.test.tsx` | Pins the `Konva.DD` registration the host package's draw gate makes, on a real scene |
 
@@ -43,6 +44,7 @@
 ### Scene roots
 
 - **Scene roots export in lower case on purpose.** `renderCanvasScene` (`src/components/erd/canvas/CanvasScene.tsx`) and `renderMinimapScene` (`src/components/erd/minimap/MinimapScene.tsx`) render imperatively. `src/components/erd/canvas/Canvas.tsx` and `src/components/erd/minimap/Minimap.tsx` hand-roll `import.meta.hot.accept`. A capitalized or dropped export would make `vite-plugin-r-html` treat the module as a component boundary, and the parent's accept would silently stop running.
+- **The canvas scene takes its editing, presence and view parts from its host.** `CanvasScene.tsx` draws what every scene of the document draws, and takes the rest as `CanvasLayers` from its host through `Canvas.tsx`'s `layers`, read once as the stage mounts: a layer under the scene, a relationship draw's preview, a drop target, the marquee and the presence layer's parts, each drawn at its own layer and only where the scene's own gates allow it, so the preview and the presence layer stay in the document. `Erd.tsx` hands in `editingLayers` (`src/components/erd/canvas/editingLayers.ts`) and the cell editor as `Canvas.tsx`'s `overlay`, the Flow its particles and the marquee, and a scene that edits nothing hands in neither. A part comes in as a slot, never as an import of the scene, since `src/viewer/imports.test.ts` holds the modules a read-only view composes to `scripts/viewer-boundary.json`.
 
 ### Konva JSX
 
@@ -60,7 +62,7 @@
 
 ### Particle layer
 
-- **Keep `ParticleLayer.tsx` one childless `k-layer`.** The file is `src/components/visualization/particles/ParticleLayer.tsx`. `createParticleLoop` adds particles behind the host's ledger, so a child in the template makes the next reconcile remove them all.
+- **Keep `ParticleLayer.tsx` one childless `k-layer`.** The file is `src/components/visualization/particles/ParticleLayer.tsx`, which `VisualizationFlow.tsx` hands its canvas as the layer under the scene (`beneath`). `createParticleLoop` adds particles behind the host's ledger, so a child in the template makes the next reconcile remove them all.
 - **The particle loop asks no frame while idle.** It is one `requestAnimationFrame` loop on `layer.draw()`, and it asks no frame while nothing is lit.
 
 ### Rules kept in other files

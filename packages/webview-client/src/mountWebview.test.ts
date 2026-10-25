@@ -30,12 +30,18 @@ const mocks = vi.hoisted(() => ({
   setExportFileCallback: vi.fn(),
   setImportFileCallback: vi.fn(),
   createReplicationStoreWorker: vi.fn(),
+  definingEntryLoads: 0,
 }));
 
 vi.mock('@dineug/erd-editor', () => ({
   setExportFileCallback: mocks.setExportFileCallback,
   setImportFileCallback: mocks.setImportFileCallback,
 }));
+
+vi.mock('@dineug/erd-editor/erd-editor.js', () => {
+  mocks.definingEntryLoads += 1;
+  return {};
+});
 
 vi.mock('@dineug/erd-editor-replication-store-worker', () => ({
   createReplicationStoreWorker: mocks.createReplicationStoreWorker,
@@ -131,6 +137,10 @@ afterEach(() => {
 });
 
 describe('mountWebview', () => {
+  it('loads the package entry that defines <erd-editor>', () => {
+    expect(mocks.definingEntryLoads).toBe(1);
+  });
+
   it('announces itself to the host and names the worker the host chose', () => {
     mount();
 

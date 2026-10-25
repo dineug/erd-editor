@@ -52,6 +52,31 @@ export class CssPage {
     );
   }
 
+  adoptHostSheet(id: HostId, cssText: string): Promise<number | null> {
+    return this.page.evaluate(
+      ([hostId, text]) => window.rHtmlE2E.adoptHostSheet(hostId, text),
+      [id, cssText] as const
+    );
+  }
+
+  replaceHostSheet(handle: number, cssText: string): Promise<void> {
+    return this.page.evaluate(
+      ([at, text]) => window.rHtmlE2E.replaceHostSheet(at, text),
+      [handle, cssText] as const
+    );
+  }
+
+  dropHostSheet(handle: number): Promise<void> {
+    return this.page.evaluate(at => window.rHtmlE2E.dropHostSheet(at), handle);
+  }
+
+  reattachHost(id: HostId): Promise<void> {
+    return this.page.evaluate(
+      hostId => window.rHtmlE2E.reattachHost(hostId),
+      id
+    );
+  }
+
   hostIds(): Promise<HostId[]> {
     return this.page.evaluate(() => window.rHtmlE2E.hostIds());
   }

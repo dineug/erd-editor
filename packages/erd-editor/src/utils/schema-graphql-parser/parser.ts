@@ -98,7 +98,7 @@ function toErrorMessage(error: unknown): string {
   return `Syntax Error at line ${location.line}, column ${location.column}: ${description}`;
 }
 
-function toModel(document: DocumentNode): GraphQLModel {
+function toModel(ast: DocumentNode): GraphQLModel {
   const enums: Record<string, string[]> = {};
   const unions: Record<string, string[]> = {};
   const customScalars: string[] = [];
@@ -106,7 +106,7 @@ function toModel(document: DocumentNode): GraphQLModel {
   const drafts = new Map<string, ObjectDraft>();
   const declaredRootTypeNames = new Set<string>();
 
-  for (const definition of document.definitions) {
+  for (const definition of ast.definitions) {
     switch (definition.kind) {
       case Kind.OBJECT_TYPE_DEFINITION:
       case Kind.OBJECT_TYPE_EXTENSION:

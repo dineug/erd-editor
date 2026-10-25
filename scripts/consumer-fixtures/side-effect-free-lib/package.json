@@ -1,0 +1,9 @@
+{
+  "name": "side-effect-free-lib",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./index.mjs"
+  }
+}

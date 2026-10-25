@@ -4,7 +4,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { FC, repeat } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import { getColumnDragPointer } from '@/components/erd/canvas/column-drag-ghost/columnDragPointer';
+import { getColumnDragPointer } from '@/components/erd/canvas/columnDragPointer';
 import {
   SCENE_FONT_FAMILY,
   SCENE_FONT_SIZE,

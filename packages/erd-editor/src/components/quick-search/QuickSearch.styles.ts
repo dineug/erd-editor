@@ -8,6 +8,7 @@ export const root = css`
   inset: 0;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: start;
   justify-content: center;
@@ -27,6 +28,7 @@ export const container = css`
   flex-direction: column;
   width: 100%;
   max-width: 600px;
+  max-height: 100%;
   position: relative;
   z-index: 1;
   background-color: var(--context-menu-background);
@@ -105,10 +107,11 @@ export const prefix = css`
   ${typography.paragraph};
 `;
 
-/* The list's height is set inline, from the rows it holds, so only the rows in view are drawn. */
+/* The list's height is set inline, from the rows it holds, so only the rows in view are drawn; a short host shrinks it. */
 export const list = css`
   position: relative;
-  flex: none;
+  flex: 0 1 auto;
+  min-height: 0;
   width: 100%;
   overflow-x: hidden;
   overflow-y: auto;

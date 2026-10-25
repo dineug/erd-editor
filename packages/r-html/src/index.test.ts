@@ -7,10 +7,12 @@ import {
   createAction,
   createAttributeDirective,
   createContext,
+  createCustomElement,
   createNodeDirective,
   createRef,
   createStore,
   css,
+  type CustomElementClass,
   defineCustomElement,
   hmr,
   html,
@@ -58,6 +60,7 @@ describe('public surface', () => {
       createAction,
       createAttributeDirective,
       createContext,
+      createCustomElement,
       createNodeDirective,
       createRef,
       createStore,
@@ -91,6 +94,15 @@ describe('public surface', () => {
 
   it('hangs the global escape hatch off the css tag itself', () => {
     expect(typeof css.global).toBe('function');
+  });
+
+  it('exports the element class type createCustomElement returns', () => {
+    const ElementClass: CustomElementClass = createCustomElement({
+      observedProps: ['label'],
+      render: () => () => html`<i></i>`,
+    });
+
+    expect(ElementClass.observedAttributes).toEqual(['label']);
   });
 });
 

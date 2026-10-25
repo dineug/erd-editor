@@ -50,6 +50,11 @@ export type Pinch = {
  */
 export type PinchStart = (center: Point) => ((pinch: Pinch) => void) | null;
 
+export type PinchOptions = {
+  /** Whether the box takes a pinch at all; while not, the page keeps each. */
+  interactive?: () => boolean;
+};
+
 type Spread = {
   center: Point;
   distance: number;
@@ -89,7 +94,11 @@ type GestureEvent = UIEvent & {
  * const pinch = createPinch(() => root.value, center => step);
  * onMounted(() => addUnsubscribe(pinch.listen()));
  */
-export function createPinch(box: () => HTMLElement, start: PinchStart) {
+export function createPinch(
+  box: () => HTMLElement,
+  start: PinchStart,
+  { interactive = () => true }: PinchOptions = {}
+) {
   let touch: Subscription | null = null;
   let gestureStep: ((pinch: Pinch) => void) | null = null;
 
@@ -104,11 +113,13 @@ export function createPinch(box: () => HTMLElement, start: PinchStart) {
   };
 
   /**
-   * Takes over a press that puts a second finger down, and says whether it was
-   * one, so the caller leaves it alone either way. The pinch runs until a finger lifts.
+   * Takes over a press that puts a second finger down while the box takes
+   * input, and says whether it was one, so the caller leaves it alone either
+   * way. The pinch runs until a finger lifts.
    */
   const handleTouchstart = (event: MouseEvent | TouchEvent): boolean => {
     if (!isMultiTouch(event)) return false;
+    if (!interactive()) return true;
 
     const rect = box().getBoundingClientRect();
     const from = spreadOf((event as TouchEvent).touches, rect);
@@ -129,13 +140,17 @@ export function createPinch(box: () => HTMLElement, start: PinchStart) {
   };
 
   // A gesture the page lets through zooms the whole page instead of the scene,
-  // so each is spent here even when the scene lets the pinch go by.
+  // so each is spent here even when the scene lets the pinch go by, unless the
+  // box takes no input at all, when the page keeps every one.
   const handleGesturestart = (event: GestureEvent) => {
+    gestureStep = null;
+    if (!interactive()) return;
     event.preventDefault();
     gestureStep = touching() ? null : start(pointIn(event));
   };
 
   const handleGesturechange = (event: GestureEvent) => {
+    if (!interactive()) return;
     event.preventDefault();
     if (!gestureStep || touching()) return;
 
@@ -143,7 +158,7 @@ export function createPinch(box: () => HTMLElement, start: PinchStart) {
   };
 
   const handleGestureend = (event: GestureEvent) => {
-    event.preventDefault();
+    if (interactive()) event.preventDefault();
     gestureStep = null;
   };
 

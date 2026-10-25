@@ -4,6 +4,7 @@ import {
   nextTick,
 } from '@dineug/r-html';
 
+import { toErdTarget } from '@/components/erd/erdTarget';
 import { localized } from '@/components/localized/Localized';
 import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { Open } from '@/constants/open';
@@ -25,16 +26,16 @@ import {
   rematchField,
   type ReplaceRun,
   resumeRun,
-  toReplaceActions,
   treeOrderOf,
 } from '@/utils/find-replace';
+import { toReplaceActions } from '@/utils/find-replace/replaceActions';
 import { isTakenOver } from '@/utils/takeover';
 
 import { isExplorerShown, openExplorer } from './explorerCommands';
 import { jumpTo } from './explorerNavigation';
 import { matchAncestorIds, matchRowId } from './explorerTree';
 import { explorerViewOf, type PressStatus } from './explorerView';
-import { showNextMatchAction$, toErdTarget } from './matchTarget';
+import { showNextMatchAction$ } from './matchTarget';
 
 /** How long typing must pause before a regular expression is searched, as one can be slow. */
 export const REGEX_INPUT_DELAY = 150;

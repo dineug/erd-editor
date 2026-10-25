@@ -21,7 +21,10 @@ const rHtmlPackage: string = '@dineug/vite-plugin-r-html';
 export default defineConfig({
   run: {
     tasks: createLibraryTasks(packageDir, {
-      build: ['vp build -c vite.umd.config.ts'],
+      build: [
+        'vp build -c vite.umd.config.ts',
+        'vp build -c vite.umd.config.ts --mode viewer',
+      ],
     }),
   },
   define: {
@@ -35,16 +38,28 @@ export default defineConfig({
       // declarations and the exports map names one place per entry.
       entry: {
         index: './src/index.ts',
+        'erd-editor': './src/erd-editor.ts',
+        'erd-viewer': './src/erd-viewer.ts',
         'engine/index': './src/engine/index.ts',
         'peer/index': './src/peer/index.ts',
       },
       formats: ['es'],
     },
+    // One file per module, unminified, so a consumer prunes by the package's
+    // sideEffects list and minifies once, as with the private libraries.
+    minify: false,
     rolldownOptions: {
       // Runtime dependencies stay bare imports for the consumer's bundler to
       // resolve, dedupe and tree-shake by their own sideEffects fields. The
       // private workspace libraries are not on npm, so they still inline.
       external,
+      output: {
+        preserveModules: true,
+        preserveModulesRoot: join(packageDir, 'src'),
+        // The declarations keep the JSDoc. pnpm peer-graph reads this text, so
+        // only the pure annotations a consumer prunes by and licences stay.
+        comments: { jsdoc: false, annotation: true, legal: true },
+      },
     },
   },
   resolve: {

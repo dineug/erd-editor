@@ -48,12 +48,6 @@ import {
 } from '@/components/erd/canvas/table/cellLayout';
 import { columnMarkFill } from '@/components/erd/canvas/table/dictionaryMarks';
 import { createDoubleClickGuard } from '@/components/erd/canvas/table/doubleClick';
-import {
-  COLUMN_KEY_PATH,
-  type DiffPaths,
-  diffTextColor,
-  ENTITY_PATH,
-} from '@/components/erd/diff-viewer/diff';
 import { useI18n } from '@/components/localeContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -93,6 +87,12 @@ import type { Column } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { bHas } from '@/utils/bit';
 import { tableRowHeight } from '@/utils/calcTable';
+import {
+  COLUMN_KEY_PATH,
+  type DiffPaths,
+  diffTextColor,
+  ENTITY_PATH,
+} from '@/utils/diff/diff';
 import {
   isMainButtonPress,
   isMultiTouch,
@@ -196,6 +196,11 @@ export type ColumnProps = {
   /** Drawn inside a copy of the table, which owns none of its ids. */
   preview?: boolean;
   editorFocused?: boolean;
+  /**
+   * Whether the row stands in a read scene, which the table resolved for its
+   * rows: no cell focuses or edits there and no remove button is drawn.
+   */
+  read?: boolean;
   /**
    * Whether the row carries the handle a column drag starts from, outside the
    * table's left edge. The table gives it to its focused row alone, and only
@@ -434,7 +439,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
   const handleFocus = (focusType: FocusType, event: SceneMouseEvent) => {
     // A view holds no focus: the cell a reader presses there is not a cell of
     // the document, and the underline it would light belongs to the ERD tab.
-    if (props.source !== 'document') return;
+    if (props.source !== 'document' || props.read) return;
 
     focusedPress = event.evt;
     const { store } = app.value;
@@ -453,7 +458,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
     if (!doubleClick.isDouble(focusType, event)) return;
     // A view edits nothing, and this is both halves of it: the document
     // overlay on a text cell, and a write straight to the document on a flag.
-    if (props.source !== 'document') return;
+    if (props.source !== 'document' || props.read) return;
 
     const { store } = app.value;
     const { column } = props;
@@ -977,7 +982,7 @@ const Column: FC<ColumnProps> = (props, ctx) => {
             listening={false}
           />
         ) : null}
-        {view
+        {view || props.read
           ? null
           : sceneIcon({
               icon: 'x',

@@ -23,11 +23,11 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "catalog:",
-    "typescript": "7.0.2",
+    "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "^5.0.3",
+    "vite-plugin-dts": "catalog:",
     "vitest": "catalog:",
     "vite-plus": "catalog:",
-    "@typescript/typescript6": "6.0.2"
+    "@typescript/typescript6": "catalog:"
   }
 }

@@ -1,36 +1,56 @@
 import { observable } from '@dineug/r-html';
 
 /**
- * The relationship a jump lights in each editor, one observable flag per
+ * The relationships a host lights in each editor, one observable flag per
  * editor.id and relationship id. It stays out of the store, so no file, history
  * entry or peer ever holds it, and a read of a key never lit adds none.
  */
 const lit = observable<Record<string, true>>({});
-const litOf = new Map<string, string>();
+const litOf = new Map<string, readonly string[]>();
 
 const keyOf = (editorId: string, relationshipId: string) =>
   `${editorId}\u0000${relationshipId}`;
 
-/** Lights one relationship in the editor, and puts out the one it lit before. */
+/**
+ * Lights the relationships given in the editor and puts out the ones it lit
+ * before, touching only the flags that change; an empty list puts all out.
+ */
+export function setRelationshipHighlights(
+  editorId: string,
+  relationshipIds: readonly string[]
+) {
+  const next = new Set(relationshipIds);
+
+  for (const id of litOf.get(editorId) ?? []) {
+    if (!next.has(id)) Reflect.deleteProperty(lit, keyOf(editorId, id));
+  }
+
+  if (!next.size) {
+    litOf.delete(editorId);
+    return;
+  }
+
+  litOf.set(editorId, [...next]);
+  for (const id of next) {
+    const key = keyOf(editorId, id);
+    if (!lit[key]) lit[key] = true;
+  }
+}
+
+/** Lights one relationship in the editor, as a jump does, and puts out what it lit before. */
 export function setRelationshipHighlight(
   editorId: string,
   relationshipId: string
 ) {
-  clearRelationshipHighlight(editorId);
-  litOf.set(editorId, relationshipId);
-  lit[keyOf(editorId, relationshipId)] = true;
+  setRelationshipHighlights(editorId, [relationshipId]);
 }
 
-/** Puts out whatever relationship the editor has lit. */
+/** Puts out whatever relationships the editor has lit. */
 export function clearRelationshipHighlight(editorId: string) {
-  const relationshipId = litOf.get(editorId);
-  if (relationshipId === undefined) return;
-
-  litOf.delete(editorId);
-  Reflect.deleteProperty(lit, keyOf(editorId, relationshipId));
+  setRelationshipHighlights(editorId, []);
 }
 
-/** Whether a jump has lit the relationship, read by its connector as it reads a hover. */
+/** Whether the host has lit the relationship, read by its connector as it reads a hover. */
 export function isRelationshipHighlighted(
   editorId: string,
   relationshipId: string

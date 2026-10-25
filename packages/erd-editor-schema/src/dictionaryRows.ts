@@ -124,12 +124,12 @@ const isDictionaryRows = (value: unknown): value is DictionaryRows =>
  * collection, in the order written, so every other byte is its own.
  */
 export function stringifyDocument<T extends { collections?: object }>(
-  document: T
+  source: T
 ): string {
-  if (!document.collections) return JSON.stringify(document, null, 2);
+  if (!source.collections) return JSON.stringify(source, null, 2);
 
   const blocks: unknown[][][] = [];
-  const collections: Record<string, unknown> = { ...document.collections };
+  const collections: Record<string, unknown> = { ...source.collections };
 
   for (const [key, collection] of Object.entries(collections)) {
     if (
@@ -144,7 +144,7 @@ export function stringifyDocument<T extends { collections?: object }>(
   }
 
   let next = 0;
-  return JSON.stringify({ ...document, collections }, null, 2).replace(
+  return JSON.stringify({ ...source, collections }, null, 2).replace(
     ROWS_PLACEHOLDER,
     placeholder => {
       const rows = blocks[next++] ?? [];

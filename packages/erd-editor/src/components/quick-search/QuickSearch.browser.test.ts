@@ -17,6 +17,7 @@ import {
 } from '@/__test-utils__/hangulSeed';
 import type { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
+import { createScopeActions } from '@/components/quick-search/actions';
 import {
   PALETTE_LIST_MAX_HEIGHT,
   PALETTE_ROW_HEIGHT,
@@ -55,7 +56,10 @@ async function setup(seed?: (app: AppContext) => void) {
   const app = createTestAppContext();
   seedHangulDocument(app);
   seed?.(app);
-  mounted = mount(html`<${QuickSearch} />`, app);
+  mounted = mount(
+    html`<${QuickSearch} .topLevel=${createScopeActions} />`,
+    app
+  );
   await flush();
   app.emitter.emit(toggleSearchAction());
   await flush();
@@ -282,7 +286,11 @@ describe('quick search over a long list', () => {
         })
       );
     }
-    mounted = mount(html`<${QuickSearch} />`, app, shadow);
+    mounted = mount(
+      html`<${QuickSearch} .topLevel=${createScopeActions} />`,
+      app,
+      shadow
+    );
     await flush();
     app.emitter.emit(toggleSearchAction());
     await flush();
@@ -317,5 +325,61 @@ describe('quick search over a long list', () => {
     expect(first.textContent).toContain('t000');
     expect(inView(first)).toBe(true);
     expect(list.scrollTop).toBe(0);
+  });
+});
+
+describe('quick search in a short host', () => {
+  it('keeps the list inside the host, and the keyboard row in view in it', async () => {
+    shadowHost = document.createElement('div');
+    shadowHost.setAttribute(
+      'style',
+      'position: relative; width: 600px; height: 300px; overflow: hidden;'
+    );
+    document.body.append(shadowHost);
+    const shadow = shadowHost.attachShadow({ mode: 'open' });
+    addCSSHost(shadow);
+    const app = createTestAppContext();
+    for (let index = 0; index < 30; index++) {
+      const id = `t${index}`;
+      app.store.dispatchSync(
+        addTableAction({ id, ui: { x: 0, y: 0, zIndex: 1 } }),
+        changeTableNameAction({
+          id,
+          value: `t${String(index).padStart(2, '0')}`,
+        })
+      );
+    }
+    mounted = mount(
+      html`<${QuickSearch} .topLevel=${createScopeActions} />`,
+      app,
+      shadow
+    );
+    await flush();
+    app.emitter.emit(toggleSearchAction());
+    await flush();
+
+    const input = shadow.querySelector('input') as HTMLInputElement;
+    input.value = '#';
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await flush();
+    const host = shadowHost.getBoundingClientRect();
+    const list = shadow.querySelector(`.${styles.list}`) as HTMLElement;
+
+    expect(list.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      host.bottom
+    );
+    expect(list.clientHeight).toBeLessThan(PALETTE_LIST_MAX_HEIGHT);
+
+    for (let step = 0; step < 8; step++) {
+      await userEvent.keyboard('{ArrowDown}');
+    }
+    await flush();
+    const row = shadow.querySelector(`.${styles.action}.selected`)!;
+    const box = list.getBoundingClientRect();
+    const { top, bottom } = row.getBoundingClientRect();
+
+    expect(row.textContent).toContain('t07');
+    expect(top).toBeGreaterThanOrEqual(box.top - 0.5);
+    expect(bottom).toBeLessThanOrEqual(box.bottom + 0.5);
   });
 });

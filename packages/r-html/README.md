@@ -73,9 +73,12 @@ Every name below comes from `src/index.ts`.
 
 - **Styles** — `css` returns a literal that stringifies to a generated class name; `css.global`
   opts out of scoping. Sheets are constructable, with a `<style>` fallback, and are adopted only
-  into registered shadow roots: the one `defineCustomElement` attaches (`shadow: 'open'` by
-  default) or one you pass to `addCSSHost(shadowRoot)`. A `css` class used in the document's own
+  into registered shadow roots: the one a `createCustomElement` element attaches (`shadow: 'open'`
+  by default) or one you pass to `addCSSHost(shadowRoot)`. A `css` class used in the document's own
   tree matches no rule. `setGlobalStyleOrder([...])` pins the cascade order of `css.global` sheets.
+  `adoptHostSheet(element, sheet)` adopts a constructed sheet of one element's own shadow root,
+  closed ones too, ahead of the shared sheets, as a `<style>` of its tree would apply, and returns
+  what drops it, or `null` where `canAdoptStyleSheets()` is false or the root never joined.
   `setCSSDiagnostics(true | handler)` sends the CSS compiler's diagnostics to the console or your
   handler, `false` turns them off, and `null` leaves it to a `__RHTML_CSS_DIAGNOSTICS__` global.
 - **Reactivity** — `observable(state, { shallow })`, `observer(fn)` (returns an unsubscribe) and
@@ -85,8 +88,10 @@ Every name below comes from `src/index.ts`.
 - **Components** — `FC<Props, Ctx>` returns a render closure and receives a `ctx` carrying `host`,
   `parentElement` and `dispatchEvent`. Lifecycle hooks: `onBeforeMount`, `onMounted`,
   `onUnmounted`, `onBeforeFirstUpdate`, `onFirstUpdated`, `onBeforeUpdate`, `onUpdated`.
-  `defineCustomElement(name, { render, observedProps, shadow })` registers one as an element
-  (`shadow: false` renders without a shadow root). `createContext` / `useProvider` /
+  `createCustomElement({ render, observedProps, shadow })` returns one as an element class,
+  typed `CustomElementClass<C>`, that you register with `customElements.define(name, Class)`
+  (`new` on it throws until then); `defineCustomElement(name, options)` builds and registers it
+  in one call (`shadow: false` renders without a shadow root). `createContext` / `useProvider` /
   `useContext` pass values down without props. `NoopComponent` renders nothing, and
   `closestElement` / `queryShadowSelector` / `queryShadowSelectorAll` look across shadow roots.
 - **Store** — `createStore({ context, state, reducers, enableObservable })` returns `context`,

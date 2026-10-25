@@ -13,8 +13,8 @@
   },
   "devDependencies": {
     "@types/vscode-webview": "1.57.5",
-    "core-js": "^3.36.1",
-    "typescript": "7.0.2",
+    "core-js": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

@@ -18,6 +18,7 @@ import {
   ErdEditorProps,
 } from '@/components/erd-editor/ErdEditor';
 import { useI18n } from '@/components/localeContext';
+import { createScopeActions } from '@/components/quick-search/actions';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
@@ -54,7 +55,11 @@ vi.mock('@/components/appContext', async importOriginal => {
 });
 
 const quickSearch = vi.hoisted(() => ({
-  props: null as null | { appearance?: string; locale?: string },
+  props: null as null | {
+    appearance?: string;
+    locale?: string;
+    topLevel?: unknown;
+  },
 }));
 
 // The palette renders as it is; the wrapper only keeps the props object the
@@ -74,7 +79,7 @@ vi.mock('@/components/quick-search/QuickSearch', async importOriginal => {
   };
 });
 
-await import('@/components/erd-editor/ErdEditor');
+await import('@/erd-editor');
 
 type ResizeCallback = (
   entries: Array<{ contentRect: DOMRectReadOnly }>
@@ -466,6 +471,12 @@ describe('<erd-editor>', () => {
     expect(root?.getAttribute('lang')).toBe('ar-SA');
     expect(root?.getAttribute('dir')).toBe('rtl');
     await flush();
+  });
+
+  it('opens the palette on the editor commands and table jumps', async () => {
+    await createEditor();
+
+    expect(quickSearch.props?.topLevel).toBe(createScopeActions);
   });
 
   it('hands the palette the option in force while the picker is on, and none while it is off', async () => {

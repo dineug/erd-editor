@@ -1,5 +1,5 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
 
 # generator-code
 
@@ -96,7 +96,7 @@ These are owner decisions of 2026-10-09.
 - **Each language maps onto one Shiki grammar.** `LanguageToLangMap` (`constants/language.ts`) colours Swift with Shiki's `swift` grammar, Zod with `typescript` and JSON Schema with `json`, grammars `shikiService.ts` loads one by one.
 - **Of those three, only `swift` added bytes.** `@shikijs/langs/php` already embedded `json`, so only `swift` added bytes to the shiki worker (shiki 4.4.3, measured 2026-10-10).
 - **Colour GraphQL with the copy in `graphqlGrammar.ts`.** GraphQL is coloured by `src/services/shiki/graphqlGrammar.ts`, `@shikijs/langs/graphql`'s grammar without its `embeddedLangs`. Those are JavaScript, TypeScript, JSX and TSX, for a `${…}` of a GraphQL string inside a script, which no generated schema holds.
-- **Keep embedded grammars out of the inline worker.** With them, and `swift`, the shiki worker that the UMD build and `obsidian-plugin` inline grew to a data url past Chromium's 2 MiB limit. `base64InlineWorkers` (`tools/vite/inline-worker.ts`) guards that limit. Without JSX and TSX it stays under the limit (measured 2026-10-10).
+- **Keep embedded grammars out of the inline worker.** With them, and `swift`, the shiki worker that the editor's UMD build and `obsidian-plugin` inline grew to a data url past Chromium's 2 MiB limit. `base64InlineWorkers` (`tools/vite/inline-worker.ts`) guards that limit. Without JSX and TSX it stays under the limit (measured 2026-10-10).
 - The shiki shared worker the code block highlights through: `src/services/AGENTS.md`.
 
 ## Testing Requirements

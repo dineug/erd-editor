@@ -3,9 +3,12 @@ import { renderKonva } from '@dineug/r-html-konva';
 import { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
-import { renderCanvasScene } from '@/components/erd/canvas/CanvasScene';
-import EditOverlay from '@/components/erd/canvas/EditOverlay';
+import {
+  type CanvasLayers,
+  renderCanvasScene,
+} from '@/components/erd/canvas/CanvasScene';
 import { listenMiddleButtonPan } from '@/components/erd/canvas/middleButtonPan';
+import { scopeClicksToStage } from '@/components/erd/canvas/stagePressScope';
 import { trackSceneHits } from '@/components/erd/hitTest';
 import { useContextMenuRootContext } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
@@ -20,16 +23,22 @@ import * as styles from './Canvas.styles';
 /** The registry key a spec reads the main canvas Stage back from. */
 const STAGE_NAME = 'canvas';
 
+export type { CanvasLayers };
+
 export type CanvasProps = {
   root: Ref<HTMLDivElement>;
   canvas: Ref<HTMLDivElement>;
   grabMove?: boolean;
+  /** Drawn over the stage inside the left to right controller: the ERD tab's cell editor. */
+  overlay?: FC;
+  /** What the host adds at the scene's layers, read once as the stage mounts. */
+  layers?: CanvasLayers;
 };
 
 /**
  * The dom shell the scene hangs in: a controller box, the Stage container in it
- * and the editing overlay over that. Scroll and zoom moved onto the scene's
- * layers, so the shell is viewport sized rather than schema sized.
+ * and the overlay its host draws over that. Scroll and zoom moved onto the
+ * scene's layers, so the shell is viewport sized rather than schema sized.
  */
 const Canvas: FC<CanvasProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -75,10 +84,11 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
 
     stage = $stage;
     registerStage(STAGE_NAME, $stage);
-    renderCanvasScene($stage, { root: props.root });
+    renderCanvasScene($stage, { root: props.root, layers: props.layers });
 
     addUnsubscribe(
       trackSceneHits($stage),
+      scopeClicksToStage($stage),
       listenMiddleButtonPan(props.canvas.value, handlePanMove, handlePanPress),
       watch(viewport).subscribe(() => {
         $stage.size({ width: viewport.width, height: viewport.height });
@@ -101,7 +111,10 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
       '@/components/erd/canvas/CanvasScene',
       (mod: any) => {
         if (!stage || !mod) return;
-        mod.renderCanvasScene(stage, { root: props.root });
+        mod.renderCanvasScene(stage, {
+          root: props.root,
+          layers: props.layers,
+        });
       }
     );
   }
@@ -109,6 +122,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
   return () => {
     const { store } = app.value;
     const { viewport } = store.state.editor;
+    const Overlay = props.overlay;
 
     const size = {
       width: `${viewport.width}px`,
@@ -132,7 +146,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
           use:ref={ref(props.canvas)}
           style={size}
         ></div>
-        <EditOverlay />
+        {Overlay ? <Overlay /> : null}
       </div>
     );
   };

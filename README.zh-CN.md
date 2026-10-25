@@ -56,7 +56,7 @@ codex mcp add erd-editor -- npx -y @dineug/erd-editor-mcp
 | **VS Code** | [Marketplace](https://marketplace.visualstudio.com/items?itemName=dineug.vuerd-vscode) | 打开 `.erd.json` 文件 |
 | **IntelliJ** | [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/23594-erd-editor) | 在 IntelliJ 系列 IDE 中打开 `.erd.json` 文件 |
 | **Obsidian** | [社区插件](https://community.obsidian.md/plugins/erd-editor) | 打开仓库中的 `.erd` 和 `.erd.json` 文件，仅限桌面端 |
-| **你的应用** | `npm install @dineug/erd-editor` | 无需框架的 `<erd-editor>` 自定义元素 |
+| **你的应用** | `npm install @dineug/erd-editor` | 无需框架的 `<erd-editor>` 自定义元素和只读的 `<erd-viewer>` |
 | **编码代理** | [`@dineug/erd-editor-mcp`](./packages/mcp-server) | 面向 Claude Code、Codex 等 MCP 客户端的服务器 |
 
 在 IDE 中，创建一个扩展名为 `.erd.json` 的空文件并打开它。在 Obsidian 中运行 **ERD Editor: Create new diagram**；在 Google Drive 中选择 **新建 → 更多 → ERD Editor**。
@@ -108,7 +108,7 @@ npm install @dineug/erd-editor
 ```
 
 ```js
-import '@dineug/erd-editor';
+import '@dineug/erd-editor/erd-editor.js';
 
 const editor = document.createElement('erd-editor');
 // 编辑器会填满容器，而自定义元素默认是行内元素
@@ -116,12 +116,14 @@ Object.assign(editor.style, { display: 'block', width: '100%', height: '100vh' }
 document.body.appendChild(editor);
 ```
 
+若只想展示图而不编辑，导入 `@dineug/erd-editor/erd-viewer.js` 并放置 `<erd-viewer src="diagram.erd.json" style="display: block; height: 480px"></erd-viewer>`，即可在样式给定的区域内平移、缩放和搜索这张图。只导入包的根入口不会定义任何元素。
+
 在任何框架中或不用框架都能工作。属性和元素 API 见 [`packages/erd-editor`](./packages/erd-editor)。
 
 ## 文档
 
 - [编辑指南](https://docs.erd-editor.io/docs/category/guides) — 编辑器的全部功能
-- [元素 API](https://docs.erd-editor.io/docs/api/erd-editor-element) — 嵌入你自己应用的 `<erd-editor>`
+- [元素 API](https://docs.erd-editor.io/docs/api/erd-editor-element) — 嵌入你自己应用的 `<erd-editor>`；`<erd-viewer>` 见 [`packages/erd-editor`](./packages/erd-editor)
 - [MCP](https://docs.erd-editor.io/docs/mcp/introduction) — MCP 服务器及其工具
 - [文档](https://docs.erd-editor.io)
 
@@ -134,7 +136,7 @@ document.body.appendChild(editor);
 
 | 文件夹 | npm 名称 | 说明 |
 | --- | --- | --- |
-| [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | 编辑器核心：`<erd-editor>` 自定义元素以及无头的 `engine.js` 和 `peer.js` 入口 |
+| [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | 编辑器核心：`<erd-editor>` 自定义元素、只读的 `<erd-viewer>` 以及无头的 `engine.js` 和 `peer.js` 入口 |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | `@dineug/erd-editor-schema` | v2/v3 文档架构、解析、序列化器、查询和 LWW 运算符 |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | `@dineug/schema-sql-parser` | SQL 导入所用的宽松 DDL 解析器 |
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7 和 Uuid25 编码，编辑器生成的 id |

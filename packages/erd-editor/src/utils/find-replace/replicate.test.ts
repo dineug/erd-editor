@@ -19,8 +19,8 @@ import {
   DEFAULT_FIND_OPTIONS,
   findMatches,
   Matcher,
-  toReplaceActions,
 } from '@/utils/find-replace';
+import { toReplaceActions } from '@/utils/find-replace/replaceActions';
 
 const sessions: Session[] = [];
 

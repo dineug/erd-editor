@@ -553,4 +553,6 @@ export const itIT = {
     'Le colonne oltre l’ultima non sono state incollate',
   'dictionary.toast.tooManyCells':
     'Nessuna operazione eseguita: la selezione copre troppe celle',
+  'viewer.loading': 'Caricamento del diagramma',
+  'viewer.loadError': 'Impossibile caricare il diagramma',
 } satisfies Messages;

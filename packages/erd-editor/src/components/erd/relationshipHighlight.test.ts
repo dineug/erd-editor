@@ -9,6 +9,7 @@ import {
   dropRelationshipHighlight,
   isRelationshipHighlighted,
   setRelationshipHighlight,
+  setRelationshipHighlights,
 } from './relationshipHighlight';
 
 afterEach(() => {
@@ -58,6 +59,39 @@ describe('relationshipHighlight', () => {
     expect(runs['rel-2']).toBe(before['rel-2'] + 1);
     expect(runs['rel-3']).toBe(before['rel-3']);
     stops.forEach(stop => stop());
+  });
+
+  it('lights a set at once and keeps the ones the next set holds again', async () => {
+    setRelationshipHighlights('editor-a', ['rel-1', 'rel-2']);
+    const runs = { 'rel-1': 0, 'rel-2': 0, 'rel-3': 0 };
+    const stops = (Object.keys(runs) as Array<keyof typeof runs>).map(id =>
+      observer(() => {
+        runs[id]++;
+        isRelationshipHighlighted('editor-a', id);
+      })
+    );
+    const before = { ...runs };
+
+    setRelationshipHighlights('editor-a', ['rel-2', 'rel-3', 'rel-3']);
+    await flush();
+
+    expect(isRelationshipHighlighted('editor-a', 'rel-1')).toBe(false);
+    expect(isRelationshipHighlighted('editor-a', 'rel-2')).toBe(true);
+    expect(isRelationshipHighlighted('editor-a', 'rel-3')).toBe(true);
+    expect(runs['rel-1']).toBe(before['rel-1'] + 1);
+    expect(runs['rel-2']).toBe(before['rel-2']);
+    expect(runs['rel-3']).toBe(before['rel-3'] + 1);
+    expect(countRelationshipHighlights()).toEqual({ flags: 2, editors: 1 });
+    stops.forEach(stop => stop());
+  });
+
+  it('puts all out for an empty set and remembers no editor for it', () => {
+    setRelationshipHighlights('editor-a', ['rel-1', 'rel-2']);
+    setRelationshipHighlights('editor-a', []);
+    setRelationshipHighlights('editor-b', []);
+
+    expect(isRelationshipHighlighted('editor-a', 'rel-1')).toBe(false);
+    expect(countRelationshipHighlights()).toEqual({ flags: 0, editors: 0 });
   });
 
   it('forgets an editor that went, and a later read brings nothing back', () => {

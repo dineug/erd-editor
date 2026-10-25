@@ -23,14 +23,13 @@ import {
   whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import { diffContext } from '@/components/diffContext';
 import {
   TABLE_CORNER_RADIUS,
   TABLE_INSET,
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import Table from '@/components/erd/canvas/table/Table';
-import { Diff, type DiffMap } from '@/components/erd/diff-viewer/diff';
-import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import {
   INPUT_MARGIN_RIGHT,
   TABLE_BORDER,
@@ -84,6 +83,7 @@ import type { Table as TableEntity } from '@/internal-types';
 import { getColumnRect, getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
+import { Diff, type DiffMap } from '@/utils/diff/diff';
 
 type SceneProps = {
   hovered?: boolean;

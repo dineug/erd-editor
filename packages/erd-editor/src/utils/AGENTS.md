@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
 
 # utils
 
@@ -92,6 +92,7 @@
 ### Rules on files here kept elsewhere
 
 - `tableKeys.ts` (keys the columns declare, alternate keys and their marks): `src/components/erd/AGENTS.md`.
+- `tableName.ts` (the name split, the automatic names, `primaryKeyColumns` and `orderByNameASC`, which the DDL writers share with modules that never reach them): `schema-sql/AGENTS.md`.
 - `pinch.ts` (`createPinch`, which Graph mode drives on its own view, and `isPinchWheel`): `src/components/erd/AGENTS.md`.
 - `validation.ts` (`canvasSizeInRange`, where `sortTableAction` wraps its rows): `src/components/erd/AGENTS.md`.
 - `stageCursor.ts`, `domEvent.ts` and `globalEventObservable.ts` in the middle-button pan (`holdStageCursor`, `preventMiddleLift`, `middlePanPress$`): `src/components/erd/AGENTS.md`.
@@ -101,7 +102,7 @@
 - `file/exportFile.ts` (how Save file and every export name the file): `src/components/generator-code/AGENTS.md`.
 - `find-replace/`, which has no file of its own (the matcher, `findMatches.ts`, `replaceActions.ts`): `src/components/explorer/AGENTS.md`.
 - `map-columns/` (the pure half of Map Columns): `src/components/map-columns/AGENTS.md`.
-- `diff/` (the diff engine the diff viewer's tree and panes read): `src/components/erd/AGENTS.md`, The diff viewer.
+- `diff/` (the diff engine the diff viewer's tree and panes read, and in `diff.ts` the marks every scene reads): `src/components/erd/AGENTS.md`, The diff viewer.
 - `referentialAction.ts` (the referential action codes a connector's child end shows): `draw-relationship/AGENTS.md`.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

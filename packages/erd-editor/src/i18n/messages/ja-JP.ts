@@ -523,4 +523,6 @@ export const jaJP = {
     '最後の列より後の列は貼り付けられませんでした',
   'dictionary.toast.tooManyCells':
     '実行されませんでした: 選択範囲のセルが多すぎます',
+  'viewer.loading': '図を読み込み中',
+  'viewer.loadError': '図を読み込めませんでした',
 } satisfies Messages;

@@ -42,6 +42,16 @@ const supportsAdoptingStyleSheets =
   'replace' in CSSStyleSheet.prototype;
 
 /**
+ * Sheets a host holds of its own, adopted ahead of the shared ones, as a
+ * <style> of its own tree applies ahead of them. Kept while the host is away
+ * from the page, so it holds them again as it joins.
+ */
+const hostSheetsMap = new WeakMap<ShadowRoot, CSSStyleSheet[]>();
+
+/** The shadow root each element's host joined with, closed ones too, which only it can hand out. */
+const rootOfElement = new WeakMap<Element, ShadowRoot>();
+
+/**
  * Whether adoptedStyleSheets can be mutated in place; null is not asked. A
  * browser can support the attribute and still reject a push, so mutability is a
  * separate question, answered by doing it rather than inferring it.
@@ -200,7 +210,39 @@ function getOrderedSheets(ctx: CSSSharedContext): CSSStyleSheet[] {
  * the cache into every host makes the next append land twice in each.
  */
 function adoptInto(host: ShadowRoot, sheets: CSSStyleSheet[]) {
-  host.adoptedStyleSheets = [...sheets];
+  host.adoptedStyleSheets = [...(hostSheetsMap.get(host) ?? []), ...sheets];
+}
+
+/** Whether this browser adopts constructed stylesheets; where it does not, a host's own sheet is a <style> of its tree. */
+export function canAdoptStyleSheets(): boolean {
+  return Boolean(supportsAdoptingStyleSheets);
+}
+
+/**
+ * Adopts a sheet ahead of the shared ones in the shadow root an element's host
+ * joined with, as a <style> of that tree would apply, and hands back what drops
+ * it; null where no sheet is adopted or the element's root never joined.
+ */
+export function adoptHostSheet(
+  element: Element,
+  sheet: CSSStyleSheet
+): (() => void) | null {
+  const host = rootOfElement.get(element);
+  if (!supportsAdoptingStyleSheets || !host) return null;
+
+  const ctx = getCSSSharedContext();
+  const readopt = () => {
+    if (ctx.hostContextMap.has(host)) adoptInto(host, getOrderedSheets(ctx));
+  };
+
+  hostSheetsMap.set(host, [...(hostSheetsMap.get(host) ?? []), sheet]);
+  readopt();
+
+  return () => {
+    const own = (hostSheetsMap.get(host) ?? []).filter(item => item !== sheet);
+    own.length ? hostSheetsMap.set(host, own) : hostSheetsMap.delete(host);
+    readopt();
+  };
 }
 
 function updateSheets() {
@@ -297,6 +339,7 @@ export function addCSSHost(host: ShadowRoot) {
   }
 
   ctx.hostContextMap.set(host, { styleElements: new Map() });
+  rootOfElement.set(host.host, host);
 
   // Only the joining host is behind: every host already registered holds
   // exactly the list this one is about to be handed, so a full pass would

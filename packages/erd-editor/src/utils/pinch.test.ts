@@ -111,13 +111,14 @@ describe('createPinch', () => {
   let declined: boolean;
   let listening: { unsubscribe: () => void } | null;
 
-  const setup = () => {
+  const setup = (interactive?: () => boolean) => {
     const pinch = createPinch(
       () => box,
       center => {
         begun.push(center);
         return declined ? null : step => steps.push(step);
-      }
+      },
+      { interactive }
     );
     listening = pinch.listen();
     return pinch;
@@ -303,6 +304,86 @@ describe('createPinch', () => {
 
       expect(steps).toEqual([]);
       expect(start.defaultPrevented).toBe(false);
+    });
+  });
+
+  describe('while the box takes no input', () => {
+    it('starts no pinch under two fingers, and still keeps them from the caller', () => {
+      const pinch = setup(() => false);
+
+      const handled = pinch.handleTouchstart(
+        touch('touchstart', [
+          { x: 110, y: 120 },
+          { x: 210, y: 120 },
+        ])
+      );
+      window.dispatchEvent(
+        touch('touchmove', [
+          { x: 80, y: 150 },
+          { x: 280, y: 150 },
+        ])
+      );
+
+      expect(handled).toBe(true);
+      expect(begun).toEqual([]);
+      expect(steps).toEqual([]);
+    });
+
+    it('lets every gesture through to the page and spends none', () => {
+      setup(() => false);
+
+      const start = gesture('gesturestart', 1, 110, 220);
+      const change = gesture('gesturechange', 1.5, 110, 220);
+      const end = gesture('gestureend', 1.5, 110, 220);
+      box.dispatchEvent(start);
+      box.dispatchEvent(change);
+      box.dispatchEvent(end);
+
+      expect(begun).toEqual([]);
+      expect(steps).toEqual([]);
+      expect([start, change, end].map(e => e.defaultPrevented)).toEqual([
+        false,
+        false,
+        false,
+      ]);
+    });
+
+    it('drops a gesture begun while it took input once it stops', () => {
+      let interactive = true;
+      setup(() => interactive);
+
+      box.dispatchEvent(gesture('gesturestart', 1, 110, 220));
+      interactive = false;
+      const change = gesture('gesturechange', 2, 110, 220);
+      box.dispatchEvent(change);
+      box.dispatchEvent(gesture('gestureend', 2, 110, 220));
+      interactive = true;
+      box.dispatchEvent(gesture('gesturechange', 3, 110, 220));
+
+      expect(begun).toEqual([{ x: 100, y: 200 }]);
+      expect(steps).toEqual([]);
+      expect(change.defaultPrevented).toBe(false);
+    });
+
+    it('takes input again as soon as the box does', () => {
+      let interactive = false;
+      const pinch = setup(() => interactive);
+
+      interactive = true;
+      pinch.handleTouchstart(
+        touch('touchstart', [
+          { x: 110, y: 120 },
+          { x: 210, y: 120 },
+        ])
+      );
+      window.dispatchEvent(
+        touch('touchmove', [
+          { x: 80, y: 150 },
+          { x: 280, y: 150 },
+        ])
+      );
+
+      expect(steps).toEqual([{ scale: 2, center: { x: 170, y: 130 } }]);
     });
   });
 });

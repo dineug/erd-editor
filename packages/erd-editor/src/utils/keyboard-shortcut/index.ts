@@ -184,6 +184,22 @@ export const createKeyBindingMap = (): KeyBindingMap => ({
 });
 
 /**
+ * Keeps the chords of the bindings named and empties every other binding, in
+ * place, so useKeyBindingMap binds those alone and a reader of any name still
+ * finds a list. In place, since the app context hands every reader this one object.
+ */
+export function pickKeyBindingMap(
+  keyBindingMap: KeyBindingMap,
+  names: ReadonlyArray<KeyBindingName>
+): void {
+  for (const name of KeyBindingNameList) {
+    if (!names.includes(name) && keyBindingMap[name].length) {
+      keyBindingMap[name] = [];
+    }
+  }
+}
+
+/**
  * Whether the press is one of the chords given, matched as bindKeys matches a
  * press, so a panel reads a binding as the editor root does. Of a sequence it
  * is the last press, the one that would complete it at the root.

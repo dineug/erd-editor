@@ -6,7 +6,7 @@ import {
 } from '@/engine/modules/relationship/fkColumns';
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
-import { tableNamePart } from '@/utils/schema-sql/utils';
+import { tableNamePart } from '@/utils/tableName';
 
 import { CandidateKey } from './candidateKeys';
 import { ColumnPick, toPickedColumnIds } from './mapping';

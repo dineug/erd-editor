@@ -1,7 +1,12 @@
-import '@/components/customElementRegistry';
-
 export { dictionaryRowChords } from '@/components/dictionary/dictionaryKeys';
-export type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
+export {
+  defineErdEditor,
+  ErdEditorElement,
+} from '@/components/erd-editor/ErdEditor';
+export {
+  defineErdViewer,
+  ErdViewerElement,
+} from '@/components/erd-viewer/ErdViewer';
 export type { LocaleCode, LocaleOption } from '@/i18n/locales';
 export { setExportFileCallback } from '@/utils/file/exportFile';
 export { setImportFileCallback } from '@/utils/file/importFile';

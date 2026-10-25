@@ -2,16 +2,16 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { createTestAppContext } from '@/__test-utils__';
 import { type DiffSeed, diffStateOf } from '@/__test-utils__/diffSeed';
+import { ReferentialAction, RelationshipType } from '@/constants/schema';
+import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
+import { FocusType } from '@/engine/modules/editor/state';
 import {
   COLUMN_KEY_PATH,
   Diff,
   ENTITY_PATH,
   MEMO_VALUE_PATH,
   TABLE_GROUP_NAME_PATH,
-} from '@/components/erd/diff-viewer/diff';
-import { ReferentialAction, RelationshipType } from '@/constants/schema';
-import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
-import { FocusType } from '@/engine/modules/editor/state';
+} from '@/utils/diff/diff';
 
 import { diffDocuments } from './diffDocuments';
 import {

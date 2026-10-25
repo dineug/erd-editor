@@ -1,0 +1,243 @@
+{
+  "$comment": "What the graph of @dineug/erd-editor/erd-viewer.js may not reach. Paths are modules under packages/erd-editor/src, extension dropped, and the same paths under dist/. Each entry says why the viewer has no use for it.",
+  "match": "A path p matches an entry x when p equals x or starts with x + '/' or x + '.'; a package specifier matches the same way. So components/erd/table-group never matches components/erd/canvas/table-group, and utils/schema-sql never matches utils/schema-sql-parser.",
+  "forbiddenPaths": [
+    {
+      "path": "components/toolbar",
+      "why": "The editor's toolbar; the viewer draws view controls of its own."
+    },
+    {
+      "path": "components/explorer",
+      "why": "The docked tree and Find and Replace. The helpers the palette's document search shares moved out to components/erd/erdTarget and components/erd/fieldIcon."
+    },
+    {
+      "path": "components/dictionary",
+      "why": "The Dictionary tab and the grid it mounts."
+    },
+    {
+      "path": "components/generator-code",
+      "why": "The Code Generator tab."
+    },
+    {
+      "path": "components/schema-sql",
+      "why": "The Schema SQL tab."
+    },
+    {
+      "path": "components/settings",
+      "why": "The Settings tab."
+    },
+    {
+      "path": "components/theme-builder",
+      "why": "The theme builder; a page sets the viewer's theme through its methods."
+    },
+    {
+      "path": "components/locale-picker",
+      "why": "The locale picker; a page sets the viewer's language through its methods."
+    },
+    {
+      "path": "components/export-image",
+      "why": "The image export dialog."
+    },
+    {
+      "path": "components/map-columns",
+      "why": "Map Columns, which writes relationships."
+    },
+    {
+      "path": "components/visualization",
+      "why": "The Visualization tab: Graph, Flow and their particles."
+    },
+    {
+      "path": "components/table-view",
+      "why": "The DOM editor of a table's columns."
+    },
+    {
+      "path": "components/erd/table-properties",
+      "why": "Table Properties, which edits a table."
+    },
+    {
+      "path": "components/erd/erd-context-menu",
+      "why": "The canvas context menu, whose items edit. The name view list it shows moved out to components/erd/nameViewOptions, which the viewer reads."
+    },
+    {
+      "path": "components/erd/diff-viewer",
+      "why": "The diff pane. The diff marks the scene reads moved out to utils/diff/diff and components/diffContext."
+    },
+    {
+      "path": "components/erd/time-travel",
+      "why": "History playback."
+    },
+    {
+      "path": "components/erd/automatic-table-placement",
+      "why": "Automatic placement, which drives the ELK worker."
+    },
+    {
+      "path": "components/erd/draw-target",
+      "why": "The buttons beside a draw's target."
+    },
+    {
+      "path": "components/erd/welcome-screen",
+      "why": "The welcome screen over an empty diagram."
+    },
+    {
+      "path": "components/erd/floating-toolbar",
+      "why": "The editor's floating bar: the hand and select tools, the adds, the notations and zen mode. The zoom cluster, the compass and the name view menu it composes moved out to components/erd/view-controls, which the viewer composes too."
+    },
+    {
+      "path": "components/erd/table-group",
+      "why": "The table group commands: drawing a new group and naming it. The groups' scene, with their sash and their name editor, lives in components/erd/canvas/table-group."
+    },
+    {
+      "path": "components/erd/canvas/EditOverlay",
+      "why": "The editing overlay over the scene."
+    },
+    {
+      "path": "components/erd/canvas/drag-select",
+      "why": "Marquee selection."
+    },
+    {
+      "path": "components/erd/canvas/draw-relationship",
+      "why": "Drawing a relationship."
+    },
+    {
+      "path": "components/erd/canvas/duplicate-ghost",
+      "why": "The preview an Alt drag duplicates into."
+    },
+    {
+      "path": "components/erd/canvas/column-drag-ghost",
+      "why": "The preview of a dragged column."
+    },
+    {
+      "path": "components/erd/canvas/shared-drag-select",
+      "why": "A collaborator's marquee; the viewer has no collaborators."
+    },
+    {
+      "path": "components/erd/canvas/shared-mouse-tracker",
+      "why": "Collaborators' pointers; the viewer has no collaborators."
+    },
+    {
+      "path": "components/erd/canvas/table-group/TableGroupDropTarget",
+      "why": "The target a table drag shows over a group."
+    },
+    {
+      "path": "components/erd-editor",
+      "why": "The editor element and its shell."
+    },
+    {
+      "path": "services",
+      "why": "The SharedWorker services: image export, automatic placement and highlighting."
+    },
+    {
+      "path": "workers",
+      "why": "The worker entries and the module that spawns them; the viewer starts no worker."
+    },
+    {
+      "path": "utils/file",
+      "why": "File import and export."
+    },
+    {
+      "path": "utils/generator-code",
+      "why": "The code generators."
+    },
+    {
+      "path": "utils/schema-sql",
+      "why": "The DDL writers. The table name helpers the scene and the search read moved out to utils/tableName."
+    },
+    {
+      "path": "i18n/messages/index",
+      "why": "Imports all 25 dictionaries statically; the viewer loads only the one a page asks for."
+    }
+  ],
+  "forbiddenPackages": [
+    {
+      "name": "shiki",
+      "why": "Highlighting, which only the shiki worker runs."
+    },
+    {
+      "name": "@shikijs",
+      "why": "The grammars and themes of the shiki worker."
+    },
+    {
+      "name": "elkjs",
+      "why": "Automatic placement, which only the ELK worker runs."
+    },
+    {
+      "name": "d3-force",
+      "why": "Graph mode and automatic placement."
+    },
+    {
+      "name": "comlink",
+      "why": "The worker boundaries; the viewer starts no worker."
+    },
+    {
+      "name": "@dineug/grid",
+      "why": "The Dictionary tab's grid, which erd-editor's build inlines."
+    }
+  ],
+  "bareAllowlist": [
+    {
+      "name": "es-toolkit",
+      "why": "Utilities, es-toolkit/compat among them."
+    },
+    {
+      "name": "graphql",
+      "why": "The GraphQL importer's parser, which the store's import generator imports statically. An accepted remainder: measured and reported, not yet split off."
+    },
+    {
+      "name": "rxjs",
+      "why": "The store's streams."
+    },
+    {
+      "name": "konva",
+      "why": "The scene, through konva/lib modules."
+    },
+    {
+      "name": "fuse.js",
+      "why": "The palette's document search."
+    },
+    {
+      "name": "es-hangul",
+      "why": "The palette's Hangul matching."
+    },
+    {
+      "name": "@chenglou/pretext",
+      "why": "Memo text layout."
+    },
+    {
+      "name": "@radix-ui/colors",
+      "why": "The theme's palette."
+    },
+    {
+      "name": "stylis",
+      "why": "The styles of the inlined r-html."
+    },
+    {
+      "name": "lucide",
+      "why": "Icons."
+    }
+  ],
+  "locales": {
+    "static": {
+      "path": "i18n/messages/en",
+      "why": "English is what a page sees before any other dictionary loads, so it ships in the static graph."
+    },
+    "dynamicOnly": {
+      "path": "i18n/messages",
+      "except": ["i18n/messages/en"],
+      "why": "Every other dictionary is a chunk of its own, reached only through import() once a page asks for its language."
+    }
+  },
+  "obsidianLoaderForbiddenPaths": [
+    {
+      "path": "components/erd-viewer",
+      "why": "The viewer element, which the Obsidian plugin never mounts."
+    },
+    {
+      "path": "components/erd-view",
+      "why": "The viewer's read-only canvas."
+    },
+    {
+      "path": "i18n/loadMessages",
+      "why": "The viewer's dictionary loader, which only <erd-viewer> calls. main.js already holds every dictionary through the editor, so the loader's import() calls would resolve inside it and request nothing; reaching it would ship the viewer's loader, and the element that calls it, into a plugin that mounts the editor alone."
+    }
+  ]
+}

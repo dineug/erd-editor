@@ -9,10 +9,10 @@ import {
 import { RootState } from '@/engine/state';
 import { Relationship } from '@/internal-types';
 import { bHas } from '@/utils/bit';
+import { autoName, getBracket, primaryKeyColumns } from '@/utils/tableName';
 
 import { SchemaSQLHeader, SchemaSQLStatements } from './options';
 import {
-  autoName,
   commentToWrite,
   CreateSchemaOptions,
   FormatColumnOptions,
@@ -23,10 +23,8 @@ import {
   formatSize,
   formatSpace,
   FormatTableOptions,
-  getBracket,
   Name,
   primaryKey,
-  primaryKeyColumns,
   referentialActionSupport,
   selectIndexColumns,
   toForeignKeyPairs,

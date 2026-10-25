@@ -552,4 +552,6 @@ export const ptPT = {
     'As colunas depois da última não foram coladas',
   'dictionary.toast.tooManyCells':
     'Nada foi feito: a seleção abrange demasiadas células',
+  'viewer.loading': 'A carregar o diagrama',
+  'viewer.loadError': 'Não foi possível carregar o diagrama',
 } satisfies Messages;

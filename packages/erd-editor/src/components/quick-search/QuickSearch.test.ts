@@ -28,10 +28,15 @@ import {
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import * as highlightStyles from '@/components/primitives/highlighted-text/HighlightedText.styles';
+import { createScopeActions } from '@/components/quick-search/actions';
+import {
+  type Action,
+  type PalettePreferences,
+} from '@/components/quick-search/documentSearch';
 import { hangulFormsOf } from '@/components/quick-search/hangul';
 import { PALETTE_ROW_HEIGHT } from '@/components/quick-search/paletteList';
 import QuickSearch, {
-  type QuickSearchProps,
+  type PaletteTopLevel,
 } from '@/components/quick-search/QuickSearch';
 import * as styles from '@/components/quick-search/QuickSearch.styles';
 import { Open } from '@/constants/open';
@@ -154,7 +159,10 @@ async function setup(canvasType: string = CanvasType.ERD) {
     },
   });
   document.body.addEventListener(InternalEventType.focus, countFocusEvent);
-  mounted = mount(html`<${QuickSearch} />`, app);
+  mounted = mount(
+    html`<${QuickSearch} .topLevel=${createScopeActions} />`,
+    app
+  );
   await flush();
 }
 
@@ -1406,14 +1414,15 @@ describe('QuickSearch Hangul', () => {
 describe('QuickSearch preferences and language', () => {
   let localeProvider: { destroy: () => void } | null = null;
 
-  const view = (props: QuickSearchProps) =>
+  const view = (props: PalettePreferences) =>
     html`<${QuickSearch}
+      .topLevel=${createScopeActions}
       .appearance=${props.appearance}
       .locale=${props.locale}
     />`;
 
   /** Mounts the palette again, under a language provided above it and with the options of the pickers the element offers. */
-  const remount = async (i18n: I18n | null, props: QuickSearchProps = {}) => {
+  const remount = async (i18n: I18n | null, props: PalettePreferences = {}) => {
     mounted?.unmount();
     localeProvider = i18n ? provideI18n(document.body, i18n) : null;
     mounted = mount(view(props), app);
@@ -1421,7 +1430,7 @@ describe('QuickSearch preferences and language', () => {
   };
 
   /** Hands the mounted palette other options in force, as the element does when its host changes one. */
-  const rerender = async (props: QuickSearchProps) => {
+  const rerender = async (props: PalettePreferences) => {
     render(mounted!.container, view(props));
     await flush();
   };
@@ -1727,5 +1736,36 @@ describe('QuickSearch preferences and language', () => {
     for (const keyword of keywords) {
       expect(keyword.title).toBe(keyword.textContent?.trim());
     }
+  });
+});
+
+describe('QuickSearch top level', () => {
+  it('opens on the rows its host builds, handed the app, the language and the pickers offered', async () => {
+    const calls: Parameters<PaletteTopLevel>[] = [];
+    const level: Action[] = [
+      { name: 'Only Row' },
+      { name: 'orders', keywords: 'Table', tableId: 'orders' },
+    ];
+    const topLevel: PaletteTopLevel = (...args) => {
+      calls.push(args);
+      return level;
+    };
+    mounted?.unmount();
+    mounted = mount(
+      html`<${QuickSearch} .topLevel=${topLevel} .appearance=${'dark'} />`,
+      app
+    );
+    await flush();
+    await open();
+
+    expect(rowNames()).toEqual(['Only Row']);
+    expect(calls).toHaveLength(1);
+    const [given, i18n, preferences] = calls[0];
+    expect(given).toBe(app);
+    expect(i18n.t('common.search')).toBe('Search');
+    expect(preferences).toEqual({ appearance: 'dark', locale: undefined });
+
+    await type('#ord');
+    expect(rowNames()).toEqual(['orders']);
   });
 });

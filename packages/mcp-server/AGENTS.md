@@ -55,7 +55,7 @@
 - **Stay under `BUNDLE_GZIP_BUDGET`.** `bin.test.ts` holds the built file to 600,000 bytes at gzip level 9, since npx downloads it on every cold start (the owner's regression watch with room for features, 2026-10-03). It also finds no `Sec-WebSocket-Accept` (ws), `undici`, `SchemaAOTCompiler`, `Migrator` or literal dynamic import.
 - **Import effect as root § Dependencies says.** Lint and `src/imports.test.ts` hold it. Take `NodeRuntime`, `NodeStdio`, `NodeFileSystem` and `NodePath` by module path, since the barrel fails (measured 2026-09-23). The socket adapter is local, since `NodeSocket` re-exports ws.
 - **Ship one ESM file with no bare import.** `vite.config.ts` copies `vscode-extension`'s SSR shape: `ssr.noExternal: true`, node builtins external, `minify: true` and `sourcemap: false`, since npx downloads the tarball on every cold start. It adds `lib.formats: ['es']`, since no `main` contract forces CJS and ESM-only dependencies inline without a bridge, and a `#!/usr/bin/env node` banner. `rolldownOptions.output` sets `minify`, since lib mode keeps an `es` build's whitespace (measured 2026-09-23), and `entryFileNames`, since the build names its file after the entry module (`main.js`) whatever `lib.fileName` says. `bin.test.ts` runs a copy from a folder without `node_modules`.
-- **Move the Node floor in three places.** `engines.node` (`>=22.12.0`, the root's), `build.target: 'node22'` and `@types/node` `^22.20.1` change together by hand, since nothing gates them. `bin.test.ts` runs on the toolchain's Node (22.23.2).
+- **Move the Node floor in three places.** `engines.node` (`>=22.12.0`, the root's), `build.target: 'node22'` and `@types/node` `^22.20.1`, the catalog entry every package that lists it shares (`pnpm-workspace.yaml`), change together by hand, since nothing gates them. `bin.test.ts` runs on the toolchain's Node (22.23.2).
 - **List every import as a devDependency.** All are inlined, so `dependencies` stays empty; list an import even when the engine brings it. `@dineug/erd-editor` resolves to its built `dist/peer/index.js`, so `build` and `test` depend on sibling builds and track a `dist/**/*.d.ts` glob per workspace dependency, which `check-task-inputs.mjs` checks.
 - **Reach the engine only through `./peer.js`.** Action creators come from its per-module barrels (`tableActions.changeTableNameAction`, `tableActions$.addTableAction$`), with constants and `bHas`. `src/peerSurface.test.ts` holds the entry's 58 exported values to the names this package imports, so neither side keeps a dead one.
 
@@ -190,6 +190,6 @@
 ### External
 
 - `effect` (the core modules from `effect`, `TestClock` from `effect/testing`, `McpServer`, `McpSchema`, `McpProtocol`, `Tool` and `Toolkit` from `effect/ai`, `Socket` from `effect/socket`), `@effect/platform-node` by module path (`NodeRuntime`, `NodeStdio`, `NodeFileSystem`, `NodePath`), `es-toolkit` (and `/compat`).
-- `graphql` arrives with the engine and stays: its parser sits in the engine chunk, so dropping the import tools would not shed it.
+- `graphql` arrives with the engine and stays: the editor module's generators reach its parser, and `peer.js` hands them over as one `editorActions$` object, so dropping the import tools would not shed it.
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

@@ -31,16 +31,21 @@
     "check": "vp check && tsc --noEmit && node --test tools/vite-config.test.ts && node scripts/check-task-inputs.mjs",
     "size": "node scripts/check-bundle-size.mjs",
     "peer-graph": "node scripts/check-peer-graph.mjs",
+    "dist-shape": "node scripts/check-dist-shape.mjs",
+    "consumer-bundles": "node scripts/check-consumer-bundles.mjs",
     "cache:clear": "vp cache clean",
     "prepare": "vp config"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
-    "@types/node": "^22.20.1",
+    "@rspack/core": "^2.2.9",
+    "@types/node": "catalog:",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "typescript": "7.0.2",
+    "happy-dom": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "webpack": "^5.91.0"
   }
 }

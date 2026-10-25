@@ -21,6 +21,7 @@ import {
   releasePointer,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
+import { diffContext } from '@/components/diffContext';
 import HighLevelTable from '@/components/erd/canvas/high-level-table/HighLevelTable';
 import {
   CURSOR_INHERIT,
@@ -28,8 +29,6 @@ import {
   HIGH_LEVEL_FONT_SIZES,
   TABLE_INSET,
 } from '@/components/erd/canvas/sceneTokens';
-import { Diff, type DiffMap } from '@/components/erd/diff-viewer/diff';
-import { diffContext } from '@/components/erd/diff-viewer/diffContext';
 import { TABLE_BORDER } from '@/constants/layout';
 import { NameViewMode, RelationshipType } from '@/constants/schema';
 import {
@@ -57,6 +56,7 @@ import type { Table as TableEntity } from '@/internal-types';
 import { getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
+import { Diff, type DiffMap } from '@/utils/diff/diff';
 
 type Fixture = {
   app: AppContext;

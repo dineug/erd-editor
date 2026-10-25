@@ -11,9 +11,9 @@ import {
   isTableLogicalName,
 } from '@/utils/find-replace';
 import { isMemoShown } from '@/utils/memo';
-import { orderByNameASC } from '@/utils/schema-sql/utils';
 import { getTableGroupMembers, isTableGroupShown } from '@/utils/tableGroup';
 import { getTableIndexIds } from '@/utils/tableKeys';
+import { orderByNameASC } from '@/utils/tableName';
 
 import { TABLES_FOLDER_ID } from './explorerView';
 
