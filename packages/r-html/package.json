@@ -29,18 +29,18 @@
     "e2e:typecheck": "tsc -p e2e/tsconfig.json"
   },
   "dependencies": {
-    "stylis": "4.4.0"
+    "stylis": "catalog:"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
-    "@types/node": "^22.20.1",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
     "@types/stylis": "^4.2.7",
-    "@typescript/typescript6": "6.0.2",
+    "@typescript/typescript6": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "happy-dom": "^20.11.2",
-    "typescript": "7.0.2",
+    "happy-dom": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "^5.0.3",
+    "vite-plugin-dts": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
   }
