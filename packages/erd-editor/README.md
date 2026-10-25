@@ -126,15 +126,18 @@ useEffect(() => {
 
 ### Vite
 
-In development, keep the editor out of Vite's pre-bundling and include the ELK bundle its layout
-worker imports, or the Flow and tree layouts fail. A production build needs nothing.
+In development, include the ELK bundle the editor's layout worker imports in Vite's
+pre-bundling, or the Flow and tree layouts fail. Vite 7 and older also need the editor kept out
+of pre-bundling, since their pre-bundle points the workers' URLs at files it never writes. A
+production build needs nothing.
 
 ```js
 // vite.config.js
 export default {
   optimizeDeps: {
-    exclude: ['@dineug/erd-editor'],
     include: ['@dineug/erd-editor > elkjs/lib/elk.bundled.js'],
+    // Vite 7 and older only:
+    // exclude: ['@dineug/erd-editor'],
   },
 };
 ```
