@@ -552,4 +552,6 @@ export const roRO = {
     'Coloanele de după ultima nu au fost lipite',
   'dictionary.toast.tooManyCells':
     'Nu s-a făcut nimic: selecția cuprinde prea multe celule',
+  'viewer.loading': 'Se încarcă diagrama',
+  'viewer.loadError': 'Diagrama nu a putut fi încărcată',
 } satisfies Messages;

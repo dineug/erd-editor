@@ -559,4 +559,6 @@ export const plPL = {
     'Kolumny za ostatnią nie zostały wklejone',
   'dictionary.toast.tooManyCells':
     'Nic nie zrobiono: zaznaczenie obejmuje zbyt wiele komórek',
+  'viewer.loading': 'Ładowanie diagramu',
+  'viewer.loadError': 'Nie udało się załadować diagramu',
 } satisfies Messages;

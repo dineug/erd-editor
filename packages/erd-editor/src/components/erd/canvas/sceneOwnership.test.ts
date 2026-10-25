@@ -143,6 +143,9 @@ const OUTSIDE_REFERENCES = [
   'components/erd-view/ErdView.browser.test.tsx @/components/erd/canvas/highlightTransition',
   'components/erd-view/ErdView.tsx @/components/erd/canvas/Canvas',
   'components/erd-view/ErdView.tsx @/components/erd/canvas/highlightTransition',
+  // The viewer element's destroy takes that view down at once, which its spec
+  // reads off the transitions the view's editor left.
+  'components/erd-viewer/ErdViewer.test.ts @/components/erd/canvas/highlightTransition',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/high-level-table/HighLevelTable',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/table/Table',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/table/column/Column',
@@ -189,7 +192,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the thirty-one references that own a reason to', () => {
+  it('is reached from outside by the thirty-two references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

@@ -55,8 +55,11 @@ describe('@dineug/erd-editor entry point', () => {
     expectTypeOf(index.defineErdEditor).toEqualTypeOf<() => void>();
     expectTypeOf(index.defineErdViewer).toEqualTypeOf<() => void>();
     expect(index.ErdViewerElement.observedAttributes).toEqual([
+      'src',
+      'nameView',
       'minimap',
       'controls',
+      'name-view',
     ]);
   });
 

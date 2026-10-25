@@ -16,6 +16,7 @@ import { shortcuts } from './shortcuts';
 import { tableProperties } from './tableProperties';
 import { themeBuilder } from './themeBuilder';
 import { toolbar } from './toolbar';
+import { viewer } from './viewer';
 import { visualization } from './visualization';
 import { welcome } from './welcome';
 
@@ -44,4 +45,5 @@ export const en = {
   ...mapColumns,
   ...explorer,
   ...dictionary,
+  ...viewer,
 } as const;

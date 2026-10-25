@@ -12,6 +12,7 @@ import {
   moveScenePointer,
 } from '@/__test-utils__';
 import { type DiffSeed, diffStateOf } from '@/__test-utils__/diffSeed';
+import { iconNameOf } from '@/__test-utils__/icon';
 import type { AppContext } from '@/components/appContext';
 import {
   countTransitions,
@@ -22,7 +23,7 @@ import {
   countRelationshipHighlights,
   isRelationshipHighlighted,
 } from '@/components/erd/relationshipHighlight';
-import ErdView from '@/components/erd-view/ErdView';
+import ErdView, { type ErdViewProps } from '@/components/erd-view/ErdView';
 import * as paletteStyles from '@/components/quick-search/QuickSearch.styles';
 import { themeContext } from '@/components/themeContext';
 import { CANVAS_ZOOM_MAX } from '@/constants/schema';
@@ -48,6 +49,8 @@ type Mounted = {
   appRef: { value: AppContext | null };
   host: HTMLDivElement;
   shadow: ShadowRoot;
+  /** Renders the view again with the props a host now hands it. */
+  rerender: (props: Partial<ErdViewProps>) => void;
   unmount: () => void;
 };
 
@@ -123,7 +126,10 @@ function stageOf(shadow: ShadowRoot): Stage {
  * Mounts a view where its stylesheets are live, in a shadow root as the element
  * has one, inside a box of the viewport's size that it fills.
  */
-function mountShadow({ handsApp = true } = {}): Mounted {
+function mountShadow({
+  handsApp = true,
+  props = {},
+}: { handsApp?: boolean; props?: Partial<ErdViewProps> } = {}): Mounted {
   const host = document.createElement('div');
   document.body.append(host);
   const shadow = host.attachShadow({ mode: 'open' });
@@ -138,7 +144,21 @@ function mountShadow({ handsApp = true } = {}): Mounted {
   // oxlint-disable-next-line react-hooks/rules-of-hooks
   const themeProvider = useProvider(box as any, themeContext, theme);
   const appRef = createRef<AppContext | null>(null);
-  render(box, handsApp ? <ErdView appRef={appRef} /> : <ErdView />);
+  const draw = (next: Partial<ErdViewProps>) =>
+    render(
+      box,
+      handsApp ? (
+        <ErdView
+          appRef={appRef}
+          minimap={next.minimap}
+          controls={next.controls}
+          status={next.status}
+        />
+      ) : (
+        <ErdView />
+      )
+    );
+  draw(props);
 
   let mounted = true;
   const unmount = () => {
@@ -150,12 +170,15 @@ function mountShadow({ handsApp = true } = {}): Mounted {
   };
   teardowns.push(unmount);
 
-  return { appRef, host, shadow, unmount };
+  return { appRef, host, shadow, rerender: draw, unmount };
 }
 
 /** A view mounted and measured, with the seed loaded into its store. */
-async function mountView(seed: DiffSeed = SEED): Promise<View> {
-  const mounted = mountShadow();
+async function mountView(
+  seed: DiffSeed = SEED,
+  props: Partial<ErdViewProps> = {}
+): Promise<View> {
+  const mounted = mountShadow({ props });
   await settle();
 
   const app = mounted.appRef.value!;
@@ -231,6 +254,25 @@ function touch(stage: Stage, type: string, points: Point[]) {
       composed: true,
       touches: type === 'touchend' ? [] : touches,
       changedTouches: touches,
+    })
+  );
+}
+
+/** One finger moved to a point of the stage, heard on the window as a browser sends it there. */
+function fingerMove(stage: Stage, { x, y }: Point) {
+  const content = stage.content.getBoundingClientRect();
+  window.dispatchEvent(
+    new TouchEvent('touchmove', {
+      bubbles: true,
+      cancelable: true,
+      touches: [
+        new Touch({
+          identifier: 1,
+          target: stage.content.querySelector('canvas')!,
+          clientX: content.left + x,
+          clientY: content.top + y,
+        }),
+      ],
     })
   );
 }
@@ -404,7 +446,7 @@ describe('ErdView - the press and the light (AC-V6)', () => {
     expect(lit(view)).toBe(false);
   });
 
-  it('pans for a finger too, and a second finger ends the pan with no light', async () => {
+  it("lights on a finger's still tap, and a second finger ends the press with no light", async () => {
     const view = await mountView();
     const users = centerOf(view.stage, '#table-users');
 
@@ -683,6 +725,122 @@ describe('ErdView - the view controls', () => {
     const view = await mountView({});
 
     expect(view.shadow.querySelector('.minimap')).toBeNull();
+  });
+});
+
+describe('ErdView - what its host turns off and tells', () => {
+  it('hides the map and the controls bar a host turns off, and draws them again for anything else', async () => {
+    const view = await mountView(SEED, { minimap: false, controls: false });
+
+    expect(view.shadow.querySelector('.minimap')).toBeNull();
+    expect(view.shadow.querySelector('.view-controls')).toBeNull();
+    expect(view.shadow.querySelector('.name-view-trigger')).toBeNull();
+
+    view.rerender({ minimap: true });
+    await settle();
+    expect(view.shadow.querySelector('.minimap')).not.toBeNull();
+    expect(view.shadow.querySelector('.view-controls')).not.toBeNull();
+  });
+
+  it('draws a turning loader while its host loads and a warning once the load failed, over the canvas and in the root’s direction', async () => {
+    const view = await mountView(SEED, { status: 'loading' });
+    const notice = () =>
+      view.shadow.querySelector<HTMLElement>('.erd-view > .view-status');
+
+    expect(notice()?.getAttribute('role')).toBe('status');
+    expect(iconNameOf(notice())).toBe('loader-circle');
+    expect(notice()?.textContent).toBe('Loading diagram');
+    expect(notice()?.closest('[dir]')).toBe(view.root);
+    expect(getComputedStyle(notice()!).pointerEvents).toBe('none');
+    expect(
+      getComputedStyle(notice()!.querySelector('svg')!).animationName
+    ).toContain('viewStatusSpin');
+
+    view.rerender({ status: 'error' });
+    await settle();
+    expect(notice()?.getAttribute('role')).toBe('alert');
+    expect(iconNameOf(notice())).toBe('triangle-alert');
+    expect(notice()?.textContent).toBe("Couldn't load the diagram");
+
+    view.rerender({ status: 'idle' });
+    await settle();
+    expect(notice()).toBeNull();
+  });
+
+  it('puts out the light a press left once a document is loaded in place of the one it lit', async () => {
+    const view = await mountView();
+    await click(view.stage, centerOf(view.stage, '#table-users'));
+    expect(lit(view)).toBe(true);
+
+    view.app.store.dispatchSync(
+      initialLoadJsonAction$(toJson(diffStateOf(SEED)))
+    );
+    await settle();
+
+    expect(lit(view)).toBe(false);
+    expect(countRelationshipHighlights().editors).toBe(0);
+  });
+});
+
+describe('ErdView - the focus a press gives', () => {
+  it('takes the focus for a still tap, which Konva kept from the root, scrolling no page', async () => {
+    const view = await mountView();
+    const users = centerOf(view.stage, '#table-users');
+    const focus = vi.spyOn(view.root, 'focus');
+
+    touch(view.stage, 'touchstart', [users]);
+    touch(view.stage, 'touchend', [users]);
+    await settle();
+
+    expect(view.root.matches(':focus-within')).toBe(true);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(lit(view)).toBe(true);
+
+    focus.mockClear();
+    await click(view.stage, BARE);
+    expect(focus).not.toHaveBeenCalled();
+  });
+
+  it('pans no view and takes no focus for a finger dragged before the focus, and pans for one once it holds it', async () => {
+    const view = await mountView();
+    const users = centerOf(view.stage, '#table-users');
+    const moved = { x: users.x + 80, y: users.y };
+    const before = origin(view);
+
+    touch(view.stage, 'touchstart', [users]);
+    fingerMove(view.stage, moved);
+    touch(view.stage, 'touchend', [moved]);
+    await settle();
+
+    expect(origin(view)).toEqual(before);
+    expect(view.root.matches(':focus-within')).toBe(false);
+    expect(lit(view)).toBe(false);
+
+    view.root.focus();
+    touch(view.stage, 'touchstart', [users]);
+    fingerMove(view.stage, moved);
+    touch(view.stage, 'touchend', [moved]);
+    await settle();
+
+    expect(origin(view).originX).not.toBe(before.originX);
+    expect(lit(view)).toBe(false);
+  });
+
+  it('takes no focus and lights nothing for a finger the browser cancels for a scroll, however short its travel', async () => {
+    const view = await mountView();
+    const users = centerOf(view.stage, '#table-users');
+    const nudged = { x: users.x + 2, y: users.y };
+    const before = origin(view);
+
+    touch(view.stage, 'touchstart', [users]);
+    fingerMove(view.stage, nudged);
+    window.dispatchEvent(new PointerEvent('pointercancel'));
+    touch(view.stage, 'touchend', [nudged]);
+    await settle();
+
+    expect(origin(view)).toEqual(before);
+    expect(view.root.matches(':focus-within')).toBe(false);
+    expect(lit(view)).toBe(false);
   });
 });
 

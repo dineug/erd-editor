@@ -27,9 +27,9 @@ import { zhTW } from '@/i18n/messages/zh-TW';
 import type { Messages } from '@/i18n/translate';
 
 /**
- * Every display language's dictionary, by its code. Only the element and the
- * specs import it, so the export worker, which is handed the dictionary it
- * draws in, never bundles every language.
+ * Every display language's dictionary, by its code. Only the editor element and
+ * the specs import it, so neither the export worker, handed the one it draws in,
+ * nor the viewer, which loads its own through loadMessages.ts, bundles them all.
  */
 export const MESSAGES: Readonly<Record<LocaleCode, Messages>> = {
   en,

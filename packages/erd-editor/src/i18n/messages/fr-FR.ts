@@ -558,4 +558,6 @@ export const frFR = {
     'Les colonnes au-delà de la dernière n’ont pas été collées',
   'dictionary.toast.tooManyCells':
     'Rien n’a été fait : la sélection couvre trop de cellules',
+  'viewer.loading': 'Chargement du diagramme',
+  'viewer.loadError': 'Impossible de charger le diagramme',
 } satisfies Messages;

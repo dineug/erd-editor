@@ -529,4 +529,6 @@ export const svSE = {
     'Kolumner efter den sista klistrades inte in',
   'dictionary.toast.tooManyCells':
     'Inget gjordes: markeringen omfattar för många celler',
+  'viewer.loading': 'Läser in diagrammet',
+  'viewer.loadError': 'Det gick inte att läsa in diagrammet',
 } satisfies Messages;

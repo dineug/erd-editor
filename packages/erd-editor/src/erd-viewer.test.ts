@@ -40,11 +40,20 @@ describe('@dineug/erd-editor/erd-viewer.js', () => {
     >().toEqualTypeOf<ErdViewerElement>();
   });
 
-  it('observes the minimap and controls attributes, which the JSX tag takes', () => {
+  it('observes src, name-view, minimap and controls, which the JSX tag takes', () => {
     expect(ErdViewerElement.observedAttributes).toEqual([
+      'src',
+      'nameView',
       'minimap',
       'controls',
+      'name-view',
     ]);
+    expectTypeOf<JSX.IntrinsicElements['erd-viewer']['src']>().toEqualTypeOf<
+      string | undefined
+    >();
+    expectTypeOf<
+      JSX.IntrinsicElements['erd-viewer']['name-view']
+    >().toEqualTypeOf<'both' | 'logical' | 'physical' | undefined>();
     expectTypeOf<
       JSX.IntrinsicElements['erd-viewer']['minimap']
     >().toEqualTypeOf<boolean | undefined>();

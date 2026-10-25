@@ -57,6 +57,8 @@ export type Graph = {
   files: string[];
   bare: Map<string, string[]>;
   domTokens: string[];
+  /** The files only an import() reaches, which a bundler splits into chunks loaded later. */
+  dynamic: string[];
 };
 
 /**
@@ -65,6 +67,20 @@ export type Graph = {
  * braces counts as a value import, as a bundler that keeps the module would.
  */
 export function walk(entry: string, sourceRoot = SOURCE_ROOT): Graph {
+  const all = walkFrom(entry, sourceRoot, true);
+  const statics = new Set(walkFrom(entry, sourceRoot, false).files);
+
+  return {
+    ...all,
+    dynamic: all.files.filter(file => !statics.has(file)),
+  };
+}
+
+function walkFrom(
+  entry: string,
+  sourceRoot: string,
+  followDynamic: boolean
+): Omit<Graph, 'dynamic'> {
   const seen = new Set<string>();
   const bare = new Map<string, string[]>();
   const domTokens: string[] = [];
@@ -84,6 +100,7 @@ export function walk(entry: string, sourceRoot = SOURCE_ROOT): Graph {
       if (typeOnly || (match[1] === 'export' && /^\s*type\b/.test(bindings))) {
         continue;
       }
+      if (match[6] !== undefined && !followDynamic) continue;
 
       if (specifier.startsWith('@/')) {
         pending.push(resolveSource(join(sourceRoot, specifier.slice(2))));

@@ -487,4 +487,6 @@ export const zhCN = {
   'dictionary.toast.multiRangeCopy': '未复制：这些区域没有共同的行或列',
   'dictionary.toast.pasteBeyondColumns': '超出最后一列的列未粘贴',
   'dictionary.toast.tooManyCells': '未执行：选中的单元格过多',
+  'viewer.loading': '正在加载关系图',
+  'viewer.loadError': '无法加载关系图',
 } satisfies Messages;

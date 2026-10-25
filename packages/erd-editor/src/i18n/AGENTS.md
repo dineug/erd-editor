@@ -22,15 +22,17 @@
 | `translate.ts` | `createI18n` and its `t()`, `isolate`, and the types `I18n`, `Messages`, `MessageKey`, `PlainMessageKey` and `LocaleMessages` |
 | `locales.ts` | `LOCALES`, each language's code and its own name (`label`), in the picker's order; `LocaleOption`, a code or `system` |
 | `resolveLocale.ts` | `resolveLocale`, which reads BCP 47 tags in order to one language, English for none |
+| `loadMessages.ts` | `loadMessages`, the viewer's loader of every language but English, one literal `import()` each, shared by every viewer of a page and forgotten when it fails; `lazyMessagesOf`, the viewer's dictionary source, English at once and any other language as it loads. `loadMessages.test.ts` pins both |
 | `source.ts` | `sourceI18n`, English, what `localeContext` reads where nothing provides a language |
 | `menuLabel.ts` | `menuLabel`, a menu row's key in the reader's language or its literal name |
 | `messages/en/` | The source dictionary: one file per part of the editor, spread into `en` by `messages/en/index.ts`; `messages/en/en.test.ts` holds that shape |
 | `messages/<code>.ts` | One file per other language, exporting its code without the hyphen (`koKR`) |
-| `messages/index.ts` | `messagesOf` and `MESSAGES`, every dictionary imported statically |
+| `messages/index.ts` | `messagesOf` and `MESSAGES`, every dictionary imported statically, the editor's source |
 | `messages/messages.test.ts` | Holds each language to English key for key and shape for shape |
 | `messages/fit.browser.test.ts` | Measures the fixed-width texts in every language, on a Mac only |
 | `imports.test.ts` | Holds the peer, engine and worker graphs to the rules under Peer and worker graphs |
 | `src/components/element-host/localeHost.ts` | `useLocaleHost`: `localeState`, `resolveLocaleOption()`, `applyLocale`, `setLocale` and `setSystemLocale`, over the dictionary source, the tags `system` reads and the fallback option its element hands it |
+| `src/components/erd-viewer/ErdViewer.tsx` | The viewer's call of `useLocaleHost`, with `lazyMessagesOf`, the page's languages as it first connects and `system` as its fallback |
 | `src/components/erd-editor/useErdEditorAttachElement.ts` | The editor's call of `useLocaleHost`, with `messagesOf`, `useNavigatorLanguages()` and its fallback, and the `changeLocale` a pick fires |
 | `src/components/localeContext.ts` | `localeContext` and `useI18n` |
 | `src/components/localized/Localized.tsx` | `localized(key, params)`, a template read where it renders |
@@ -44,11 +46,12 @@
 ### The option on the element
 
 - **Keep the option out of the document.** It lives on the element. The language enters no store, history, peer or file. Each host keeps the option where it keeps the theme. These are owner decisions (2026-10-06).
-- **`src/components/element-host/localeHost.ts` holds the option.** `useLocaleHost` keeps it in `localeState.option`: a code, `system`, or null until `setLocale` or a pick sets one. It imports no dictionary: its element hands it the dictionary source, the tags `system` reads and the fallback option, and the editor's `useErdEditorAttachElement.ts` hands it `messagesOf`, `useNavigatorLanguages()` and the fallback below.
-- **`resolveLocaleOption()` gives the option in force.** It is the option set, else the element's fallback. The editor's is `system` while `enableLocalePicker` is on and `en` while it is off, an owner decision (2026-10-06). So an editor no host configures keeps the English it always showed, whatever the browser's language.
+- **`src/components/element-host/localeHost.ts` holds the option.** `useLocaleHost` keeps it in `localeState.option`: a code, `system`, or null until `setLocale` or a pick sets one. It imports no dictionary: its element hands it the dictionary source, the tags `system` reads and the fallback option, and the editor's `useErdEditorAttachElement.ts` hands it `messagesOf`, `useNavigatorLanguages()` and the fallback below. The viewer's `ErdViewer.tsx` hands it `lazyMessagesOf`, whose languages but English load (Dictionaries).
+- **`resolveLocaleOption()` gives the option in force.** It is the option set, else the element's fallback. The editor's is `system` while `enableLocalePicker` is on and `en` while it is off, an owner decision (2026-10-06). So an editor no host configures keeps the English it always showed, whatever the browser's language. The viewer's is `system`, since an embed follows its page.
 - **Read the option through `resolveLocaleOption()`.** Never read `localeState.option` for it, which is null before a call. The picker's check and the palette's read it through `resolveLocaleOption()`.
-- **`system` follows the named tag, else the browser.** It is `resolveLocale` over the tag `setSystemLocale` named, else over the tags the element hands in, `navigator.languages` for the editor, applied again when that observable source changes. `src/hooks/useNavigatorLanguages.ts` copies the array on mount and on `languagechange`, since Chromium's array is frozen and r-html's `observable` never tracks it.
-- **The setters apply before they return.** `setLocale` and `setSystemLocale` apply at once, and `onBeforeMount` resolves again. So a language set, or a picker turned on, before `appendChild` is in the first frame. Toggling `enableLocalePicker` re-applies the language.
+- **`system` follows the named tag, else the browser.** It is `resolveLocale` over the tag `setSystemLocale` named, else over the tags the element hands in, `navigator.languages` for the editor, applied again when that observable source changes. The viewer hands in the page's `<html lang>`, then `navigator.languages`, read once as it first connects, and hears no `languagechange`. `src/hooks/useNavigatorLanguages.ts` copies the array on mount and on `languagechange`, since Chromium's array is frozen and r-html's `observable` never tracks it.
+- **The setters apply before they return.** `setLocale` and `setSystemLocale` apply a dictionary at hand at once, and `onBeforeMount` resolves again. So a language set, or a picker turned on, before `appendChild` is in the first frame. Toggling `enableLocalePicker` re-applies the language.
+- **A language that loads lands once it is in.** Where the source hands back a promise, the element shows the language it showed, English for a first frame, until the dictionary lands, and English if it fails. A dictionary landing after a later language was asked for, or after `destroy`, is dropped. Both setters return a promise that resolves once the dictionary asked for has landed or failed, which the viewer's API hands on; that language, or English for a failure, is then in force unless a later call asked for another. Once destroyed, neither a setter nor a mount asks for a dictionary or changes the language. The source hands English over at once; `useLocaleHost` throws for one that does not.
 - **`setLocale` ignores a value that is no option.** Only a code from `LOCALES` or `system` changes the option.
 - **`changeLocale` fires for a pick alone.** It carries `{ locale }`, the option picked. It fires for a pick from the picker or the palette, the option already in force included. It never fires for a setter.
 
@@ -80,8 +83,9 @@
   - A `common.placeholder.*` measures no wider than an empty column (`COLUMN_MIN_WIDTH`), measured as `src/utils/text.ts` measures a value. So a shorter standard word or a standard abbreviation stands in for a long one (`по умолч.`, `obs.`). Where a language has neither, the SQL keyword stands in (Hebrew's `DEFAULT`).
   - `toolbar.databaseName` fits the toolbar's input (`TOOLBAR_DATABASE_NAME_WIDTH`).
   - The three labels of each Schema SQL options segment group fit 207 px of the 300 px panel (`SCHEMA_SQL_PANEL_WIDTH`). The groups are Statements (the literals `Create`, `If not exists` and `Drop & re-create`) and Header (`common.none` beside the literals `USE` and `CREATE + USE`).
-- **Import every dictionary statically.** `messages/index.ts` imports each one statically, never with `import()`. Obsidian loads one `main.js` and each UMD build is one file, so a dynamic chunk would load with the rest there anyway, and `pnpm size` still reports it, under `lazyGzip`.
-- **Only the element and specs import `messagesOf`.** Peer and worker graphs, below, keeps `messages/index.ts` out of the peer, engine and SharedWorker graphs.
+- **The editor imports every dictionary statically.** `messages/index.ts` imports each one statically, never with `import()`. Obsidian loads one `main.js` and the editor's UMD build is one file, so a dynamic chunk would load with the rest there anyway, and `pnpm size` still reports it, under `lazyGzip`.
+- **The viewer loads every dictionary but English.** English (`messages/en/**`) is in its static graph and draws its first frame. `loadMessages.ts` loads each other language through a literal `import()` of its own, so a bundler splits each into a chunk a page fetches only for its language. A template `import()` would have the bundler take every module beside them, `messages/index.ts` and the specs among them. The viewer's UMD build is one file, which inlines all 25.
+- **Only the editor element and specs import `messagesOf`.** Peer and worker graphs, below, keeps `messages/index.ts` out of the peer, engine, SharedWorker and viewer graphs.
 
 ### Keys and parameters
 
@@ -146,6 +150,7 @@
 - **Keep i18n out of the DOM-free entries.** `imports.test.ts` keeps every `i18n/` module, `src/components/localeContext.ts` and `src/components/localized/` out of what `src/peer/index.ts` and `src/engine/index.ts` reach.
 - **Let a SharedWorker reach the English runtime alone.** The three SharedWorkers reach only `translate`, `locales`, `source`, `menuLabel` and `messages/en/**` of `i18n/`. They never reach `messages/index.ts` or another language, since the export worker is handed its dictionary. `imports.test.ts` holds this too.
 - **Import i18n types with `import type`.** A module either graph reaches imports an i18n type with `import type { … }`, as `src/utils/emitter.ts` imports `LocaleOption`. The walker the graph specs share (`src/__test-utils__/importGraph.ts`) counts `import { type … }` as a value import.
+- **Keep the viewer's graph to English and `import()`.** What `src/erd-viewer.ts` reaches holds every file of `messages/en/` statically, each other dictionary only through `import()` and never `messages/index.ts`. `src/viewer/imports.test.ts` holds the sources to it, and `pnpm dist-shape` the built `erd-viewer.js` and the viewer's UMD file, which switches a mounted viewer to Korean with no request (root `AGENTS.md`, Testing Requirements).
 
 ### The palette's Theme and Display Language
 

@@ -561,4 +561,6 @@ export const ukUA = {
     'Стовпці після останнього не вставлено',
   'dictionary.toast.tooManyCells':
     'Нічого не зроблено: виділено забагато клітинок',
+  'viewer.loading': 'Завантаження діаграми',
+  'viewer.loadError': 'Не вдалося завантажити діаграму',
 } satisfies Messages;

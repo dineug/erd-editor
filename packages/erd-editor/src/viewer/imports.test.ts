@@ -1,10 +1,10 @@
 // @vitest-environment node
 
-// The modules the read-only view composes, walked as a bundler follows them and
-// judged by the boundary file pnpm dist-shape holds erd-viewer.js to, while the
-// paths that still pull the editor in are listed, each with what pulls it.
+// The viewer's entry, walked as a bundler follows it and judged by the boundary
+// file pnpm dist-shape holds erd-viewer.js to, while the paths that still pull
+// the editor in are listed, each with what pulls it.
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vite-plus/test';
@@ -24,6 +24,10 @@ type Boundary = {
   forbiddenPaths: BoundaryPath[];
   forbiddenPackages: BoundaryPackage[];
   bareAllowlist: BoundaryPackage[];
+  locales: {
+    static: BoundaryPath;
+    dynamicOnly: BoundaryPath & { except: string[] };
+  };
 };
 
 const boundary: Boundary = JSON.parse(
@@ -52,32 +56,10 @@ const packageOf = (specifier: string) =>
 const modulePathOf = (file: string) => file.replace(/\.tsx?$/, '');
 
 /**
- * The view and what it mounts and reads: its press rule, canvas, scrollbars,
- * map, controls and palette, its store, keys, press mode and measure, its fit
- * and its lights, and the theme and language its element takes from a page.
+ * The entry a page imports for the viewer, which reaches the element, the read-only
+ * view it renders and everything the two compose, the dictionaries it loads included.
  */
-const ROOTS = [
-  'components/erd-view/ErdView.tsx',
-  'components/erd-view/pressHandler.ts',
-  'components/erd/canvas/Canvas.tsx',
-  'components/erd/canvas/CanvasScene.tsx',
-  'components/erd/virtual-scroll/VirtualScroll.tsx',
-  'components/erd/minimap/Minimap.tsx',
-  'components/erd/view-controls/zoomControls.tsx',
-  'components/erd/view-controls/nameViewDropdown.tsx',
-  'components/erd/view-controls/ToolbarCompass.template.tsx',
-  'components/quick-search/QuickSearch.tsx',
-  'components/appContext.ts',
-  'hooks/useKeyBindingMap.ts',
-  'hooks/useViewShortcut.ts',
-  'components/sceneInteractionContext.ts',
-  'components/erd-view/viewportMeasure.ts',
-  'konva/scene/fitZoom.ts',
-  'components/erd/relationshipHighlight.ts',
-  'components/erd/canvas/highlightTransition.ts',
-  'components/element-host/themeHost.ts',
-  'components/element-host/localeHost.ts',
-];
+const ROOTS = ['erd-viewer.ts'];
 
 /**
  * Each boundary entry the roots still reach, with what pulls it in. A change
@@ -109,17 +91,23 @@ const inlinedWorkspaceLibraries = Object.entries(
 
 function graphOf(roots: string[]) {
   const files = new Set<string>();
+  const dynamic = new Set<string>();
   const packages = new Set<string>();
 
   for (const root of roots) {
     const graph = walk(join(SOURCE_ROOT, root));
     graph.files.forEach(file => files.add(modulePathOf(file)));
+    graph.dynamic.forEach(file => dynamic.add(modulePathOf(file)));
     [...graph.bare.keys()].forEach(specifier =>
       packages.add(packageOf(specifier))
     );
   }
 
-  return { files: [...files].sort(), packages: [...packages].sort() };
+  return {
+    files: [...files].sort(),
+    dynamic: [...dynamic].sort(),
+    packages: [...packages].sort(),
+  };
 }
 
 /** The boundary entries a graph reaches, each with the first module or package that matched it. */
@@ -138,13 +126,27 @@ function reachedEntries({ files, packages }: ReturnType<typeof graphOf>) {
   return reached;
 }
 
+/** The dictionaries every language but English has, by module path. */
+const otherDictionaries = readdirSync(join(SOURCE_ROOT, 'i18n', 'messages'))
+  .filter(name => /^[a-z]{2}-[A-Z]{2}\.ts$/.test(name))
+  .map(name => `i18n/messages/${modulePathOf(name)}`)
+  .sort();
+
 describe('the view source graph', () => {
   const graph = graphOf(ROOTS);
   const reached = reachedEntries(graph);
 
-  it('starts at the modules the view composes', () => {
+  it('starts at the entry and reaches the element and the view it renders', () => {
     expect(graph.files).toEqual(
-      expect.arrayContaining(ROOTS.map(modulePathOf))
+      expect.arrayContaining([
+        ...ROOTS.map(modulePathOf),
+        'components/erd-viewer/ErdViewer',
+        'components/erd-view/ErdView',
+        'components/erd-view/pressHandler',
+        'components/element-host/themeHost',
+        'components/element-host/localeHost',
+        'i18n/loadMessages',
+      ])
     );
   });
 
@@ -160,6 +162,31 @@ describe('the view source graph', () => {
     expect(Object.keys(PENDING).filter(entry => !reached.has(entry))).toEqual(
       []
     );
+  });
+
+  it('holds English in the static graph, its files every one', () => {
+    const { path } = boundary.locales.static;
+    const english = graph.files.filter(file => matchesEntry(file, path));
+    const englishFiles = readdirSync(join(SOURCE_ROOT, path))
+      .filter(name => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+      .map(name => `${path}/${modulePathOf(name)}`)
+      .sort();
+
+    expect(english).toEqual(englishFiles);
+    expect(graph.dynamic.filter(file => matchesEntry(file, path))).toEqual([]);
+  });
+
+  it('reaches every other dictionary through import() alone', () => {
+    const { path, except } = boundary.locales.dynamicOnly;
+    const dictionaries = graph.files.filter(
+      file =>
+        matchesEntry(file, path) &&
+        !except.some(entry => matchesEntry(file, entry))
+    );
+
+    expect(otherDictionaries).toHaveLength(24);
+    expect(dictionaries).toEqual(otherDictionaries);
+    expect(graph.dynamic).toEqual(otherDictionaries);
   });
 
   it('names only packages the boundary allows or the build inlines', () => {

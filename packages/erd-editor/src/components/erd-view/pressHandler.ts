@@ -1,6 +1,6 @@
 import { query } from '@dineug/erd-editor-schema';
 import { observable, type Ref } from '@dineug/r-html';
-import type { Subscription } from 'rxjs';
+import { type Subscription, takeUntil, tap } from 'rxjs';
 
 import type { AppContext } from '@/components/appContext';
 import { type SceneHit, sceneHit } from '@/components/erd/hitTest';
@@ -9,8 +9,12 @@ import { CLICK_DRAG_MIN_MOVE } from '@/constants/layout';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
 import type { RootState } from '@/engine/state';
-import { isMainButtonPress, suppressSelection } from '@/utils/domEvent';
-import { drag$, type DragMove } from '@/utils/globalEventObservable';
+import {
+  isMainButtonPress,
+  isMouseEvent,
+  suppressSelection,
+} from '@/utils/domEvent';
+import { type DragMove, move$, moveEnd$ } from '@/utils/globalEventObservable';
 
 export type ViewPressOptions = {
   /** The view's own app, whose store a press pans and whose editor id it lights in. */
@@ -30,6 +34,8 @@ export type ViewPress = {
   handlePress: (event: MouseEvent | TouchEvent) => void;
   /** The entity the pointer came onto: a table lights its relationships while it is there. */
   handleHover: (hit: SceneHit | null) => void;
+  /** Puts out what a press and the pointer lit, for a document that replaces the one they stood on. */
+  reset: () => void;
   destroy: () => void;
 };
 
@@ -48,9 +54,9 @@ export function tableRelationshipIds(
 }
 
 /**
- * The read-only view's press rule. A main press or a finger pans wherever it
- * lands, and one that stays still takes the selection a jump left and lights
- * what it landed on: a table's relationships, a relationship, or nothing.
+ * The read-only view's press rule: a main press, and a finger once the view
+ * holds the focus, pans wherever it lands, and one held still drops a jump's
+ * selection and lights a table's relationships, a relationship, or nothing.
  */
 export function createViewPress({
   app,
@@ -89,9 +95,28 @@ export function createViewPress({
     light();
   };
 
+  /** Whether the view holds the focus, before which a finger is the page's. */
+  const holdsFocus = () => Boolean(root.value?.matches(':focus-within'));
+
+  /**
+   * A press held still gives the view the focus a touch Konva prevented never
+   * would, as a click's own default does, without scrolling the page to it.
+   */
+  const takeFocus = () => {
+    if (!holdsFocus()) root.value?.focus({ preventScroll: true });
+  };
+
   const handleStill = (hit: SceneHit | null) => {
+    takeFocus();
     app.store.dispatch(unselectAllAction$());
     pinned = lightsOf(hit);
+    light();
+  };
+
+  const reset = () => {
+    pinned = [];
+    hovered = [];
+    hoveredTableId = null;
     light();
   };
 
@@ -116,21 +141,32 @@ export function createViewPress({
 
     // Konva resolved the press as it dispatched it, before the move re-renders.
     const hit = sceneHit($canvas, event);
+    // A finger before the focus is the page's, which may scroll for it: it pans
+    // nothing, and it is a tap only once lifted, since the browser cancels the
+    // one it takes for a scroll.
+    const pans = isMouseEvent(event) || holdsFocus();
     let travel = 0;
+    let lifted = false;
 
     endPan();
-    const subscription = drag$.subscribe({
+    const until$ = moveEnd$.pipe(
+      tap(({ type }) => {
+        lifted = type === 'touchend';
+      })
+    );
+    const subscription = move$.pipe(takeUntil(until$)).subscribe({
       next: ({ event: move, movementX, movementY }: DragMove) => {
         move.type === 'mousemove' && move.preventDefault();
         if (movementX === 0 && movementY === 0) return;
 
         travel += Math.abs(movementX) + Math.abs(movementY);
+        if (!pans) return;
         if (travel >= CLICK_DRAG_MIN_MOVE) state.panning = true;
         app.store.dispatch(streamScrollToAction({ movementX, movementY }));
       },
       complete: () => {
         state.panning = false;
-        if (travel < CLICK_DRAG_MIN_MOVE) handleStill(hit);
+        if (travel < CLICK_DRAG_MIN_MOVE && (pans || lifted)) handleStill(hit);
       },
     });
 
@@ -138,5 +174,5 @@ export function createViewPress({
     pan = subscription;
   };
 
-  return { state, handlePress, handleHover, destroy: endPan };
+  return { state, handlePress, handleHover, reset, destroy: endPan };
 }

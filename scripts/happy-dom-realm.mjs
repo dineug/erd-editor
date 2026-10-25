@@ -49,14 +49,23 @@ const SKIPPED = new Set([
  * Evaluates file in a child: as a module, or as a classic script when global
  * names the object a UMD build assigns, whose keys are then reported too.
  * Resolves to the defines, the tags defined, the probe and the errors.
+ *
+ * @param scenario A module whose before() runs on the fresh realm ahead of the
+ * file and whose after() runs once it has, its result reported as scenario.
  */
-export function evaluateInHappyDom(file, { global } = {}) {
-  const args = [SELF, file, ...(global ? ['--global', global] : [])];
+export function evaluateInHappyDom(file, { global, scenario } = {}) {
+  const args = [
+    SELF,
+    file,
+    ...(global ? ['--global', global] : []),
+    ...(scenario ? ['--scenario', scenario] : []),
+  ];
   const failed = error => ({
     defines: [],
     defined: {},
     keys: null,
     probe: null,
+    scenario: null,
     consoleErrors: [],
     errors: [error],
   });
@@ -130,12 +139,13 @@ async function installHappyDom() {
 const describe = error =>
   `${error?.name ?? 'Error'}: ${String(error?.message ?? error).split('\n')[0]}`;
 
-async function evaluate(file, global) {
+async function evaluate(file, global, scenarioFile) {
   const result = {
     defines: [],
     defined: {},
     keys: null,
     probe: null,
+    scenario: null,
     consoleErrors: [],
     errors: [],
   };
@@ -147,6 +157,10 @@ async function evaluate(file, global) {
   );
 
   await installHappyDom();
+  const scenario = scenarioFile
+    ? await import(pathToFileURL(path.resolve(scenarioFile)).href)
+    : null;
+  await scenario?.before?.();
   const define = customElements.define.bind(customElements);
   customElements.define = (name, constructor, options) => {
     result.defines.push(name);
@@ -172,6 +186,13 @@ async function evaluate(file, global) {
     result.keys = Object.keys(globalThis[global]).sort();
   }
   result.probe = globalThis.__consumerProbe ?? null;
+  if (scenario?.after) {
+    try {
+      result.scenario = await scenario.after();
+    } catch (error) {
+      result.errors.push(describe(error));
+    }
+  }
   // Exits once the line is written: a pipe is asynchronous off Linux, and
   // happy-dom's timers would otherwise keep the child alive.
   process.stdout.write(`${JSON.stringify(result)}\n`, () => process.exit(0));
@@ -183,6 +204,10 @@ if (
   process.argv[1] !== undefined &&
   realpathOf(process.argv[1]) === realpathOf(SELF)
 ) {
-  const [file, flag, global] = process.argv.slice(2);
-  await evaluate(file, flag === '--global' ? global : undefined);
+  const [file, ...rest] = process.argv.slice(2);
+  const option = name => {
+    const index = rest.indexOf(name);
+    return index === -1 ? undefined : rest[index + 1];
+  };
+  await evaluate(file, option('--global'), option('--scenario'));
 }

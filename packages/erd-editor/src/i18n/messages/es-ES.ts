@@ -554,4 +554,6 @@ export const esES = {
     'No se han pegado las columnas posteriores a la última',
   'dictionary.toast.tooManyCells':
     'No se ha hecho nada: la selección abarca demasiadas celdas',
+  'viewer.loading': 'Cargando el diagrama',
+  'viewer.loadError': 'No se pudo cargar el diagrama',
 } satisfies Messages;

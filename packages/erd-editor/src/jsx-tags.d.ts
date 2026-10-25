@@ -16,6 +16,8 @@ interface ErdEditorAttributes extends HTMLAttributes {
 interface ErdViewerAttributes extends HTMLAttributes {
   controls?: boolean;
   minimap?: boolean;
+  'name-view'?: 'both' | 'logical' | 'physical';
+  src?: string;
 }
 
 declare module '@dineug/r-html/jsx-runtime' {

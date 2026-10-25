@@ -516,4 +516,6 @@ export const idID = {
     'Kolom setelah kolom terakhir tidak ditempel',
   'dictionary.toast.tooManyCells':
     'Tidak ada yang dilakukan: pilihan mencakup terlalu banyak sel',
+  'viewer.loading': 'Memuat diagram',
+  'viewer.loadError': 'Tidak dapat memuat diagram',
 } satisfies Messages;

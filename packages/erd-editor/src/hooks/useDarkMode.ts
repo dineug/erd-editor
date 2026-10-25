@@ -11,20 +11,35 @@ export function useDarkMode() {
     { shallow: true }
   );
   const { addUnsubscribe } = useUnmounted();
+  let listening = false;
+  let stopped = false;
 
   const handleChange = (event: MediaQueryListEvent) => {
     state.isDark = event.matches;
   };
 
+  const unlisten = () => {
+    if (!listening) return;
+    listening = false;
+    mediaQuery.removeEventListener('change', handleChange);
+  };
+
   // A reconnected element heard no change while it was out of the document.
   onMounted(() => {
+    if (stopped) return;
+
     state.isDark = mediaQuery.matches;
     mediaQuery.addEventListener('change', handleChange);
-
-    addUnsubscribe(() => {
-      mediaQuery.removeEventListener('change', handleChange);
-    });
+    listening = true;
+    addUnsubscribe(unlisten);
   });
 
-  return { state };
+  return {
+    state,
+    /** Lets the OS color scheme go now and on every later mount, for an element destroyed while still in a page. */
+    stop: () => {
+      stopped = true;
+      unlisten();
+    },
+  };
 }

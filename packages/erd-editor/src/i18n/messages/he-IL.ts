@@ -525,4 +525,6 @@ export const heIL = {
   'dictionary.toast.pasteBeyondColumns': 'עמודות שמעבר לאחרונה לא הודבקו',
   'dictionary.toast.tooManyCells':
     'שום דבר לא בוצע: הבחירה כוללת יותר מדי תאים',
+  'viewer.loading': 'טוען את התרשים',
+  'viewer.loadError': 'לא ניתן היה לטעון את התרשים',
 } satisfies Messages;

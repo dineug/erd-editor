@@ -43,12 +43,27 @@ export type ThemeState = {
  * An element's theme: the preset its options build, the tokens a host lays
  * over it and the light or dark system shows, with the setters a host calls.
  * A component calls it at setup, since it follows the OS color scheme from mount.
+ *
+ * @param initialOptions What the element starts on over slate, indigo and
+ * dark, as the viewer starts on system, so its first frame shows no other.
  */
-export function useThemeHost() {
+export function useThemeHost(initialOptions: Partial<ThemeOptions> = {}) {
+  const darkMode = useDarkMode();
+  const options: ThemeOptions = { ...defaultThemeOptions, ...initialOptions };
+
+  const resolveWith = (
+    { appearance }: ThemeOptions,
+    systemAppearance: Appearance | null
+  ): Appearance => {
+    if (appearance !== SYSTEM_APPEARANCE) return appearance;
+    if (systemAppearance) return systemAppearance;
+    return darkMode.state.isDark ? Appearance.dark : Appearance.light;
+  };
+
   const themeState = observable<ThemeState>({
-    options: { ...defaultThemeOptions },
+    options,
     systemAppearance: null,
-    preset: createTheme(defaultThemeOptions),
+    preset: createTheme({ ...options, appearance: resolveWith(options, null) }),
     custom: {},
   });
 
@@ -60,14 +75,8 @@ export function useThemeHost() {
     { shallow: true }
   );
 
-  const darkMode = useDarkMode();
-
-  const resolveAppearance = (): Appearance => {
-    const { options, systemAppearance } = themeState;
-    if (options.appearance !== SYSTEM_APPEARANCE) return options.appearance;
-    if (systemAppearance) return systemAppearance;
-    return darkMode.state.isDark ? Appearance.dark : Appearance.light;
-  };
+  const resolveAppearance = (): Appearance =>
+    resolveWith(themeState.options, themeState.systemAppearance);
 
   const applyPreset = () => {
     Object.assign(
@@ -145,7 +154,10 @@ export function useThemeHost() {
     setPresetTheme,
     setSystemAppearance,
     setTheme,
-    /** Stops repainting; the OS color scheme listener goes on unmount. */
-    destroy: () => unsubscribes.forEach(unsubscribe => unsubscribe()),
+    /** Stops repainting and lets the OS color scheme go, now and on every later mount. */
+    destroy: () => {
+      unsubscribes.forEach(unsubscribe => unsubscribe());
+      darkMode.stop();
+    },
   };
 }

@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { edgesOf } from './check-peer-graph.mjs';
 import { evaluateInHappyDom } from './happy-dom-realm.mjs';
@@ -49,6 +50,15 @@ const OBSIDIAN_LOADER = path.join(obsidianDir, 'src', 'loadErdEditor.ts');
 
 /** The module the loader must reach, so a loader that resolves nothing never passes. */
 const EDITOR_ELEMENT = 'components/erd-editor/ErdEditor';
+
+/** The scenario the viewer's umd file runs on happy-dom: a mounted viewer switched to Korean. */
+const VIEWER_LOCALE_SCENARIO = path.join(
+  import.meta.dirname,
+  'viewer-locale-scenario.mjs'
+);
+
+/** The other language the scenario switches to, which the one umd file must carry. */
+const SCENARIO_LOCALE = { code: 'ko-KR', exportName: 'koKR' };
 
 /** The two elements: the module each lives in, its entry, its umd build and the keys its global holds. */
 const ELEMENTS = [
@@ -220,7 +230,10 @@ async function checkUmd() {
   for (const element of ELEMENTS) {
     const file = path.join(distDir, element.umd);
     const code = read(file);
-    const result = await evaluateInHappyDom(file, { global: element.global });
+    const result = await evaluateInHappyDom(file, {
+      global: element.global,
+      scenario: element.inlinesWorkers ? undefined : VIEWER_LOCALE_SCENARIO,
+    });
     const problems = result.errors.map(error => `threw ${error}`);
 
     for (const other of ELEMENTS) {
@@ -241,11 +254,50 @@ async function checkUmd() {
         );
       }
     }
+    if (!element.inlinesWorkers) {
+      problems.push(...(await viewerLocaleProblems(code, result.scenario)));
+    }
     check(`umd build ${element.umd}`, problems);
     for (const message of result.consoleErrors) {
       console.log(`       console.error: ${message.split('\n')[0]}`);
     }
   }
+}
+
+/** A dictionary of the built dist, read as the module it is. */
+async function builtDictionary(relative, exportName) {
+  const file = path.join(distDir, 'i18n', 'messages', relative);
+  read(file);
+  return (await import(pathToFileURL(file).href))[exportName];
+}
+
+/**
+ * What the viewer's umd file got wrong in the locale scenario: a mounted viewer
+ * reads English, and Korean once setLocale resolves, with no request made and
+ * no import() left in a file a script tag runs.
+ */
+async function viewerLocaleProblems(code, scenario) {
+  const english = await builtDictionary('en/index.js', 'en');
+  const other = await builtDictionary(
+    `${SCENARIO_LOCALE.code}.js`,
+    SCENARIO_LOCALE.exportName
+  );
+  const want = {
+    english: { lang: 'en', fit: english['visualization.fit'] },
+    korean: { lang: SCENARIO_LOCALE.code, fit: other['visualization.fit'] },
+    requests: 0,
+  };
+  const problems = [];
+
+  if (JSON.stringify(scenario) !== JSON.stringify(want)) {
+    problems.push(
+      `a mounted viewer read ${JSON.stringify(scenario)} before and after setLocale('${SCENARIO_LOCALE.code}'), expected ${JSON.stringify(want)}`
+    );
+  }
+  if (/\bimport\(/.test(code)) {
+    problems.push('erd-viewer.umd.js holds an import(), which a script tag cannot resolve');
+  }
+  return problems;
 }
 
 /**
@@ -394,10 +446,18 @@ function checkLayout() {
   check(`file-level layout (${modules} modules of ${scripts.length} scripts)`, problems);
 }
 
+/** The dictionaries but English that dist/ holds, as the module paths the boundary file names. */
+const builtDictionaryModules = () =>
+  fs
+    .readdirSync(path.join(distDir, 'i18n', 'messages'))
+    .filter(name => name.endsWith('.js') && name !== 'index.js')
+    .map(name => modulePathOf(path.join('i18n', 'messages', name)))
+    .sort();
+
 /**
  * The graph of erd-viewer.js against viewer-boundary.json: no forbidden module
- * or package, every package import allowed, no dictionary but English in the
- * static graph, and English, wherever the graph reaches it, in that one.
+ * or package, every package import allowed, English in the static graph, and
+ * every other dictionary of dist/ reached through import() alone.
  */
 function checkViewerBoundary() {
   const entry = path.join(distDir, 'erd-viewer.js');
@@ -436,6 +496,14 @@ function checkViewerBoundary() {
   }
 
   const { static: english, dynamicOnly } = viewerBoundary.locales;
+  if (!modules.some((module, index) => matchesEntry(module, english.path) && staticFiles.has(files[index]))) {
+    problems.push(`reaches no ${english.path} module statically: ${english.why}`);
+  }
+  for (const module of builtDictionaryModules()) {
+    if (!modules.includes(module)) {
+      problems.push(`${module} is not reached through import(): ${dynamicOnly.why}`);
+    }
+  }
   files.forEach((file, index) => {
     const module = modules[index];
     const isStatic = staticFiles.has(file);
@@ -456,10 +524,67 @@ function checkViewerBoundary() {
   );
 }
 
+/** The modules of erd-editor's dist/ a Rolldown output rendered code of, as module paths, with their files. */
+function renderedDistModules(output) {
+  const modules = new Map();
+  for (const item of output) {
+    if (item.type !== 'chunk') continue;
+    for (const id of item.moduleIds) {
+      if ((item.modules[id]?.renderedLength ?? 0) === 0) continue;
+      const file = id.replace(/^\0/, '');
+      const inDist = path.relative(distDir, file);
+      if (!inDist.startsWith('..') && !path.isAbsolute(inDist)) {
+        modules.set(modulePathOf(inDist), file);
+      }
+    }
+  }
+  return modules;
+}
+
+/** A //#region comment the worker pass writes over each module of src/ it bundles. */
+const SOURCE_REGION = /^\/\/#region src\/(.+)\.tsx?$/gm;
+
 /**
- * Obsidian's loader bundled to CommonJS, as the plugin's build does, with
- * obsidian and the node builtins external: the modules it renders from dist/
- * include the editor element and none that viewer-boundary.json keeps out.
+ * The workers the loader's modules name in the spelling Obsidian's build
+ * inlines, each bundled on its own as that build bundles it. Its modules are
+ * the dist/ files it renders and the modules of src/ their regions name.
+ */
+async function obsidianWorkerGraphs(rolldown, files) {
+  const { pattern } = hostPattern('packages/obsidian-plugin/vite.config.ts');
+  const workers = new Set();
+  for (const file of files) {
+    for (const match of fs.readFileSync(file, 'utf8').matchAll(pattern)) {
+      workers.add(path.resolve(path.dirname(file), match[2]));
+    }
+  }
+
+  const graphs = [];
+  for (const worker of [...workers].sort()) {
+    const bundle = await rolldown({
+      input: worker,
+      platform: 'browser',
+      logLevel: 'silent',
+    });
+    try {
+      const { output } = await bundle.generate({ format: 'es' });
+      const modules = renderedDistModules(output);
+      for (const file of [...modules.values()]) {
+        for (const [, module] of fs.readFileSync(file, 'utf8').matchAll(SOURCE_REGION)) {
+          modules.set(module, file);
+        }
+      }
+      graphs.push({ worker, modules });
+    } finally {
+      await bundle.close();
+    }
+  }
+  return graphs;
+}
+
+/**
+ * Obsidian's loader bundled to CommonJS, as the plugin's build does: what it
+ * renders from dist/ holds the editor element and none of what viewer-boundary
+ * keeps out, nor do the workers it names, which that build inlines into main.js.
  */
 async function checkObsidianLoader() {
   const { rolldown } = await import('vite/rolldown');
@@ -482,27 +607,28 @@ async function checkObsidianLoader() {
     await bundle.close();
   }
 
-  const modules = new Set();
-  for (const item of output) {
-    if (item.type !== 'chunk') continue;
-    for (const id of item.moduleIds) {
-      if ((item.modules[id]?.renderedLength ?? 0) === 0) continue;
-      const inDist = path.relative(distDir, id.replace(/^\0/, ''));
-      if (!inDist.startsWith('..') && !path.isAbsolute(inDist)) {
-        modules.add(modulePathOf(inDist));
-      }
-    }
-  }
-
-  const problems = forbiddenIn(
-    { modules: [...modules] },
-    { paths: viewerBoundary.obsidianLoaderForbiddenPaths }
-  );
+  const modules = renderedDistModules(output);
+  const rule = { paths: viewerBoundary.obsidianLoaderForbiddenPaths };
+  const problems = forbiddenIn({ modules: [...modules.keys()] }, rule);
   if (!modules.has(EDITOR_ELEMENT)) {
     problems.push(`the bundle renders no ${EDITOR_ELEMENT}, so the loader reached no editor`);
   }
+
+  const workers = await obsidianWorkerGraphs(rolldown, modules.values());
+  if (!workers.length) {
+    problems.push('the bundle names no worker, so no worker graph was judged');
+  }
+  for (const { worker, modules: workerModules } of workers) {
+    const name = path.relative(distDir, worker);
+    problems.push(
+      ...forbiddenIn({ modules: [...workerModules.keys()] }, rule).map(
+        hit => `${name} ${hit}`
+      )
+    );
+  }
+
   check(
-    `Obsidian loader graph (${modules.size} modules of erd-editor's dist/)`,
+    `Obsidian loader graph (${modules.size} modules of erd-editor's dist/, ${workers.length} workers with ${workers.reduce((sum, graph) => sum + graph.modules.size, 0)})`,
     problems
   );
 }
@@ -530,10 +656,11 @@ async function main(argv) {
 
   Reads packages/erd-editor/dist after pnpm build and exits 1 when a check
   fails: one file per module, the declarations of both elements, both umd
-  builds run on happy-dom, the document stubs of the two workers that need
-  one, the url workers, the graph of erd-viewer.js against
-  scripts/viewer-boundary.json, and Obsidian's loader rebundled from
-  packages/obsidian-plugin with its plugin folder.`);
+  builds run on happy-dom, the viewer's switched to Korean with no request,
+  the document stubs of the two workers that need one, the url workers, the
+  graph of erd-viewer.js against scripts/viewer-boundary.json, English static
+  and every other dictionary behind import(), and Obsidian's loader rebundled
+  from packages/obsidian-plugin with the workers it names and its plugin folder.`);
     return 0;
   }
   if (argv.length) {

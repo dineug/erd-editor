@@ -213,6 +213,44 @@ describe('useThemeHost', () => {
     expect(api.theme.tableBackground).not.toBe(darkPreset.tableBackground);
   });
 
+  it('starts on the options an element hands in, system on the OS color scheme from the first frame', async () => {
+    mediaMatches = false;
+    const light = await mountHost(() =>
+      useThemeHost({ appearance: SYSTEM_APPEARANCE })
+    );
+
+    expect(light.api.themeState.options.appearance).toBe('system');
+    expect(light.api.followsSystem()).toBe(true);
+    expect(light.api.hasDarkMode()).toBe(false);
+    expect(light.api.theme.canvasBackground).not.toBe(
+      darkPreset.canvasBackground
+    );
+
+    mediaMatches = true;
+    let firstFrame = '';
+    const dark = await mountHost(() => {
+      const host = useThemeHost({ appearance: SYSTEM_APPEARANCE });
+      firstFrame = host.theme.canvasBackground;
+      return host;
+    });
+
+    expect(firstFrame).toBe(darkPreset.canvasBackground);
+    expect(dark.api.hasDarkMode()).toBe(true);
+  });
+
+  it('lets the OS color scheme go on destroy while mounted, and takes it up on no later mount', async () => {
+    const { api, unmount } = await mountHost(() =>
+      useThemeHost({ appearance: SYSTEM_APPEARANCE })
+    );
+    expect(mediaListeners).toHaveLength(1);
+
+    api.destroy();
+    expect(mediaListeners).toHaveLength(0);
+
+    unmount();
+    expect(mediaListeners).toHaveLength(0);
+  });
+
   it('stops repainting once destroyed and lets the OS color scheme go on unmount', async () => {
     const { api, unmount } = await mountHost(useThemeHost);
     expect(mediaListeners).toHaveLength(1);
@@ -365,3 +403,182 @@ describe('useLocaleHost', () => {
     expect(api.i18n.locale).toBe('en');
   });
 });
+
+describe('useLocaleHost with a dictionary that loads', () => {
+  type Loading = {
+    code: LocaleCode;
+    resolve: () => void;
+    reject: () => void;
+  };
+
+  /** A source that hands English over at once and holds every other language until the spec lets it land. */
+  function createLoadingSource() {
+    const loads: Loading[] = [];
+    const messagesOf = vi.fn((code: LocaleCode) => {
+      if (code === 'en') return pseudoMessages('en');
+
+      return new Promise<ReturnType<typeof pseudoMessages>>(
+        (resolve, reject) => {
+          loads.push({
+            code,
+            resolve: () => resolve(pseudoMessages(code)),
+            reject: () => reject(new Error('offline')),
+          });
+        }
+      );
+    });
+    const loadOf = (code: LocaleCode) => {
+      const load = loads.find(item => item.code === code);
+      if (!load) throw new Error(`no load of ${code}`);
+      return load;
+    };
+    return { messagesOf, loadOf, loads };
+  }
+
+  const mountLoading = (
+    source: ReturnType<typeof createLoadingSource>,
+    languages: string[] = ['en-US']
+  ) =>
+    mountHost(() =>
+      useLocaleHost({
+        messagesOf: source.messagesOf,
+        languages: { state: observable({ languages }, { shallow: true }) },
+        fallbackOption: () => 'system',
+      })
+    );
+
+  it('shows English while a language loads, then that language, and resolves once it is in force', async () => {
+    const source = createLoadingSource();
+    const { api } = await mountLoading(source);
+
+    const switched = api.setLocale('ko-KR');
+    let done = false;
+    void switched.then(() => (done = true));
+    await flush();
+
+    expect(api.i18n.locale).toBe('en');
+    expect(api.i18n.t('common.close')).toBe('en:Close');
+    expect(done).toBe(false);
+
+    source.loadOf('ko-KR').resolve();
+    await switched;
+
+    expect(api.i18n.locale).toBe('ko-KR');
+    expect(api.i18n.t('common.close')).toBe('ko-KR:Close');
+    await expect(api.setLocale('ko-KR')).resolves.toBeUndefined();
+    expect(source.loads).toHaveLength(1);
+  });
+
+  it('keeps the language asked for last when an earlier one lands after it', async () => {
+    const source = createLoadingSource();
+    const { api } = await mountLoading(source);
+
+    const first = api.setLocale('ja-JP');
+    const second = api.setLocale('de-DE');
+    source.loadOf('de-DE').resolve();
+    await second;
+    source.loadOf('ja-JP').resolve();
+    await first;
+
+    expect(api.i18n.locale).toBe('de-DE');
+  });
+
+  it('falls back to English for a language whose load fails', async () => {
+    const source = createLoadingSource();
+    const { api } = await mountLoading(source);
+
+    api.setLocale('ar-SA');
+    source.loadOf('ar-SA').resolve();
+    await api.setLocale('ar-SA');
+    expect(api.i18n.dir).toBe('rtl');
+
+    await api.setSystemLocale('fr');
+    expect(api.i18n.locale).toBe('ar-SA');
+
+    const failing = api.setLocale('system');
+    source.loadOf('fr-FR').reject();
+    await failing;
+
+    expect(api.i18n.locale).toBe('en');
+    expect(api.i18n.dir).toBe('ltr');
+    expect(api.i18n.t('common.close')).toBe('en:Close');
+  });
+
+  it('loads a language again when it is asked for after its load failed', async () => {
+    const source = createLoadingSource();
+    const { api } = await mountLoading(source);
+
+    const failing = api.setLocale('ko-KR');
+    source.loadOf('ko-KR').reject();
+    await failing;
+    expect(api.i18n.locale).toBe('en');
+
+    const retried = api.setLocale('ko-KR');
+    expect(source.loads).toHaveLength(2);
+    source.loads[1].resolve();
+    await retried;
+
+    expect(api.i18n.locale).toBe('ko-KR');
+  });
+
+  it('starts in English when the language resolved at setup still loads, and shows it once it lands', async () => {
+    const source = createLoadingSource();
+    const { api } = await mountLoading(source, ['pl-PL']);
+
+    expect(api.i18n.locale).toBe('en');
+
+    source.loadOf('pl-PL').resolve();
+    await api.applyLocale();
+
+    expect(api.i18n.locale).toBe('pl-PL');
+  });
+
+  it('drops a dictionary that lands once the host is destroyed', async () => {
+    const source = createLoadingSource();
+    const { api } = await mountLoading(source);
+
+    const switched = api.setLocale('sv-SE');
+    api.destroy();
+    source.loadOf('sv-SE').resolve();
+    await switched;
+
+    expect(api.i18n.locale).toBe('en');
+  });
+
+  it('asks for no dictionary and changes no language once destroyed', async () => {
+    const source = createLoadingSource();
+    const { api } = await mountLoading(source);
+
+    api.destroy();
+    await api.setLocale('ko-KR');
+    await api.setSystemLocale('ja');
+    await api.applyLocale();
+
+    expect(source.loads).toEqual([]);
+    expect(api.i18n.locale).toBe('en');
+  });
+
+  it('refuses a source that does not hand English over at once', async () => {
+    const messagesOf = () => Promise.resolve(pseudoMessages('en'));
+    let thrown: unknown = null;
+
+    await mountHost(() => {
+      try {
+        return useLocaleHost({
+          messagesOf,
+          languages: { state: createLanguagesOf(['ko-KR']) },
+          fallbackOption: () => 'system',
+        });
+      } catch (error) {
+        thrown = error;
+        return null;
+      }
+    });
+
+    expect(String(thrown)).toContain('hands English over at once');
+  });
+});
+
+function createLanguagesOf(languages: string[]) {
+  return observable({ languages }, { shallow: true });
+}
