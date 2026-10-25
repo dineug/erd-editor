@@ -40,13 +40,16 @@ Drizzle, DBML, AML, Mermaid, PHP, Doctrine, Rust, SeaORM, Swift, Zod, JSON Schem
 npm install @dineug/erd-editor
 ```
 
-The editor's PNG and SVG export, the Flow and tree layouts and the syntax highlighting run in
-shared workers, which Vite, webpack and Rspack emit beside your chunks and esbuild does not.
-webpack's experimental `experiments.outputModule` starts none of them, as each waits on a chunk
-split off it that nothing loads: keep webpack's default output, or set
-`optimization.splitChunks: false`. A strict CSP needs `worker-src 'self'`. `<erd-viewer>` starts no worker. Both elements write their
-theme into a `<style>` element, so a strict CSP also needs `style-src 'unsafe-inline'`. Without a
-bundler, use the [script tag](#script-tag) builds.
+The editor's PNG and SVG export, the Flow and tree layouts and the syntax highlighting run in shared
+workers, which Vite, webpack and Rspack emit beside your chunks and esbuild does not. webpack's
+experimental `experiments.outputModule` starts none of them, as each waits on a chunk split off it
+that nothing loads: keep webpack's default output, or set `optimization.splitChunks: false`. A
+strict CSP needs `worker-src 'self'`. `<erd-viewer>` starts no worker. Both elements style
+themselves with constructed stylesheets, which `style-src 'self'` allows, but the editor's code
+panels color their text with `style` attributes and its image export previews from a `blob:` url, so
+they need `style-src 'unsafe-inline'` and `img-src blob:`. A browser without constructed
+stylesheets, as Firefox before 101, gets `<style>` elements, which need `style-src 'unsafe-inline'`
+too. Without a bundler, use the [script tag](#script-tag) builds.
 
 ## Usage
 
@@ -323,7 +326,8 @@ defined is taken up once it is, over the attributes its markup gave it.
 
 - `src` is the one `fetch` the package makes, so a strict CSP lists its origin in `connect-src`.
   Besides it, a viewer requests only the dictionary chunk of a language other than English, from
-  your own bundle. Its theme is a `<style>` element, which needs `style-src 'unsafe-inline'`.
+  your own bundle. Its styles are constructed stylesheets, which a strict CSP lets through, but for
+  a browser without them, which gets `<style>` elements.
 - It starts no worker and writes no storage. Importing it adds three listeners to `window` for
   the life of the page, for `mousedown`, `touchstart` and an event of the package's own,
   `@dineug/erd-editor/internal-forward-move-start`, and Konva, which draws the canvas, sets

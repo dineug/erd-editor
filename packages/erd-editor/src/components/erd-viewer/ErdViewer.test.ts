@@ -816,8 +816,11 @@ describe('<erd-viewer> theme and language', () => {
     appearance: Appearance.dark,
   });
 
+  /** The theme's tokens, in the sheet of the shadow root's own its theme adopts first. */
   const styleOf = (viewer: ErdViewerElement) =>
-    shadowOf(viewer).querySelector('style')?.textContent ?? '';
+    Array.from(shadowOf(viewer).adoptedStyleSheets[0]?.cssRules ?? [])
+      .map(rule => rule.cssText)
+      .join('');
 
   it('follows the page color scheme by default, and takes a preset a page sets', async () => {
     const viewer = mountViewer();
