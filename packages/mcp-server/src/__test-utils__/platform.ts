@@ -18,3 +18,10 @@ export function specPipePath(dir: string, name = 'hub'): string {
  * the read-only flag, so a writable file reads 0o666 there.
  */
 export const PRIVATE_MODE = process.platform === 'win32' ? 0o666 : 0o600;
+
+/**
+ * The budget of a spec that runs Windows' own icacls: a minute there, since a
+ * hosted runner at times held one spawn for 5 s and more (measured 2026-10-25),
+ * and such a spec runs icacls to its end, past the server's 5 s.
+ */
+export const SPAWN_TIMEOUT = process.platform === 'win32' ? 60_000 : undefined;

@@ -18,7 +18,7 @@ import { bHas, createPeerStore } from '@dineug/erd-editor/peer.js';
 import { HUB_PROTOCOL_VERSION, pipePath } from '@dineug/erd-editor-agent-hub';
 import { SchemaV3Constants } from '@dineug/erd-editor-schema';
 import * as NodePath from '@effect/platform-node/NodePath';
-import { Effect, Layer } from 'effect';
+import { Effect, FileSystem, Layer } from 'effect';
 import {
   afterEach,
   beforeEach,
@@ -36,7 +36,7 @@ import {
 import { connectMcp, type McpHarness, settle } from '@/__test-utils__/mcp';
 import { fsError } from '@/__test-utils__/memoryFs';
 import { createMemoryHost, type MemoryHost } from '@/__test-utils__/memoryHost';
-import { PRIVATE_MODE } from '@/__test-utils__/platform';
+import { PRIVATE_MODE, SPAWN_TIMEOUT } from '@/__test-utils__/platform';
 import * as NodeFs from '@/io/fileSystem';
 import * as ProcessInfo from '@/io/process';
 import type { HeadlessSession } from '@/session/headless';
@@ -878,7 +878,9 @@ describe('headless on Windows: a document another program holds open', () => {
   });
 });
 
-describe('headless on a real file system', () => {
+// On Windows each write here runs icacls, which a hosted runner can hold for
+// seconds, so these run it to its end within SPAWN_TIMEOUT.
+describe('headless on a real file system', { timeout: SPAWN_TIMEOUT }, () => {
   let dir: string;
 
   beforeEach(async () => {
@@ -889,7 +891,24 @@ describe('headless on a real file system', () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  const node = Layer.mergeAll(NodeFs.layer, NodePath.layer, ProcessInfo.layer);
+  const unbounded = Layer.effect(
+    NodeFs.FileAccess,
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const stats = yield* NodeFs.FileStats;
+      return NodeFs.makeFileAccess(fs, stats, {
+        platform: process.platform,
+        icacls: NodeFs.runProgram(NodeFs.ICACLS, 0),
+      });
+    })
+  ).pipe(Layer.provide(NodeFs.layer));
+  // The later layer's FileAccess wins.
+  const node = Layer.mergeAll(
+    NodeFs.layer,
+    NodePath.layer,
+    ProcessInfo.layer,
+    unbounded
+  );
   const onNode = <A, E>(
     effect: Effect.Effect<A, E, Layer.Success<typeof node>>
   ) => Effect.runPromise(Effect.provide(effect, node));

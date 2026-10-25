@@ -36,7 +36,11 @@ import {
 } from 'vite-plus/test';
 
 import { createMemoryFs } from '@/__test-utils__/memoryFs';
-import { PRIVATE_MODE, specPipePath } from '@/__test-utils__/platform';
+import {
+  PRIVATE_MODE,
+  SPAWN_TIMEOUT,
+  specPipePath,
+} from '@/__test-utils__/platform';
 import { isPlatformReason } from '@/errors';
 import * as NodeFs from '@/io/fileSystem';
 import {
@@ -427,13 +431,23 @@ describe('FileAccess, how a headless write keeps a document open to whom it was'
     expect(saved.map(path => existsSync(path))).toEqual([false, false]);
   });
 
-  it('runs a program as icacls is run, failing on its exit code', async () => {
+  it('runs a program as icacls is run, failing on its exit code or past its timeout, and to its end with none', async () => {
     const node = NodeFs.runProgram(process.execPath);
+    const late = 'setTimeout(() => {}, 2000)';
 
     await expect(node(['-e', ''])).resolves.toBeUndefined();
     await expect(node(['-e', 'process.exit(3)'])).rejects.toMatchObject({
       code: 3,
     });
+    await expect(
+      NodeFs.runProgram(process.execPath, 50)(['-e', late])
+    ).rejects.toMatchObject({ killed: true });
+    await expect(
+      NodeFs.runProgram(
+        process.execPath,
+        0
+      )(['-e', 'setTimeout(() => {}, 100)'])
+    ).resolves.toBeUndefined();
     await expect(
       NodeFs.runProgram(join(dir, 'none.exe'))([])
     ).rejects.toMatchObject({ code: 'ENOENT' });
@@ -508,12 +522,13 @@ describe('FileAccess, how a headless write keeps a document open to whom it was'
         await writeFile(path, '{}');
         await writeFile(join(dir, `.${basename(path)}.id1.tmp`), '{}');
       }
-      execFileSync(
-        join(process.env.SystemRoot!, 'System32', 'icacls.exe'),
-        [own, '/grant', '*S-1-5-32-546:(R)'],
-        { windowsHide: true }
-      );
-      const access = await onNode(NodeFs.FileAccess);
+      execFileSync(NodeFs.ICACLS, [own, '/grant', '*S-1-5-32-546:(R)'], {
+        windowsHide: true,
+      });
+      const access = await accessOn({
+        platform: process.platform,
+        icacls: NodeFs.runProgram(NodeFs.ICACLS, 0),
+      });
       const keeps = (path: string) =>
         Effect.runPromise(
           access.keepsAccess(join(dir, `.${basename(path)}.id1.tmp`), path)
@@ -522,7 +537,7 @@ describe('FileAccess, how a headless write keeps a document open to whom it was'
       expect(await keeps(inherited)).toBe(true);
       expect(await keeps(own)).toBe(false);
     },
-    15_000
+    SPAWN_TIMEOUT
   );
 });
 
@@ -689,8 +704,8 @@ describe('connectPipe over a real socket, a named pipe on Windows', () => {
     async () => {
       const pipe = specPipePath(dir, 'denied');
       // No cmdlet, and no module loads: the first cmdlet a session looks up has
-      // Windows PowerShell read the modules on PSModulePath, which on a hosted
-      // runner held the pipe back for most of a minute (mcp-server's AGENTS.md).
+      // Windows PowerShell read the modules on PSModulePath, which on a busy
+      // hosted runner held the pipe back for most of a minute (its AGENTS.md).
       const script = [
         "$PSModuleAutoLoadingPreference = 'None'",
         "$ErrorActionPreference = 'Stop'",
