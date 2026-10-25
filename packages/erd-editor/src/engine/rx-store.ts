@@ -6,6 +6,7 @@ import {
 import { isFunction, isNil } from 'es-toolkit';
 import {
   debounceTime,
+  filter,
   Observable,
   startWith,
   Subject,
@@ -74,14 +75,19 @@ export type RxStore = Store & {
   flushStreamBuffers: () => void;
   /** Whether the editor is readonly now, which drops every edit of the document. */
   getReadonly: () => boolean;
+  /**
+   * Whether it was created with readonlyEditState, which a shared store over
+   * it reads to send none of its changes while it is readonly.
+   */
+  readonlyEditState: boolean;
 };
 
 export type RxStoreOptions = {
   getReadonly?: () => boolean;
   /**
-   * While readonly, also drops what opens an edit: a name or cell editor, a
-   * relationship draw and a dialog that writes the document. Only the editor
-   * element's store sets it; the viewer's and the diff panes' leave it off.
+   * While readonly, also drops what opens an edit (a name or cell editor, a
+   * relationship draw, a writing dialog) and sends a peer no change. Only the
+   * editor element's store sets it; the viewer's and the diff panes' do not.
    */
   readonlyEditState?: boolean;
   getHistory?: (options: HistoryOptions) => History;
@@ -187,12 +193,14 @@ export function createRxStore(
       )
     )
   );
+  // While readonly only a peer's edit reaches the host's change event: a
+  // setting or the viewport a reader turns is its own screen, no edit to save.
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(
     actionsFilter(ChangeActionTypes),
     lockIgnoreFilter(() => store.state.settings.lockSettings),
-    readonlyIgnoreFilter(getReadonly, [Tag.shared]),
+    readonlyIgnoreFilter(getReadonly, [Tag.shared], ChangeActionTypes),
     debounceTime(200)
   );
 
@@ -289,7 +297,9 @@ export function createRxStore(
         .pipe(
           actionsFilter(HistoryActionTypes),
           ignoreTagFilter([Tag.changeOnly, Tag.shared]),
-          readonlyIgnoreFilter(getReadonly),
+          // A readonly reader records no entry, its scrolls and zooms included,
+          // so an undo once writable again takes back nothing made while reading.
+          filter(() => !getReadonly()),
           viewIgnoreFilter(getView)
         )
         .subscribe(toHistory)
@@ -325,5 +335,6 @@ export function createRxStore(
     change$,
     flushStreamBuffers,
     getReadonly,
+    readonlyEditState,
   });
 }

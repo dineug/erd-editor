@@ -1641,25 +1641,25 @@ describe('createRxStore', () => {
       expect(store.state.settings.zoomLevel).toBe(0.5);
     });
 
-    it('still records each scroll and zoom in the undo history', () => {
+    it('records no undo entry for a scroll or a zoom, and records again once writable', () => {
       vi.useFakeTimers();
-      const store = make(createContext(), { getReadonly: () => true });
+      let readonly = true;
+      const store = make(createContext(), { getReadonly: () => readonly });
 
       store.dispatchSync(scrollToAction({ originX: 40, originY: 40 }));
-      expect(store.history.size).toBe(1);
       store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
-      expect(store.history.size).toBe(2);
-
-      // The two streams close into one entry within 200 ms, so each is sent
-      // after the one before has closed.
       store.dispatchSync(
         streamScrollToAction({ movementX: 40, movementY: 40 })
       );
       vi.advanceTimersByTime(250);
-      expect(store.history.size).toBe(3);
       store.dispatchSync(streamZoomLevelAction({ value: 0.1 }));
       vi.advanceTimersByTime(250);
-      expect(store.history.size).toBe(4);
+
+      expect(store.history.size).toBe(0);
+
+      readonly = false;
+      store.dispatchSync(scrollToAction({ originX: 80, originY: 80 }));
+      expect(store.history.size).toBe(1);
     });
 
     it('lets shared-tagged actions through', () => {
@@ -1851,7 +1851,7 @@ describe('createRxStore', () => {
       subscription.unsubscribe();
     });
 
-    it('filters readonly-ignored actions when readonly', () => {
+    it('emits no scroll or zoom a readonly reader makes, though the viewport is unlocked', () => {
       vi.useFakeTimers();
       let readonly = false;
       const store = make(createContext(), { getReadonly: () => readonly });
@@ -1863,18 +1863,27 @@ describe('createRxStore', () => {
         seen.push(actions)
       );
 
-      store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
-      vi.advanceTimersByTime(250);
+      store.dispatchSync(
+        scrollToAction({ originX: 40, originY: 40 }),
+        changeZoomLevelAction({ value: 0.5 })
+      );
+      // Writable again inside the debounce window, which sends none of it.
+      vi.advanceTimersByTime(100);
+      readonly = false;
+      vi.advanceTimersByTime(150);
+      expect(seen).toEqual([]);
+      expect(store.state.settings.zoomLevel).toBe(0.5);
 
-      expect(seen).toHaveLength(1);
-      expect(seen[0].map(action => action.type)).toEqual([
-        'settings.changeZoomLevel',
+      store.dispatchSync(changeZoomLevelAction({ value: 0.8 }));
+      vi.advanceTimersByTime(250);
+      expect(seen.map(actions => actions.map(({ type }) => type))).toEqual([
+        ['settings.changeZoomLevel'],
       ]);
 
       subscription.unsubscribe();
     });
 
-    it('still emits the code settings and the database a readonly reader changes', () => {
+    it("emits only a peer's edit while readonly, none of the code settings and the database its reader changes", () => {
       vi.useFakeTimers();
       let readonly = false;
       const store = make(createContext(), { getReadonly: () => readonly });
@@ -1896,18 +1905,13 @@ describe('createRxStore', () => {
         changeTableNameCaseAction({ value: NameCase.snakeCase }),
         changeColumnNameCaseAction({ value: NameCase.snakeCase }),
         changeBracketTypeAction({ value: BracketType.backtick }),
-        changeDatabaseAction({ value: Database.PostgreSQL })
+        changeDatabaseAction({ value: Database.PostgreSQL }),
+        attachActionTag(Tag.shared, addTable('t1'))
       );
       vi.advanceTimersByTime(250);
 
       expect(seen.map(actions => actions.map(({ type }) => type))).toEqual([
-        [
-          'settings.changeLanguage',
-          'settings.changeTableNameCase',
-          'settings.changeColumnNameCase',
-          'settings.changeBracketType',
-          'settings.changeDatabase',
-        ],
+        ['table.add'],
       ]);
       expect(store.state.settings).toMatchObject({
         language: Language.Kotlin,

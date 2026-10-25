@@ -21,7 +21,7 @@ import { useI18n } from '@/components/localeContext';
 import { createScopeActions } from '@/components/quick-search/actions';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
-import { CanvasType } from '@/constants/schema';
+import { CanvasType, Language } from '@/constants/schema';
 import {
   changeOpenMapAction,
   changeZenModeAction,
@@ -29,7 +29,11 @@ import {
   editMemoEndAction,
   editTableGroupAction,
 } from '@/engine/modules/editor/atom.actions';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  changeLanguageAction,
+  changeZoomLevelAction,
+} from '@/engine/modules/settings/atom.actions';
 import { MESSAGES } from '@/i18n/messages/index';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
@@ -978,6 +982,31 @@ describe('<erd-editor>', () => {
     expect(editor.editTableGroupId).toBeNull();
     expect(editor.openMap[Open.mapColumns]).toBeFalsy();
     expect(editor.openMap[Open.themeBuilder]).toBe(true);
+  });
+
+  it('sends a peer none of what a readonly reader changes, through the shared store a host takes', async () => {
+    const { el, app } = await createEditor();
+    const sharedStore = el.getSharedStore();
+    const sent: string[] = [];
+    sharedStore.subscribe(actions =>
+      sent.push(...actions.map(({ type }) => type))
+    );
+
+    el.readonly = true;
+    await flush();
+    app.store.dispatchSync(
+      changeLanguageAction({ value: Language.Kotlin }),
+      changeZoomLevelAction({ value: 0.5 })
+    );
+    expect(app.store.state.settings.language).toBe(Language.Kotlin);
+    expect(sent).not.toContain('settings.changeLanguage');
+    expect(sent).not.toContain('settings.changeZoomLevel');
+
+    el.readonly = false;
+    await flush();
+    app.store.dispatchSync(changeLanguageAction({ value: Language.GraphQL }));
+    expect(sent).toContain('settings.changeLanguage');
+    sharedStore.destroy();
   });
 
   it('imports GraphQL SDL and stays quiet while readonly', async () => {
