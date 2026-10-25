@@ -46,18 +46,19 @@ const SKIPPED = new Set([
 ]);
 
 /**
- * Evaluates file in a child: as a module, or as a classic script when global
- * names the object a UMD build assigns, whose keys are then reported too.
- * Resolves to the defines, the tags defined, the probe and the errors.
+ * Evaluates file in a child: as a module, or as a classic script when script
+ * is set or global names the object a UMD build assigns, whose keys are then
+ * reported. Resolves to the defines, the tags defined, the probe and the errors.
  *
  * @param scenario A module whose before() runs on the fresh realm ahead of the
  * file and whose after() runs once it has, its result reported as scenario.
  */
-export function evaluateInHappyDom(file, { global, scenario } = {}) {
+export function evaluateInHappyDom(file, { global, script, scenario } = {}) {
   const args = [
     SELF,
     file,
     ...(global ? ['--global', global] : []),
+    ...(script ? ['--script'] : []),
     ...(scenario ? ['--scenario', scenario] : []),
   ];
   const failed = error => ({
@@ -139,7 +140,7 @@ async function installHappyDom() {
 const describe = error =>
   `${error?.name ?? 'Error'}: ${String(error?.message ?? error).split('\n')[0]}`;
 
-async function evaluate(file, global, scenarioFile) {
+async function evaluate(file, { global, script, scenarioFile }) {
   const result = {
     defines: [],
     defined: {},
@@ -168,7 +169,7 @@ async function evaluate(file, global, scenarioFile) {
   };
 
   try {
-    if (global) {
+    if (global || script) {
       vm.runInThisContext(fs.readFileSync(file, 'utf8'), { filename: file });
     } else {
       await import(pathToFileURL(file).href);
@@ -209,5 +210,9 @@ if (
     const index = rest.indexOf(name);
     return index === -1 ? undefined : rest[index + 1];
   };
-  await evaluate(file, option('--global'), option('--scenario'));
+  await evaluate(file, {
+    global: option('--global'),
+    script: rest.includes('--script'),
+    scenarioFile: option('--scenario'),
+  });
 }

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Consumer bundle gate for @dineug/erd-editor, wired as pnpm consumer-bundles
-// after pnpm build. Each fixture in consumer-fixtures/ is bundled the way a
-// consumer bundles dist/, by four bundlers, then judged by graph and on happy-dom.
+// after pnpm build. Each fixture in consumer-fixtures/ is bundled by four
+// bundlers, then judged by graph, on happy-dom and, for its workers, in Chromium.
 import fs from 'node:fs';
+import http from 'node:http';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -43,6 +44,16 @@ const WORKER_REFERENCES = WORKER_NAMES.map(name => {
 
 const DIST_PREFIX = 'erd-editor/dist/';
 const WORKER_MODULE_PREFIX = `${DIST_PREFIX}workers/`;
+
+/** The class each worker exposes, which a raw comlink GET of constructor.name reads back. */
+const WORKER_SERVICES = {
+  'exportPng.shared-worker': 'ExportPngService',
+  'elkLayout.shared-worker': 'ElkLayoutService',
+  'shiki.shared-worker': 'ShikiService',
+};
+
+/** How long a started worker may take to answer; ELK parses megabytes of script first. */
+const WORKER_ANSWER_MS = 30_000;
 
 /** What the viewer's graph may not reach, from viewer-boundary.json. */
 const VIEWER_BOUNDARY = {
@@ -118,8 +129,9 @@ const USAGE = `Usage: node scripts/check-consumer-bundles.mjs [options]
   dependencies bundled too, into the OS temp directory. Each bundle runs on
   happy-dom, which reports the tags it defined, and the bundlers' module
   graphs of viewer-only and barrel-named must leave out what each forbids.
-  The Vite bundle of editor-entry also runs its export worker in a realm with
-  no document.
+  Each worker a Vite, webpack or Rspack bundle emits starts in Chromium and
+  must answer, and the Vite bundle of editor-entry also runs its export
+  worker in a realm with no document.
 
   --lanes <a,b>   Only these bundlers (${Object.keys(LANES).join(', ')}).
   --cases <a,b>   Only these fixtures (${CASES.map(c => c.id).join(', ')}).
@@ -193,13 +205,15 @@ async function bundleWithVite({ fixtureDir, entry, outDir }) {
     worker: { format: 'es' },
   });
   const output = [result].flat().flatMap(r => r.output);
+  const files = output.map(o => path.join(outDir, o.fileName));
 
   return {
     entryFile: path.join(outDir, 'main.js'),
-    files: output.map(o => path.join(outDir, o.fileName)),
+    files,
     chunkFiles: chunkFilesOf(output, outDir),
     modules: renderedModules(output),
     workerModules: [],
+    workerFiles: workerFilesByName(files),
   };
 }
 
@@ -225,14 +239,34 @@ async function bundleWithRolldown({ fixtureDir, entry, outDir }) {
       chunkFiles: chunkFilesOf(output, outDir),
       modules: renderedModules(output),
       workerModules: [],
+      // Rolldown bundles no new URL( worker and emits no file for one: an app
+      // on Rolldown builds through Vite, whose lane starts the workers.
+      workerFiles: null,
     };
   } finally {
     await bundle.close();
   }
 }
 
-/** The shared webpack and Rspack config: an ES module build in production mode. */
-function webpackConfig({ fixtureDir, entry, outDir }) {
+/** The worker files a bundler emitted under the names of the dist workers, by name. */
+function workerFilesByName(files) {
+  return Object.fromEntries(
+    WORKER_NAMES.flatMap(name => {
+      const file = files.find(file => {
+        const base = path.basename(file);
+        return base.startsWith(name) && base.endsWith('.js');
+      });
+      return file ? [[name, file]] : [];
+    })
+  );
+}
+
+/**
+ * The shared webpack and Rspack config in production mode: ES modules for
+ * Rspack, and for webpack its default script output, as its experimental ES
+ * module output starts no worker whose vendor chunk it splits off (AGENTS.md).
+ */
+function webpackConfig({ fixtureDir, entry, outDir }, { module }) {
   return {
     mode: 'production',
     context: fixtureDir,
@@ -243,8 +277,9 @@ function webpackConfig({ fixtureDir, entry, outDir }) {
       path: outDir,
       filename: '[name].js',
       chunkFilename: 'chunks/[name]-[contenthash].js',
-      module: true,
-      chunkFormat: 'module',
+      // A script run with no script element cannot find its own public path, so
+      // it is the root the workers are served from.
+      ...(module ? { module: true, chunkFormat: 'module' } : { publicPath: '/' }),
       clean: true,
     },
     // The verdict reads the module graph, so the output need not be minified.
@@ -272,23 +307,31 @@ function graphsOf(json, fixtureDir) {
 
   const main = new Set();
   const worker = new Set();
-  const visit = (module, graph) => {
-    if (module.modules?.length) {
-      for (const inner of module.modules) visit(inner, graph);
-      return;
-    }
+  const workerFiles = {};
+  const leavesOf = module => {
+    if (module.modules?.length) return module.modules.flatMap(leavesOf);
     const name = module.nameForCondition ?? module.name;
-    if (!name || module.moduleType === 'runtime') return;
-    graph.add(shortId(/^\.\.?\//.test(name) ? path.resolve(fixtureDir, name) : name));
+    if (!name || module.moduleType === 'runtime') return [];
+    return [shortId(/^\.\.?\//.test(name) ? path.resolve(fixtureDir, name) : name)];
   };
   for (const module of json.modules ?? []) {
     const inChunks = module.orphan ? [] : (module.chunks ?? []);
-    if (inChunks.some(id => mainChunks.has(id))) visit(module, main);
-    else if (inChunks.length) visit(module, worker);
+    const leaves = leavesOf(module);
+    if (inChunks.some(id => mainChunks.has(id))) {
+      leaves.forEach(id => main.add(id));
+    } else if (inChunks.length) {
+      leaves.forEach(id => worker.add(id));
+      // A worker's own module lies in the chunk its new SharedWorker( names.
+      for (const name of WORKER_NAMES) {
+        if (!leaves.includes(`${WORKER_MODULE_PREFIX}${name}.js`)) continue;
+        const files = inChunks.flatMap(id => chunks.get(id)?.files ?? []);
+        workerFiles[name] = files.filter(file => /\.m?js$/.test(file));
+      }
+    }
   }
 
   const mainFiles = [...mainChunks].flatMap(id => chunks.get(id)?.files ?? []);
-  return { mainFiles, modules: [...main], workerModules: [...worker] };
+  return { mainFiles, modules: [...main], workerModules: [...worker], workerFiles };
 }
 
 function run(compiler) {
@@ -323,25 +366,35 @@ function finishWebpackLike(stats, { fixtureDir, outDir }) {
     );
   }
 
-  const { mainFiles, ...graphs } = graphsOf(json, fixtureDir);
+  const { mainFiles, workerFiles, ...graphs } = graphsOf(json, fixtureDir);
   return {
     entryFile: path.join(outDir, 'main.js'),
     files: (json.assets ?? []).map(a => path.join(outDir, a.name)),
     chunkFiles: mainFiles.map(file => path.join(outDir, file)),
     ...graphs,
+    // One file each: a worker split over two chunks is one the run reports.
+    workerFiles: Object.fromEntries(
+      Object.entries(workerFiles).map(([name, files]) => [
+        name,
+        files.length === 1 ? path.join(outDir, files[0]) : null,
+      ])
+    ),
   };
 }
 
 async function bundleWithWebpack(options) {
   const { default: webpack } = await import('webpack');
-  const config = webpackConfig(options);
-  config.experiments = { outputModule: true };
-  return finishWebpackLike(await run(webpack(config)), options);
+  const config = webpackConfig(options, { module: false });
+  return {
+    ...finishWebpackLike(await run(webpack(config)), options),
+    script: true,
+  };
 }
 
 async function bundleWithRspack(options) {
   const { rspack } = await import('@rspack/core');
-  return finishWebpackLike(await run(rspack(webpackConfig(options))), options);
+  const config = webpackConfig(options, { module: true });
+  return finishWebpackLike(await run(rspack(config)), options);
 }
 
 /**
@@ -559,6 +612,121 @@ async function checkExportWorker(file) {
   return failures;
 }
 
+/** How a bundle starts its workers, read off the options each of its new SharedWorker( calls hands over. */
+function workerTypesIn(chunkFiles) {
+  const types = new Set();
+  for (const file of chunkFiles) {
+    if (!/\.m?js$/.test(file)) continue;
+    const code = fs.readFileSync(file, 'utf8');
+    for (let at = code.indexOf(SHARED_WORKER); at !== -1; at = code.indexOf(SHARED_WORKER, at + 1)) {
+      types.add(/type:\s*(["'])module\1/.test(code.slice(at, at + 400)) ? 'module' : 'classic');
+    }
+  }
+  return types;
+}
+
+/** The bundle's directory over http, so a worker resolves its chunks as on a page. */
+function serve(dir) {
+  return new Promise(resolve => {
+    const server = http.createServer((request, response) => {
+      const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+      if (pathname === '/') {
+        response.writeHead(200, { 'content-type': 'text/html' });
+        response.end('<!doctype html><title>workers</title>');
+        return;
+      }
+      const file = path.join(dir, pathname);
+      if (!file.startsWith(dir + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+        response.writeHead(404);
+        response.end();
+        return;
+      }
+      response.writeHead(200, {
+        'content-type': /\.m?js$/.test(file) ? 'text/javascript' : 'application/octet-stream',
+      });
+      response.end(fs.readFileSync(file));
+    });
+    server.listen(0, '127.0.0.1', () => resolve(server));
+  });
+}
+
+/** One Chromium for the run, from erd-editor's Playwright, which pnpm test needs too. */
+let chromium = null;
+async function chromiumOf() {
+  if (!chromium) {
+    const requireFromPackage = createRequire(path.join(packageDir, 'package.json'));
+    chromium = await requireFromPackage('@playwright/test').chromium.launch();
+  }
+  return chromium;
+}
+
+/**
+ * Starts each worker a bundle emits in Chromium, as the bundle starts it, and
+ * sends it a raw comlink GET of constructor.name, which only a port its service
+ * was exposed on answers, as a worker that throws or waits as it starts does not.
+ */
+async function workerRunFailures(bundled, outDir) {
+  const types = [...workerTypesIn(bundled.chunkFiles)];
+  if (types.length !== 1) {
+    return [`the bundle starts its workers as ${types.join(' and ') || 'nothing'}`];
+  }
+  const [type] = types;
+  const failures = [];
+  const workers = [];
+  for (const name of WORKER_NAMES) {
+    const file = bundled.workerFiles[name];
+    if (file) {
+      workers.push({ name, url: `/${path.relative(outDir, file).split(path.sep).join('/')}` });
+    } else {
+      failures.push(`the bundle emits no single file for ${name}`);
+    }
+  }
+
+  const server = await serve(outDir);
+  const context = await (await chromiumOf()).newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(`http://127.0.0.1:${server.address().port}/`);
+    const answers = await page.evaluate(
+      ({ workers, type, timeout }) =>
+        Promise.all(
+          workers.map(
+            ({ name, url }) =>
+              new Promise(resolve => {
+                const errors = [];
+                const settle = answer => {
+                  clearTimeout(timer);
+                  resolve({ name, answer, errors });
+                };
+                const timer = setTimeout(() => settle(null), timeout);
+                const shared = new SharedWorker(url, { type, name });
+                shared.addEventListener('error', event => {
+                  errors.push(event.message || event.type);
+                  settle(null);
+                });
+                shared.port.onmessage = ({ data }) => settle(data?.value ?? null);
+                shared.port.postMessage({ id: name, type: 'GET', path: ['constructor', 'name'] });
+              })
+          )
+        ),
+      { workers, type, timeout: WORKER_ANSWER_MS }
+    );
+    for (const { name, answer, errors } of answers) {
+      if (answer === WORKER_SERVICES[name]) continue;
+      const outcome = errors.length
+        ? `failed to start: ${errors.join('; ')}`
+        : answer === null
+          ? `answered nothing in ${WORKER_ANSWER_MS / 1000} s`
+          : `answered ${JSON.stringify(answer)}`;
+      failures.push(`the ${name}, started as a ${type} worker, ${outcome}`);
+    }
+  } finally {
+    await context.close();
+    server.close();
+  }
+  return failures;
+}
+
 function parseArgs(argv) {
   const options = {
     lanes: Object.keys(LANES),
@@ -631,18 +799,25 @@ async function main(argv) {
           console.log(`FAIL ${label} bundling threw: ${String(error?.message ?? error).split('\n')[0]}`);
           continue;
         }
-        const evaluated = await evaluateInHappyDom(bundled.entryFile);
+        const evaluated = await evaluateInHappyDom(bundled.entryFile, {
+          script: bundled.script,
+        });
         const markers = markersIn(bundled.chunkFiles);
         const failures = judge(lane, testCase, bundled, markers, evaluated);
 
         let realm = '';
+        if (testCase.workers && bundled.workerFiles) {
+          const run = await workerRunFailures(bundled, outDir);
+          failures.push(...run);
+          if (!run.length) realm += '; the three workers answered in Chromium';
+        }
         if (lane === 'vite' && testCase.id === 'editor-entry') {
           const exportWorker = bundled.files.find(file =>
             /exportPng\.shared-worker[^/\\]*\.js$/.test(file)
           );
           if (exportWorker) {
             failures.push(...(await runExportWorker(exportWorker)));
-            realm = '; export worker run with no document';
+            realm += '; export worker run with no document';
           } else {
             failures.push('Vite emitted no export worker file');
           }
@@ -661,6 +836,7 @@ async function main(argv) {
       }
     }
   } finally {
+    await chromium?.close();
     if (options.keep) {
       console.log(`Kept ${fixtureDir}`);
     } else {

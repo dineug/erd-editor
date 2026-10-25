@@ -41,8 +41,10 @@ npm install @dineug/erd-editor
 ```
 
 The editor's PNG and SVG export, the Flow and tree layouts and the syntax highlighting run in
-shared workers, which Vite, webpack and Rspack emit beside your chunks and esbuild does not. A
-strict CSP needs `worker-src 'self'`. `<erd-viewer>` starts no worker. Both elements write their
+shared workers, which Vite, webpack and Rspack emit beside your chunks and esbuild does not.
+webpack's experimental `experiments.outputModule` starts none of them, as each waits on a chunk
+split off it that nothing loads: keep webpack's default output, or set
+`optimization.splitChunks: false`. A strict CSP needs `worker-src 'self'`. `<erd-viewer>` starts no worker. Both elements write their
 theme into a `<style>` element, so a strict CSP also needs `style-src 'unsafe-inline'`. Without a
 bundler, use the [script tag](#script-tag) builds.
 
