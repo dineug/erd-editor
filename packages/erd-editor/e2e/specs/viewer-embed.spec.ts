@@ -262,9 +262,41 @@ test.describe('a viewer embedded in a page that scrolls', () => {
 test.describe('a finger on a viewer embedded in a page that scrolls', () => {
   test.use({ hasTouch: true });
 
+  test('leaves a finger on bare canvas to the page until the viewer holds the focus, which then takes it and pans the view', async ({
+    viewer,
+  }) => {
+    await viewer.goto('long');
+    await viewer.seed(relatedTables());
+    const point = await viewer.emptyPoint();
+
+    // What lets the browser scroll the page for the finger: no element under
+    // it bars panning, and no handler prevents the touch.
+    const still = await viewer.viewTransform();
+    expect(await viewer.touchActionsAt(point)).not.toContain('none');
+    expect(await viewer.touchDrag(point, { x: 0, y: -160 })).toEqual([]);
+    expect(await viewer.viewTransform()).toEqual(still);
+    expect(await viewer.hasFocus()).toBe(false);
+
+    await viewer.focus();
+    const view = await viewer.viewTransform();
+    expect(await viewer.touchActionsAt(point)).toContain('none');
+    await viewer.touchDrag(point, { x: 0, y: -160 });
+    await expect
+      .poll(async () => (await viewer.viewTransform()).y)
+      .toBeLessThan(view.y);
+  });
+
   test('scrolls the page from bare canvas, moving no view, until the viewer holds the focus, which then pans the view for the finger', async ({
     viewer,
   }) => {
+    // Headless Chromium on Linux turns no synthesized touch gesture into a
+    // scroll, on a page that holds nothing else either, where macOS's does; the
+    // case above holds the viewer's side of it on every platform.
+    test.skip(
+      process.platform === 'linux',
+      'headless Chromium on Linux synthesizes no touch scroll'
+    );
+
     await viewer.goto('long');
     await viewer.seed(relatedTables());
 

@@ -539,6 +539,83 @@ export class ErdViewerPage {
   }
 
   /**
+   * A one-finger drag the browser delivers as real touch events, as every
+   * platform's headless Chromium does, and the types of those a handler
+   * prevented, read off the window, which hears each event last.
+   */
+  async touchDrag(
+    from: Point,
+    distance: { x: number; y: number },
+    steps = 8
+  ): Promise<string[]> {
+    this.session ??= await this.page.context().newCDPSession(this.page);
+    await this.page.evaluate(() => {
+      if (!Reflect.has(window, '__touchPrevented')) {
+        for (const type of ['touchstart', 'touchmove']) {
+          window.addEventListener(
+            type,
+            event => {
+              if (!event.defaultPrevented) return;
+              (Reflect.get(window, '__touchPrevented') as string[]).push(type);
+            },
+            { passive: true }
+          );
+        }
+      }
+      Reflect.set(window, '__touchPrevented', []);
+    });
+    const at = (progress: number) => [
+      {
+        x: from.x + distance.x * progress,
+        y: from.y + distance.y * progress,
+        id: 1,
+      },
+    ];
+    await this.session.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: at(0),
+    });
+    for (let step = 1; step <= steps; step++) {
+      await this.session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: at(step / steps),
+      });
+    }
+    await this.session.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
+    return this.page.evaluate(() => [
+      ...new Set(Reflect.get(window, '__touchPrevented') as string[]),
+    ]);
+  }
+
+  /**
+   * The touch-action of each element from the one at a viewport point up to
+   * the host, which together decide whether the browser may scroll the page
+   * for a finger that starts there.
+   */
+  async touchActionsAt({ x, y }: Point): Promise<string[]> {
+    return this.host.evaluate(
+      (host, point) => {
+        const roots = Reflect.get(window, '__erdShadowRoots') as
+          | Map<Element, ShadowRoot>
+          | undefined;
+        const actions: string[] = [];
+        let element =
+          roots?.get(host)?.elementFromPoint(point.x, point.y) ?? null;
+        while (element && element !== host) {
+          actions.push(getComputedStyle(element).touchAction);
+          element =
+            element.parentElement ?? (element.getRootNode() as ShadowRoot).host;
+        }
+        return [...actions, getComputedStyle(host).touchAction];
+      },
+      { x, y }
+    );
+  }
+
+  /**
    * A one finger swipe the browser itself turns into touch events and, where
    * nothing prevents them, a scroll, as a reader's finger would. The distance
    * is how far the finger travels, so a swipe up scrolls the page down.

@@ -347,10 +347,13 @@ the page text below it, and the palette closing, which hands the focus to no
 one, give the page its wheel back; with a table the palette picked selected and
 the view focused, the edit chords (Alt+Enter, Enter, Delete, Backspace, Alt+N,
 Alt+M) stay unprevented, open no `.edit-overlay`, leave `value` as it was and the
-table selected; and a finger's swipe over bare canvas, which `swipe` asks the
-browser for through `Input.synthesizeScrollGesture`, scrolls the page, moving no
-view and taking no focus, until the viewer holds the focus, and after it pans the
-view with the page standing still.
+table selected; and a finger over bare canvas is the page's until the viewer
+holds the focus: no element under it has `touch-action: none` and no handler
+prevents a real touch drag (`touchDrag`), which moves no view and takes no focus,
+and once the viewer holds the focus the drag pans the view. A swipe the browser
+synthesizes (`swipe`, `Input.synthesizeScrollGesture`) also scrolls the page there,
+off Linux only: headless Chromium on Linux turns no synthesized touch gesture into a
+scroll, on a page that holds nothing else either.
 A swipe that starts on a table scrolls no page even before the focus, since
 Konva prevents a touchstart over a listening shape, so that case is left out.
 
