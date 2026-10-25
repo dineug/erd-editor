@@ -89,10 +89,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-workspace
       # Each test task builds its package's workspace dependencies first, the
-      # erd-editor chain included for the last three. One task at a time: three
-      # Vitest runs and a tsc at once held a real icacls past its 5 s bound.
+      # erd-editor chain included for the last three.
       - run: >-
-          pnpm exec vp run --concurrency-limit 1
+          pnpm exec vp run
           --filter "@dineug/erd-editor-agent-hub"
           --filter "@dineug/erd-editor-agent-hub-host"
           --filter "@dineug/erd-editor-mcp"
