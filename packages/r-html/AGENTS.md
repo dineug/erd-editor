@@ -135,6 +135,6 @@ None: a leaf package. `@dineug/vite-plugin-r-html` pairs with `src/render/hmr.ts
 
 ### External
 
-`stylis` 4.4.0 is the only runtime dependency (the `css` pipeline).
+`stylis` (`^4.4.0` through the catalog) is the only runtime dependency (the `css` pipeline).
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->

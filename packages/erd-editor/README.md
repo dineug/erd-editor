@@ -42,8 +42,9 @@ npm install @dineug/erd-editor
 
 The editor's PNG and SVG export, the Flow and tree layouts and the syntax highlighting run in
 shared workers, which Vite, webpack and Rspack emit beside your chunks and esbuild does not. A
-strict CSP needs `worker-src 'self'`. `<erd-viewer>` starts no worker. Without a bundler, use the
-[script tag](#script-tag) builds.
+strict CSP needs `worker-src 'self'`. `<erd-viewer>` starts no worker. Both elements write their
+theme into a `<style>` element, so a strict CSP also needs `style-src 'unsafe-inline'`. Without a
+bundler, use the [script tag](#script-tag) builds.
 
 ## Usage
 
@@ -76,6 +77,10 @@ defineErdEditor();
 
 A second call does nothing, and a call throws an `Error` naming the tag when another class already
 holds it.
+
+A bundle that holds both elements makes Vite and Rolldown warn 24 times of an
+`INEFFECTIVE_DYNAMIC_IMPORT`: the viewer loads each language but English with `import()`, and the
+editor imports every dictionary at once, so they stay in the editor's chunk and load with it.
 
 For a tag of your own, define the class yourself and add the tag to `HTMLElementTagNameMap`
 yourself, in a window that loads neither that element's entry nor its [script tag](#script-tag)
@@ -313,7 +318,7 @@ defined is taken up once it is, over the attributes its markup gave it.
 
 - `src` is the one `fetch` the package makes, so a strict CSP lists its origin in `connect-src`.
   Besides it, a viewer requests only the dictionary chunk of a language other than English, from
-  your own bundle.
+  your own bundle. Its theme is a `<style>` element, which needs `style-src 'unsafe-inline'`.
 - It starts no worker and writes no storage. Importing it adds three listeners to `window` for
   the life of the page, for `mousedown`, `touchstart` and an event of the package's own,
   `@dineug/erd-editor/internal-forward-move-start`, and Konva, which draws the canvas, sets
