@@ -5,7 +5,8 @@
 import { createRef, useProvider } from '@dineug/r-html';
 import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
-import type { Stage } from 'konva/lib/Stage';
+import { Layer } from 'konva/lib/Layer';
+import { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
@@ -365,5 +366,74 @@ describe('a middle button press on the scene', () => {
     fire(stage, 'mousedown', pointOf(stage, '#table-t2'), MIDDLE);
 
     expect(closeColorPicker).toHaveBeenCalledOnce();
+  });
+});
+
+describe('a main click on the scene', () => {
+  it('needs its press on this stage, not on another stage of the same konva', async () => {
+    const { mounted, stage } = await mountScene();
+    const { store } = mounted.app;
+    const columns = () =>
+      store.state.collections.tableEntities.t1.columnIds.length;
+    const addColumn = () => pointOf(stage, '#table-t1', '.table-add-column');
+
+    fire(stage, 'mousedown', addColumn(), MAIN);
+    fire(stage, 'mouseup', addColumn(), MAIN);
+    await flush();
+    await whenDrawn();
+    await whenPainted();
+    expect(columns()).toBe(1);
+
+    // Another scene of the same konva, as a viewer beside the editor is: a
+    // press there and a lift over the button the editor was last pressed on.
+    const $other = document.createElement('div');
+    document.body.append($other);
+    const other = new Stage({ container: $other, width: 100, height: 100 });
+    other.add(new Layer());
+    teardowns.push(() => {
+      other.destroy();
+      $other.remove();
+    });
+    const { left, top } = other.content.getBoundingClientRect();
+
+    fire(other, 'mousedown', { clientX: left + 10, clientY: top + 10 }, MAIN);
+    fire(stage, 'mouseup', addColumn(), MAIN);
+    await flush();
+
+    expect(columns()).toBe(1);
+  });
+
+  it('reads as no double click after a click on another stage of the same konva', async () => {
+    const { stage } = await mountScene();
+    const at = pointOf(stage, '#table-t1');
+    const heard: string[] = [];
+    stage.findOne('#table-t1')!.on('click dblclick', event => {
+      heard.push(event.type);
+    });
+    const $other = document.createElement('div');
+    document.body.append($other);
+    const other = new Stage({ container: $other, width: 100, height: 100 });
+    other.add(new Layer());
+    teardowns.push(() => {
+      other.destroy();
+      $other.remove();
+    });
+    const { left, top } = other.content.getBoundingClientRect();
+    const corner = { clientX: left + 10, clientY: top + 10 };
+
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+    fire(other, 'mousedown', corner, MAIN);
+    fire(other, 'mouseup', corner, MAIN);
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+
+    expect(heard).toEqual(['click', 'click']);
+
+    // The same pair of clicks with nothing between them is a double click.
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+
+    expect(heard).toEqual(['click', 'click', 'click', 'dblclick']);
   });
 });

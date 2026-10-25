@@ -8,6 +8,7 @@ import {
   renderCanvasScene,
 } from '@/components/erd/canvas/CanvasScene';
 import { listenMiddleButtonPan } from '@/components/erd/canvas/middleButtonPan';
+import { scopeClicksToStage } from '@/components/erd/canvas/stagePressScope';
 import { trackSceneHits } from '@/components/erd/hitTest';
 import { useContextMenuRootContext } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
@@ -87,6 +88,7 @@ const Canvas: FC<CanvasProps> = (props, ctx) => {
 
     addUnsubscribe(
       trackSceneHits($stage),
+      scopeClicksToStage($stage),
       listenMiddleButtonPan(props.canvas.value, handlePanMove, handlePanPress),
       watch(viewport).subscribe(() => {
         $stage.size({ width: viewport.width, height: viewport.height });
