@@ -47,8 +47,8 @@ const SKIPPED = new Set([
 
 /**
  * Evaluates file in a child: as a module, or as a classic script when script
- * is set or global names the object a UMD build assigns, whose keys are then
- * reported. Resolves to the defines, the tags defined, the probe and the errors.
+ * is set or global names a UMD build's object, whose keys it reports. Resolves
+ * to the defines, the tags defined, the globals added, the probe and the errors.
  *
  * @param scenario A module whose before() runs on the fresh realm ahead of the
  * file and whose after() runs once it has, its result reported as scenario.
@@ -64,6 +64,7 @@ export function evaluateInHappyDom(file, { global, script, scenario } = {}) {
   const failed = error => ({
     defines: [],
     defined: {},
+    globals: [],
     keys: null,
     probe: null,
     scenario: null,
@@ -144,6 +145,7 @@ async function evaluate(file, { global, script, scenarioFile }) {
   const result = {
     defines: [],
     defined: {},
+    globals: [],
     keys: null,
     probe: null,
     scenario: null,
@@ -168,6 +170,7 @@ async function evaluate(file, { global, script, scenarioFile }) {
     return define(name, constructor, options);
   };
 
+  const before = new Set(Object.getOwnPropertyNames(globalThis));
   try {
     if (global || script) {
       vm.runInThisContext(fs.readFileSync(file, 'utf8'), { filename: file });
@@ -183,6 +186,9 @@ async function evaluate(file, { global, script, scenarioFile }) {
   for (const tag of TAGS) {
     result.defined[tag] = customElements.get(tag) !== undefined;
   }
+  result.globals = Object.getOwnPropertyNames(globalThis)
+    .filter(name => !before.has(name))
+    .sort();
   if (global && globalThis[global]) {
     result.keys = Object.keys(globalThis[global]).sort();
   }

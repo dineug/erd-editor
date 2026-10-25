@@ -439,8 +439,22 @@ export default function WorkerWrapper(options) {
 
   const rewritten = rewriteInlineWorkers(chunk);
   assert.ok(rewritten);
-  assert.match(rewritten, /new SharedWorker\(__toDataUrl\(jsContent\)/);
-  assert.match(rewritten, /function __toDataUrl\(source\)/);
+  assert.match(
+    rewritten,
+    /new SharedWorker\(\(\(source\) => \{[\s\S]*?\}\)\(jsContent\)/
+  );
+  // The encoder is an expression at the url, so nothing is declared beside a
+  // umd chunk's wrapper, where it would be a global of the page.
+  assert.ok(rewritten.endsWith('}'));
+  assert.doesNotMatch(rewritten, /function __toDataUrl/);
+  const url = Function(
+    'jsContent',
+    `return ${rewritten.match(/\(\(source\) => \{[\s\S]*?\}\)\(jsContent\)/)![0]}`
+  )('é');
+  assert.equal(
+    url,
+    `data:text/javascript;base64,${Buffer.from('é').toString('base64')}`
+  );
   assert.equal(
     readStringLiteral(chunk, 'jsContent'),
     'self.onconnect = () => {};\n'
@@ -452,7 +466,7 @@ new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsCo
 new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsContent$1), o);`;
   const both = rewriteInlineWorkers(twice);
   assert.ok(both);
-  assert.equal((both.match(/__toDataUrl\(/g) ?? []).length, 3);
+  assert.equal((both.match(/\(\(source\) => \{/g) ?? []).length, 2);
   assert.doesNotMatch(both, /encodeURIComponent/);
 
   // A worker module reached through require() is initialized lazily, and
@@ -466,7 +480,7 @@ new SharedWorker("data:text/javascript;charset=utf-8," + encodeURIComponent(jsCo
     readStringLiteral(lazy, 'jsContent$3'),
     'self.onconnect = () => {};'
   );
-  assert.match(rewriteInlineWorkers(lazy) ?? '', /__toDataUrl\(jsContent\$3\)/);
+  assert.match(rewriteInlineWorkers(lazy) ?? '', /\}\)\(jsContent\$3\)/);
   assert.equal(
     readStringLiteral('if (jsContent == "a") {}', 'jsContent'),
     null

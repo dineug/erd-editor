@@ -247,6 +247,11 @@ async function checkUmd() {
         problems.push(`${other.tag} is ${want ? 'undefined' : 'defined'}`);
       }
     }
+    // Konva's own global is the one the README names beside the script's.
+    const strays = result.globals.filter(name => name !== element.global && name !== 'Konva');
+    if (strays.length) {
+      problems.push(`leaves the globals ${strays.join(', ')} on the page beside window.${element.global}`);
+    }
     if (JSON.stringify(result.keys) !== JSON.stringify(element.keys)) {
       problems.push(
         `window.${element.global} holds ${JSON.stringify(result.keys)}, expected ${JSON.stringify(element.keys)}`

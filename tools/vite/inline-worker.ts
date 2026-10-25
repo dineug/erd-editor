@@ -11,14 +11,19 @@ export const MAX_URL_LENGTH = 2 * 1024 * 1024;
 const PERCENT_ENCODED_WORKER =
   /"data:text\/javascript;charset=utf-8,"\s*\+\s*encodeURIComponent\(([\w$]+)\)/g;
 
-const TO_DATA_URL = `function __toDataUrl(source) {
+/**
+ * The base64 encoder, written out at each url it builds. renderChunk sees a
+ * umd chunk inside its wrapper already, so a function declared beside the code
+ * would sit outside it and become a global of the page that loads the script.
+ */
+const TO_DATA_URL = `((source) => {
 \tconst bytes = new TextEncoder().encode(source);
 \tlet binary = "";
 \tfor (let i = 0; i < bytes.length; i += 0x8000) {
 \t\tbinary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
 \t}
 \treturn "data:text/javascript;base64," + btoa(binary);
-}`;
+})`;
 
 /**
  * Reads the string literal assigned to that name, escapes honoured: in its
@@ -76,12 +81,10 @@ export function rewriteInlineWorkers(code: string): string | null {
     }
   }
 
-  // Appended rather than prepended, so the chunk's first line stays what it
-  // was; a function declaration hoists.
-  return `${code.replace(
+  return code.replace(
     PERCENT_ENCODED_WORKER,
-    (_, ident) => `__toDataUrl(${ident})`
-  )}\n${TO_DATA_URL}`;
+    (_, ident) => `${TO_DATA_URL}(${ident})`
+  );
 }
 
 /** Throws when a chunk still carries a percent-encoded worker url, in either spelling a minifier leaves. */
