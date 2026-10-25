@@ -6,6 +6,7 @@ import {
   getMinimapLayout,
   toScrollMovement,
 } from '@/components/erd/minimap/minimapGeometry';
+import { useSceneActive } from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import {
   clampScrollMovement,
@@ -42,6 +43,7 @@ const takeMovement = (
 export function useMinimapScroll(ctx: Ctx) {
   const app = useAppContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const active = useSceneActive(ctx);
   const { addUnsubscribe } = useUnmounted();
   const state = observable({
     selected: false,
@@ -134,6 +136,9 @@ export function useMinimapScroll(ctx: Ctx) {
    * where the press sent it, and the drop is where it lays out again.
    */
   const onScrollStart = (event: MouseEvent | TouchEvent) => {
+    // A finger is the page's until the scene takes it, which a read-only root
+    // does once it holds the focus; a mouse press gives it the focus as it goes.
+    if (!isMouseEvent(event) && !active.value()) return;
     // A touch is followed by a compatibility mouse press at the same pixel, and
     // the handle has moved by then, so that press would land on the thumbnail.
     if (!isMouseEvent(event)) event.preventDefault();

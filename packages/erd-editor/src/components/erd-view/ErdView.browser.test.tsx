@@ -589,7 +589,7 @@ describe('ErdView - a read scene edits nothing', () => {
     expect(zoomedOut.findOne('.table-header-color')!.listening()).toBe(false);
   });
 
-  it('opens no memo editor and scrolls no memo body, leaving the wheel to the root', async () => {
+  it('opens no memo editor for a press on its body', async () => {
     const view = await mountView();
     const memo = centerOf(view.stage, '.memo-textarea');
 
@@ -597,22 +597,44 @@ describe('ErdView - a read scene edits nothing', () => {
     await click(view.stage, memo);
     expect(edits).toEqual([]);
     expect(view.app.store.state.editor.editMemoId).toBeNull();
+  });
 
-    const before = origin(view);
-    view.root.focus();
-    const content = view.stage.content.getBoundingClientRect();
-    const event = new WheelEvent('wheel', {
-      bubbles: true,
-      cancelable: true,
-      deltaY: 80,
-      clientX: content.left + memo.x,
-      clientY: content.top + memo.y,
+  it('leaves a wheel over a memo body to the page until the view holds the focus, then scrolls the body as the editor does', async () => {
+    const view = await mountView({
+      ...SEED,
+      memos: [{ id: 'memo', value: 'line\n'.repeat(40), x: 480, y: 360 }],
     });
-    view.stage.content.querySelector('canvas')!.dispatchEvent(event);
+    const memo = centerOf(view.stage, '.memo-textarea-hit');
+    const content = view.stage.content.getBoundingClientRect();
+    const wheel = () => {
+      const event = new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        deltaY: 80,
+        clientX: content.left + memo.x,
+        clientY: content.top + memo.y,
+      });
+      view.stage.content.querySelector('canvas')!.dispatchEvent(event);
+      return event;
+    };
+    const scrollTop = () =>
+      view.app.store.state.editor.memoScrollTopMap.memo ?? 0;
+    const before = origin(view);
+
+    const unfocused = wheel();
     await settle();
 
-    expect(event.defaultPrevented).toBe(true);
-    expect(origin(view)).not.toEqual(before);
+    expect(unfocused.defaultPrevented).toBe(false);
+    expect(origin(view)).toEqual(before);
+    expect(scrollTop()).toBe(0);
+
+    view.root.focus();
+    const focused = wheel();
+    await settle();
+
+    expect(focused.defaultPrevented).toBe(true);
+    expect(origin(view)).toEqual(before);
+    expect(scrollTop()).toBeGreaterThan(0);
   });
 
   it('selects no group for a right press on its body', async () => {
@@ -783,6 +805,44 @@ describe('ErdView - what its host turns off and tells', () => {
 });
 
 describe('ErdView - the focus a press gives', () => {
+  it('leaves a finger on the map to the page until the view holds the focus, then moves the view by it', async () => {
+    const view = await mountView();
+    const map = view.shadow.querySelector<HTMLElement>('.minimap')!;
+    const { left, top } = map.getBoundingClientRect();
+    const fingerOnMap = () => {
+      const finger = new Touch({
+        identifier: 1,
+        target: map,
+        clientX: left + 4,
+        clientY: top + 4,
+      });
+      const event = new TouchEvent('touchstart', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        touches: [finger],
+        changedTouches: [finger],
+      });
+      map.dispatchEvent(event);
+      return event;
+    };
+    const before = origin(view);
+
+    const unfocused = fingerOnMap();
+    await settle();
+
+    expect(unfocused.defaultPrevented).toBe(false);
+    expect(origin(view)).toEqual(before);
+
+    view.root.focus();
+    const focused = fingerOnMap();
+    window.dispatchEvent(new TouchEvent('touchend'));
+    await settle();
+
+    expect(focused.defaultPrevented).toBe(true);
+    expect(origin(view)).not.toEqual(before);
+  });
+
   it('takes the focus for a still tap, which Konva kept from the root, scrolling no page', async () => {
     const view = await mountView();
     const users = centerOf(view.stage, '#table-users');

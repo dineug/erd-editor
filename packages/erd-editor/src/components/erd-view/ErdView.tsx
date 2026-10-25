@@ -31,7 +31,10 @@ import { useI18n } from '@/components/localeContext';
 import Icon from '@/components/primitives/icon/Icon';
 import { createTableActions } from '@/components/quick-search/documentSearch';
 import QuickSearch from '@/components/quick-search/QuickSearch';
-import { sceneInteractionContext } from '@/components/sceneInteractionContext';
+import {
+  sceneActiveContext,
+  sceneInteractionContext,
+} from '@/components/sceneInteractionContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { Open } from '@/constants/open';
 import { WHEEL_ZOOM_STEP } from '@/constants/zoom';
@@ -104,6 +107,7 @@ const ErdView: FC<ErdViewProps> = (props, ctx) => {
 
   /** Whether the view holds the focus, which a click, a tap or the Tab key gives it. */
   const isActive = () => Boolean(root.value?.matches(':focus-within'));
+  const activeProvider = useProvider(ctx, sceneActiveContext, isActive);
 
   /** Whether the palette is open, whose backdrop and list lie over the whole view. */
   const isSearching = () =>
@@ -138,6 +142,7 @@ const ErdView: FC<ErdViewProps> = (props, ctx) => {
       stopTransitions(id);
       dropRelationshipHighlight(id);
       appDestroy(app);
+      activeProvider.destroy();
       interactionProvider.destroy();
       sourceProvider.destroy();
       appProvider.destroy();

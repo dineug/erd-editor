@@ -38,7 +38,10 @@ import {
   TRANSPARENT,
 } from '@/components/erd/canvas/sceneTokens';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
-import { useSceneInteraction } from '@/components/sceneInteractionContext';
+import {
+  useSceneActive,
+  useSceneInteraction,
+} from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import {
@@ -76,6 +79,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
   const interaction = useSceneInteraction(ctx);
+  const active = useSceneActive(ctx);
   const diffMapRef = useDiffMap(ctx);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.memo.id);
   const { onMoveStart } = useMoveMemo(ctx, props, sourceRef);
@@ -162,9 +166,10 @@ const Memo: FC<MemoProps> = (props, ctx) => {
    * unspent, as it was there; a pinch goes on to zoom wherever the fingers are.
    */
   const handleValueWheel = (event: KonvaEventObject<WheelEvent>) => {
-    // A read scene's root takes every wheel, so the page keeps one while it
-    // holds no focus, and the body scrolls nothing there.
-    if (isPinchWheel(event.evt) || interaction.value === 'read') return;
+    // A read scene's root leaves the wheel to the page until it holds the
+    // focus, and the body scrolls under it once it does, as in the editor.
+    if (isPinchWheel(event.evt)) return;
+    if (interaction.value === 'read' && !active.value()) return;
     event.evt.stopPropagation();
     event.evt.preventDefault();
     if (props.preview || isMod(event.evt)) return;
