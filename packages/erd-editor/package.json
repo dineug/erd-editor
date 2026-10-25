@@ -6,6 +6,22 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "erd-editor.js": [
+        "./dist/erd-editor.d.ts"
+      ],
+      "erd-viewer.js": [
+        "./dist/erd-viewer.d.ts"
+      ],
+      "engine.js": [
+        "./dist/engine/index.d.ts"
+      ],
+      "peer.js": [
+        "./dist/peer/index.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -398,8 +398,8 @@ const scriptsUnder = dir =>
 
 /**
  * One file per module: the top of dist/ holds the three entries and the umd
- * builds, each exports target exists, and every other script is a module of
- * src/ at the same path beside its declaration, so no shared chunk is left.
+ * builds, each exports target exists and typesVersions mirrors their types,
+ * and every other script is a module of src/ at the same path.
  */
 function checkLayout() {
   if (!fs.existsSync(path.join(distDir, 'index.js'))) {
@@ -421,6 +421,28 @@ function checkLayout() {
       if (!fs.existsSync(path.join(packageDir, file))) {
         problems.push(`exports ${key} names ${file}, which the build did not write`);
       }
+    }
+  }
+
+  // TypeScript's node10 reads no exports, so typesVersions types each subpath
+  // with the declaration its exports entry names, and nothing else, under the
+  // one range every TypeScript version matches.
+  const ranges = Object.keys(manifest.typesVersions ?? {});
+  if (JSON.stringify(ranges) !== JSON.stringify(['*'])) {
+    problems.push(`typesVersions holds the ranges ${JSON.stringify(ranges)}, expected ["*"]`);
+  }
+  const typed = manifest.typesVersions?.['*'] ?? {};
+  const subpaths = Object.keys(manifest.exports).filter(key => key !== '.');
+  for (const key of subpaths) {
+    const want = JSON.stringify([manifest.exports[key].types]);
+    const got = JSON.stringify(typed[key.slice(2)]);
+    if (got !== want) {
+      problems.push(`typesVersions maps ${key.slice(2)} to ${got}, expected ${want}`);
+    }
+  }
+  for (const key of Object.keys(typed)) {
+    if (!subpaths.includes(`./${key}`)) {
+      problems.push(`typesVersions maps ${key}, which exports does not name`);
     }
   }
 
