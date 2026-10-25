@@ -459,7 +459,7 @@ function checkLayout() {
     const base = name.replace(/\.js$/, '');
     if (!['.ts', '.tsx'].some(ext => fs.existsSync(path.join(packageDir, 'src', base + ext)))) {
       problems.push(
-        `${name} is no module of src/: a shared chunk, or a file a cache replay left (pnpm cache:clear, then build)`
+        `${name} is no module of src/: a shared chunk, or a file a cache replay left (pnpm cache:clear, remove packages/erd-editor/dist, then build)`
       );
     }
     if (!fs.existsSync(path.join(distDir, `${base}.d.ts`))) {
