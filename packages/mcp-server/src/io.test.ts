@@ -688,14 +688,18 @@ describe('connectPipe over a real socket, a named pipe on Windows', () => {
     'marks a pipe Windows keeps this process out of as denied',
     async () => {
       const pipe = specPipePath(dir, 'denied');
+      // No cmdlet, and no module loads: the first cmdlet a session looks up has
+      // Windows PowerShell read the modules on PSModulePath, which on a hosted
+      // runner held the pipe back for most of a minute (mcp-server's AGENTS.md).
       const script = [
+        "$PSModuleAutoLoadingPreference = 'None'",
         "$ErrorActionPreference = 'Stop'",
-        '$security = New-Object System.IO.Pipes.PipeSecurity',
-        "$system = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')",
-        "$security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($system, 'FullControl', 'Allow')))",
-        `$pipe = New-Object System.IO.Pipes.NamedPipeServerStream('${pipe.split('\\').at(-1)}', 'InOut', 1, 'Byte', 'Asynchronous', 0, 0, $security)`,
+        '$security = [System.IO.Pipes.PipeSecurity]::new()',
+        "$system = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')",
+        "$security.AddAccessRule([System.IO.Pipes.PipeAccessRule]::new($system, 'FullControl', 'Allow'))",
+        `$pipe = [System.IO.Pipes.NamedPipeServerStream]::new('${pipe.split('\\').at(-1)}', 'InOut', 1, 'Byte', 'Asynchronous', 0, 0, $security)`,
         "[Console]::Out.WriteLine('listening')",
-        '[Console]::In.ReadLine() | Out-Null',
+        '[void][Console]::In.ReadLine()',
       ].join('; ');
       const owner = spawn(
         'powershell.exe',
