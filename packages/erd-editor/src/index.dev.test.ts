@@ -1,6 +1,10 @@
+import { createSchema } from '@dineug/erd-editor-schema';
 import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 
+import { flush } from '@/__test-utils__/index';
 import { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
+import { ErdViewerElement } from '@/components/erd-viewer/ErdViewer';
+import { createTable } from '@/utils/collection/table.entity';
 
 const mocks = vi.hoisted(() => ({
   begin: vi.fn(),
@@ -31,10 +35,22 @@ beforeAll(async () => {
   await import('@/index.dev');
 });
 
+/** A document holding one table, as the editor's value writes one. */
+function oneTableDocument(): string {
+  const schema = createSchema();
+  schema.collections.tableEntities.orders = createTable({
+    id: 'orders',
+    name: 'orders',
+  });
+  schema.doc.tableIds.push('orders');
+  return JSON.stringify(schema);
+}
+
 describe('index.dev', () => {
-  it('prepares the document body for a full-height editor', () => {
+  it('prepares the document body for a full-height row of elements', () => {
     expect(document.body.style.margin).toBe('0px');
     expect(document.body.style.height).toBe('100vh');
+    expect(document.body.style.display).toBe('flex');
   });
 
   it('anchors the stats panel to the bottom right corner', () => {
@@ -75,5 +91,35 @@ describe('index.dev', () => {
     expect(editors[0].enableThemeBuilder).toBe(true);
     expect(editors[0].enableLocalePicker).toBe(true);
     expect(editors[0].enableWelcomeScreen).toBe(true);
+  });
+
+  it('defines <erd-viewer> through its own entry and mounts one after the editor, each half the row', () => {
+    const viewers = document.body.querySelectorAll('erd-viewer');
+    const editor = document.body.querySelector('erd-editor');
+
+    expect(customElements.get('erd-viewer')).toBe(ErdViewerElement);
+    expect(viewers).toHaveLength(1);
+    expect(viewers[0]).toBeInstanceOf(ErdViewerElement);
+    expect(editor?.nextElementSibling).toBe(viewers[0]);
+    for (const element of [editor!, viewers[0]]) {
+      expect(element.style.flex).toBe('1 1 0px');
+      expect(element.style.height).toBe('100%');
+    }
+  });
+
+  it('hands the viewer the editor’s document each time the editor reports a change', async () => {
+    const editor = document.body.querySelector('erd-editor')!;
+    const viewer = document.body.querySelector('erd-viewer')!;
+    // The file form leaves an empty list out.
+    const tableIdsOf = (value: string) => JSON.parse(value).doc?.tableIds ?? [];
+
+    expect(tableIdsOf(viewer.value)).toEqual([]);
+
+    editor.value = oneTableDocument();
+    await flush();
+    expect(tableIdsOf(viewer.value)).toEqual([]);
+
+    editor.dispatchEvent(new CustomEvent('change'));
+    expect(tableIdsOf(viewer.value)).toEqual(['orders']);
   });
 });

@@ -63,7 +63,7 @@ for both.
 | `e2e/support/sceneMirror.ts`    | Projects every live Konva stage into divs a css locator can name  |
 | `e2e/support/shortcuts.ts`      | `Shortcut`, the key strings mirroring `createKeyBindingMap()`; `MOD_KEY`; the zoom steps `ZOOM_STEP` (a shortcut press) and `WHEEL_ZOOM_STEP` (a wheel notch) |
 | `e2e/support/ErdEditorPage.ts`  | Page object: locators, scene coordinates, gesture helpers         |
-| `e2e/support/ErdViewerPage.ts`  | Page object for one viewer on `viewer.html`: `goto(mode)`, `at(index)`, `seed`, its own stage and shadow root |
+| `e2e/support/ErdViewerPage.ts`  | Page object for one viewer on `viewer.html`: `goto(mode)`, `at(index)`, `seed`, its own stage and shadow root, the scene read through that stage (`viewTransform`, `sceneBox`, `contentBoxes`, `emptyPoint`), the gestures (`panBy`, `wheel`, `swipe`), its focus, theme tokens and directions, and the dictionaries the page asked for (`dictionaryRequests`) |
 | `e2e/support/fixtures.ts`       | The `test` object every spec imports, with `erd` and `viewer`; fails on uncaught errors |
 | `e2e/specs/`                    | The suite's `testDir`: a new `*.spec.ts` goes here and imports `test` from `../support/fixtures` |
 | `e2e/specs/harness.spec.ts`     | Guards the assumptions below — fix this first if it goes red      |
@@ -73,7 +73,7 @@ for both.
 
 ## What is covered
 
-51 spec files. Ten of the groups exist because the DOM scene got their subject
+53 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -322,10 +322,55 @@ The other eleven: `harness`, `keyboard`, `mouse-drag`, `relationship`,
 `table-properties-indexes` and `zoom-overlay` predate the port and were made to
 pass against the canvas; `context-menu` arrived with it.
 
-`viewer.spec.ts` is the one spec on `viewer.html`: each mode mounts what it
-names, every viewer's root is reachable by its host, a closed root stays closed,
-a document goes in through `value`, and the Tab key reaches each viewer's root,
-which no viewer focuses by loading.
+Three specs drive `viewer.html`. `viewer.spec.ts` holds down the page itself:
+each mode mounts what it names, every viewer's root is reachable by its host, a
+closed root stays closed, a document goes in through `value`, and the Tab key
+reaches each viewer's root, which no viewer focuses by loading. It also holds
+down the viewer in it: a `value` set before the element connects drawn whole,
+tables, relationship, memo and group, and fitted to the screen whatever zoom and
+origin the file saved; a drag that pans wherever it starts, a table included,
+which stays where the document has it; once focused, a wheel that pans, across
+under Shift, and a mod wheel and a trackpad pinch that zoom; the controls bar's
+zoom out, zoom in, 100% and Fit; a drag of the map's handle; the palette, which
+names the four prefixes for an empty input, lists no command, finds tables,
+columns, comments and memos under `#`, `@` and `:` and takes the reader to a
+table picked from it, selected; and the compass, which shows once the screen is
+off every entity and brings the nearest back.
+
+`viewer-embed.spec.ts` holds down the viewer in the long page, which scrolls
+around it: before the focus a wheel over it scrolls the page and moves no view,
+and no key is prevented, Delete, Backspace, Space and the select all, find and
+palette chords among them; a press on its bare canvas or the Tab key focuses it,
+and then the wheel pans and zooms the view with the page standing still, and of
+the keys only the zoom chords and the palette's chord do anything; a press on
+the page text below it, and the palette closing, which hands the focus to no
+one, give the page its wheel back; with a table the palette picked selected and
+the view focused, the edit chords (Alt+Enter, Enter, Delete, Backspace, Alt+N,
+Alt+M) stay unprevented, open no `.edit-overlay`, leave `value` as it was and the
+table selected; and a finger's swipe over bare canvas, which `swipe` asks the
+browser for through `Input.synthesizeScrollGesture`, scrolls the page, moving no
+view and taking no focus, until the viewer holds the focus, and after it pans the
+view with the page standing still.
+A swipe that starts on a table scrolls no page even before the focus, since
+Konva prevents a touchstart over a listening shape, so that case is left out.
+
+`viewer-locale.spec.ts` holds down what the viewer takes from its page: the OS
+color scheme, which `page.emulateMedia` turns, until `setSystemAppearance`,
+`setPresetTheme` or `setTheme` names one, and an `--erd-editor-*` property on
+the host over both, each read off the token and the table body's fill; English
+from the first frame on an English page with no dictionary asked for, the one
+dictionary `<html lang>` names, then that language, one more for a later
+`setLocale`, English when the dictionary fails to load or the browser's language
+has none; and in Arabic the root right to left from the connect, the palette and
+the failed load's notice right to left, the controls, the compass, both
+scrollbars and the canvas left to right. The dev server serves every source
+module on its own, so a dictionary is a request for
+`/src/i18n/messages/<code>.ts`, which `dictionaryRequests` reads, and English is
+the files under `messages/en/`. A case about the language the viewer takes as it
+connects never calls `viewer.setLocale`, which would put the page's language in
+force itself: it waits for what the page shows, or for the dictionary request to
+fail. `viewer.setLocale` resolves once the dictionary it asked for has landed or
+failed, which is how the case of a later `setLocale` waits.
 
 `alt-drag-duplicate` and `clipboard` hold down one rule from their two ends: a
 duplicate of whole tables carries a relationship only when **both** its end
@@ -703,6 +748,11 @@ cost when you hit them blind.
   Assert the settled `columnIds` order or the settled projected order, never a
   box taken straight after the drop. A row the reorder adds to a table fades
   in over the same span, so its opacity is only worth reading once it settles.
+- A key or a wheel the viewer leaves to the long page scrolls it smoothly,
+  over the frames after the event, and Space scrolls it by about a screen,
+  which can carry the viewer off it. A point read on the viewer before the
+  scroll stops slides away under the press; `viewer-embed.spec.ts` waits for
+  `scrollY` to stand still and scrolls the viewer back to the middle first.
 
 **Gestures**
 
