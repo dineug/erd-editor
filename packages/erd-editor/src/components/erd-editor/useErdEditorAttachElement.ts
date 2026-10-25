@@ -1,4 +1,3 @@
-import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import { onMounted, Ref, watch } from '@dineug/r-html';
 import { cloneDeep, omit } from 'es-toolkit';
 import { get, isEmpty } from 'es-toolkit/compat';
@@ -7,6 +6,7 @@ import { AppContext, appDestroy } from '@/components/appContext';
 import { useLocaleHost } from '@/components/element-host/localeHost';
 import { useThemeHost } from '@/components/element-host/themeHost';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';
+import { documentJsonOf, runtimeJsonOf } from '@/engine/documentJson';
 import {
   clearAction,
   getLWWAction,
@@ -362,14 +362,14 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   Object.defineProperty(ctx, 'value', {
-    get: () => toDocumentJson(store.state),
+    get: () => documentJsonOf(store),
     set: (value: string) => {
       store.dispatchSync(loadJsonAction$(toLoadValue(value)));
     },
   });
 
   Object.defineProperty(ctx, 'runtimeValue', {
-    get: () => toJson(store.state),
+    get: () => runtimeJsonOf(store),
   });
 
   return {

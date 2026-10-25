@@ -117,6 +117,7 @@ describe('editor/state', () => {
       expect(editor.dragSelect).toBeNull();
       expect(editor.views).toEqual({ flow: null });
       expect(editor.visualizationMode).toBe(VisualizationMode.graph);
+      expect(editor.screenBaseline).toBeNull();
     });
 
     it('gives each editor its own id and its own mutable containers', () => {

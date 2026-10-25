@@ -221,6 +221,26 @@ export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> = [
 ];
 
 /**
+ * The settings a readonly editor's reader turns on its own screen alone: the
+ * eleven readonly lets through and View Option's show bits, which reach no
+ * file, history, change event or peer while it reads (Tag.screen).
+ */
+export const ScreenSettingActionTypes: ReadonlyArray<ActionType> = [
+  'settings.changeZoomLevel',
+  'settings.streamZoomLevel',
+  'settings.scrollTo',
+  'settings.streamScrollTo',
+  'settings.changeShow',
+  'settings.changeDatabase',
+  'settings.changeCanvasType',
+  'settings.changeLanguage',
+  'settings.changeTableNameCase',
+  'settings.changeColumnNameCase',
+  'settings.changeBracketType',
+  'settings.changeNameViewMode',
+];
+
+/**
  * What a readonly editor also refuses, beside its edits: the actions that open
  * a name or cell editor or start a relationship draw. Each one that closes them
  * passes, so an editor that turns readonly can still end what stood open.

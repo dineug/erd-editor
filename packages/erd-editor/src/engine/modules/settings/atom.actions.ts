@@ -48,6 +48,14 @@ import {
 
 import { ActionMap, ActionType, ReducerType } from './actions';
 import {
+  endScreenBaseline,
+  isScreenWrite,
+  keepScreenBaseline,
+  landScreenBaseline,
+  settingWriteTarget,
+  viewportWriteTarget,
+} from './screenBaseline';
+import {
   contentScrollRange,
   openingOrigin,
   type ScrollRange,
@@ -82,14 +90,14 @@ export const changeZoomLevelAction = createAction<
 >(ActionType.changeZoomLevel);
 
 const changeZoomLevel: ReducerType<typeof ActionType.changeZoomLevel> = (
-  { settings },
+  state,
   { payload: { value }, tags }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
-  settings.zoomLevel = zoomLevelInRange(value);
+  viewportWriteTarget(state, tags).zoomLevel = zoomLevelInRange(value);
 };
 
 export const streamZoomLevelAction = createAction<
@@ -97,14 +105,15 @@ export const streamZoomLevelAction = createAction<
 >(ActionType.streamZoomLevel);
 
 const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
-  { settings },
+  state,
   { payload: { value }, tags }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
-  settings.zoomLevel = zoomLevelInRange(settings.zoomLevel + value);
+  const target = viewportWriteTarget(state, tags);
+  target.zoomLevel = zoomLevelInRange(target.zoomLevel + value);
 };
 
 export type ScrollRanges = {
@@ -245,15 +254,16 @@ export const scrollToAction = createAction<
  * they mean, and the range widens to hold it rather than the request bending.
  */
 const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
-  { settings },
+  state,
   { payload: { originX, originY }, tags }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
-  settings.originX = round(originX, 4);
-  settings.originY = round(originY, 4);
+  const target = viewportWriteTarget(state, tags);
+  target.originX = round(originX, 4);
+  target.originY = round(originY, 4);
 };
 
 export const streamScrollToAction = createAction<
@@ -266,15 +276,16 @@ export const streamScrollToAction = createAction<
  * drawn from follows the origin out rather than holding it back.
  */
 const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
-  { settings },
+  state,
   { payload: { movementX, movementY }, tags }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
-  settings.originX = round(settings.originX + movementX, 4);
-  settings.originY = round(settings.originY + movementY, 4);
+  const target = viewportWriteTarget(state, tags);
+  target.originX = round(target.originX + movementX, 4);
+  target.originY = round(target.originY + movementY, 4);
 };
 
 /**
@@ -302,12 +313,19 @@ export const changeShowAction = createAction<
   ActionMap[typeof ActionType.changeShow]
 >(ActionType.changeShow);
 
+/**
+ * Sets or clears the show bits named. A peer's change under a held screen
+ * lands in the baseline alone, so it releases and refocuses nothing shown.
+ */
 const changeShow: ReducerType<typeof ActionType.changeShow> = (
   state,
-  { payload: { show, value } }
+  { payload: { show, value }, tags }
 ) => {
-  const { settings } = state;
-  settings.show = value ? settings.show | show : settings.show & ~show;
+  const target = settingWriteTarget(state, tags, 'show');
+  const bits = target.show ?? 0;
+  target.show = value ? bits | show : bits & ~show;
+  if (target !== state.settings) return;
+
   if (value && bHas(show, Show.hideTableGroup)) releaseTableGroups(state);
   if (value && bHas(show, Show.hideMemo)) releaseMemos(state);
   // The domain's own cell decides whether the logical view's type cell stands
@@ -320,11 +338,11 @@ export const changeDatabaseAction = createAction<
 >(ActionType.changeDatabase);
 
 const changeDatabase: ReducerType<typeof ActionType.changeDatabase> = (
-  { settings },
-  { payload: { value } }
+  state,
+  { payload: { value }, tags }
 ) => {
   if (hasDatabase(value)) {
-    settings.database = value;
+    settingWriteTarget(state, tags, 'database').database = value;
   }
 };
 
@@ -347,6 +365,12 @@ const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
     return;
   }
 
+  const target = settingWriteTarget(state, tags, 'canvasType');
+  if (target !== state.settings) {
+    target.canvasType = value;
+    return;
+  }
+
   rememberCanvasType(state);
   state.settings.canvasType = value;
   // Only the ERD tab draws a table group, so a draw armed there ends with it.
@@ -361,17 +385,32 @@ type CodeSetting =
 
 /**
  * Writes a code setting through its register, so the latest setter or unlock
- * of it wins on every peer, whatever order they arrive in.
+ * of it wins on every peer, whatever order they arrive in. A screen turn
+ * writes the screen alone, outside the register.
  */
 function replaceCodeSetting(
-  { settings, lww }: RootState,
+  state: RootState,
   version: number,
   field: CodeSetting,
-  value: number
+  value: number,
+  tags: number | undefined
 ): void {
-  replaceOperator(lww, version, 'settings.code', 'settings', field, () => {
-    settings[field] = value;
-  });
+  const target = settingWriteTarget(state, tags, field);
+  if (isScreenWrite(tags)) {
+    target[field] = value;
+    return;
+  }
+
+  replaceOperator(
+    state.lww,
+    version,
+    'settings.code',
+    'settings',
+    field,
+    () => {
+      target[field] = value;
+    }
+  );
 }
 
 export const changeLanguageAction = createAction<
@@ -380,12 +419,12 @@ export const changeLanguageAction = createAction<
 
 const changeLanguage: ReducerType<typeof ActionType.changeLanguage> = (
   state,
-  { payload: { value }, version },
+  { payload: { value }, version, tags },
   { clock }
 ) => {
   const safeVersion = version ?? clock.getVersion();
   if (hasLanguage(value)) {
-    replaceCodeSetting(state, safeVersion, 'language', value);
+    replaceCodeSetting(state, safeVersion, 'language', value, tags);
   }
 };
 
@@ -395,10 +434,10 @@ export const changeTableNameCaseAction = createAction<
 
 const changeTableNameCase: ReducerType<
   typeof ActionType.changeTableNameCase
-> = (state, { payload: { value }, version }, { clock }) => {
+> = (state, { payload: { value }, version, tags }, { clock }) => {
   const safeVersion = version ?? clock.getVersion();
   if (hasNameCase(value)) {
-    replaceCodeSetting(state, safeVersion, 'tableNameCase', value);
+    replaceCodeSetting(state, safeVersion, 'tableNameCase', value, tags);
   }
 };
 
@@ -408,10 +447,10 @@ export const changeColumnNameCaseAction = createAction<
 
 const changeColumnNameCase: ReducerType<
   typeof ActionType.changeColumnNameCase
-> = (state, { payload: { value }, version }, { clock }) => {
+> = (state, { payload: { value }, version, tags }, { clock }) => {
   const safeVersion = version ?? clock.getVersion();
   if (hasNameCase(value)) {
-    replaceCodeSetting(state, safeVersion, 'columnNameCase', value);
+    replaceCodeSetting(state, safeVersion, 'columnNameCase', value, tags);
   }
 };
 
@@ -421,12 +460,12 @@ export const changeBracketTypeAction = createAction<
 
 const changeBracketType: ReducerType<typeof ActionType.changeBracketType> = (
   state,
-  { payload: { value }, version },
+  { payload: { value }, version, tags },
   { clock }
 ) => {
   const safeVersion = version ?? clock.getVersion();
   if (hasBracketType(value)) {
-    replaceCodeSetting(state, safeVersion, 'bracketType', value);
+    replaceCodeSetting(state, safeVersion, 'bracketType', value, tags);
   }
 };
 
@@ -516,7 +555,7 @@ export const UnlockCarriedSettings =
  */
 const changeLockSettings: ReducerType<typeof ActionType.changeLockSettings> = (
   state,
-  { payload: { lockSettingType, value, values }, version },
+  { payload: { lockSettingType, value, values }, version, tags },
   { clock }
 ) => {
   const { settings, lww } = state;
@@ -560,7 +599,8 @@ const changeLockSettings: ReducerType<typeof ActionType.changeLockSettings> = (
             state,
             safeVersion,
             field as CodeSetting,
-            carried[field] as number
+            carried[field] as number,
+            tags
           )
     );
   });
@@ -621,7 +661,8 @@ function showNameViewMode(state: RootState, value: NameViewModeValue): void {
 
 /**
  * Writes the name view through its register, which the shared setter and an
- * unlock both write through, so the latest of them wins on every peer.
+ * unlock both write through, so the latest of them wins on every peer. What
+ * it lands is the document's view, so a screen held over it ends.
  */
 function replaceNameViewMode(
   state: RootState,
@@ -634,7 +675,10 @@ function replaceNameViewMode(
     'settings.nameViewMode',
     'settings',
     'nameViewMode',
-    () => showNameViewMode(state, value)
+    () => {
+      endScreenBaseline(state.editor, 'nameViewMode');
+      showNameViewMode(state, value);
+    }
   );
 }
 
@@ -649,16 +693,21 @@ export const changeNameViewModeAction = createAction<
  */
 const changeNameViewMode: ReducerType<typeof ActionType.changeNameViewMode> = (
   state,
-  { payload: { value, shared, editorId }, version },
+  { payload: { value, shared, editorId }, version, tags },
   { clock }
 ) => {
   if (!hasNameViewMode(value)) return;
 
-  if (shared === true) {
+  const own = editorId === state.editor.id;
+  if (isScreenWrite(tags)) {
+    if (own) keepScreenBaseline(state, 'nameViewMode');
+  } else if (shared === true) {
     replaceNameViewMode(state, version ?? clock.getVersion(), value);
-  } else if (editorId === state.editor.id) {
-    showNameViewMode(state, value);
+    return;
+  } else if (own) {
+    endScreenBaseline(state.editor, 'nameViewMode');
   }
+  if (own) showNameViewMode(state, value);
 };
 
 /**
@@ -691,10 +740,12 @@ const LOCK_KNOWN = LockSettingTypeList.reduce((acc, bit) => acc | bit, 0);
  * setting locked once it lands but the view keeping the screen.
  */
 export function landLoadedSettings(
-  { settings, lww }: RootState,
+  state: RootState,
   loaded: RootState['settings'],
-  version: number
+  version: number,
+  tags?: number
 ): void {
+  const { settings, lww } = state;
   const { lockSettings, lockedValues, ...screen } = settings;
   Object.assign(settings, loaded, {
     lockSettings:
@@ -725,6 +776,7 @@ export function landLoadedSettings(
       Object.assign(settings, pick(screen, fields));
     }
   });
+  landScreenBaseline(state, screen, tags);
 }
 
 export const settingsReducers = {

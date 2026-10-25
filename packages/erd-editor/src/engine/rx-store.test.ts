@@ -1,4 +1,4 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
@@ -9,12 +9,15 @@ import {
   Database,
   Language,
   LockSettingType,
+  LockSettingTypeList,
   NameCase,
+  NameViewMode,
   RelationshipType,
   Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
+import { documentJsonOf, runtimeJsonOf } from '@/engine/documentJson';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import {
   addDictionaryAction,
@@ -76,9 +79,11 @@ import {
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   changeZoomLevelAction$,
+  restoreScreenSettingsAction$,
   streamZoomLevelAction$,
 } from '@/engine/modules/settings/generator.actions';
 import {
@@ -1811,6 +1816,179 @@ describe('createRxStore', () => {
       expect(editor.openMap[Open.mapColumns]).toBe(true);
       expect(editor.openMap[Open.automaticTablePlacement]).toBe(true);
       expect(editor.openMap[Open.timeTravel]).toBe(true);
+    });
+  });
+
+  describe('readonly, the settings an editor’s reader turns on its own screen', () => {
+    const LOCK_EVERY = LockSettingTypeList.reduce((acc, bit) => acc | bit, 0);
+
+    /** Each setting readonly lets through and the show bits, away from a new document's. */
+    const screenTurns = (store: RxStore) => [
+      changeLanguageAction({ value: Language.Kotlin }),
+      changeTableNameCaseAction({ value: NameCase.snakeCase }),
+      changeColumnNameCaseAction({ value: NameCase.snakeCase }),
+      changeBracketTypeAction({ value: BracketType.backtick }),
+      changeDatabaseAction({ value: Database.PostgreSQL }),
+      changeShowAction({ show: Show.tableComment, value: false }),
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL }),
+      toNameViewModeAction(store.state, NameViewMode.logical, true),
+      scrollToAction({ originX: 40, originY: 40 }),
+      changeZoomLevelAction({ value: 0.5 }),
+    ];
+
+    /** An editor store with every lock off, so each setting it changes reaches the file. */
+    function setup({ readonlyEditState = true } = {}) {
+      vi.useFakeTimers();
+      let readonly = false;
+      const store = make(createContext(), {
+        getReadonly: () => readonly,
+        readonlyEditState,
+      });
+      store.dispatchSync(addTable('t1'), unlock(LOCK_EVERY));
+      vi.advanceTimersByTime(250);
+      const changes: string[][] = [];
+      const subscription = store.change$.subscribe(actions =>
+        changes.push(actions.map(({ type }) => type))
+      );
+      const before = {
+        value: documentJsonOf(store),
+        runtimeValue: runtimeJsonOf(store),
+        history: store.history.size,
+        lww: JSON.stringify(store.state.lww),
+        settings: { ...store.state.settings },
+      };
+      const turn = () => {
+        readonly = true;
+        store.dispatchSync(...screenTurns(store));
+        store.dispatchSync(
+          streamScrollToAction({ movementX: 4, movementY: 4 })
+        );
+        store.dispatchSync(streamZoomLevelAction({ value: 0.1 }));
+        vi.advanceTimersByTime(250);
+      };
+      return {
+        store,
+        changes,
+        before,
+        turn,
+        setReadonly: (value: boolean) => {
+          readonly = value;
+        },
+        stop: () => subscription.unsubscribe(),
+      };
+    }
+
+    it('keeps each on the screen alone, the file, the registers, the history and the change event untouched', () => {
+      const { store, changes, before, turn, stop } = setup();
+
+      turn();
+
+      expect(store.state.settings).toMatchObject({
+        language: Language.Kotlin,
+        database: Database.PostgreSQL,
+        show: before.settings.show & ~Show.tableComment,
+        canvasType: CanvasType.schemaSQL,
+        nameViewMode: NameViewMode.logical,
+        originX: 44,
+        zoomLevel: 0.6,
+      });
+      expect(documentJsonOf(store)).toBe(before.value);
+      expect(runtimeJsonOf(store)).toBe(before.runtimeValue);
+      expect(toDocumentJson(store.state)).not.toBe(before.value);
+      expect(JSON.stringify(store.state.lww)).toBe(before.lww);
+      expect(store.history.size).toBe(before.history);
+      expect(changes).toEqual([]);
+      stop();
+    });
+
+    it('gives the code settings, the database and the show bits back as it turns writable, the view kept', () => {
+      const { store, changes, before, turn, setReadonly, stop } = setup();
+      turn();
+
+      setReadonly(false);
+      store.dispatchSync(restoreScreenSettingsAction$());
+      vi.advanceTimersByTime(250);
+
+      expect(store.state.settings).toMatchObject({
+        language: before.settings.language,
+        tableNameCase: before.settings.tableNameCase,
+        columnNameCase: before.settings.columnNameCase,
+        bracketType: before.settings.bracketType,
+        database: before.settings.database,
+        show: before.settings.show,
+        canvasType: CanvasType.schemaSQL,
+        nameViewMode: NameViewMode.logical,
+        originX: 44,
+      });
+      expect(documentJsonOf(store)).toBe(before.value);
+      expect(store.history.size).toBe(before.history);
+      expect(changes).toEqual([]);
+      stop();
+    });
+
+    it('takes its first writable pan from where the screen stands, which the file then holds', () => {
+      const { store, changes, before, turn, setReadonly, stop } = setup();
+      turn();
+      setReadonly(false);
+      store.dispatchSync(restoreScreenSettingsAction$());
+
+      store.dispatchSync(streamScrollToAction({ movementX: 40, movementY: 0 }));
+      vi.advanceTimersByTime(250);
+
+      expect(changes).toEqual([
+        [
+          'settings.scrollTo',
+          'settings.changeZoomLevel',
+          'settings.streamScrollTo',
+        ],
+      ]);
+      expect(store.state.editor.screenBaseline).toMatchObject({
+        canvasType: CanvasType.ERD,
+      });
+      expect(store.state.editor.screenBaseline).not.toHaveProperty('viewport');
+      expect(JSON.parse(documentJsonOf(store)).settings).toMatchObject({
+        originX: 84,
+        zoomLevel: 0.6,
+      });
+      expect(store.history.size).toBe(before.history + 1);
+
+      store.undo();
+      expect(store.state.settings.originX).toBe(44);
+      stop();
+    });
+
+    it('gives the show bits back while the Flow tab stands, the file keeping its own', () => {
+      const { store, before, setReadonly, stop } = setup();
+      setReadonly(true);
+      store.dispatchSync(
+        changeShowAction({ show: Show.tableComment, value: false }),
+        changeCanvasTypeAction({ value: CanvasType.visualization }),
+        changeVisualizationModeAction({ value: VisualizationMode.flow })
+      );
+      store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+      expect(getActiveView(store.state)).not.toBeNull();
+
+      setReadonly(false);
+      store.dispatchSync(restoreScreenSettingsAction$());
+
+      expect(store.state.settings.show).toBe(before.settings.show);
+      expect(store.state.editor.screenBaseline).toEqual({
+        canvasType: CanvasType.ERD,
+      });
+      expect(documentJsonOf(store)).toBe(before.value);
+      stop();
+    });
+
+    it('writes each as it always did in a readonly store that does not ask for it', () => {
+      const { store, before, turn, stop } = setup({ readonlyEditState: false });
+
+      turn();
+
+      expect(store.state.settings.language).toBe(Language.Kotlin);
+      expect(store.state.editor.screenBaseline).toBeNull();
+      expect(documentJsonOf(store)).not.toBe(before.value);
+      expect(JSON.stringify(store.state.lww)).not.toBe(before.lww);
+      stop();
     });
   });
 

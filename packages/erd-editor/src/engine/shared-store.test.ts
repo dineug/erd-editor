@@ -52,6 +52,7 @@ import {
   streamZoomLevelAction,
   toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
+import { restoreScreenSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import {
   addTableAction,
   changeTableColorAction,
@@ -384,6 +385,36 @@ describe('createSharedStore', () => {
       expect(sent.map(action => action.type)).toEqual(['table.move']);
       expect(sent[0].payload).toMatchObject({ ids: ['t1'], movementX: 40 });
       expect(fixture.store.state.collections.tableEntities.t1.ui.x).toBe(240);
+    });
+
+    it('sends none of what its screen takes back once writable, and leads its next pan with where the screen stands', () => {
+      vi.useFakeTimers();
+      const fixture = makeReadonly();
+      fixture.setReadonly(true);
+      fixture.store.dispatchSync(
+        changeLanguageAction({ value: Language.Kotlin }),
+        scrollToAction({ originX: 40, originY: 40 })
+      );
+
+      fixture.setReadonly(false);
+      fixture.store.dispatchSync(restoreScreenSettingsAction$());
+      vi.advanceTimersByTime(400);
+      expect(fixture.seen).toEqual([]);
+
+      fixture.store.dispatchSync(
+        streamScrollToAction({ movementX: 30, movementY: 0 })
+      );
+      vi.advanceTimersByTime(400);
+
+      const sent = fixture.seen.flat();
+      expect(sent.map(({ type, payload }) => [type, payload])).toEqual([
+        ['settings.scrollTo', { originX: 40, originY: 40 }],
+        ['settings.changeZoomLevel', { value: 1 }],
+        ['settings.streamScrollTo', { movementX: 30, movementY: 0 }],
+      ]);
+      expect(
+        sent.every(({ tags }) => bHas(tags!, Tag.shared | Tag.following))
+      ).toBe(true);
     });
 
     it('sends what a reader changes on a readonly store that does not ask for it', () => {

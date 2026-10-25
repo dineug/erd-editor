@@ -21,10 +21,20 @@ describe('Tag', () => {
     expect(Tag.changeOnly).toBe(2);
     expect(Tag.following).toBe(4);
     expect(Tag.drag).toBe(8);
+    expect(Tag.dictionarySheet).toBe(16);
+    expect(Tag.screen).toBe(32);
     expect(Tag.shared & Tag.changeOnly).toBe(0);
     expect(Tag.shared & Tag.following).toBe(0);
     expect(Tag.changeOnly & Tag.following).toBe(0);
     expect((Tag.shared | Tag.changeOnly | Tag.following) & Tag.drag).toBe(0);
+    expect(
+      (Tag.shared |
+        Tag.changeOnly |
+        Tag.following |
+        Tag.drag |
+        Tag.dictionarySheet) &
+        Tag.screen
+    ).toBe(0);
   });
 });
 

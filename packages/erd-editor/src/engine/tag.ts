@@ -18,6 +18,11 @@ export const Tag = {
    * sheet its dictionary rows are on rather than the document's.
    */
   dictionarySheet: 16,
+  /**
+   * A setting a readonly reader turns on its own screen alone: it never reaches
+   * the file, the history, the change event or a peer.
+   */
+  screen: 32,
 } as const;
 
 export function attachActionTag(tag: number, action: AnyAction): AnyAction {

@@ -10,6 +10,7 @@ import {
   CenterStep,
   FocusType,
   MoveKey,
+  ScreenUnit,
   SelectType,
   SharedFocus,
   ShowMode,
@@ -70,6 +71,7 @@ export const ActionType = {
   viewSetCenters: 'editor.viewSetCenters',
   viewStepCenters: 'editor.viewStepCenters',
   changeVisualizationMode: 'editor.changeVisualizationMode',
+  endScreenSettings: 'editor.endScreenSettings',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -237,6 +239,9 @@ export type ActionMap = {
   };
   [ActionType.changeVisualizationMode]: {
     value: VisualizationMode;
+  };
+  [ActionType.endScreenSettings]: {
+    units: ScreenUnit[];
   };
 };
 

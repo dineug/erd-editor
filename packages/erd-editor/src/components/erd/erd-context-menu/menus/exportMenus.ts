@@ -1,8 +1,7 @@
-import { toDocumentJson } from '@dineug/erd-editor-schema';
-
 import { AppContext } from '@/components/appContext';
 import { IconName } from '@/components/primitives/icon/icons';
 import { showSchemaSQLExport } from '@/components/schema-sql/schemaSQLView';
+import { documentJsonOf } from '@/engine/documentJson';
 import { sourceI18n } from '@/i18n/source';
 import type { I18n } from '@/i18n/translate';
 import { openExportImageAction } from '@/utils/emitter';
@@ -33,7 +32,7 @@ export function createExportMenus(
       name: 'json',
       onClick: () => {
         onClose();
-        exportJSON(toDocumentJson(store.state), databaseName);
+        exportJSON(documentJsonOf(store), databaseName);
       },
     },
     {

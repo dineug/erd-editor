@@ -1,4 +1,4 @@
-import { query, toDocumentJson } from '@dineug/erd-editor-schema';
+import { query } from '@dineug/erd-editor-schema';
 
 import { AppContext } from '@/components/appContext';
 import { menus as databaseMenus } from '@/components/erd/erd-context-menu/menus/databaseMenus';
@@ -30,6 +30,7 @@ import {
 } from '@/components/schema-sql/schemaSQLView';
 import { APPEARANCE_BUTTONS } from '@/components/theme-builder/ThemeBuilder';
 import { CanvasType } from '@/constants/schema';
+import { documentJsonOf } from '@/engine/documentJson';
 import {
   rederiveNamesAction$,
   type RederiveNamesTarget,
@@ -222,7 +223,7 @@ export function createScopeActions(
           name: 'json',
           perform: ({ store }) => {
             exportJSON(
-              toDocumentJson(store.state),
+              documentJsonOf(store),
               store.state.settings.databaseName
             );
           },

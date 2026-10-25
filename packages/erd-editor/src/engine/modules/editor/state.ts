@@ -1,3 +1,4 @@
+import type { ERDEditorSchemaV3 } from '@dineug/erd-editor-schema';
 import { uuid25 } from '@dineug/uuid';
 
 import { DEFAULT_HEIGHT, DEFAULT_WIDTH } from '@/constants/layout';
@@ -74,7 +75,45 @@ export type Editor = {
    * one a canvas type lock taken on the Settings tab holds.
    */
   lastCanvasType: string;
+  /**
+   * The document's own value of each setting a readonly reader turned on its
+   * screen, null while none is held. Local to this client, never the file, the
+   * history or a peer.
+   */
+  screenBaseline: ScreenBaseline | null;
 };
+
+type Settings = ERDEditorSchemaV3['settings'];
+
+/** The placement fields a screen turns as one, since one saved alone opens elsewhere. */
+export type ScreenViewport = Pick<
+  Settings,
+  'originX' | 'originY' | 'zoomLevel'
+>;
+
+/**
+ * Each setting the document holds under a reader's screen, by unit, recorded
+ * by the first screen turn of that unit and dropped once the document's value
+ * may show again.
+ */
+export type ScreenBaseline = Partial<
+  Pick<
+    Settings,
+    | 'canvasType'
+    | 'nameViewMode'
+    | 'show'
+    | 'database'
+    | 'language'
+    | 'tableNameCase'
+    | 'columnNameCase'
+    | 'bracketType'
+  >
+> & {
+  viewport?: ScreenViewport;
+};
+
+/** A unit of the baseline: the viewport, or one setting of its own. */
+export type ScreenUnit = keyof ScreenBaseline;
 
 export type Viewport = {
   width: number;
@@ -271,4 +310,5 @@ export const createEditor = (): Editor => ({
   views: { flow: null },
   visualizationMode: VisualizationMode.graph,
   lastCanvasType: CanvasType.ERD,
+  screenBaseline: null,
 });

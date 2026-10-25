@@ -49,6 +49,10 @@ import {
 import { flushOnNotifier } from '@/engine/rx-operators/flushOnNotifier';
 import { lockIgnoreFilter } from '@/engine/rx-operators/lockIgnoreFilter';
 import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';
+import {
+  alignViewport,
+  readonlyScreenTag,
+} from '@/engine/rx-operators/readonlyScreenTag';
 import { viewActionRedirect } from '@/engine/rx-operators/viewActionRedirect';
 import { viewIgnoreFilter } from '@/engine/rx-operators/viewIgnoreFilter';
 import { createStore, Store } from '@/engine/store';
@@ -85,9 +89,9 @@ export type RxStore = Store & {
 export type RxStoreOptions = {
   getReadonly?: () => boolean;
   /**
-   * While readonly, also drops what opens an edit (a name or cell editor, a
-   * relationship draw, a writing dialog) and sends a peer no change. Only the
-   * editor element's store sets it; the viewer's and the diff panes' do not.
+   * While readonly, also drops what opens an edit, sends a peer no change and
+   * keeps each setting its reader turns on its own screen. Only the editor
+   * element's store sets it; the viewer's and the diff panes' do not.
    */
   readonlyEditState?: boolean;
   getHistory?: (options: HistoryOptions) => History;
@@ -124,9 +128,14 @@ export function createRxStore(
   const subscriptionSet = new Set<Subscription | Unsubscribe>();
   const store = createStore(context, observable);
   const hooks = createHooks(store);
+  // A replay passes no operator, so an undo of a pan once writable again is led
+  // by the screen's placement here, or the replica takes it from the old one.
+  const replay: HistoryOptions['dispatch'] = readonlyEditState
+    ? actions => store.dispatchSync(alignViewport(actions, store.state))
+    : store.dispatchSync;
   const historyOptions: HistoryOptions = {
     notify: payload => store.dispatch(changeHasHistoryAction(payload)),
-    dispatch: store.dispatchSync,
+    dispatch: replay,
     getNextVersion: () => context.clock.getNextVersion(),
     getState: () => store.state,
   };
@@ -166,7 +175,12 @@ export function createRxStore(
   const dispatch$ = new Subject<Array<AnyAction>>();
   // The one seam a view has: what is dispatched is read against the state as
   // it stands, so a batch that opens or closes a view is classified before it.
-  const redirected$ = dispatch$.pipe(viewActionRedirect(getView));
+  const viewRedirected$ = dispatch$.pipe(viewActionRedirect(getView));
+  // A setting a readonly reader turns stays its own screen (Tag.screen), which
+  // the history, change$ and the outbound pipe drop and both filters pass.
+  const redirected$ = readonlyEditState
+    ? viewRedirected$.pipe(readonlyScreenTag(getReadonly, () => store.state))
+    : viewRedirected$;
   // An undo entry reads the state its batch has not reached yet, so the history
   // holds one subscription ahead of the reducer and a reset swaps only the
   // stream grouping behind it, which drops what that grouping still buffers.
@@ -199,6 +213,7 @@ export function createRxStore(
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(
     actionsFilter(ChangeActionTypes),
+    ignoreTagFilter([Tag.screen]),
     lockIgnoreFilter(() => store.state.settings.lockSettings),
     readonlyIgnoreFilter(getReadonly, [Tag.shared], ChangeActionTypes),
     debounceTime(200)
@@ -296,7 +311,7 @@ export function createRxStore(
       redirected$
         .pipe(
           actionsFilter(HistoryActionTypes),
-          ignoreTagFilter([Tag.changeOnly, Tag.shared]),
+          ignoreTagFilter([Tag.changeOnly, Tag.shared, Tag.screen]),
           // A readonly reader records no entry, its scrolls and zooms included,
           // so an undo once writable again takes back nothing made while reading.
           filter(() => !getReadonly()),
@@ -309,11 +324,11 @@ export function createRxStore(
         .pipe(
           readonlyIgnoreFilter(
             getReadonly,
-            [Tag.shared],
+            [Tag.shared, Tag.screen],
             readonlyEditState ? EditStateOpenActionTypes : [],
             readonlyEditState ? opensEditDialog : undefined
           ),
-          viewIgnoreFilter(getView, [Tag.shared])
+          viewIgnoreFilter(getView, [Tag.shared, Tag.screen])
         )
         .subscribe(store.dispatchSync)
     )

@@ -13,6 +13,7 @@ import {
   ReadonlyIgnoreActionTypes,
   ReplicaActionTypes,
   ReplicaChangeActionTypes,
+  ScreenSettingActionTypes,
   SharedActionTypes,
   SharedFollowingActionTypes,
   SharedStreamActionTypes,
@@ -406,6 +407,40 @@ describe('EditStateOpenActionTypes', () => {
     ]) {
       expect(EDIT_OPEN_KEYS).not.toContain(key);
     }
+  });
+});
+
+describe('ScreenSettingActionTypes', () => {
+  it('names the eleven settings readonly lets through and the show bits', () => {
+    expect([...ScreenSettingActionTypes].sort()).toEqual(
+      [...READONLY_IGNORED, 'settings.changeShow'].sort()
+    );
+  });
+
+  it('holds change types alone, which a writable store sends, saves and undoes', () => {
+    ScreenSettingActionTypes.forEach(type => {
+      expect(ChangeActionTypes).toContain(type);
+      expect(atomActionTypes.has(type)).toBe(true);
+    });
+  });
+});
+
+describe('the end of a screen baseline', () => {
+  it('is declared by the editor module with a creator, in no list that reaches the file, the history, a peer or a view', () => {
+    const type = 'editor.endScreenSettings';
+
+    expect(allActionTypes.has(type)).toBe(true);
+    expect(atomActionTypes.has(type)).toBe(true);
+    [
+      ChangeActionTypes,
+      ReplicaActionTypes,
+      HistoryActionTypes,
+      SharedActionTypes,
+      ReadonlyIgnoreActionTypes,
+      EditStateOpenActionTypes,
+      ViewIgnoreActionTypes,
+      ScreenSettingActionTypes,
+    ].forEach(list => expect(list).not.toContain(type));
   });
 });
 

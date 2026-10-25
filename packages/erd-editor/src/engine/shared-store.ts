@@ -93,7 +93,7 @@ export function createSharedStore(
     )
       .pipe(
         actionsFilter(SharedActionTypes),
-        ignoreTagFilter([Tag.shared]),
+        ignoreTagFilter([Tag.shared, Tag.screen]),
         // A readonly editor sends no change, while presence and the registers
         // pass. Ahead of the compressors, so a drag they hold from before the
         // switch still leaves.
