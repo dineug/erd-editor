@@ -89,9 +89,10 @@ const microtasks = async () => {
   for (let index = 0; index < 5; index++) await Promise.resolve();
 };
 
-function createTestStore(): Store {
+function createTestStore({ routes }: { routes?: boolean } = {}): Store {
   const store = createStore({
     toWidth: text => text.length * 10,
+    routes,
     clock: new Clock(),
   });
   stores.push(store);
@@ -924,6 +925,32 @@ describe('relationship/hooks relationshipSortHook', () => {
     await settle();
 
     expect(countBlocked(routeOf(), obstacles(), 't1', 't2')).toBe(0);
+  });
+
+  it('anchors each relationship and routes no connector in a store that draws nothing', async () => {
+    const store = createTestStore({ routes: false });
+    const start = addTable(store, 't1', []);
+    const end = addTable(store, 't2', []);
+    start.ui.x = 0;
+    start.ui.y = 0;
+    end.ui.x = 900;
+    end.ui.y = 300;
+    addRelationship(store, {
+      id: 'r1',
+      start: { tableId: 't1', columnIds: [] },
+      end: { tableId: 't2', columnIds: [] },
+    });
+
+    const { fire } = await run(relationshipSortHook, store);
+    fire();
+    await settle();
+
+    expect(rel(store, 'r1').start.direction).toBe(Direction.right);
+    expect(rel(store, 'r1').end).toMatchObject({
+      x: 900,
+      direction: Direction.left,
+    });
+    expect(getRoute(rel(store, 'r1'))).toBeUndefined();
   });
 
   it('collapses a burst of triggers into a single trailing run', async () => {

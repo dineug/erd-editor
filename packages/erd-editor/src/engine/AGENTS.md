@@ -124,7 +124,7 @@
   - The primary key mark of every column, from its options, and the foreign key marks.
   - Every `ui.width*`, measured again with this machine's fonts.
   - The relationship anchors.
-  - Every connector's route, in a store that draws. A peer and a replica draw nothing, so their `EngineContext` says `routes: false` and their load routes none. Routing a document of hundreds of relationships was most of its cost, and only a drawing reads a route.
+  - Every connector's route, in a store that draws. A peer and a replica draw nothing, so their `EngineContext` says `routes: false`, and neither their load nor their sort hook after an edit routes any. Routing a document of hundreds of relationships was most of its cost, and only a drawing reads a route.
   - Each relationship's `identification` and `startRelationshipType`. One removed, or one whose end columns are all gone, gets a new relationship's values.
 - **A value a load derives joins `settleDocument`.** Put it there, never in a hook on an action a load dispatches, that load's `editor.clear` or `editor.initialClear` included.
   - `store-hooks.test.ts` holds this by recording what both load generators and a replica's `setInitialValue` reduce. `engine/settle.test.ts` holds that nothing rewrites the value after it.
