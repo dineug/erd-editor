@@ -58,7 +58,7 @@ const interactionOf = (name: string) =>
     .getAttribute('data-interaction');
 
 describe('sceneInteractionContext', () => {
-  it('is edit where nothing provides a mode, as on the ERD tab and in a readonly editor', async () => {
+  it('is edit where nothing provides a mode', async () => {
     mounted = await mountAndFlush(html`<${Probe} name="alone" />`);
 
     expect(interactionOf('alone')).toBe('edit');
@@ -122,6 +122,25 @@ describe('sceneInteractionContext under a getter', () => {
 
     expect(interactionOf('inside')).toBe('read');
     expect(interactionOf('beside')).toBe('edit');
+  });
+
+  it('hands a takeover inside a readonly editor the edit its own root provides again', async () => {
+    const { getter } = createSource('read');
+    mounted = await mountAndFlush(html`
+      <${Scope}
+        interaction=${getter}
+        .children=${html`
+          <${Probe} name="erd" />
+          <${Scope}
+            interaction="edit"
+            .children=${html`<${Probe} name="takeover" />`}
+          />
+        `}
+      />
+    `);
+
+    expect(interactionOf('erd')).toBe('read');
+    expect(interactionOf('takeover')).toBe('edit');
   });
 
   it('draws a mounted scene again when what the getter reads changes', async () => {

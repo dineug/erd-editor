@@ -4,6 +4,7 @@ import {
   nextTick,
   observable,
   onMounted,
+  type Ref,
   ref,
   useProvider,
   watch,
@@ -19,13 +20,18 @@ import { runElkPlacement } from '@/components/erd/automatic-table-placement/runE
 import Canvas from '@/components/erd/canvas/Canvas';
 import { editingLayers } from '@/components/erd/canvas/editingLayers';
 import EditOverlay from '@/components/erd/canvas/EditOverlay';
+import { createViewPress } from '@/components/erd/canvas/readPress';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import DrawTargetButtons from '@/components/erd/draw-target/DrawTargetButtons';
 import ErdContextMenu, {
   ErdContextMenuType,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
-import { ownsPress, sceneHit } from '@/components/erd/hitTest';
+import {
+  listenSceneHover,
+  ownsPress,
+  sceneHit,
+} from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import { clearRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import TableGroupDraft from '@/components/erd/table-group/TableGroupDraft';
@@ -37,6 +43,10 @@ import { isEmptyDocument } from '@/components/erd/welcome-screen/welcomeLayout';
 import WelcomeScreen from '@/components/erd/welcome-screen/WelcomeScreen';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import {
+  type SceneInteraction,
+  sceneInteractionContext,
+} from '@/components/sceneInteractionContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
@@ -44,6 +54,7 @@ import { WHEEL_ZOOM_STEP } from '@/constants/zoom';
 import {
   changeDrawTableGroupAction,
   changeOpenMapAction,
+  initialLoadJsonAction,
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -123,6 +134,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   const canvas = createRef<HTMLDivElement>();
   const app = useAppContext(ctx);
+  // A getter rather than a value set on each turn, since a scene that mounts
+  // after a set still gets the value the provider started with.
+  const sceneInteraction = useProvider(
+    ctx,
+    sceneInteractionContext,
+    (): SceneInteraction => (app.value.store.getReadonly() ? 'read' : 'edit')
+  );
   const state = observable({
     contextMenuType: ErdContextMenuType.ERD as ErdContextMenuType,
     relationshipId: '' as string | undefined,
@@ -144,7 +162,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   useErdShortcut(ctx);
 
   const { addUnsubscribe } = useUnmounted();
-  addUnsubscribe(() => sceneSource.destroy());
+  addUnsubscribe(() => {
+    sceneInteraction.destroy();
+    sceneSource.destroy();
+  });
 
   const resetScroll = () => {
     // Defensive: the drag subscription outlives the render part, so root can
@@ -177,6 +198,47 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   const groupDraw = useTableGroupDraw({ app: () => app.value, root });
 
+  /**
+   * The editor root, which a still press focuses and whose text a pan keeps
+   * from being selected.
+   */
+  const editorRoot = {
+    get value() {
+      return (root.value && editorRootOf(root.value)) as HTMLDivElement;
+    },
+  } satisfies Ref<HTMLDivElement>;
+
+  // What the pinch made of the press now handled, read by the press rule.
+  let pinched = false;
+
+  /**
+   * A readonly canvas takes a press by the read-only view's rule. Its root holds
+   * every touch (touch-action: none), so a finger pans before the focus too,
+   * as it does in an editor, rather than waiting on a page that never scrolls.
+   */
+  const readPress = createViewPress({
+    app: app.value,
+    root: editorRoot,
+    canvas,
+    pinches: () => pinched,
+    pansBeforeFocus: true,
+  });
+
+  let stopHover: (() => void) | null = null;
+
+  /** Hears the table the pointer rests on, whose relationships it lights, while readonly alone. */
+  const listenHover = (readonly: boolean) => {
+    stopHover?.();
+    stopHover = readonly
+      ? listenSceneHover(canvas.value, readPress.handleHover)
+      : null;
+  };
+
+  addUnsubscribe(() => {
+    stopHover?.();
+    readPress.destroy();
+  });
+
   /** Whether a press on the canvas draws a table group, which a readonly store never does. */
   const drawsTableGroup = () => {
     const { store } = app.value;
@@ -203,6 +265,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (!event.target || getShowOverLayout()) return;
 
     const hit = sceneHit(canvas.value, event);
+
+    // A readonly reader has nothing to do on a relationship, a memo or a
+    // group, so none raises a menu, and no group is selected for one.
+    if (props.readonly && hit && hit.kind !== 'table') {
+      event.preventDefault();
+      return;
+    }
 
     if (hit?.kind === 'table') {
       state.tableId = hit.id;
@@ -286,10 +355,38 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     resetScroll();
   };
 
+  /**
+   * A readonly press pans or lights by the read-only view's rule, except under a
+   * takeover or Table Properties. It still pinches, closes the colour picker and
+   * holds a takeover's middle press with its lift, as an edit press does.
+   */
+  const handleReadPress = (event: MouseEvent | TouchEvent, el: HTMLElement) => {
+    pinched = pinch.handleTouchstart(event);
+    if (!getShowOverLayout()) readPress.handlePress(event);
+    if (pinched) return;
+
+    if (!el.closest('.color-picker')) {
+      const { emitter } = app.value;
+      emitter.emit(closeColorPickerAction());
+    }
+
+    if (
+      isMiddleButtonPress(event) &&
+      isTakenOver(app.value.store.state) &&
+      !el.closest(TAKEOVER_CHROME)
+    ) {
+      event.preventDefault();
+      moveEnd$.pipe(take(1)).subscribe(preventMiddleLift());
+    }
+  };
+
   const handleDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement | null;
     swallowContextmenu = false;
-    if (!el || pinch.handleTouchstart(event)) return;
+    if (!el) return;
+    // No marquee, selection or carry starts here while readonly.
+    if (props.readonly) return handleReadPress(event, el);
+    if (pinch.handleTouchstart(event)) return;
 
     const showOverLayout = getShowOverLayout();
     const canHideColorPicker = !el.closest('.color-picker');
@@ -515,9 +612,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (props.mouseTracking) {
       handleMouseTrackerStart();
     }
+    listenHover(props.readonly);
 
     addUnsubscribe(
       watch(props).subscribe(propName => {
+        if (propName === 'readonly') listenHover(props.readonly);
         if (propName === 'readonly' && props.readonly) {
           cancelTableGroupDraw();
         }
@@ -528,6 +627,15 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           : handleMouseTrackerEnd();
       }),
       shortcut$.subscribe(handleColorPickerShortcut),
+      // A document a host loads replaces the one a readonly press lit on.
+      store.subscribe(actions => {
+        if (
+          props.readonly &&
+          actions.some(({ type }) => type === initialLoadJsonAction.type)
+        ) {
+          readPress.reset();
+        }
+      }),
       emitter.on({
         openColorPicker: ({ payload: { x, y, color } }) => {
           const open = () => {
@@ -623,16 +731,18 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       isEmptyDocument(store.state);
 
     const drawsGroup = drawsTableGroup();
-    const cursor = handTool
-      ? state.grabCursor
-      : drawsGroup
-        ? 'crosshair'
-        : drawRelationship
-          ? `url("${getRelationshipIcon(
-              drawRelationship.relationshipType,
-              props.isDarkMode
-            )}") 16 16, auto`
-          : '';
+    const cursor = readPress.state.panning
+      ? 'grabbing'
+      : handTool
+        ? state.grabCursor
+        : drawsGroup
+          ? 'crosshair'
+          : drawRelationship
+            ? `url("${getRelationshipIcon(
+                drawRelationship.relationshipType,
+                props.isDarkMode
+              )}") 16 16, auto`
+            : '';
 
     return (
       <div
@@ -648,8 +758,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         <Canvas
           root={root}
           canvas={canvas}
-          grabMove={handTool || drawsGroup}
-          overlay={EditOverlay}
+          grabMove={(handTool && !props.readonly) || drawsGroup}
+          overlay={props.readonly ? undefined : EditOverlay}
           layers={editingLayers}
         />
         <DrawTargetButtons root={root} readonly={props.readonly} />

@@ -119,6 +119,8 @@ const OUTSIDE_REFERENCES = [
   // presence parts, which a canvas that edits nothing is never handed.
   'components/erd/Erd.tsx @/components/erd/canvas/EditOverlay',
   'components/erd/Erd.tsx @/components/erd/canvas/editingLayers',
+  // A readonly ERD tab takes a press by the read-only view's rule.
+  'components/erd/Erd.tsx @/components/erd/canvas/readPress',
   'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
   'components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer.tsx @/components/erd/canvas/Canvas',
   // Rename opens the name editor a title bar's double click opens, which sits
@@ -196,7 +198,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the thirty-four references that own a reason to', () => {
+  it('is reached from outside by the thirty-five references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

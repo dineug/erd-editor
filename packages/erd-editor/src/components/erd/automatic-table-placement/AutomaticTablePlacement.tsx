@@ -26,6 +26,7 @@ import { useI18n } from '@/components/localeContext';
 import { localized } from '@/components/localized/Localized';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
+import { sceneInteractionContext } from '@/components/sceneInteractionContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { Open } from '@/constants/open';
@@ -140,6 +141,8 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   // The preview is a document of its own, so it names the document source
   // rather than inheriting whatever scene it was opened over.
   const sceneSource = useProvider(ctx, sceneSourceContext, 'document');
+  // Its scene takes a press as an editor's does, whatever the ERD tab reads.
+  const sceneInteraction = useProvider(ctx, sceneInteractionContext, 'edit');
 
   const {
     store: { state: originState },
@@ -153,6 +156,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
       app.store.dispatch(changeViewportAction(getViewport()));
     }),
     () => {
+      sceneInteraction.destroy();
       sceneSource.destroy();
       provider.destroy();
       appDestroy(app);

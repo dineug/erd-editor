@@ -10,7 +10,13 @@ import type { Container } from 'konva/lib/Container';
 import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { createTestAppContext, createTestTheme, flush } from '@/__test-utils__';
+import {
+  createTestAppContext,
+  createTestTheme,
+  flush,
+  moveScenePointer,
+  whenPainted,
+} from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
 import CanvasScene from '@/components/erd/canvas/CanvasScene';
 import {
@@ -22,6 +28,7 @@ import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { changeZoomLevelAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { renderScene } from '@/konva/scene/renderScene';
 
 const VIEWPORT = 800;
@@ -128,6 +135,35 @@ describe('the press mode under a getter', () => {
     expect(countOf(stage, 'memo-remove')).toBe(1);
     expect(listeningOf(stage, 'table-header-color')).toBe(true);
     expect(stage.findOne('#table-t1')).toBe(table);
+  });
+
+  it('takes a group’s x off with the flag, handing back the cursor its hover took', async () => {
+    const { app, flags } = createApp();
+    const group = { x: 100, y: 400, width: 300, height: 200 };
+    app.store.dispatchSync(
+      addTableGroupAction({ id: 'g1', ui: { ...group, zIndex: 3 } })
+    );
+    const stage = mountStage(app);
+    await settle();
+    await whenPainted();
+    const remove = stage.findOne('.table-group-remove')!.getClientRect();
+
+    moveScenePointer(
+      stage,
+      remove.x + remove.width / 2,
+      remove.y + remove.height / 2
+    );
+    await settle();
+    expect(stage.container().style.cursor).toBe('pointer');
+
+    flags.readonly = true;
+    await settle();
+    expect(countOf(stage, 'table-group-remove')).toBe(0);
+    expect(stage.container().style.cursor).toBe('');
+
+    flags.readonly = false;
+    await settle();
+    expect(countOf(stage, 'table-group-remove')).toBe(1);
   });
 
   it('turns the zoomed out table colour edge off and on with the flag', async () => {

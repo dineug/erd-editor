@@ -3,11 +3,20 @@
 // for it and only a class on an ancestor can.
 
 import { toJson } from '@dineug/erd-editor-schema';
-import { createRef, FC, observable, useProvider } from '@dineug/r-html';
+import {
+  type AnyAction,
+  type CompositionActions,
+  compositionActionsFlat,
+  createRef,
+  FC,
+  observable,
+  ref,
+  useProvider,
+} from '@dineug/r-html';
 import { whenDrawn } from '@dineug/r-html-konva';
 import type { Group } from 'konva/lib/Group';
 import type { Layer } from 'konva/lib/Layer';
-import type { Stage } from 'konva/lib/Stage';
+import { type Stage, stages } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
@@ -19,18 +28,34 @@ import {
   mount,
   type Mounted,
   movePointer,
+  moveScenePointer,
   releasePointer,
 } from '@/__test-utils__';
-import { type AppContext } from '@/components/appContext';
+import {
+  type DiffSeed,
+  diffStateOf,
+  seedDiff,
+} from '@/__test-utils__/diffSeed';
+import { type AppContext, useAppContext } from '@/components/appContext';
 import Erd from '@/components/erd/Erd';
+import * as erdStyles from '@/components/erd/Erd.styles';
 import {
   clearRelationshipHighlight,
   isRelationshipHighlighted,
   setRelationshipHighlight,
 } from '@/components/erd/relationshipHighlight';
+import ExplorerPanel from '@/components/explorer/explorer-panel/ExplorerPanel';
+import { createScopeActions } from '@/components/quick-search/actions';
+import QuickSearch from '@/components/quick-search/QuickSearch';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { RelationshipType } from '@/constants/schema';
+import {
+  EDIT_OPEN_KEYS,
+  EditStateOpenActionTypes,
+  opensEditDialog,
+  ReadonlyIgnoreActionTypes,
+} from '@/engine/actions';
 import {
   changeDrawTableGroupAction,
   changeHandToolAction,
@@ -42,14 +67,24 @@ import {
   focusTableAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
+import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import {
   addMemoAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
-import { openColorPickerAction, openDiffViewerAction } from '@/utils/emitter';
+import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
+import {
+  copyAction,
+  openColorPickerAction,
+  openDiffViewerAction,
+} from '@/utils/emitter';
 import { CURSOR_GRABBING } from '@/utils/stageCursor';
+import {
+  CLIPBOARD_MIME,
+  type ClipboardPayload,
+} from '@/utils/table-clipboard/payload';
 import { TAKEOVERS } from '@/utils/takeover';
 
 vi.mock(
@@ -542,7 +577,7 @@ const tableXOf = ({ app }: Mounted) =>
   app.store.state.collections.tableEntities[TABLE_ID].ui.x;
 
 describe('Erd - a readonly editor under an Alt drag', () => {
-  it('still draws the duplicate ghost, and its drop adds no table and selects none', async () => {
+  it('draws no duplicate ghost, and its drop adds no table and selects none', async () => {
     const mounted = await mountTurningReadonly();
     await turnReadonly();
 
@@ -556,7 +591,7 @@ describe('Erd - a readonly editor under an Alt drag', () => {
     await flush();
     await whenDrawn();
 
-    expect(sceneStageOf().find('.duplicate-ghost')).toHaveLength(1);
+    expect(sceneStageOf().find('.duplicate-ghost')).toHaveLength(0);
 
     releasePointer(520, 180);
     await flush();
@@ -567,7 +602,7 @@ describe('Erd - a readonly editor under an Alt drag', () => {
 });
 
 describe('Erd - what an editor keeps once it turns readonly', () => {
-  it('keeps the cell editor open and the table selected', async () => {
+  it('closes the cell editor as the overlay it stood in goes, keeping the table selected', async () => {
     const mounted = await mountTurningReadonly();
     const { store } = mounted.app;
     store.dispatchSync(
@@ -577,12 +612,14 @@ describe('Erd - what an editor keeps once it turns readonly', () => {
     );
     await flush();
 
-    await turnReadonly();
-
-    expect(store.state.editor.focusTable?.edit).toBe(true);
     expect(
       mounted.container.querySelector('.edit-overlay input.edit-input')
     ).toBeTruthy();
+
+    await turnReadonly();
+
+    expect(mounted.container.querySelector('.edit-overlay')).toBeNull();
+    expect(store.state.editor.focusTable?.edit).toBe(false);
     expect(selectedIds(mounted)).toEqual([TABLE_ID]);
   });
 
@@ -612,7 +649,7 @@ describe('Erd - what an editor keeps once it turns readonly', () => {
     expect(rootOf(mounted).style.cursor).toBe('grab');
   });
 
-  it('keeps an entity drag held, whose later steps move nothing', async () => {
+  it('ends an entity drag at its next step, which moves nothing', async () => {
     const mounted = await mountTurningReadonly();
     const startX = tableXOf(mounted);
 
@@ -623,20 +660,21 @@ describe('Erd - what an editor keeps once it turns readonly', () => {
     });
     movePointer(490, 100);
     await flush();
+    await whenDrawn();
     expect(tableXOf(mounted)).toBe(startX + 40);
+    expect(heldTableOf()).toBeTruthy();
 
     await turnReadonly();
     movePointer(560, 100);
     await flush();
     await whenDrawn();
 
-    expect(heldTableOf()).toBeTruthy();
+    expect(heldTableOf()).toBeFalsy();
     expect(tableXOf(mounted)).toBe(startX + 40);
 
     releasePointer(560, 100);
     await flush();
-    await whenDrawn();
-    expect(heldTableOf()).toBeFalsy();
+    expect(tableXOf(mounted)).toBe(startX + 40);
   });
 
   it.each([
@@ -671,3 +709,775 @@ describe('Erd - what an editor keeps once it turns readonly', () => {
     expect(store.state.editor.drawTableGroup).toBe(false);
   });
 });
+
+/** The modifier $mod resolves to, read off the platform the way hasAppleDevice reads it. */
+const APPLE = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+
+/** A document a reader reads: two tables joined by a relationship, a memo and a group. */
+const READ_SEED: DiffSeed = {
+  tables: [
+    {
+      id: 'users',
+      name: 'users',
+      x: 20,
+      y: 40,
+      columns: [{ id: 'users.id', name: 'id', pk: true }],
+    },
+    {
+      id: 'orders',
+      name: 'orders',
+      x: 420,
+      y: 40,
+      columns: [{ id: 'orders.user', name: 'user_id' }],
+    },
+  ],
+  relationships: [
+    {
+      id: 'fk',
+      parent: ['users', ['users.id']],
+      child: ['orders', ['orders.user']],
+    },
+  ],
+  memos: [{ id: 'memo', value: 'read me', x: 40, y: 300 }],
+  groups: [
+    { id: 'group', name: 'Billing', x: 420, y: 320, width: 300, height: 200 },
+  ],
+};
+
+/**
+ * What a press may not send under readonly: a cell focused, an entity
+ * selected or raised, an editor opened, a draw begun or the document edited.
+ * The unselect a still press sends takes what a jump left, so it is no edit.
+ */
+const READ_EDITS = new Set<string>([
+  'editor.focusTable',
+  'editor.focusColumn',
+  'editor.select',
+  'editor.selectAll',
+  'editor.selectAllColumn',
+  'table.changeZIndex',
+  'memo.changeZIndex',
+  'tableGroup.changeZIndex',
+  ...EditStateOpenActionTypes,
+  ...ReadonlyIgnoreActionTypes,
+]);
+
+const isReadEdit = (action: AnyAction) =>
+  READ_EDITS.has(action.type) || opensEditDialog(action);
+
+type Reader = {
+  app: AppContext;
+  /** The editor root that takes the keyboard, as the element's does. */
+  shell: HTMLDivElement;
+  container: HTMLDivElement;
+  stage: Stage;
+  /** Every action the scene dispatched, as it was sent and before the readonly filter. */
+  sent: AnyAction[];
+};
+
+/** The element's keyboard root, its Explorer tree and its palette, around the ERD tab. */
+const ReaderShell: FC<{ readonly: boolean }> = (props, ctx) => {
+  const app = useAppContext(ctx);
+  const keys = createRef<HTMLDivElement>();
+  useKeyBindingMap(ctx, keys);
+
+  const handleKeydown = (event: KeyboardEvent) => {
+    app.value.keydown$.next(event);
+  };
+
+  return () => (
+    <div
+      class="root"
+      use:ref={ref(keys)}
+      tabindex="-1"
+      style={{ display: 'flex', width: '1040px', height: '600px' }}
+      on:keydown={handleKeydown}
+    >
+      <ExplorerPanel width={240} readonly={props.readonly} />
+      <div style={{ position: 'relative', width: '800px', height: '600px' }}>
+        <Erd
+          isDarkMode={false}
+          mouseTracking={false}
+          readonly={props.readonly}
+        />
+      </div>
+      <QuickSearch topLevel={createScopeActions} />
+    </div>
+  );
+};
+
+/**
+ * The app the scene is handed, whose dispatches are recorded as they are sent,
+ * the generators among them flattened as the store flattens them, so a press
+ * is caught asking for what the readonly filter would then drop.
+ */
+function recordDispatches(base: AppContext): {
+  app: AppContext;
+  sent: AnyAction[];
+} {
+  const sent: AnyAction[] = [];
+  const { store } = base;
+  const dispatchSync = (...composition: CompositionActions) => {
+    const actions = compositionActionsFlat(
+      store.state,
+      store.context,
+      composition
+    );
+    sent.push(...actions);
+    store.dispatchSync(actions);
+  };
+  const dispatch = (...composition: CompositionActions) => {
+    queueMicrotask(() => dispatchSync(...composition));
+  };
+
+  return {
+    app: { ...base, store: { ...store, dispatch, dispatchSync } },
+    sent,
+  };
+}
+
+const readerFlags = observable({ readonly: true });
+
+const ReaderRoot: FC = () => () => (
+  <ReaderShell readonly={readerFlags.readonly} />
+);
+
+/**
+ * An editor store as the element builds it, the seed written before it turns
+ * readonly, mounted readonly unless told otherwise, drawn and hit-tested.
+ */
+async function mountReader({ readonly = true } = {}): Promise<Reader> {
+  readerFlags.readonly = false;
+  const base = createTestAppContext({
+    getReadonly: () => readerFlags.readonly,
+    readonlyEditState: true,
+  });
+  base.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
+  seedDiff(base, READ_SEED);
+  base.store.flushStreamBuffers();
+  readerFlags.readonly = readonly;
+
+  const { app, sent } = recordDispatches(base);
+  const mounted = mount(<ReaderRoot />, app);
+  // useProvider takes a bare element at runtime and types only a component
+  // context, hence the cast; it is r-html's own, not a React hook.
+  // oxlint-disable-next-line react-hooks/rules-of-hooks
+  const themeProvider = useProvider(
+    mounted.container as any,
+    themeContext,
+    createTestTheme()
+  );
+  teardowns.push(() => {
+    mounted.unmount();
+    themeProvider.destroy();
+  });
+  await settleScene();
+
+  const canvas = canvasOf(mounted);
+  const stage = stages.find(candidate => candidate.container() === canvas)!;
+  const shell = mounted.container.querySelector<HTMLDivElement>('.root')!;
+  sent.length = 0;
+
+  return { app, shell, container: mounted.container, stage, sent };
+}
+
+const nextFrame = () =>
+  new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+
+/** Drawn and settled, the hit canvas included, which lands a frame after the draw. */
+async function settleScene(rounds = 3) {
+  for (let round = 0; round < rounds; round++) {
+    await flush();
+    await whenDrawn();
+    await nextFrame();
+  }
+}
+
+type Point = { x: number; y: number };
+
+/** A native pointer event at a point of the stage, on the canvas konva draws into. */
+function pointerAt(
+  stage: Stage,
+  type: string,
+  { x, y }: Point,
+  init: MouseEventInit = {}
+): MouseEvent {
+  const content = stage.content.getBoundingClientRect();
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    button: 0,
+    clientX: content.left + x,
+    clientY: content.top + y,
+    ...init,
+  });
+  stage.content.querySelector('canvas')!.dispatchEvent(event);
+  return event;
+}
+
+/** A press and its lift where it stood, the click konva makes of them included. */
+async function clickAt(stage: Stage, point: Point, init: MouseEventInit = {}) {
+  pointerAt(stage, 'mousedown', point, init);
+  pointerAt(stage, 'mouseup', point, init);
+  releasePointer();
+  await settleScene();
+}
+
+/** Two clicks inside konva's window, the second carrying the browser's count of two. */
+async function doubleClickAt(stage: Stage, point: Point) {
+  for (const detail of [1, 2]) {
+    pointerAt(stage, 'mousedown', point, { detail });
+    pointerAt(stage, 'mouseup', point, { detail });
+    releasePointer();
+  }
+  await settleScene();
+}
+
+/** A press carried from a point by a travel, in steps, and its lift. */
+async function dragFrom(
+  stage: Stage,
+  from: Point,
+  by: Point,
+  init: MouseEventInit = {}
+) {
+  const down = pointerAt(stage, 'mousedown', from, init);
+  for (let step = 1; step <= 4; step++) {
+    movePointer(
+      down.clientX + (by.x * step) / 4,
+      down.clientY + (by.y * step) / 4
+    );
+    await flush();
+  }
+  releasePointer(down.clientX + by.x, down.clientY + by.y);
+  await settleScene();
+}
+
+/** The menu a right press raises at a point, as the browser sends it after the press. */
+async function rightClickAt(stage: Stage, point: Point) {
+  pointerAt(stage, 'mousedown', point, { button: 2 });
+  const menu = pointerAt(stage, 'contextmenu', point, { button: 2 });
+  releasePointer();
+  await settleScene();
+  return menu;
+}
+
+function chordOn(
+  root: HTMLElement,
+  key: string,
+  code: string,
+  { mod = false, alt = false } = {}
+) {
+  const event = new KeyboardEvent('keydown', {
+    key,
+    code,
+    altKey: alt,
+    ctrlKey: mod && !APPLE,
+    metaKey: mod && APPLE,
+    bubbles: true,
+    cancelable: true,
+  });
+  root.dispatchEvent(event);
+  return event;
+}
+
+/** The pointer moved onto a point of the stage, which konva tells the shapes there of. */
+const hoverAt = (stage: Stage, { x, y }: Point) =>
+  moveScenePointer(stage, x, y);
+
+const middleOfNode = (node: { getClientRect(): Record<string, number> }) => {
+  const rect = node.getClientRect();
+  return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+};
+
+const nodeCenter = (stage: Stage, selector: string) =>
+  middleOfNode(stage.findOne(selector)!);
+
+const headerCellOf = (stage: Stage, tableId: string) =>
+  middleOfNode(
+    stage.findOne<Group>(`#table-${tableId}`)!.findOne('.tableName')!
+  );
+
+const columnCellOf = (stage: Stage, columnId: string) =>
+  middleOfNode(
+    stage.findOne<Group>(`#column-${columnId}`)!.findOne('.columnName')!
+  );
+
+/** A point of the stage no shape is hit at, which a press reads as bare canvas. */
+function bareOf(stage: Stage): Point {
+  for (let y = 20; y < stage.height(); y += 40) {
+    for (let x = stage.width() - 20; x > 0; x -= 40) {
+      if (!stage.getIntersection({ x, y })) return { x, y };
+    }
+  }
+  throw new Error('the stage holds no bare point');
+}
+
+/** A touch on the canvas carrying the points given, which konva and the root both read. */
+function touchAt(stage: Stage, type: string, points: Point[]) {
+  const content = stage.content.getBoundingClientRect();
+  const target = stage.content.querySelector('canvas')!;
+  const touches = points.map(
+    ({ x, y }, index) =>
+      new Touch({
+        identifier: index + 1,
+        target,
+        clientX: content.left + x,
+        clientY: content.top + y,
+      })
+  );
+  target.dispatchEvent(
+    new TouchEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      touches: type === 'touchend' ? [] : touches,
+      changedTouches: touches,
+    })
+  );
+}
+
+/** The fingers moved to the points given, heard on the window as a browser sends them there. */
+function fingersTo(stage: Stage, points: Point[]) {
+  const content = stage.content.getBoundingClientRect();
+  const target = stage.content.querySelector('canvas')!;
+  window.dispatchEvent(
+    new TouchEvent('touchmove', {
+      bubbles: true,
+      cancelable: true,
+      touches: points.map(
+        ({ x, y }, index) =>
+          new Touch({
+            identifier: index + 1,
+            target,
+            clientX: content.left + x,
+            clientY: content.top + y,
+          })
+      ),
+    })
+  );
+}
+
+/** The ERD tab's own root, whose cursor shows a pan. */
+const erdRootOf = ({ container }: Reader) =>
+  container.querySelector<HTMLDivElement>(`.${String(erdStyles.root)}`)!;
+
+/** Opens the palette on the keyboard root, searches it and takes its first row, as a reader jumps. */
+async function jumpThroughPalette({ container, shell }: Reader, query: string) {
+  shell.focus();
+  chordOn(shell, 'k', 'KeyK', { mod: true });
+  await settleScene();
+
+  const input = container.querySelector<HTMLInputElement>(
+    '.quick-search input'
+  )!;
+  input.value = query;
+  input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+  await settleScene();
+  container
+    .querySelector('.quick-search-row')!
+    .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  await settleScene();
+}
+
+/** The cell a jump to the orders table's foreign key column leaves focused. */
+const FOCUSED_COLUMN = { tableId: 'orders', columnId: 'orders.user' };
+
+const editsOf = ({ sent }: Reader) =>
+  sent.filter(isReadEdit).map(({ type }) => type);
+
+/** What a readonly editor never holds: an editor open, a draw armed, an edit dialog. */
+function expectNoEditState({ app }: Reader) {
+  const { editor } = app.store.state;
+  expect(editor.focusTable?.edit ?? false).toBe(false);
+  expect(editor.editMemoId).toBeNull();
+  expect(editor.editTableGroupId).toBeNull();
+  expect(editor.drawRelationship).toBeNull();
+  expect(EDIT_OPEN_KEYS.filter(key => editor.openMap[key])).toEqual([]);
+}
+
+const originOf = ({ app }: Reader) => {
+  const { originX, originY } = app.store.state.settings;
+  return { originX, originY };
+};
+
+const tablePointOf = ({ app }: Reader, id: string) => {
+  const { x, y } = app.store.state.collections.tableEntities[id].ui;
+  return { x, y };
+};
+
+describe('Erd - a readonly editor reads its scene', () => {
+  it('sends no edit for a press on a table, a column, a memo or a group, nor for a double click', async () => {
+    const reader = await mountReader();
+    const { stage } = reader;
+
+    await clickAt(stage, headerCellOf(stage, 'users'));
+    await clickAt(stage, columnCellOf(stage, 'users.id'));
+    await clickAt(stage, nodeCenter(stage, '.memo-textarea'));
+    await clickAt(stage, nodeCenter(stage, '.table-group-title-bar'));
+    await clickAt(stage, nodeCenter(stage, '.table-group-body'));
+    await doubleClickAt(stage, headerCellOf(stage, 'orders'));
+    await doubleClickAt(stage, columnCellOf(stage, 'orders.user'));
+    await doubleClickAt(stage, nodeCenter(stage, '.table-group-title-bar'));
+
+    expect(editsOf(reader)).toEqual([]);
+    expectNoEditState(reader);
+    expect(reader.app.store.state.editor.selectedMap).toEqual({});
+    expect(reader.app.store.state.editor.focusTable).toBeNull();
+    expect(stage.find('.cell-focus-border')).toHaveLength(0);
+    expect(reader.container.querySelector('.edit-overlay')).toBeNull();
+  });
+
+  it('opens no cell editor for Enter or Tab on the cell a palette jump focused', async () => {
+    const reader = await mountReader();
+    const { app, shell } = reader;
+    await jumpThroughPalette(reader, '@user_id');
+    expect(app.store.state.editor.openMap[Open.search]).toBeFalsy();
+    expect(app.store.state.editor.focusTable).toMatchObject(FOCUSED_COLUMN);
+
+    chordOn(shell, 'Enter', 'Enter');
+    await settleScene();
+    expectNoEditState(reader);
+
+    chordOn(shell, 'Tab', 'Tab');
+    await settleScene();
+    expectNoEditState(reader);
+    expect(app.store.state.editor.focusTable).not.toBeNull();
+  });
+
+  it('raises the table menu for a right press on a table alone, selecting nothing for any', async () => {
+    const reader = await mountReader();
+    const { stage, container } = reader;
+    const menu = () => container.querySelector('.context-menu-content');
+
+    for (const selector of [
+      '.relationship-hit-area',
+      '.memo-textarea',
+      '.table-group-title-bar',
+      '.table-group-body',
+    ]) {
+      const event = await rightClickAt(stage, nodeCenter(stage, selector));
+      expect(event.defaultPrevented).toBe(true);
+      expect(menu()).toBeNull();
+    }
+
+    await rightClickAt(stage, columnCellOf(stage, 'users.id'));
+    expect(menu()).toBeTruthy();
+    expect(editsOf(reader)).toEqual([]);
+    expect(reader.app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('draws no control that edits, on a scene mounted readonly, a focused row’s drag handle among them', async () => {
+    const reader = await mountReader();
+    const { stage } = reader;
+    await jumpThroughPalette(reader, '@user_id');
+    expect(reader.app.store.state.editor.focusTable).toMatchObject(
+      FOCUSED_COLUMN
+    );
+    hoverAt(stage, headerCellOf(stage, 'users'));
+    await settleScene();
+
+    expectNoEditControls(reader);
+  });
+
+  it('takes the controls that edit off the nodes already drawn as it turns readonly', async () => {
+    const reader = await mountReader({ readonly: false });
+    const { stage } = reader;
+    await jumpThroughPalette(reader, '@user_id');
+    hoverAt(stage, headerCellOf(stage, 'users'));
+    await settleScene();
+    const table = stage.findOne('#table-users');
+    const countOf = (name: string) => stage.find(name).length;
+    expect(countOf('.table-add-column')).toBe(2);
+    expect(countOf('.memo-remove')).toBe(1);
+    expect(countOf('.table-group-remove')).toBe(1);
+    expect(countOf('.table-group-sash')).toBeGreaterThan(0);
+    expect(countOf('.column-drag-handle')).toBe(1);
+    expect(reader.container.querySelector('.edit-overlay')).toBeTruthy();
+
+    readerFlags.readonly = true;
+    await settleScene();
+
+    expect(reader.app.store.state.editor.focusTable).toMatchObject(
+      FOCUSED_COLUMN
+    );
+    expectNoEditControls(reader);
+    expect(stage.findOne('#table-users') === table).toBe(true);
+  });
+
+  it('pans a drag that starts on a table, which stays where it stands', async () => {
+    const reader = await mountReader();
+    const before = originOf(reader);
+    const users = tablePointOf(reader, 'users');
+
+    await dragFrom(reader.stage, headerCellOf(reader.stage, 'users'), {
+      x: 60,
+      y: 30,
+    });
+
+    expect(originOf(reader)).toEqual({
+      originX: before.originX + 60,
+      originY: before.originY + 30,
+    });
+    expect(tablePointOf(reader, 'users')).toEqual(users);
+    expect(editsOf(reader)).toEqual([]);
+    expect(reader.app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('pans a finger dragged before the editor holds the focus, its root holding every touch', async () => {
+    const reader = await mountReader();
+    const { shell, stage } = reader;
+    const start = headerCellOf(stage, 'users');
+    const moved = { x: start.x + 80, y: start.y + 20 };
+    const before = originOf(reader);
+    const users = tablePointOf(reader, 'users');
+    expect(shell.matches(':focus-within')).toBe(false);
+
+    touchAt(stage, 'touchstart', [start]);
+    fingersTo(stage, [moved]);
+    touchAt(stage, 'touchend', [moved]);
+    await settleScene();
+
+    expect(originOf(reader)).toEqual({
+      originX: before.originX + 80,
+      originY: before.originY + 20,
+    });
+    expect(tablePointOf(reader, 'users')).toEqual(users);
+    expect(editsOf(reader)).toEqual([]);
+  });
+
+  it('zooms for a second finger, which ends the first one’s pan and leaves no still press to light', async () => {
+    const reader = await mountReader();
+    const { app, stage } = reader;
+    const editorId = app.store.state.editor.id;
+    const users = headerCellOf(stage, 'users');
+    const beside = { x: users.x + 120, y: users.y };
+
+    touchAt(stage, 'touchstart', [users]);
+    touchAt(stage, 'touchstart', [users, beside]);
+    touchAt(stage, 'touchend', [users]);
+    await settleScene();
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(false);
+
+    const panned = { x: users.x + 40, y: users.y };
+    const zoom = app.store.state.settings.zoomLevel;
+    touchAt(stage, 'touchstart', [users]);
+    fingersTo(stage, [panned]);
+    await settleScene();
+    expect(erdRootOf(reader).style.cursor).toBe('grabbing');
+
+    touchAt(stage, 'touchstart', [panned, beside]);
+    await settleScene();
+    expect(erdRootOf(reader).style.cursor).toBe('');
+
+    fingersTo(stage, [
+      { x: panned.x - 40, y: panned.y },
+      { x: beside.x + 40, y: beside.y },
+    ]);
+    touchAt(stage, 'touchend', [panned]);
+    await settleScene();
+
+    expect(app.store.state.settings.zoomLevel).toBeGreaterThan(zoom);
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(false);
+    expect(app.store.state.editor.selectedMap).toEqual({});
+    expect(editsOf(reader)).toEqual([]);
+  });
+
+  it('lights a table’s relationships for a still click on it and puts them out for one on bare canvas', async () => {
+    const reader = await mountReader();
+    const { stage, app } = reader;
+    const editorId = app.store.state.editor.id;
+
+    await clickAt(stage, headerCellOf(stage, 'users'));
+    hoverAt(stage, bareOf(stage));
+    await settleScene();
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(true);
+
+    await clickAt(stage, bareOf(stage));
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(false);
+
+    hoverAt(stage, headerCellOf(stage, 'orders'));
+    await settleScene();
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(true);
+    hoverAt(stage, bareOf(stage));
+    await settleScene();
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(false);
+  });
+
+  it('puts out the light a still click left once a document is loaded in place of the one it lit', async () => {
+    const reader = await mountReader();
+    const { stage, app } = reader;
+    const editorId = app.store.state.editor.id;
+    await clickAt(stage, headerCellOf(stage, 'users'));
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(true);
+
+    app.store.dispatchSync(
+      initialLoadJsonAction$(toJson(diffStateOf(READ_SEED)))
+    );
+    await settleScene();
+
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(false);
+  });
+
+  it('keeps the outline an Explorer row leaves, copies its table, and the next still click takes it', async () => {
+    const reader = await mountReader();
+    const { app, container, stage } = reader;
+    const row = Array.from(
+      container.querySelectorAll<HTMLElement>('[role="treeitem"]')
+    ).find(item => item.id.endsWith(':t:users'))!;
+
+    row.click();
+    await settleScene();
+    expect(app.store.state.editor.selectedMap).toEqual({
+      users: SelectType.table,
+    });
+    expectNoEditState(reader);
+
+    const setData = vi.fn();
+    app.emitter.emit(
+      copyAction({
+        event: {
+          preventDefault: vi.fn(),
+          target: null,
+          clipboardData: { setData, clearData: vi.fn(), getData: () => '' },
+        } as unknown as ClipboardEvent,
+      })
+    );
+    await flush();
+    const [, payload] = setData.mock.calls.find(
+      ([type]) => type === CLIPBOARD_MIME
+    )!;
+    const { tables } = JSON.parse(payload) as ClipboardPayload;
+    expect(tables.map(({ sourceId }) => sourceId)).toEqual(['users']);
+
+    await clickAt(stage, bareOf(stage));
+    expect(app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('keeps the outline a palette # row leaves until the next still click', async () => {
+    const reader = await mountReader();
+    const { app, stage } = reader;
+    await jumpThroughPalette(reader, '#orders');
+
+    expect(app.store.state.editor.selectedMap).toEqual({
+      orders: SelectType.table,
+    });
+    expectNoEditState(reader);
+
+    await clickAt(stage, bareOf(stage));
+    expect(app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('selects nothing for the select all chord or a modifier drag, which pans and draws no marquee', async () => {
+    const reader = await mountReader();
+    const { app, shell, stage } = reader;
+    const dragSelectStart = vi.fn();
+    app.emitter.on({ dragSelectStart });
+
+    chordOn(shell, 'a', 'KeyA', { mod: true });
+    await settleScene();
+    expect(app.store.state.editor.selectedMap).toEqual({});
+
+    const before = originOf(reader);
+    await dragFrom(
+      stage,
+      bareOf(stage),
+      { x: -200, y: 150 },
+      { ctrlKey: !APPLE, metaKey: APPLE }
+    );
+
+    expect(dragSelectStart).not.toHaveBeenCalled();
+    expect(originOf(reader)).not.toEqual(before);
+    expect(app.store.state.editor.selectedMap).toEqual({});
+    expect(editsOf(reader)).toEqual([]);
+  });
+
+  it('leaves the document and the edit state as they were under the chords that edit', async () => {
+    const reader = await mountReader();
+    const { app, shell } = reader;
+    const { doc } = app.store.state;
+    const before = {
+      tableIds: [...doc.tableIds],
+      memoIds: [...doc.memoIds],
+      tableGroupIds: [...doc.tableGroupIds],
+      relationshipIds: [...doc.relationshipIds],
+    };
+
+    chordOn(shell, 'n', 'KeyN', { alt: true });
+    chordOn(shell, 'm', 'KeyM', { alt: true });
+    chordOn(shell, '1', 'Digit1', { mod: true, alt: true });
+    chordOn(shell, 'g', 'KeyG', { alt: true });
+    chordOn(shell, 'Delete', 'Delete');
+    await settleScene();
+
+    expect({
+      tableIds: doc.tableIds,
+      memoIds: doc.memoIds,
+      tableGroupIds: doc.tableGroupIds,
+      relationshipIds: doc.relationshipIds,
+    }).toEqual(before);
+    expectNoEditState(reader);
+    expect(app.store.state.editor.drawTableGroup).toBe(false);
+    expect(app.store.state.editor.selectedMap).toEqual({});
+  });
+
+  it('closes an open colour picker on a press, and holds a middle press over a takeover with its lift', async () => {
+    const reader = await mountReader();
+    const { app, container, stage } = reader;
+    app.emitter.emit(
+      openColorPickerAction({ x: 200, y: 200, color: '#ffffff' })
+    );
+    await flush(6);
+    expect(container.querySelector('.color-picker')).toBeTruthy();
+
+    await clickAt(stage, bareOf(stage));
+    expect(container.querySelector('.color-picker')).toBeNull();
+
+    app.emitter.emit(openDiffViewerAction({ value: toJson(app.store.state) }));
+    await settleScene();
+    const pane = container.querySelector('.diff-viewer-insert') as HTMLElement;
+    const press = pressWith(pane, MIDDLE, { clientX: 500, clientY: 300 });
+    const lift = liftWith(pane, MIDDLE);
+    expect(press.defaultPrevented).toBe(true);
+    expect(lift.defaultPrevented).toBe(true);
+  });
+
+  it('lets a diff pane press select as it does in an editor, and pans nothing under it', async () => {
+    const reader = await mountReader();
+    const { app, stage } = reader;
+    app.emitter.emit(openDiffViewerAction({ value: toJson(app.store.state) }));
+    await settleScene();
+    const before = originOf(reader);
+
+    const [pane] = stages.filter(
+      candidate =>
+        candidate !== stage && candidate.findOne('#table-users') !== undefined
+    );
+    await clickAt(pane, headerCellOf(pane, 'users'));
+
+    expect(pane.findOne('#table-users')!.getAttr('selected')).toBe(true);
+    expect(app.store.state.editor.selectedMap).toEqual({});
+    expect(originOf(reader)).toEqual(before);
+  });
+});
+
+/** Every control that edits is gone from the scene, and the colour edges take no press. */
+function expectNoEditControls({ stage, container }: Reader) {
+  for (const name of [
+    '.table-add-column',
+    '.table-remove',
+    '.column-remove',
+    '.memo-remove',
+    '.memo-sash',
+    '.table-group-sash',
+    '.table-group-remove',
+    '.column-drag-handle',
+  ]) {
+    expect([name, stage.find(name).length]).toEqual([name, 0]);
+  }
+  expect(
+    stage.find('.table-header-color').every(node => !node.listening())
+  ).toBe(true);
+  expect(stage.findOne('.memo-header-color')!.listening()).toBe(false);
+  expect(container.querySelector('.edit-overlay')).toBeNull();
+}

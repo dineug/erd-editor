@@ -479,18 +479,29 @@ describe('the group menu', () => {
     expect(groupOf(editor, 'member')).toBe('g1');
   });
 
-  it('offers a readonly editor Select tables alone', async () => {
+  it('raises no menu in a readonly editor, and selects the group for no press', async () => {
     const editor = await mountEditor({ readonly: true });
 
     await rightPress(editor, titleOf(editor, 'g1'));
+    expect(menuRows(editor)).toEqual([]);
 
-    expect(menuRows(editor).map(row => row.textContent?.trim())).toEqual([
-      'Select tables',
-    ]);
-    await pickRow(editor, 'Select tables');
-    expect(stateOf(editor).editor.selectedMap).toEqual({
-      member: SelectType.table,
+    // A main press raising the menu, as a Mac Ctrl+click does, is the one an
+    // editor answers by selecting the group as the menu opens.
+    const point = bodyOf(editor, 'g1');
+    fire(editor, canvasOf(editor), 'mousedown', point);
+    await flush();
+    const menu = new MouseEvent('contextmenu', {
+      bubbles: true,
+      cancelable: true,
+      ...clientOf(editor, point),
     });
+    canvasOf(editor).dispatchEvent(menu);
+    releasePointer();
+    await flush(6);
+
+    expect(menu.defaultPrevented).toBe(true);
+    expect(menuRows(editor)).toEqual([]);
+    expect(stateOf(editor).editor.selectedMap).toEqual({});
   });
 });
 

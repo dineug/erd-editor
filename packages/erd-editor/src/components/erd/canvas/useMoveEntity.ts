@@ -1,4 +1,5 @@
 import type { Ref } from '@dineug/r-html';
+import { takeWhile } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import { tryStartAltDragDuplicate } from '@/components/erd/canvas/altDragDuplicate';
@@ -149,10 +150,10 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
 
     // A drop past the click distance settles the groups of the document's
     // tables in the drag's history entry, in the boxes they held as it began;
-    // a press that went nowhere, or a tremor short of it, changes no group.
+    // a press that went nowhere, a tremor or a scene turned to read changes none.
     const end = () => {
       if (!begun) return;
-      if (travelled && source === 'document') {
+      if (travelled && source === 'document' && interaction() !== 'read') {
         store.dispatch(
           dropTablesIntoGroupsAction$(
             getHeldTableGroupBoxes(store.state, source)
@@ -178,6 +179,8 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     // raises the entity's z-index and the scene rebuilds the node it started
     // on, so the subscription outlives it and a finalizer lets the view go.
     drag$
+      // Its first step under 'read' ends it, so a turn to read moves nothing.
+      .pipe(takeWhile(() => interaction() !== 'read'))
       .subscribe(drag => {
         if (begun) return move(drag);
 

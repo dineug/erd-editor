@@ -8,6 +8,7 @@ import { ownsPress, sceneHit } from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import { clearRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import VirtualScroll from '@/components/erd/virtual-scroll/VirtualScroll';
+import { sceneInteractionContext } from '@/components/sceneInteractionContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { unselectAllAction$ } from '@/engine/modules/editor/generator.actions';
 import { streamScrollToAction } from '@/engine/modules/settings/atom.actions';
@@ -37,6 +38,8 @@ const DiffErdViewer: FC<DiffErdViewerProps> = (props, ctx) => {
   // Each pane is a document of its own, so it names the document source
   // rather than inheriting whatever scene the diff was opened over.
   const sceneSource = useProvider(ctx, sceneSourceContext, 'document');
+  // A pane's press selects in a readonly editor too, whose ERD tab reads.
+  const sceneInteraction = useProvider(ctx, sceneInteractionContext, 'edit');
   // The pane's changes reach the cells the scene draws, which tint by them.
   const diffMap = useProvider(ctx, diffContext, props.diffMap);
   const state = observable({
@@ -47,6 +50,7 @@ const DiffErdViewer: FC<DiffErdViewerProps> = (props, ctx) => {
 
   addUnsubscribe(() => {
     diffMap.destroy();
+    sceneInteraction.destroy();
     sceneSource.destroy();
     provider.destroy();
   });

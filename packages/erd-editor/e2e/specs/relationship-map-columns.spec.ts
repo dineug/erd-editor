@@ -933,7 +933,7 @@ test.describe('where the buttons stand', () => {
 });
 
 test.describe('what holds the buttons and the dialog back', () => {
-  test('readonly shows neither the buttons nor the menu item', async ({
+  test('readonly shows neither the buttons nor a menu over the relationship', async ({
     erd,
   }) => {
     await erd.seed(linkedPosts());
@@ -948,16 +948,14 @@ test.describe('what holds the buttons and the dialog back', () => {
 
     await expect(pillOf(erd)).toHaveCount(0);
 
+    // A readonly reader has nothing to do on a relationship, so its right
+    // press raises no menu, and with it no Map Columns.
     await erd.press(Shortcut.stop);
     await erd.clickAt(await erd.sceneHitPoint('users_posts'), {
       button: 'right',
     });
-    await expect(
-      erd.contextMenu.getByText('On Delete', { exact: true })
-    ).toBeVisible();
-    await expect(
-      erd.contextMenu.getByText('Map Columns', { exact: true })
-    ).toHaveCount(0);
+    await erd.whenDrawn();
+    await expect(erd.contextMenu).toHaveCount(0);
   });
 
   test('with sync on the child takes the parent type in the same undo; with sync off it keeps its own', async ({

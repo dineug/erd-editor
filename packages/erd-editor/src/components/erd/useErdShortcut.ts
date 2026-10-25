@@ -192,7 +192,9 @@ export function useErdShortcut(ctx: Ctx) {
           addTableGroupAndRename(store, addTableGroupFromTablesAction$());
       }
 
+      // A readonly reader's selection is what a jump leaves, and no more.
       type === KeyBindingName.selectAllTable &&
+        !store.getReadonly() &&
         store.dispatch(selectAllAction());
 
       if (isRelationshipKeyBindingName(type)) {

@@ -5,7 +5,7 @@ import { Ctx } from '@/internal-types';
 /**
  * How a scene takes a press on a table, memo or group: 'edit' selects and
  * carries it, and 'read' leaves the press to the scene root, selecting and moving
- * nothing. A read-only scene root provides 'read'; every other scene keeps 'edit'.
+ * nothing. The read-only view and a readonly editor's ERD tab read; others edit.
  */
 export type SceneInteraction = 'edit' | 'read';
 
