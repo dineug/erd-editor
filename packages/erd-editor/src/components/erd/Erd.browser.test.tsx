@@ -3,14 +3,18 @@
 // for it and only a class on an ancestor can.
 
 import { toJson } from '@dineug/erd-editor-schema';
-import { createRef, useProvider } from '@dineug/r-html';
+import { createRef, FC, observable, useProvider } from '@dineug/r-html';
 import { whenDrawn } from '@dineug/r-html-konva';
+import type { Group } from 'konva/lib/Group';
+import type { Layer } from 'konva/lib/Layer';
+import type { Stage } from 'konva/lib/Stage';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { userEvent } from 'vite-plus/test/browser/context';
 
 import {
   createTestAppContext,
   createTestTheme,
+  fireScenePointer,
   flush,
   mount,
   type Mounted,
@@ -26,14 +30,19 @@ import {
 } from '@/components/erd/relationshipHighlight';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
+import { RelationshipType } from '@/constants/schema';
 import {
+  changeDrawTableGroupAction,
   changeHandToolAction,
   changeOpenMapAction,
   changeViewportAction,
+  drawStartRelationshipAction,
   editMemoAction,
+  editTableAction,
+  focusTableAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
-import { SelectType } from '@/engine/modules/editor/state';
+import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import {
   addMemoAction,
   changeMemoValueAction,
@@ -76,13 +85,13 @@ afterEach(async () => {
   await whenDrawn();
 });
 
-/** An Erd with one memo, selected, with its editor open over the scene unless told otherwise. */
-async function mountEditingMemo({ editing = true } = {}): Promise<Mounted> {
-  const app = createTestAppContext();
-  const mounted = mount(
-    <Erd isDarkMode={false} mouseTracking={false} readonly={false} />,
-    app
-  );
+/** Mounts an Erd 800 by 600 under the test theme, seeds its store and waits for the first draw. */
+async function mountErd(
+  template: Parameters<typeof mount>[0],
+  app: AppContext,
+  seed: (store: AppContext['store']) => void
+): Promise<Mounted> {
+  const mounted = mount(template, app);
   mounted.container.setAttribute(
     'style',
     'width: 800px; height: 600px; position: relative;'
@@ -97,17 +106,8 @@ async function mountEditingMemo({ editing = true } = {}): Promise<Mounted> {
     createTestTheme()
   );
 
-  const { store } = app;
-  store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
-  store.dispatchSync(
-    addMemoAction({
-      id: MEMO_ID,
-      ui: { x: 80, y: 80, width: 240, height: 140, zIndex: 2 },
-    })
-  );
-  store.dispatchSync(changeMemoValueAction({ id: MEMO_ID, value: BODY }));
-  store.dispatchSync(selectAction({ [MEMO_ID]: SelectType.memo }));
-  if (editing) store.dispatchSync(editMemoAction({ id: MEMO_ID }));
+  app.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
+  seed(app.store);
 
   await flush();
   await whenDrawn();
@@ -118,6 +118,26 @@ async function mountEditingMemo({ editing = true } = {}): Promise<Mounted> {
   });
 
   return mounted;
+}
+
+/** An Erd with one memo, selected, with its editor open over the scene unless told otherwise. */
+function mountEditingMemo({ editing = true } = {}): Promise<Mounted> {
+  const app = createTestAppContext();
+  return mountErd(
+    <Erd isDarkMode={false} mouseTracking={false} readonly={false} />,
+    app,
+    store => {
+      store.dispatchSync(
+        addMemoAction({
+          id: MEMO_ID,
+          ui: { x: 80, y: 80, width: 240, height: 140, zIndex: 2 },
+        })
+      );
+      store.dispatchSync(changeMemoValueAction({ id: MEMO_ID, value: BODY }));
+      store.dispatchSync(selectAction({ [MEMO_ID]: SelectType.memo }));
+      if (editing) store.dispatchSync(editMemoAction({ id: MEMO_ID }));
+    }
+  );
 }
 
 const memoEditorOf = (mounted: Mounted) =>
@@ -474,5 +494,179 @@ describe('Erd - a middle button press over a takeover', () => {
     const lift = liftWith(window, MIDDLE);
 
     expect(lift.defaultPrevented).toBe(false);
+  });
+});
+
+/** Whether the Erd a spec mounts is readonly, read by its prop and its store alike, as the element's two are. */
+const readonlyHarness = observable({ readonly: false });
+
+const ErdTurningReadonly: FC = () => () => (
+  <Erd
+    isDarkMode={false}
+    mouseTracking={false}
+    readonly={readonlyHarness.readonly}
+  />
+);
+
+const TABLE_ID = 'users';
+
+/** An Erd with one table, open to edits until the spec turns it readonly. */
+function mountTurningReadonly(): Promise<Mounted> {
+  readonlyHarness.readonly = false;
+  const app = createTestAppContext({
+    getReadonly: () => readonlyHarness.readonly,
+  });
+  return mountErd(<ErdTurningReadonly />, app, store =>
+    store.dispatchSync(
+      addTableAction({ id: TABLE_ID, ui: { x: 400, y: 80, zIndex: 1 } })
+    )
+  );
+}
+
+async function turnReadonly() {
+  readonlyHarness.readonly = true;
+  await flush();
+  await whenDrawn();
+}
+
+const sceneStageOf = (): Stage => Reflect.get(globalThis, '__erdStages').canvas;
+
+const tableBodyOf = () =>
+  sceneStageOf().findOne<Group>(`#table-${TABLE_ID}`)!.findOne('.table-body')!;
+
+/** The table as the drag layer holds it, which it does only while an entity drag runs. */
+const heldTableOf = () =>
+  sceneStageOf().findOne<Layer>('.drag-entity')?.findOne(`#table-${TABLE_ID}`);
+
+const tableXOf = ({ app }: Mounted) =>
+  app.store.state.collections.tableEntities[TABLE_ID].ui.x;
+
+describe('Erd - a readonly editor under an Alt drag', () => {
+  it('still draws the duplicate ghost, and its drop adds no table', async () => {
+    const mounted = await mountTurningReadonly();
+    await turnReadonly();
+
+    fireScenePointer(tableBodyOf(), 'mousedown', {
+      altKey: true,
+      button: 0,
+      clientX: 450,
+      clientY: 100,
+    });
+    movePointer(520, 180);
+    await flush();
+    await whenDrawn();
+
+    expect(sceneStageOf().find('.duplicate-ghost')).toHaveLength(1);
+
+    releasePointer(520, 180);
+    await flush();
+
+    expect(mounted.app.store.state.doc.tableIds).toEqual([TABLE_ID]);
+  });
+});
+
+describe('Erd - what an editor keeps once it turns readonly', () => {
+  it('keeps the cell editor open and the table selected', async () => {
+    const mounted = await mountTurningReadonly();
+    const { store } = mounted.app;
+    store.dispatchSync(
+      selectAction({ [TABLE_ID]: SelectType.table }),
+      focusTableAction({ tableId: TABLE_ID, focusType: FocusType.tableName }),
+      editTableAction()
+    );
+    await flush();
+
+    await turnReadonly();
+
+    expect(store.state.editor.focusTable?.edit).toBe(true);
+    expect(
+      mounted.container.querySelector('.edit-overlay input.edit-input')
+    ).toBeTruthy();
+    expect(selectedIds(mounted)).toEqual([TABLE_ID]);
+  });
+
+  it('keeps a relationship draw armed', async () => {
+    const mounted = await mountTurningReadonly();
+    const { store } = mounted.app;
+    store.dispatchSync(
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
+    );
+    await flush();
+
+    await turnReadonly();
+
+    expect(store.state.editor.drawRelationship).not.toBeNull();
+    expect(rootOf(mounted).style.cursor).toContain('url(');
+  });
+
+  it('keeps the hand tool up', async () => {
+    const mounted = await mountTurningReadonly();
+    const { store } = mounted.app;
+    store.dispatchSync(changeHandToolAction({ value: true }));
+    await flush();
+
+    await turnReadonly();
+
+    expect(store.state.editor.handTool).toBe(true);
+    expect(rootOf(mounted).style.cursor).toBe('grab');
+  });
+
+  it('keeps an entity drag held, whose later steps move nothing', async () => {
+    const mounted = await mountTurningReadonly();
+    const startX = tableXOf(mounted);
+
+    fireScenePointer(tableBodyOf(), 'mousedown', {
+      button: 0,
+      clientX: 450,
+      clientY: 100,
+    });
+    movePointer(490, 100);
+    await flush();
+    expect(tableXOf(mounted)).toBe(startX + 40);
+
+    await turnReadonly();
+    movePointer(560, 100);
+    await flush();
+    await whenDrawn();
+
+    expect(heldTableOf()).toBeTruthy();
+    expect(tableXOf(mounted)).toBe(startX + 40);
+
+    releasePointer(560, 100);
+    await flush();
+    await whenDrawn();
+    expect(heldTableOf()).toBeFalsy();
+  });
+
+  it.each([
+    ['time travel', Open.timeTravel, openTimeTravel],
+    [
+      'the automatic placement preview',
+      Open.automaticTablePlacement,
+      openPlacementPreview,
+    ],
+  ] as const)('keeps %s open over the canvas', async (_, key, open) => {
+    const mounted = await mountTurningReadonly();
+    open(mounted.app);
+    await flush(6);
+    await whenDrawn();
+
+    await turnReadonly();
+
+    expect(mounted.app.store.state.editor.openMap[key]).toBe(true);
+    expect(
+      rootOf(mounted).querySelectorAll('[data-testid="erd-canvas"]')
+    ).toHaveLength(2);
+  });
+
+  it('ends a table group draw, the one draw it ends', async () => {
+    const mounted = await mountTurningReadonly();
+    const { store } = mounted.app;
+    store.dispatchSync(changeDrawTableGroupAction({ value: true }));
+    await flush();
+
+    await turnReadonly();
+
+    expect(store.state.editor.drawTableGroup).toBe(false);
   });
 });

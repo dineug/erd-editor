@@ -3,10 +3,12 @@ import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
+  BracketType,
   CanvasType,
   Database,
   Language,
   LockSettingType,
+  NameCase,
   Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
@@ -1625,6 +1627,27 @@ describe('createRxStore', () => {
       expect(store.state.settings.zoomLevel).toBe(0.5);
     });
 
+    it('still records each scroll and zoom in the undo history', () => {
+      vi.useFakeTimers();
+      const store = make(createContext(), { getReadonly: () => true });
+
+      store.dispatchSync(scrollToAction({ originX: 40, originY: 40 }));
+      expect(store.history.size).toBe(1);
+      store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+      expect(store.history.size).toBe(2);
+
+      // The two streams close into one entry within 200 ms, so each is sent
+      // after the one before has closed.
+      store.dispatchSync(
+        streamScrollToAction({ movementX: 40, movementY: 40 })
+      );
+      vi.advanceTimersByTime(250);
+      expect(store.history.size).toBe(3);
+      store.dispatchSync(streamZoomLevelAction({ value: 0.1 }));
+      vi.advanceTimersByTime(250);
+      expect(store.history.size).toBe(4);
+    });
+
     it('lets shared-tagged actions through', () => {
       const store = make(createContext(), { getReadonly: () => true });
 
@@ -1709,6 +1732,49 @@ describe('createRxStore', () => {
       expect(seen[0].map(action => action.type)).toEqual([
         'settings.changeZoomLevel',
       ]);
+
+      subscription.unsubscribe();
+    });
+
+    it('still emits the code settings and the database a readonly reader changes', () => {
+      vi.useFakeTimers();
+      let readonly = false;
+      const store = make(createContext(), { getReadonly: () => readonly });
+      store.dispatchSync(
+        unlock(LockSettingType.language),
+        unlock(LockSettingType.tableNameCase),
+        unlock(LockSettingType.columnNameCase),
+        unlock(LockSettingType.bracketType)
+      );
+      vi.advanceTimersByTime(250);
+      readonly = true;
+      const seen: Array<Array<AnyAction>> = [];
+      const subscription = store.change$.subscribe(actions =>
+        seen.push(actions)
+      );
+
+      store.dispatchSync(
+        changeLanguageAction({ value: Language.Kotlin }),
+        changeTableNameCaseAction({ value: NameCase.snakeCase }),
+        changeColumnNameCaseAction({ value: NameCase.snakeCase }),
+        changeBracketTypeAction({ value: BracketType.backtick }),
+        changeDatabaseAction({ value: Database.PostgreSQL })
+      );
+      vi.advanceTimersByTime(250);
+
+      expect(seen.map(actions => actions.map(({ type }) => type))).toEqual([
+        [
+          'settings.changeLanguage',
+          'settings.changeTableNameCase',
+          'settings.changeColumnNameCase',
+          'settings.changeBracketType',
+          'settings.changeDatabase',
+        ],
+      ]);
+      expect(store.state.settings).toMatchObject({
+        language: Language.Kotlin,
+        database: Database.PostgreSQL,
+      });
 
       subscription.unsubscribe();
     });

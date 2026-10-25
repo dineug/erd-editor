@@ -9,7 +9,14 @@ import {
 } from 'vite-plus/test';
 
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
-import { NameViewMode, RelationshipType } from '@/constants/schema';
+import {
+  BracketType,
+  Database,
+  Language,
+  NameCase,
+  NameViewMode,
+  RelationshipType,
+} from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { getLWWAction } from '@/engine/modules/editor/atom.actions';
@@ -26,6 +33,11 @@ import {
 } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
+  changeBracketTypeAction,
+  changeColumnNameCaseAction,
+  changeDatabaseAction,
+  changeLanguageAction,
+  changeTableNameCaseAction,
   changeZoomLevelAction,
   toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -64,8 +76,11 @@ function createContext(): EngineContext {
   };
 }
 
-function make(config?: Parameters<typeof createSharedStore>[1]): Fixture {
-  const store = createRxStore(createContext());
+function make(
+  config?: Parameters<typeof createSharedStore>[1],
+  options?: Parameters<typeof createRxStore>[1]
+): Fixture {
+  const store = createRxStore(createContext(), options);
   const shared = createSharedStore(store, config);
   created.push({ store, shared });
   const seen: Array<Array<AnyAction>> = [];
@@ -249,6 +264,32 @@ describe('createSharedStore', () => {
     fixture.store.dispatchSync({ type: 'editor.selectAll', payload: {} });
 
     expect(fixture.seen).toHaveLength(0);
+  });
+
+  it('still sends the code settings and the database a readonly reader changes, as edits rather than follows', () => {
+    const fixture = make(undefined, { getReadonly: () => true });
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+    fixture.reset();
+
+    fixture.store.dispatchSync(
+      changeLanguageAction({ value: Language.Kotlin }),
+      changeTableNameCaseAction({ value: NameCase.snakeCase }),
+      changeColumnNameCaseAction({ value: NameCase.snakeCase }),
+      changeBracketTypeAction({ value: BracketType.backtick }),
+      changeDatabaseAction({ value: Database.PostgreSQL }),
+      addTable('t1')
+    );
+
+    const sent = fixture.seen.flat();
+    expect(sent.map(action => action.type)).toEqual([
+      'settings.changeLanguage',
+      'settings.changeTableNameCase',
+      'settings.changeColumnNameCase',
+      'settings.changeBracketType',
+      'settings.changeDatabase',
+    ]);
+    expect(sent.every(action => bHas(action.tags!, Tag.shared))).toBe(true);
+    expect(sent.some(action => bHas(action.tags!, Tag.following))).toBe(false);
   });
 
   it('broadcasts a duplicate as entity actions, without the selection framing', () => {
