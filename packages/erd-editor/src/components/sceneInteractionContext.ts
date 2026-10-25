@@ -9,10 +9,28 @@ import { Ctx } from '@/internal-types';
  */
 export type SceneInteraction = 'edit' | 'read';
 
-export const sceneInteractionContext = createContext<SceneInteraction>('edit');
+/**
+ * What a scene root provides: its mode, or a getter of it where the mode can
+ * change, since a scene that subscribes after a provider's set still gets the
+ * value the provider started with.
+ */
+export type SceneInteractionValue = SceneInteraction | (() => SceneInteraction);
 
-export const useSceneInteraction = (ctx: Ctx) =>
-  useContext(ctx, sceneInteractionContext);
+export const sceneInteractionContext =
+  createContext<SceneInteractionValue>('edit');
+
+/**
+ * A getter of the mode the scene takes a press in, which reads what its root
+ * provides each time it is called, so a render and a handler see the mode in force.
+ */
+export const useSceneInteraction = (ctx: Ctx) => {
+  const provided = useContext(ctx, sceneInteractionContext);
+
+  return (): SceneInteraction => {
+    const value = provided.value;
+    return typeof value === 'function' ? value() : value;
+  };
+};
 
 /**
  * Whether a scene takes the wheel and the fingers over it now: always, but a

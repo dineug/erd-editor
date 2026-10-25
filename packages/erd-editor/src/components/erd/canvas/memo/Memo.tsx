@@ -129,7 +129,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
    * body is scrolled, which is where it was folded, so the mapping holds anywhere.
    */
   const handleEditValue = (event: SceneMouseEvent) => {
-    if (props.preview || interaction.value === 'read') return;
+    if (props.preview || interaction() === 'read') return;
 
     const { store } = app.value;
     const { memo } = props;
@@ -152,7 +152,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
   };
 
   const handleValueMouseenter = (event: SceneMouseEvent) => {
-    const edits = !props.preview && interaction.value !== 'read';
+    const edits = !props.preview && interaction() !== 'read';
     cursor.set(event, edits ? CURSOR_TEXT : CURSOR_INHERIT);
   };
 
@@ -169,7 +169,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     // A read scene's root leaves the wheel to the page until it holds the
     // focus, and the body scrolls under it once it does, as in the editor.
     if (isPinchWheel(event.evt)) return;
-    if (interaction.value === 'read' && !active.value()) return;
+    if (interaction() === 'read' && !active.value()) return;
     event.evt.stopPropagation();
     event.evt.preventDefault();
     if (props.preview || isMod(event.evt)) return;
@@ -202,7 +202,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     const diffPaths = diffMapRef.value?.get(memo.id);
     // A read scene draws no remove button and no sash, and its colour bar
     // opens nothing.
-    const read = interaction.value === 'read';
+    const read = interaction() === 'read';
 
     return (
       <k-group

@@ -82,7 +82,7 @@ export function useMoveEntity(ctx: Ctx, options: MoveEntityOptions) {
     // A second finger is a pinch's, which neither selects nor lifts what it
     // lands on, and a read scene's root takes every press for itself.
     if (!event?.target || isMultiTouch(event.evt)) return;
-    if (interaction.value === 'read') return;
+    if (interaction() === 'read') return;
 
     const { store } = app.value;
     const entityId = options.entityId();
