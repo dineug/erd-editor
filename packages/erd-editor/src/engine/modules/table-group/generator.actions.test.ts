@@ -152,13 +152,13 @@ describe('addTableGroupAction$', () => {
     ).toEqual([
       'editor.unselectAll',
       'editor.focusTableEnd',
-      'editor.select',
       ActionType.addTableGroup,
+      'editor.select',
       ActionType.changeTableGroupName,
     ]);
   });
 
-  it('emits the selection, the add and the memberships in one batch', () => {
+  it('emits the add, the selection and the memberships in one batch', () => {
     store.dispatchSync(
       addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 2 } })
     );
@@ -166,8 +166,8 @@ describe('addTableGroupAction$', () => {
     expect(typesOf(store, addTableGroupAction$(UI))).toEqual([
       'editor.unselectAll',
       'editor.focusTableEnd',
-      'editor.select',
       ActionType.addTableGroup,
+      'editor.select',
       'table.changeGroup',
     ]);
   });
@@ -222,8 +222,8 @@ describe('addTableGroupFromTablesAction$', () => {
     ).toEqual([
       'editor.unselectAll',
       'editor.focusTableEnd',
-      'editor.select',
       ActionType.addTableGroup,
+      'editor.select',
       'table.changeGroup',
     ]);
   });

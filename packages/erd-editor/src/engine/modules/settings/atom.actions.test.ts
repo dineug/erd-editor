@@ -30,6 +30,7 @@ import {
   viewOpenAction,
   viewScrollToAction,
 } from '@/engine/modules/editor/view.actions';
+import { addMemoAction } from '@/engine/modules/memo/atom.actions';
 import { ActionType } from '@/engine/modules/settings/actions';
 import {
   actions,
@@ -64,6 +65,7 @@ import {
   addTableAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
 import { getContentRect } from '@/konva/scene/contentBounds';
@@ -78,6 +80,18 @@ const VIEWPORT_HEIGHT = 800;
 /** A table at a scene point, which is what gives the origin any travel at all. */
 const seedTable = (store: Store, id: string, x: number, y: number) => {
   store.dispatchSync(addTableAction({ id, ui: { x, y, zIndex: 2 } }));
+};
+
+/** A table t1, a memo m1 and a group g1, which a selection names only once the document lists them. */
+const seedSelectable = (store: Store) => {
+  store.dispatchSync(
+    addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 2 } }),
+    addMemoAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 2 } }),
+    addTableGroupAction({
+      id: 'g1',
+      ui: { x: 0, y: 0, width: 600, height: 400, zIndex: 1 },
+    })
+  );
 };
 
 /** The content's two edges on each axis, read off the box the range is built on. */
@@ -819,6 +833,7 @@ describe('settings/atom.actions', () => {
         t1: SelectType.table,
         m1: SelectType.memo,
       };
+      seedSelectable(store);
       store.dispatchSync(
         selectAction(pick),
         changeDrawTableGroupAction({ value: true }),
@@ -851,6 +866,7 @@ describe('settings/atom.actions', () => {
 
   describe('changeShow of the memos', () => {
     it('lets go of every selected memo and the memo editor as memos are hidden, and of nothing as they show', () => {
+      seedSelectable(store);
       store.dispatchSync(
         selectAction({ m1: SelectType.memo, t1: SelectType.table }),
         editMemoAction({ id: 'm1' })

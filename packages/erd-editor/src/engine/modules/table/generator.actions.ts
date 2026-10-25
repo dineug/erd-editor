@@ -73,7 +73,6 @@ export const addTableAction$ = (): GeneratorAction =>
     const id = uuid25();
 
     yield unselectAllAction();
-    yield selectAction({ [id]: SelectType.table });
     yield addTableAction({
       id,
       ui: {
@@ -81,6 +80,7 @@ export const addTableAction$ = (): GeneratorAction =>
         zIndex: nextZIndex(tables, memos),
       },
     });
+    yield selectAction({ [id]: SelectType.table });
     yield focusTableAction({ tableId: id });
   };
 

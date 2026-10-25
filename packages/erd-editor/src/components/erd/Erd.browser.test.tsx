@@ -542,7 +542,7 @@ const tableXOf = ({ app }: Mounted) =>
   app.store.state.collections.tableEntities[TABLE_ID].ui.x;
 
 describe('Erd - a readonly editor under an Alt drag', () => {
-  it('still draws the duplicate ghost, and its drop adds no table', async () => {
+  it('still draws the duplicate ghost, and its drop adds no table and selects none', async () => {
     const mounted = await mountTurningReadonly();
     await turnReadonly();
 
@@ -562,6 +562,7 @@ describe('Erd - a readonly editor under an Alt drag', () => {
     await flush();
 
     expect(mounted.app.store.state.doc.tableIds).toEqual([TABLE_ID]);
+    expect(selectedIds(mounted)).toEqual([]);
   });
 });
 

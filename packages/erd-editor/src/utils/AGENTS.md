@@ -60,7 +60,7 @@
 - **Show the ERD tab in an earlier dispatch.** `showErdTab` takes the ERD tab from any other before the landing dispatch, because a batch is classified by the state before it. The owner decision of 2026-10-04 names Graph mode, Schema SQL and Code Generator. Settings follows it as another tab off the canvas. A Flow view must give way too, since `viewIgnoreFilter` would drop every add.
 - **Unreadable or empty input changes nothing.** Text the parser cannot read, or a document with nothing in it, adds nothing and switches no tab.
 - **The engine generators append on the grid.** `appendSchemaAction$` and `appendSchemaJsonAction$` are in the editor barrel. `mcp-server`'s imports run them for `mode: 'append'`: the grid, no selection, no scroll.
-- **A readonly editor adds nothing by any path.** It offers no Import and Add in the menu or the palette (an owner decision of 2026-10-04). `landAppend` reads `store.getReadonly()` first, because the readonly filter drops the adds but not the selection, the scroll or the tab.
+- **A readonly editor adds nothing by any path.** It offers no Import and Add in the menu or the palette (an owner decision of 2026-10-04). `landAppend` reads `store.getReadonly()` first, because the readonly filter drops the adds but not the unselect, the scroll or the tab.
 
 ### Duplicates and the clipboard
 

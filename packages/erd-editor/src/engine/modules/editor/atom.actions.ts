@@ -22,6 +22,7 @@ import { settleDocument } from '@/engine/settle';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { toScenePoint } from '@/konva/scene/viewport';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { hasCanvasType } from '@/utils/validation';
 
@@ -110,11 +111,34 @@ export const selectAction = createAction<ActionMap[typeof ActionType.select]>(
   ActionType.select
 );
 
+/** The document list that names a live entity of each select type. */
+const SELECT_LISTS = {
+  [SelectType.table]: 'tableIds',
+  [SelectType.memo]: 'memoIds',
+  [SelectType.tableGroup]: 'tableGroupIds',
+} as const satisfies Record<SelectType, keyof RootState['doc']>;
+
+/**
+ * Selects only the ids the document lists for their type, never the collections, which keep removed
+ * entities: a select behind an add the readonly filter dropped then leaves nothing selected. Each
+ * list becomes one set per call, so a marquee naming every entity stays linear.
+ */
 const select: ReducerType<typeof ActionType.select> = (
-  { editor },
+  { doc, editor },
   { payload }
 ) => {
-  Object.assign(editor.selectedMap, payload);
+  const listed = new Map<SelectType, (id: string) => boolean>();
+
+  for (const [id, type] of Object.entries(payload)) {
+    let isListed = listed.get(type);
+    if (!isListed) {
+      isListed = arrayHas(doc[SELECT_LISTS[type]]);
+      listed.set(type, isListed);
+    }
+    if (isListed(id)) {
+      editor.selectedMap[id] = type;
+    }
+  }
 };
 
 export const changeViewportAction = createAction<

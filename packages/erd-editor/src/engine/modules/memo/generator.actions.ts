@@ -26,7 +26,6 @@ export const addMemoAction$ = (): GeneratorAction =>
     const id = uuid25();
 
     yield unselectAllAction$();
-    yield selectAction({ [id]: SelectType.memo });
     yield addMemoAction({
       id,
       ui: {
@@ -34,6 +33,7 @@ export const addMemoAction$ = (): GeneratorAction =>
         zIndex: nextZIndex(tables, memos),
       },
     });
+    yield selectAction({ [id]: SelectType.memo });
   };
 
 export const removeMemoAction$ = (id?: string): GeneratorAction =>

@@ -252,6 +252,21 @@ function recordActions(app: AppContext): AnyAction[][] {
   return batches;
 }
 
+const ADD_TYPES = ['table.add', 'memo.add', 'tableGroup.add'];
+
+/** The ids a batch's selects name ahead of the add that creates them. */
+function selectedBeforeAdded(actions: AnyAction[]): string[] {
+  const added = new Set<string>();
+  const early: string[] = [];
+  for (const { type, payload } of actions) {
+    if (ADD_TYPES.includes(type)) added.add(payload.id);
+    if (type === 'editor.select') {
+      early.push(...Object.keys(payload).filter(id => !added.has(id)));
+    }
+  }
+  return early;
+}
+
 function listenToasts(app: AppContext): Toast[] {
   const toasts: Toast[] = [];
   app.emitter.on({
@@ -861,6 +876,38 @@ describe('appendSchema', () => {
     expect(settings.originY).toBeLessThan(0);
     expect(settings.databaseName).toBe('kept');
   });
+
+  it.each([
+    [
+      'a DBML file, a table group among them',
+      (app: AppContext) => appendSchema(app, 'dbml', FAN_DBML),
+      SelectType.tableGroup,
+    ],
+    [
+      'a json file, a memo among them',
+      (app: AppContext) => appendSchemaJSON(app, accountsJson()),
+      SelectType.memo,
+    ],
+  ] as const)(
+    'adds each entity of %s before the select that names it',
+    (_, append, type) => {
+      const app = createScreenApp();
+      const batches = recordActions(app);
+
+      append(app);
+
+      const [landing] = batches;
+      const named = Object.assign(
+        {},
+        ...landing
+          .filter(action => action.type === 'editor.select')
+          .map(({ payload }) => payload)
+      );
+      expect(selectedBeforeAdded(landing)).toEqual([]);
+      expect(Object.values(named)).toContain(type);
+      expect(named).toEqual({ ...app.store.state.editor.selectedMap });
+    }
+  );
 
   it('adds a DBML table group round its members where the grid puts them, below the diagram', () => {
     const app = createScreenApp();

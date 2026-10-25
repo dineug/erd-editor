@@ -521,7 +521,10 @@ describe('Toolbar', () => {
 
     it('spares the selection a press anywhere else in the bar clears', async () => {
       const { app } = await setup();
-      app.store.dispatchSync(selectAction({ t1: SelectType.table }));
+      app.store.dispatchSync(
+        addTable('t1'),
+        selectAction({ t1: SelectType.table })
+      );
 
       explorer().dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
       explorer().dispatchEvent(new TouchEvent('touchstart', { bubbles: true }));
@@ -546,7 +549,10 @@ describe('Toolbar', () => {
   describe('unselect all', () => {
     it('clears the selection on mousedown anywhere in the bar', async () => {
       const { app } = await setup();
-      app.store.dispatchSync(selectAction({ t1: SelectType.table }));
+      app.store.dispatchSync(
+        addTable('t1'),
+        selectAction({ t1: SelectType.table })
+      );
       expect(app.store.state.editor.selectedMap).toEqual({
         t1: SelectType.table,
       });
@@ -559,7 +565,10 @@ describe('Toolbar', () => {
 
     it('clears the selection on touchstart as well', async () => {
       const { app } = await setup();
-      app.store.dispatchSync(selectAction({ t1: SelectType.table }));
+      app.store.dispatchSync(
+        addTable('t1'),
+        selectAction({ t1: SelectType.table })
+      );
 
       root().dispatchEvent(new TouchEvent('touchstart', { bubbles: true }));
       await flush();
