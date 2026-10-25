@@ -686,7 +686,7 @@ describe('Erd - what an editor lets go of once it turns readonly', () => {
     expect(rootOf(mounted).style.cursor).toBe('');
   });
 
-  it('puts the hand tool down, which neither its chord nor the bar takes up until writable', async () => {
+  it('puts the hand tool down, which no chord takes up and no bar offers until writable', async () => {
     const mounted = await mountTurningReadonly();
     const { shortcut$, store } = mounted.app;
     store.dispatchSync(changeHandToolAction({ value: true }));
@@ -705,16 +705,14 @@ describe('Erd - what an editor lets go of once it turns readonly', () => {
     await flush();
     expect(store.state.editor.handTool).toBe(false);
 
-    const hand = rootOf(mounted).querySelector<HTMLElement>(
-      '.floating-toolbar [title^="Hand"]'
-    )!;
-    hand.click();
-    await flush();
-    expect(store.state.editor.handTool).toBe(false);
-    expect(rootOf(mounted).style.cursor).toBe('');
+    const hand = () =>
+      rootOf(mounted).querySelector<HTMLElement>(
+        '.floating-toolbar [title^="Hand"]'
+      );
+    expect(hand()).toBeNull();
 
     await turnReadonly(false);
-    hand.click();
+    hand()!.click();
     await flush();
     expect(store.state.editor.handTool).toBe(true);
     expect(rootOf(mounted).style.cursor).toBe('grab');
@@ -1262,6 +1260,40 @@ function expectNoEditState({ app }: Reader) {
   expect(EDIT_OPEN_KEYS.filter(key => editor.openMap[key])).toEqual([]);
 }
 
+/** The floating toolbar's controls left to right, each by its title less its chord. */
+const toolbarOf = (container: HTMLElement) =>
+  Array.from(
+    container.querySelector('.floating-toolbar')?.children ?? [],
+    child => child.getAttribute('title')?.replace(/ \(.*\)$/, '')
+  ).filter(Boolean);
+
+/** What a readonly editor's floating toolbar keeps while its content is on the screen. */
+const READ_TOOLBAR = [
+  'Zoom out',
+  'Reset zoom',
+  'Zoom in',
+  'Name View',
+  'Zen Mode',
+];
+
+/** What a writable editor's floating toolbar holds over the same screen. */
+const EDIT_TOOLBAR = [
+  'Hand',
+  'Select',
+  'New Table',
+  'New Memo',
+  'New Table Group',
+  'Zoom out',
+  'Reset zoom',
+  'Zoom in',
+  'Zero One',
+  'Zero N',
+  'One Only',
+  'One N',
+  'Name View',
+  'Zen Mode',
+];
+
 const originOf = ({ app }: Reader) => {
   const { originX, originY } = app.store.state.settings;
   return { originX, originY };
@@ -1368,6 +1400,26 @@ describe('Erd - a readonly editor reads its scene', () => {
     expect(reader.app.store.state.editor.focusTable).toBeNull();
     expectNoEditControls(reader);
     expect(stage.findOne('#table-users') === table).toBe(true);
+  });
+
+  it('keeps the zoom, the name view, zen mode and the compass in the floating toolbar, and no tool, add or notation', async () => {
+    const reader = await mountReader();
+    const { app, container } = reader;
+    expect(toolbarOf(container)).toEqual(READ_TOOLBAR);
+
+    app.store.dispatchSync(
+      scrollToAction({ originX: -5_000, originY: -4_000 })
+    );
+    await settleScene();
+    expect(toolbarOf(container)).toEqual([...READ_TOOLBAR, 'Go to content']);
+
+    const zoomLevel = app.store.state.settings.zoomLevel;
+    container
+      .querySelector<HTMLElement>('.floating-toolbar [title^="Zoom in"]')!
+      .click();
+    await settleScene();
+    expect(app.store.state.settings.zoomLevel).toBeGreaterThan(zoomLevel);
+    expect(editsOf(reader)).toEqual([]);
   });
 
   it('pans a drag that starts on a table, which stays where it stands', async () => {
@@ -1682,7 +1734,7 @@ async function expectReading(reader: Reader) {
   expectNoEditState(reader);
   expect(app.store.state.editor.selectedMap).toEqual({});
   expectNoEditControls(reader);
-  expect(container.querySelector('.floating-toolbar .add-table')).toBeNull();
+  expect(toolbarOf(container)).toEqual(READ_TOOLBAR);
 
   const before = originOf(reader);
   const users = tablePointOf(reader, 'users');
@@ -1707,9 +1759,7 @@ describe('Erd - an editor turned readonly at run time', () => {
     expect(container.querySelector('.edit-overlay')).toBeTruthy();
     expect(stage.find('.table-add-column').length).toBeGreaterThan(0);
     expect(stage.find('.table-group-sash').length).toBeGreaterThan(0);
-    expect(
-      container.querySelector('.floating-toolbar .add-table')
-    ).toBeTruthy();
+    expect(toolbarOf(container)).toEqual(EDIT_TOOLBAR);
 
     await clickAt(stage, headerCellOf(stage, 'users'));
     expect(app.store.state.editor.selectedMap).toEqual({
