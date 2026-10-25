@@ -252,6 +252,17 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     }
   };
 
+  /**
+   * The scene's own part of a readonly turn, the element ending the store's
+   * edit state: the hover follows the press rule, what it lit goes out either
+   * way, and readonly ends a table group draw.
+   */
+  const handleReadonlyTurn = () => {
+    listenHover(props.readonly);
+    readPress.reset();
+    if (props.readonly) cancelTableGroupDraw();
+  };
+
   // The press that ends the draw mode for another button is spent on that, so
   // the menu it raises stays unshown, as does one a Mac Ctrl+click raises.
   let swallowContextmenu = false;
@@ -616,10 +627,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
     addUnsubscribe(
       watch(props).subscribe(propName => {
-        if (propName === 'readonly') listenHover(props.readonly);
-        if (propName === 'readonly' && props.readonly) {
-          cancelTableGroupDraw();
-        }
+        if (propName === 'readonly') handleReadonlyTurn();
         if (propName !== 'mouseTracking') return;
 
         props.mouseTracking
@@ -638,6 +646,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       }),
       emitter.on({
         openColorPicker: ({ payload: { x, y, color } }) => {
+          // A reader colours nothing, and the element closed the picker as
+          // it turned readonly, so none opens again until it turns writable.
+          if (props.readonly) return;
+
           const open = () => {
             const rect = $root.getBoundingClientRect();
 

@@ -222,6 +222,20 @@ describe('FloatingToolbar', () => {
     expect(root.querySelectorAll(`.${String(styles.divider)}`)).toHaveLength(4);
   });
 
+  it('takes the hand up in no readonly editor, Select staying the tool in force', async () => {
+    const { app, root } = await setup(
+      createTestAppContext({ getReadonly: () => true }),
+      { readonly: true }
+    );
+
+    click(byTitle(root, 'Hand'));
+    await flush();
+
+    expect(app.store.state.editor.handTool).toBe(false);
+    expect(isActive(byTitle(root, 'Hand'))).toBe(false);
+    expect(isActive(byTitle(root, 'Select'))).toBe(true);
+  });
+
   it('offers no New Memo while memos are hidden, nor New Table Group while groups are', async () => {
     const { app, root } = await setup();
 

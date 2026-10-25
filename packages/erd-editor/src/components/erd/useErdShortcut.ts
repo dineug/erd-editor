@@ -238,7 +238,10 @@ export function useErdShortcut(ctx: Ctx) {
         );
       }
 
+      // A reader pans by its press rule, so the hand the turn to readonly put
+      // down stays down.
       type === KeyBindingName.handTool &&
+        !store.getReadonly() &&
         store.dispatch(changeHandToolAction({ value: !editor.handTool }));
       type === KeyBindingName.zenMode &&
         store.dispatch(changeZenModeAction({ value: !editor.zenMode }));

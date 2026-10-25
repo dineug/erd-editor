@@ -44,18 +44,24 @@ import {
   isRelationshipHighlighted,
   setRelationshipHighlight,
 } from '@/components/erd/relationshipHighlight';
+import type {
+  ErdEditorElement,
+  ErdEditorProps,
+} from '@/components/erd-editor/ErdEditor';
+import { useErdEditorAttachElement } from '@/components/erd-editor/useErdEditorAttachElement';
 import ExplorerPanel from '@/components/explorer/explorer-panel/ExplorerPanel';
 import { createScopeActions } from '@/components/quick-search/actions';
 import QuickSearch from '@/components/quick-search/QuickSearch';
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
-import { RelationshipType } from '@/constants/schema';
+import { RelationshipType, Show } from '@/constants/schema';
 import {
   EDIT_OPEN_KEYS,
   EditStateOpenActionTypes,
   opensEditDialog,
   ReadonlyIgnoreActionTypes,
 } from '@/engine/actions';
+import { documentJsonOf } from '@/engine/documentJson';
 import {
   changeDrawTableGroupAction,
   changeHandToolAction,
@@ -73,13 +79,21 @@ import {
   addMemoAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
+import {
+  changeShowAction,
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import { attachActionTag, Tag } from '@/engine/tag';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import {
   copyAction,
   openColorPickerAction,
   openDiffViewerAction,
+  openTablePropertiesAction,
 } from '@/utils/emitter';
+import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { CURSOR_GRABBING } from '@/utils/stageCursor';
 import {
   CLIPBOARD_MIME,
@@ -532,24 +546,57 @@ describe('Erd - a middle button press over a takeover', () => {
   });
 });
 
-/** Whether the Erd a spec mounts is readonly, read by its prop and its store alike, as the element's two are. */
-const readonlyHarness = observable({ readonly: false });
-
-const ErdTurningReadonly: FC = () => () => (
-  <Erd
-    isDarkMode={false}
-    mouseTracking={false}
-    readonly={readonlyHarness.readonly}
-  />
+/**
+ * The element's props a spec turns, read by its store, its own hook and its
+ * ERD tab alike, as the element's three read them.
+ */
+const elementFlags = observable<ErdEditorProps>(
+  {
+    readonly: false,
+    systemDarkMode: false,
+    enableThemeBuilder: false,
+    enableLocalePicker: false,
+    enableWelcomeScreen: false,
+  },
+  { shallow: true }
 );
+
+/**
+ * The hook the element mounts, on a host of its own, so a turn of the flag
+ * ends the store's edit state and gives the screen back as the element does.
+ */
+function useElementTurns(app: AppContext) {
+  const host = document.createElement('div') as unknown as ErdEditorElement;
+  const { destroySet } = useErdEditorAttachElement({
+    props: elementFlags,
+    ctx: host,
+    app,
+    root: createRef<HTMLDivElement>(),
+  });
+  teardowns.push(() => destroySet.forEach(destroy => destroy()));
+}
+
+const ErdTurningReadonly: FC = (_props, ctx) => {
+  const app = useAppContext(ctx);
+  useElementTurns(app.value);
+
+  return () => (
+    <Erd
+      isDarkMode={false}
+      mouseTracking={false}
+      readonly={elementFlags.readonly}
+    />
+  );
+};
 
 const TABLE_ID = 'users';
 
 /** An Erd with one table, open to edits until the spec turns it readonly. */
 function mountTurningReadonly(): Promise<Mounted> {
-  readonlyHarness.readonly = false;
+  elementFlags.readonly = false;
   const app = createTestAppContext({
-    getReadonly: () => readonlyHarness.readonly,
+    getReadonly: () => elementFlags.readonly,
+    readonlyEditState: true,
   });
   return mountErd(<ErdTurningReadonly />, app, store =>
     store.dispatchSync(
@@ -558,8 +605,9 @@ function mountTurningReadonly(): Promise<Mounted> {
   );
 }
 
-async function turnReadonly() {
-  readonlyHarness.readonly = true;
+/** Turns the element readonly, or writable again, and waits for what that turn draws. */
+async function turnReadonly(readonly = true) {
+  elementFlags.readonly = readonly;
   await flush();
   await whenDrawn();
 }
@@ -601,8 +649,8 @@ describe('Erd - a readonly editor under an Alt drag', () => {
   });
 });
 
-describe('Erd - what an editor keeps once it turns readonly', () => {
-  it('closes the cell editor as the overlay it stood in goes, keeping the table selected', async () => {
+describe('Erd - what an editor lets go of once it turns readonly', () => {
+  it('closes the cell editor and takes the selection and the focus off', async () => {
     const mounted = await mountTurningReadonly();
     const { store } = mounted.app;
     store.dispatchSync(
@@ -619,32 +667,55 @@ describe('Erd - what an editor keeps once it turns readonly', () => {
     await turnReadonly();
 
     expect(mounted.container.querySelector('.edit-overlay')).toBeNull();
-    expect(store.state.editor.focusTable?.edit).toBe(false);
-    expect(selectedIds(mounted)).toEqual([TABLE_ID]);
+    expect(store.state.editor.focusTable).toBeNull();
+    expect(selectedIds(mounted)).toEqual([]);
   });
 
-  it('keeps a relationship draw armed', async () => {
+  it('ends a relationship draw', async () => {
     const mounted = await mountTurningReadonly();
     const { store } = mounted.app;
     store.dispatchSync(
       drawStartRelationshipAction({ relationshipType: RelationshipType.OneN })
     );
     await flush();
+    expect(rootOf(mounted).style.cursor).toContain('url(');
 
     await turnReadonly();
 
-    expect(store.state.editor.drawRelationship).not.toBeNull();
-    expect(rootOf(mounted).style.cursor).toContain('url(');
+    expect(store.state.editor.drawRelationship).toBeNull();
+    expect(rootOf(mounted).style.cursor).toBe('');
   });
 
-  it('keeps the hand tool up', async () => {
+  it('puts the hand tool down, which neither its chord nor the bar takes up until writable', async () => {
     const mounted = await mountTurningReadonly();
-    const { store } = mounted.app;
+    const { shortcut$, store } = mounted.app;
     store.dispatchSync(changeHandToolAction({ value: true }));
     await flush();
+    expect(rootOf(mounted).style.cursor).toBe('grab');
 
     await turnReadonly();
 
+    expect(store.state.editor.handTool).toBe(false);
+    expect(rootOf(mounted).style.cursor).toBe('');
+
+    shortcut$.next({
+      type: KeyBindingName.handTool,
+      event: new KeyboardEvent('keydown'),
+    });
+    await flush();
+    expect(store.state.editor.handTool).toBe(false);
+
+    const hand = rootOf(mounted).querySelector<HTMLElement>(
+      '.floating-toolbar [title^="Hand"]'
+    )!;
+    hand.click();
+    await flush();
+    expect(store.state.editor.handTool).toBe(false);
+    expect(rootOf(mounted).style.cursor).toBe('');
+
+    await turnReadonly(false);
+    hand.click();
+    await flush();
     expect(store.state.editor.handTool).toBe(true);
     expect(rootOf(mounted).style.cursor).toBe('grab');
   });
@@ -684,21 +755,117 @@ describe('Erd - what an editor keeps once it turns readonly', () => {
       Open.automaticTablePlacement,
       openPlacementPreview,
     ],
-  ] as const)('keeps %s open over the canvas', async (_, key, open) => {
+  ] as const)('closes %s over the canvas', async (_, key, open) => {
     const mounted = await mountTurningReadonly();
     open(mounted.app);
     await flush(6);
     await whenDrawn();
-
-    await turnReadonly();
-
-    expect(mounted.app.store.state.editor.openMap[key]).toBe(true);
     expect(
       rootOf(mounted).querySelectorAll('[data-testid="erd-canvas"]')
     ).toHaveLength(2);
+
+    await turnReadonly();
+
+    expect(mounted.app.store.state.editor.openMap[key]).toBe(false);
+    expect(
+      rootOf(mounted).querySelectorAll('[data-testid="erd-canvas"]')
+    ).toHaveLength(1);
   });
 
-  it('ends a table group draw, the one draw it ends', async () => {
+  it('closes time travel before its Apply can step the history', async () => {
+    const mounted = await mountTurningReadonly();
+    const { store } = mounted.app;
+    const { cursor } = store.history;
+    expect(cursor).toBeGreaterThan(-1);
+    openTimeTravel(mounted.app);
+    await flush(6);
+    await whenDrawn();
+
+    // The slider's left end is the document before its first entry.
+    const slider = rootOf(mounted).querySelector(
+      '.time-travel-slider > div'
+    ) as HTMLElement;
+    const { left, top, height } = slider.getBoundingClientRect();
+    pressWith(slider, 0, { clientX: left, clientY: top + height / 2 });
+    releasePointer();
+    await flush(6);
+    await whenDrawn();
+    const [, preview] = rootOf(mounted).querySelectorAll(
+      '[data-testid="erd-canvas"]'
+    );
+    const previewStage = stages.find(stage => stage.container() === preview)!;
+    expect(previewStage.findOne(`#table-${TABLE_ID}`)).toBeUndefined();
+    const apply = rootOf(mounted).querySelector(
+      '.time-travel-slider button'
+    ) as HTMLButtonElement;
+    expect(apply).toBeTruthy();
+
+    await turnReadonly();
+    apply.click();
+    await flush();
+
+    expect(rootOf(mounted).querySelector('.time-travel-slider')).toBeNull();
+    expect(store.state.editor.openMap[Open.timeTravel]).toBe(false);
+    expect(store.history.cursor).toBe(cursor);
+    expect(store.state.doc.tableIds).toEqual([TABLE_ID]);
+  });
+
+  it('closes Map Columns', async () => {
+    const mounted = await mountTurningReadonly();
+    const { store } = mounted.app;
+    store.dispatchSync(changeOpenMapAction({ [Open.mapColumns]: true }));
+
+    await turnReadonly();
+
+    expect(store.state.editor.openMap[Open.mapColumns]).toBe(false);
+  });
+
+  it('keeps Table Properties open, read only, and the diff viewer open', async () => {
+    const mounted = await mountTurningReadonly();
+    const { emitter, store } = mounted.app;
+    emitter.emit(openTablePropertiesAction({ tableId: TABLE_ID }));
+    store.dispatchSync(changeOpenMapAction({ [Open.tableProperties]: true }));
+    await flush(6);
+    const properties = () =>
+      rootOf(mounted).querySelector<HTMLElement>('.table-properties');
+    expect(properties()?.textContent).not.toContain('Read only');
+
+    await turnReadonly();
+
+    expect(store.state.editor.openMap[Open.tableProperties]).toBe(true);
+    expect(properties()?.textContent).toContain('Read only');
+
+    store.dispatchSync(changeOpenMapAction({ [Open.tableProperties]: false }));
+    openDiffViewer(mounted.app);
+    await turnReadonly(false);
+    await turnReadonly();
+
+    expect(store.state.editor.openMap[Open.diffViewer]).toBe(true);
+    expect(rootOf(mounted).querySelector('.diff-viewer-tree')).toBeTruthy();
+  });
+
+  it('closes the colour picker, which opens again only once writable', async () => {
+    const mounted = await mountTurningReadonly();
+    const { emitter } = mounted.app;
+    const picker = () => rootOf(mounted).querySelector('.color-picker');
+    const openPicker = async () => {
+      emitter.emit(openColorPickerAction({ x: 200, y: 200, color: '#ffffff' }));
+      await flush(6);
+    };
+    await openPicker();
+    expect(picker()).toBeTruthy();
+
+    await turnReadonly();
+    expect(picker()).toBeNull();
+    await openPicker();
+    expect(picker()).toBeNull();
+
+    await turnReadonly(false);
+    await openPicker();
+    expect(picker()).toBeTruthy();
+  });
+
+  it('ends a table group draw', async () => {
     const mounted = await mountTurningReadonly();
     const { store } = mounted.app;
     store.dispatchSync(changeDrawTableGroupAction({ value: true }));
@@ -775,11 +942,12 @@ type Reader = {
   sent: AnyAction[];
 };
 
-/** The element's keyboard root, its Explorer tree and its palette, around the ERD tab. */
+/** The element's keyboard root, its own hook, its Explorer tree and its palette, around the ERD tab. */
 const ReaderShell: FC<{ readonly: boolean }> = (props, ctx) => {
   const app = useAppContext(ctx);
   const keys = createRef<HTMLDivElement>();
   useKeyBindingMap(ctx, keys);
+  useElementTurns(app.value);
 
   const handleKeydown = (event: KeyboardEvent) => {
     app.value.keydown$.next(event);
@@ -836,10 +1004,8 @@ function recordDispatches(base: AppContext): {
   };
 }
 
-const readerFlags = observable({ readonly: true });
-
 const ReaderRoot: FC = () => () => (
-  <ReaderShell readonly={readerFlags.readonly} />
+  <ReaderShell readonly={elementFlags.readonly} />
 );
 
 /**
@@ -847,15 +1013,15 @@ const ReaderRoot: FC = () => () => (
  * readonly, mounted readonly unless told otherwise, drawn and hit-tested.
  */
 async function mountReader({ readonly = true } = {}): Promise<Reader> {
-  readerFlags.readonly = false;
+  elementFlags.readonly = false;
   const base = createTestAppContext({
-    getReadonly: () => readerFlags.readonly,
+    getReadonly: () => elementFlags.readonly,
     readonlyEditState: true,
   });
   base.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
   seedDiff(base, READ_SEED);
   base.store.flushStreamBuffers();
-  readerFlags.readonly = readonly;
+  elementFlags.readonly = readonly;
 
   const { app, sent } = recordDispatches(base);
   const mounted = mount(<ReaderRoot />, app);
@@ -1195,12 +1361,11 @@ describe('Erd - a readonly editor reads its scene', () => {
     expect(countOf('.column-drag-handle')).toBe(1);
     expect(reader.container.querySelector('.edit-overlay')).toBeTruthy();
 
-    readerFlags.readonly = true;
+    elementFlags.readonly = true;
     await settleScene();
 
-    expect(reader.app.store.state.editor.focusTable).toMatchObject(
-      FOCUSED_COLUMN
-    );
+    // The turn ends the focus the jump left, and the handle beside it.
+    expect(reader.app.store.state.editor.focusTable).toBeNull();
     expectNoEditControls(reader);
     expect(stage.findOne('#table-users') === table).toBe(true);
   });
@@ -1421,16 +1586,13 @@ describe('Erd - a readonly editor reads its scene', () => {
     expect(app.store.state.editor.selectedMap).toEqual({});
   });
 
-  it('closes an open colour picker on a press, and holds a middle press over a takeover with its lift', async () => {
+  it('opens no colour picker, and holds a middle press over a takeover with its lift', async () => {
     const reader = await mountReader();
-    const { app, container, stage } = reader;
+    const { app, container } = reader;
     app.emitter.emit(
       openColorPickerAction({ x: 200, y: 200, color: '#ffffff' })
     );
     await flush(6);
-    expect(container.querySelector('.color-picker')).toBeTruthy();
-
-    await clickAt(stage, bareOf(stage));
     expect(container.querySelector('.color-picker')).toBeNull();
 
     app.emitter.emit(openDiffViewerAction({ value: toJson(app.store.state) }));
@@ -1481,3 +1643,243 @@ function expectNoEditControls({ stage, container }: Reader) {
   expect(stage.findOne('.memo-header-color')!.listening()).toBe(false);
   expect(container.querySelector('.edit-overlay')).toBeNull();
 }
+
+/** Turns the reader's element readonly or writable and waits for the scene it draws. */
+async function turnReader(readonly: boolean) {
+  elementFlags.readonly = readonly;
+  await settleScene();
+}
+
+/** How many of the stage's hover listeners the read-only press rule holds. */
+const hoverListenersOf = (stage: Stage) =>
+  (stage.eventListeners.mouseover ?? []).filter(
+    ({ name }) => name === 'sceneHover'
+  ).length;
+
+/** Where the sort left a relationship's two ends, which its connector is drawn from. */
+const anchorsOf = ({ app }: Reader, id: string) => {
+  const { start, end } = app.store.state.collections.relationshipEntities[id];
+  return [start, end].map(({ x, y, direction }) => ({ x, y, direction }));
+};
+
+/** The canvas stage the reader's container holds now, the one it drew first or a new one. */
+const liveStageOf = ({ container }: Reader) => {
+  const canvas = container.querySelector('[data-testid="erd-canvas"]');
+  return stages.find(candidate => candidate.container() === canvas);
+};
+
+/**
+ * What a readonly reader meets: a press or a double click edits nothing and
+ * selects nothing, nothing that edits is drawn, and a drag on a table pans.
+ */
+async function expectReading(reader: Reader) {
+  const { app, container, stage } = reader;
+  reader.sent.length = 0;
+
+  await clickAt(stage, headerCellOf(stage, 'users'));
+  await doubleClickAt(stage, columnCellOf(stage, 'orders.user'));
+  expect(editsOf(reader)).toEqual([]);
+  expectNoEditState(reader);
+  expect(app.store.state.editor.selectedMap).toEqual({});
+  expectNoEditControls(reader);
+  expect(container.querySelector('.floating-toolbar .add-table')).toBeNull();
+
+  const before = originOf(reader);
+  const users = tablePointOf(reader, 'users');
+  await dragFrom(stage, headerCellOf(stage, 'users'), { x: 60, y: 30 });
+  expect(originOf(reader)).toEqual({
+    originX: before.originX + 60,
+    originY: before.originY + 30,
+  });
+  expect(tablePointOf(reader, 'users')).toEqual(users);
+}
+
+describe('Erd - an editor turned readonly at run time', () => {
+  it('reads while readonly and edits from an empty edit state once writable, on the one stage', async () => {
+    const reader = await mountReader();
+    const { app, container, stage } = reader;
+    await expectReading(reader);
+
+    await turnReader(false);
+    expect(liveStageOf(reader)).toBe(stage);
+    expectNoEditState(reader);
+    expect(app.store.state.editor.selectedMap).toEqual({});
+    expect(container.querySelector('.edit-overlay')).toBeTruthy();
+    expect(stage.find('.table-add-column').length).toBeGreaterThan(0);
+    expect(stage.find('.table-group-sash').length).toBeGreaterThan(0);
+    expect(
+      container.querySelector('.floating-toolbar .add-table')
+    ).toBeTruthy();
+
+    await clickAt(stage, headerCellOf(stage, 'users'));
+    expect(app.store.state.editor.selectedMap).toEqual({
+      users: SelectType.table,
+    });
+    const users = tablePointOf(reader, 'users');
+    await dragFrom(stage, headerCellOf(stage, 'users'), { x: 40, y: 20 });
+    expect(tablePointOf(reader, 'users')).toEqual({
+      x: users.x + 40,
+      y: users.y + 20,
+    });
+
+    await turnReader(true);
+    expect(liveStageOf(reader)).toBe(stage);
+    expect(app.store.state.editor.selectedMap).toEqual({});
+    expect(app.store.state.editor.focusTable).toBeNull();
+    await expectReading(reader);
+  });
+
+  it('draws what mounts after the turn under read: a table scrolled in, a peer’s table and the zoomed out tables', async () => {
+    const reader = await mountReader({ readonly: false });
+    const { app, stage } = reader;
+    app.store.dispatchSync(
+      addTableAction({ id: 'far', ui: { x: 2400, y: 40, zIndex: 3 } })
+    );
+    await settleScene();
+    expect(stage.findOne('#table-far')).toBeUndefined();
+
+    await turnReader(true);
+    const readsAt = async (id: string) => {
+      const table = stage.findOne<Group>(`#table-${id}`)!;
+      expect(table.find('.table-add-column')).toHaveLength(0);
+      expect(table.findOne('.table-header-color')!.listening()).toBe(false);
+      reader.sent.length = 0;
+      await clickAt(stage, middleOfNode(table.findOne('.tableName')!));
+      expect(editsOf(reader)).toEqual([]);
+      expect(app.store.state.editor.selectedMap).toEqual({});
+    };
+
+    const { originY } = app.store.state.settings;
+    app.store.dispatchSync(scrollToAction({ originX: -2300, originY }));
+    await settleScene();
+    await readsAt('far');
+
+    app.store.dispatchSync(scrollToAction({ originX: 0, originY }));
+    app.store.dispatchSync(
+      attachActionTag(
+        Tag.shared,
+        addTableAction({ id: 'peer', ui: { x: 40, y: 200, zIndex: 4 } })
+      )
+    );
+    await settleScene();
+    await readsAt('peer');
+
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+    await settleScene();
+    expect(stage.find('.table-add-column')).toHaveLength(0);
+    const edges = stage.find('.table-header-color');
+    expect(edges.length).toBeGreaterThan(0);
+    expect(edges.every(edge => !edge.listening())).toBe(true);
+    expect(liveStageOf(reader)).toBe(stage);
+  });
+
+  it('hears the pointer only while readonly, by one listener, and puts out what it lit at each turn', async () => {
+    const reader = await mountReader({ readonly: false });
+    const { app, stage } = reader;
+    const editorId = app.store.state.editor.id;
+    expect(hoverListenersOf(stage)).toBe(0);
+
+    await turnReader(true);
+    expect(hoverListenersOf(stage)).toBe(1);
+    hoverAt(stage, headerCellOf(stage, 'users'));
+    await settleScene();
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(true);
+
+    await turnReader(false);
+    expect(hoverListenersOf(stage)).toBe(0);
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(false);
+    hoverAt(stage, bareOf(stage));
+    hoverAt(stage, headerCellOf(stage, 'orders'));
+    await settleScene();
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(false);
+
+    await turnReader(true);
+    expect(hoverListenersOf(stage)).toBe(1);
+  });
+
+  it('writes nothing for a group sash drag the turn cut short', async () => {
+    const reader = await mountReader({ readonly: false });
+    const { app, stage } = reader;
+    const groupUi = () => ({
+      ...app.store.state.collections.tableGroupEntities.group.ui,
+    });
+    const before = groupUi();
+
+    const down = pointerAt(
+      stage,
+      'mousedown',
+      nodeCenter(stage, '.table-group-sash-right')
+    );
+    for (const step of [20, 40]) {
+      movePointer(down.clientX + step, down.clientY);
+      await flush();
+    }
+
+    await turnReader(true);
+    movePointer(down.clientX + 80, down.clientY);
+    await flush();
+    releasePointer(down.clientX + 80, down.clientY);
+    await settleScene();
+
+    expect(groupUi()).toEqual(before);
+    expect(reader.sent.map(({ type }) => type)).not.toContain(
+      'tableGroup.resize'
+    );
+  });
+
+  it('selects nothing more for a marquee the turn cut short, and sends its rect no further', async () => {
+    const reader = await mountReader({ readonly: false });
+    const { app, stage } = reader;
+    const mod = { ctrlKey: !APPLE, metaKey: APPLE };
+    const from = bareOf(stage);
+    const sweep = async (to: Point) => {
+      pointerAt(stage, 'mousemove', to, mod);
+      await settleScene();
+    };
+
+    pointerAt(stage, 'mousedown', from, mod);
+    await sweep({ x: 400, y: 200 });
+    expect(app.store.state.editor.selectedMap).toEqual({
+      orders: SelectType.table,
+    });
+    expect(app.store.state.editor.dragSelect).not.toBeNull();
+    expect(stage.findOne('#drag-select')).toBeTruthy();
+
+    await turnReader(true);
+    reader.sent.length = 0;
+    await sweep({ x: 10, y: 200 });
+
+    expect(app.store.state.editor.selectedMap).toEqual({});
+    expect(app.store.state.editor.dragSelect).toBeNull();
+    expect(stage.findOne('#drag-select')).toBeUndefined();
+
+    releasePointer();
+    await settleScene();
+    expect(app.store.state.editor.selectedMap).toEqual({});
+    expect(reader.sent.map(({ type }) => type)).not.toContain('editor.select');
+  });
+
+  it('gives a View Option row back as it turns writable, laying the connectors out again', async () => {
+    const reader = await mountReader();
+    const { app } = reader;
+    const { show } = app.store.state.settings;
+    expect(show & Show.columnDataType).toBeTruthy();
+    const anchors = anchorsOf(reader, 'fk');
+    const value = documentJsonOf(app.store);
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.columnDataType, value: false })
+    );
+    await settleScene();
+    expect(app.store.state.settings.show & Show.columnDataType).toBe(0);
+    expect(anchorsOf(reader, 'fk')).not.toEqual(anchors);
+    expect(documentJsonOf(app.store)).toBe(value);
+
+    await turnReader(false);
+
+    expect(app.store.state.settings.show).toBe(show);
+    expect(app.store.state.editor.screenBaseline?.show).toBeUndefined();
+    expect(anchorsOf(reader, 'fk')).toEqual(anchors);
+    expect(documentJsonOf(app.store)).toBe(value);
+  });
+});

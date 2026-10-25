@@ -6,9 +6,16 @@ import { AppContext, appDestroy } from '@/components/appContext';
 import { useLocaleHost } from '@/components/element-host/localeHost';
 import { useThemeHost } from '@/components/element-host/themeHost';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';
+import { EDIT_OPEN_KEYS } from '@/engine/actions';
 import { documentJsonOf, runtimeJsonOf } from '@/engine/documentJson';
 import {
+  changeHandToolAction,
+  changeOpenMapAction,
   clearAction,
+  drawEndRelationshipAction,
+  editMemoEndAction,
+  editTableEndAction,
+  editTableGroupEndAction,
   getLWWAction,
   initialClearAction,
   SHARED_DRAG_SELECT_TRACKER_TIMEOUT,
@@ -21,7 +28,9 @@ import {
   initialLoadJsonAction$,
   loadJsonAction$,
   type SchemaImportType,
+  unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
+import { restoreScreenSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import { createSharedStore, SharedStore } from '@/engine/shared-store';
 import { useNavigatorLanguages } from '@/hooks/useNavigatorLanguages';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -31,6 +40,7 @@ import { Unsubscribe } from '@/internal-types';
 import { SYSTEM_APPEARANCE } from '@/themes/radix-ui-theme';
 import { arrayHas } from '@/utils/arrayHas';
 import {
+  closeColorPickerAction,
   mouseTrackerEndAction,
   mouseTrackerStartAction,
   openDiffViewerAction,
@@ -71,6 +81,11 @@ const hasOmitKeyBindingName = arrayHas<string>([
 
 const ExternalKeyBindingNameList = KeyBindingNameList.filter(
   key => !hasOmitKeyBindingName(key)
+);
+
+/** The dialogs that write the document, each closed, which the readonly filter lets through. */
+const CLOSED_EDIT_DIALOGS = Object.fromEntries(
+  EDIT_OPEN_KEYS.map(key => [key, false])
 );
 
 type Props = {
@@ -174,8 +189,37 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     getReadonly() || ctx.dispatchEvent(new CustomEvent('change'));
   };
 
+  /**
+   * Ends what a reader may not hold: an open editor, a draw, the selection, the
+   * hand tool and the dialogs that write, each a close the readonly filter
+   * passes. Table Properties, the diff viewer and the image export stay open.
+   */
+  const closeEditState = () => {
+    store.dispatchSync(
+      editTableEndAction(),
+      editMemoEndAction(),
+      editTableGroupEndAction(),
+      drawEndRelationshipAction(),
+      unselectAllAction$(),
+      changeHandToolAction({ value: false }),
+      changeOpenMapAction(CLOSED_EDIT_DIALOGS)
+    );
+    // The picker is the ERD tab's own state, which no action reaches.
+    emitter.emit(closeColorPickerAction());
+  };
+
+  // One batch, so no peer's setter lands between a setting given back and the
+  // end of its baseline; the viewport, the tab and the name view keep the screen.
+  const restoreScreen = () => {
+    store.dispatchSync(restoreScreenSettingsAction$());
+  };
+
   const destroySet = new Set<Unsubscribe>([
     watch(props).subscribe(propName => {
+      if (propName === 'readonly') {
+        props.readonly ? closeEditState() : restoreScreen();
+        return;
+      }
       if (propName === 'enableLocalePicker') {
         applyLocale();
         return;
@@ -194,6 +238,9 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   ]);
 
   onMounted(() => {
+    // A host that builds the element readonly turns nothing the watch hears.
+    if (props.readonly) closeEditState();
+
     addUnsubscribe(
       store.change$.subscribe(emitChange),
       emitter.on({

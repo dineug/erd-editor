@@ -82,9 +82,12 @@ const FloatingToolbar: FC<FloatingToolbarProps> = (props, ctx) => {
   const nameView = useNameViewDropdown(ctx);
 
   // Select is the plain pointer, so it ends a table group draw armed as well,
-  // which the hand going up ends on its own.
+  // which the hand going up ends on its own. A reader pans by its press rule,
+  // so the hand stays down while readonly.
   const handleHandTool = (value: boolean) => () => {
     const { store } = app.value;
+    if (value && store.getReadonly()) return;
+
     store.dispatch(
       changeHandToolAction({ value }),
       ...(store.state.editor.drawTableGroup

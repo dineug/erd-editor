@@ -4,6 +4,7 @@ import { FC, observable, onMounted, Ref } from '@dineug/r-html';
 import { fromEvent, Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
+import { useSceneInteraction } from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { dragSelectRectAction } from '@/engine/modules/editor/atom.actions';
@@ -31,6 +32,7 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   const themeRef = useThemeContext(ctx);
   const sourceRef = useSceneSource(ctx);
+  const interaction = useSceneInteraction(ctx);
   const state = observable({
     active: false,
     width: 0,
@@ -77,6 +79,13 @@ const DragSelect: FC<DragSelectProps> = (props, ctx) => {
     subscription.add(mouseup$.subscribe(stop));
     subscription.add(
       fromEvent<MouseEvent>($root, 'mousemove').subscribe(event => {
+        // A scene turned read mid drag selects nothing more, as an entity drag
+        // ends there, so a reader holds no selection but what a jump leaves.
+        if (interaction() === 'read') {
+          stop();
+          return;
+        }
+
         event.preventDefault();
         // The placement the scene this marquee sits in is drawn at, so the
         // rect it selects by is in that scene's own coordinates.

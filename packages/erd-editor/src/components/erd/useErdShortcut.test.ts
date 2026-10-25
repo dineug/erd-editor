@@ -782,6 +782,22 @@ describe('useErdShortcut - canvas modes', () => {
     expect(app.store.state.editor.handTool).toBe(false);
   });
 
+  it('takes the hand up in no readonly editor, and does again once writable', async () => {
+    let locked = true;
+    const app = await setup(
+      createTestAppContext({ getReadonly: () => locked })
+    );
+
+    shortcut(app, KeyBindingName.handTool);
+    await flush();
+    expect(app.store.state.editor.handTool).toBe(false);
+
+    locked = false;
+    shortcut(app, KeyBindingName.handTool);
+    await flush();
+    expect(app.store.state.editor.handTool).toBe(true);
+  });
+
   /**
    * The two modes a press on the canvas can mean are exclusive: taking up the
    * hand ends a draw that was armed, so a press is never read as both.

@@ -23,6 +23,7 @@ import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
 import { CanvasType, Language } from '@/constants/schema';
 import {
+  changeHandToolAction,
   changeOpenMapAction,
   changeZenModeAction,
   editMemoAction,
@@ -324,6 +325,39 @@ describe('<erd-editor>', () => {
     el.setAttribute('readonly', 'false');
     await flush();
     expect(el.readonly).toBe(false);
+  });
+
+  it('turns readonly by its attribute, ending the edit state, and gives the screen back once it reads false', async () => {
+    const { el, app } = await createEditor();
+    const { store } = app;
+    const onChange = vi.fn();
+    el.addEventListener('change', onChange);
+    store.dispatchSync(
+      editMemoAction({ id: 'm1' }),
+      changeHandToolAction({ value: true })
+    );
+    const value = el.value;
+    const { language } = store.state.settings;
+    expect(language).not.toBe(Language.Kotlin);
+
+    el.setAttribute('readonly', '');
+    await flush();
+    expect(el.readonly).toBe(true);
+    expect(store.state.editor.editMemoId).toBeNull();
+    expect(store.state.editor.handTool).toBe(false);
+
+    store.dispatchSync(changeLanguageAction({ value: Language.Kotlin }));
+    expect(store.state.settings.language).toBe(Language.Kotlin);
+    expect(el.value).toBe(value);
+
+    el.setAttribute('readonly', 'false');
+    await flush();
+    await new Promise(resolve => setTimeout(resolve, 260));
+
+    expect(el.readonly).toBe(false);
+    expect(store.state.settings.language).toBe(language);
+    expect(el.value).toBe(value);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('reflects the locale picker and welcome screen attributes onto the props, both off by default', async () => {
