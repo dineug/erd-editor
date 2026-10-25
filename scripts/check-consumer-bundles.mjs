@@ -440,7 +440,14 @@ function graphFailures(bundled, forbidden) {
 }
 
 function judge(lane, testCase, bundled, markers, evaluated) {
-  const failures = [...evaluated.errors.map(error => `threw ${error}`)];
+  // r-html logs what a hook, a scheduled task or a reducer throws rather than
+  // throwing it, so a logged error fails a bundle as a thrown one does.
+  const failures = [
+    ...evaluated.errors.map(error => `threw ${error}`),
+    ...evaluated.consoleErrors.map(
+      message => `console.error: ${message.split('\n')[0]}`
+    ),
+  ];
   const defines = [...evaluated.defines].sort();
   const want = [...testCase.tags].sort();
   if (JSON.stringify(defines) !== JSON.stringify(want)) {
@@ -650,9 +657,6 @@ async function main(argv) {
           for (const failure of failures) console.log(`       ${failure}`);
         } else {
           console.log(`pass ${summary}`);
-        }
-        for (const message of evaluated.consoleErrors) {
-          console.log(`       console.error: ${message.split('\n')[0]}`);
         }
       }
     }

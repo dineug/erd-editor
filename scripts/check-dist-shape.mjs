@@ -223,8 +223,8 @@ function checkDeclarations() {
 
 /**
  * Each umd file, run as a classic script on happy-dom: it defines its own tag
- * and no other and leaves exactly its keys on its global. Only the editor's
- * inlines the workers, which the viewer's graph never reaches.
+ * and no other, leaves exactly its keys on its global and logs no error, which
+ * r-html writes for a hook that throws. Only the editor's inlines the workers.
  */
 async function checkUmd() {
   for (const element of ELEMENTS) {
@@ -234,7 +234,12 @@ async function checkUmd() {
       global: element.global,
       scenario: element.inlinesWorkers ? undefined : VIEWER_LOCALE_SCENARIO,
     });
-    const problems = result.errors.map(error => `threw ${error}`);
+    const problems = [
+      ...result.errors.map(error => `threw ${error}`),
+      ...result.consoleErrors.map(
+        message => `console.error: ${message.split('\n')[0]}`
+      ),
+    ];
 
     for (const other of ELEMENTS) {
       const want = other === element;
@@ -258,9 +263,6 @@ async function checkUmd() {
       problems.push(...(await viewerLocaleProblems(code, result.scenario)));
     }
     check(`umd build ${element.umd}`, problems);
-    for (const message of result.consoleErrors) {
-      console.log(`       console.error: ${message.split('\n')[0]}`);
-    }
   }
 }
 
