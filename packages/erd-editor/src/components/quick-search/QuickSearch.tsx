@@ -199,6 +199,10 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     return table ? [keyword, table] : [keyword];
   };
 
+  /** How much of the list shows: its height for so many rows, or less where a short host shrinks it. */
+  const shownHeight = (count: number) =>
+    Math.min(paletteListHeight(count), list.value?.clientHeight || Infinity);
+
   /** Brings the keyboard's row into view once the list holds it, drawn or not. */
   const scrollIntoView = () => {
     nextTick(() => {
@@ -208,7 +212,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
         offsetToShow(
           state.index,
           scroll.top,
-          paletteListHeight(count),
+          shownHeight(count),
           PALETTE_ROW_HEIGHT
         )
       );

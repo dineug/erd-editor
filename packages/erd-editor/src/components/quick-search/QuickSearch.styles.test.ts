@@ -85,6 +85,7 @@ describe('QuickSearch.styles', () => {
 
     expect(text).toContain('flex-direction: column');
     expect(text).toContain('max-width: 600px');
+    expect(text).toContain('max-height: 100%');
     expect(text).toContain('position: relative');
     expect(text).toContain('z-index: 1');
     expect(text).toContain('background-color: var(--context-menu-background)');
@@ -142,11 +143,13 @@ describe('QuickSearch.styles', () => {
     expect(text).toContain('font-family: var(--code-font-family)');
   });
 
-  it('scrolls the result list down, its height set from the rows it holds', () => {
+  it('scrolls the result list down, its height set from the rows it holds and shrunk by a short host', () => {
     const text = staticText(styles.list);
 
     expect(text).toContain('overflow-y: auto');
     expect(text).not.toContain('max-height');
+    expect(text).toContain('flex: 0 1 auto');
+    expect(text).toContain('min-height: 0');
     expect(staticText(styles.space)).toContain('position: relative');
   });
 
