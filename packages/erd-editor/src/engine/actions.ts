@@ -1,3 +1,6 @@
+import type { AnyAction } from '@dineug/r-html';
+
+import { Open } from '@/constants/open';
 import { LockSettingType } from '@/constants/schema';
 import {
   pushStreamHistoryMap,
@@ -217,18 +220,113 @@ export const ReadonlyIgnoreActionTypes: ReadonlyArray<ActionType> = [
   ...ChangeActionTypes.filter(type => !hasReadonlyIgnore(type)),
 ];
 
-const hasViewIgnorePass = arrayHas<ActionType>([
-  'editor.loadJson',
-  'editor.clear',
-]);
+/**
+ * What a readonly editor also refuses, beside its edits: the actions that open
+ * a name or cell editor or start a relationship draw. Each one that closes them
+ * passes, so an editor that turns readonly can still end what stood open.
+ */
+export const EditStateOpenActionTypes: ReadonlyArray<ActionType> = [
+  'editor.editTable',
+  'editor.editMemo',
+  'editor.editTableGroup',
+  'editor.drawStartRelationship',
+  'editor.drawStartAddRelationship',
+];
+
+/** The open map's dialogs that write the document, which a readonly editor opens none of. */
+export const EDIT_OPEN_KEYS: ReadonlyArray<Open> = [
+  Open.mapColumns,
+  Open.automaticTablePlacement,
+  Open.timeTravel,
+];
 
 /**
- * What a view keeps from the document while it is active: every edit a
- * readonly host refuses, less the host replacing the document outright, which
- * a view cannot stand in the way of and answers by closing.
+ * Whether the action opens one of those dialogs: an open map change that sets
+ * one of their keys true. Closing them, or opening one that only reads, as
+ * Table Properties, the diff viewer and the image export do, is not.
+ */
+export const opensEditDialog = ({ type, payload }: AnyAction): boolean =>
+  type === 'editor.changeOpenMap' &&
+  EDIT_OPEN_KEYS.some(key => payload?.[key] === true);
+
+/**
+ * What a view keeps from the document while it is active: every edit of it,
+ * named apart from the readonly lists, so a change to what readonly refuses
+ * never moves what a view lets through. A load or a clear passes; it closes the view.
  */
 export const ViewIgnoreActionTypes: ReadonlyArray<ActionType> = [
-  ...ReadonlyIgnoreActionTypes.filter(type => !hasViewIgnorePass(type)),
+  // table
+  'table.add',
+  'table.move',
+  'table.moveTo',
+  'table.remove',
+  'table.changeName',
+  'table.changeComment',
+  'table.changeColor',
+  'table.changeGroup',
+  'table.sort',
+  'table.changeLogicalName',
+  'table.changeNameDerived',
+  // column
+  'column.add',
+  'column.remove',
+  'column.changeName',
+  'column.changeComment',
+  'column.changeDataType',
+  'column.changeDefault',
+  'column.changeAutoIncrement',
+  'column.changePrimaryKey',
+  'column.changeUnique',
+  'column.changeNotNull',
+  'column.move',
+  'column.changeLogicalName',
+  'column.changeDomain',
+  'column.changeNameDerived',
+  // relationship
+  'relationship.add',
+  'relationship.remove',
+  'relationship.changeType',
+  'relationship.changeOnDelete',
+  'relationship.changeOnUpdate',
+  'relationship.changeColumns',
+  // index
+  'index.add',
+  'index.remove',
+  'index.changeName',
+  'index.changeUnique',
+  // indexColumn
+  'indexColumn.add',
+  'indexColumn.remove',
+  'indexColumn.move',
+  'indexColumn.changeOrderType',
+  // memo
+  'memo.add',
+  'memo.move',
+  'memo.moveTo',
+  'memo.remove',
+  'memo.changeValue',
+  'memo.changeColor',
+  'memo.resize',
+  // tableGroup
+  'tableGroup.add',
+  'tableGroup.move',
+  'tableGroup.moveTo',
+  'tableGroup.remove',
+  'tableGroup.resize',
+  'tableGroup.changeName',
+  'tableGroup.changeColor',
+  // dictionary
+  'dictionary.add',
+  'dictionary.update',
+  'dictionary.remove',
+  // settings
+  'settings.changeDatabaseName',
+  'settings.changeShow',
+  'settings.changeRelationshipDataTypeSync',
+  'settings.changeColumnOrder',
+  'settings.changeMaxWidthComment',
+  'settings.changeLockSettings',
+  'settings.changeDDLScript',
 ];
 
 /**

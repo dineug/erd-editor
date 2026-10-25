@@ -25,6 +25,9 @@ import { CanvasType } from '@/constants/schema';
 import {
   changeOpenMapAction,
   changeZenModeAction,
+  editMemoAction,
+  editMemoEndAction,
+  editTableGroupAction,
 } from '@/engine/modules/editor/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import { MESSAGES } from '@/i18n/messages/index';
@@ -953,6 +956,28 @@ describe('<erd-editor>', () => {
     await new Promise(resolve => setTimeout(resolve, 260));
     expect(onChange).not.toHaveBeenCalled();
     expect(app.store.state.doc.tableIds.length).toBeGreaterThan(0);
+  });
+
+  it('refuses what opens an edit once readonly, and still lets an open one close', async () => {
+    const { el, app } = await createEditor();
+    const { store } = app;
+    store.dispatchSync(editMemoAction({ id: 'm1' }));
+    expect(store.state.editor.editMemoId).toBe('m1');
+
+    el.readonly = true;
+    await flush();
+    store.dispatchSync(
+      editMemoEndAction(),
+      editTableGroupAction({ id: 'g1' }),
+      changeOpenMapAction({ [Open.mapColumns]: true }),
+      changeOpenMapAction({ [Open.themeBuilder]: true })
+    );
+
+    const { editor } = store.state;
+    expect(editor.editMemoId).toBeNull();
+    expect(editor.editTableGroupId).toBeNull();
+    expect(editor.openMap[Open.mapColumns]).toBeFalsy();
+    expect(editor.openMap[Open.themeBuilder]).toBe(true);
   });
 
   it('imports GraphQL SDL and stays quiet while readonly', async () => {

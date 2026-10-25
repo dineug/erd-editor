@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test';
 
+import { Open } from '@/constants/open';
 import { LockSettingType, LockSettingTypeList } from '@/constants/schema';
 import {
   actions,
   type ActionType,
   ChangeActionTypes,
+  EDIT_OPEN_KEYS,
+  EditStateOpenActionTypes,
   HistoryActionTypes,
   LockSettingActionTypes,
   ReadonlyIgnoreActionTypes,
@@ -322,6 +325,88 @@ describe('ReadonlyIgnoreActionTypes', () => {
     expect(ReadonlyIgnoreActionTypes).toContain('column.remove');
     expect(ReadonlyIgnoreActionTypes).toContain('editor.loadJson');
   });
+
+  it('counts sixty-five, every view edit and the two document replacements', () => {
+    expect(ReadonlyIgnoreActionTypes).toHaveLength(65);
+    expect(ReadonlyIgnoreActionTypes).toEqual([
+      ...ViewIgnoreActionTypes,
+      'editor.loadJson',
+      'editor.clear',
+    ]);
+  });
+});
+
+describe('EditStateOpenActionTypes', () => {
+  const CLOSING_TYPES = [
+    'editor.editTableEnd',
+    'editor.editMemoEnd',
+    'editor.editTableGroupEnd',
+    'editor.drawEndRelationship',
+  ];
+
+  it('names the cell, memo text and group name editors and the two steps that start a draw', () => {
+    expect(EditStateOpenActionTypes).toEqual([
+      'editor.editTable',
+      'editor.editMemo',
+      'editor.editTableGroup',
+      'editor.drawStartRelationship',
+      'editor.drawStartAddRelationship',
+    ]);
+  });
+
+  it('extends the readonly list to seventy for the editor, and leaves it sixty-five', () => {
+    const extended = new Set([
+      ...ReadonlyIgnoreActionTypes,
+      ...EditStateOpenActionTypes,
+    ]);
+
+    expect(extended.size).toBe(70);
+    for (const type of EditStateOpenActionTypes) {
+      expect(ReadonlyIgnoreActionTypes).not.toContain(type);
+    }
+  });
+
+  it('are declared by the editor module, with a creator each, in no list that reaches the file, the history, a peer or a view', () => {
+    for (const type of EditStateOpenActionTypes) {
+      expect(allActionTypes.has(type)).toBe(true);
+      expect(atomActionTypes.has(type)).toBe(true);
+      expect(ChangeActionTypes).not.toContain(type);
+      expect(HistoryActionTypes).not.toContain(type);
+      expect(SharedActionTypes).not.toContain(type);
+      expect(ViewIgnoreActionTypes).not.toContain(type);
+    }
+  });
+
+  it('leave out what closes an edit, and the raises of a table, a memo or a group', () => {
+    for (const type of [
+      ...CLOSING_TYPES,
+      'editor.changeOpenMap',
+      'table.changeZIndex',
+      'memo.changeZIndex',
+      'tableGroup.changeZIndex',
+    ]) {
+      expect(allActionTypes.has(type)).toBe(true);
+      expect(EditStateOpenActionTypes).not.toContain(type);
+    }
+  });
+
+  it('pairs with the three dialogs of the open map that write the document', () => {
+    expect(EDIT_OPEN_KEYS).toEqual([
+      Open.mapColumns,
+      Open.automaticTablePlacement,
+      Open.timeTravel,
+    ]);
+    for (const key of [
+      Open.tableProperties,
+      Open.diffViewer,
+      Open.exportImage,
+      Open.search,
+      Open.themeBuilder,
+      Open.localePicker,
+    ]) {
+      expect(EDIT_OPEN_KEYS).not.toContain(key);
+    }
+  });
 });
 
 describe('LockSettingActionTypes', () => {
@@ -358,14 +443,85 @@ describe('LockSettingActionTypes', () => {
 });
 
 describe('ViewIgnoreActionTypes', () => {
-  it('is ReadonlyIgnoreActionTypes minus the two document replacements', () => {
+  const VIEW_IGNORED = [
+    'table.add',
+    'table.move',
+    'table.moveTo',
+    'table.remove',
+    'table.changeName',
+    'table.changeComment',
+    'table.changeColor',
+    'table.changeGroup',
+    'table.sort',
+    'table.changeLogicalName',
+    'table.changeNameDerived',
+    'column.add',
+    'column.remove',
+    'column.changeName',
+    'column.changeComment',
+    'column.changeDataType',
+    'column.changeDefault',
+    'column.changeAutoIncrement',
+    'column.changePrimaryKey',
+    'column.changeUnique',
+    'column.changeNotNull',
+    'column.move',
+    'column.changeLogicalName',
+    'column.changeDomain',
+    'column.changeNameDerived',
+    'relationship.add',
+    'relationship.remove',
+    'relationship.changeType',
+    'relationship.changeOnDelete',
+    'relationship.changeOnUpdate',
+    'relationship.changeColumns',
+    'index.add',
+    'index.remove',
+    'index.changeName',
+    'index.changeUnique',
+    'indexColumn.add',
+    'indexColumn.remove',
+    'indexColumn.move',
+    'indexColumn.changeOrderType',
+    'memo.add',
+    'memo.move',
+    'memo.moveTo',
+    'memo.remove',
+    'memo.changeValue',
+    'memo.changeColor',
+    'memo.resize',
+    'tableGroup.add',
+    'tableGroup.move',
+    'tableGroup.moveTo',
+    'tableGroup.remove',
+    'tableGroup.resize',
+    'tableGroup.changeName',
+    'tableGroup.changeColor',
+    'dictionary.add',
+    'dictionary.update',
+    'dictionary.remove',
+    'settings.changeDatabaseName',
+    'settings.changeShow',
+    'settings.changeRelationshipDataTypeSync',
+    'settings.changeColumnOrder',
+    'settings.changeMaxWidthComment',
+    'settings.changeLockSettings',
+    'settings.changeDDLScript',
+  ];
+
+  it('names sixty-three edits of the document, in the order of the change types', () => {
+    expect(ViewIgnoreActionTypes).toEqual(VIEW_IGNORED);
+    expect(ViewIgnoreActionTypes).toHaveLength(63);
+  });
+
+  it('holds every change but the readonly passes and the two document replacements', () => {
     expect(ViewIgnoreActionTypes).toEqual(
-      ReadonlyIgnoreActionTypes.filter(
-        type => type !== 'editor.loadJson' && type !== 'editor.clear'
+      ChangeActionTypes.filter(
+        type =>
+          !READONLY_IGNORED.includes(type) &&
+          type !== 'editor.loadJson' &&
+          type !== 'editor.clear'
       )
-    );
-    expect(ViewIgnoreActionTypes.length).toBe(
-      ReadonlyIgnoreActionTypes.length - 2
     );
   });
 

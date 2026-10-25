@@ -2,6 +2,7 @@ import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { Open } from '@/constants/open';
 import {
   BracketType,
   CanvasType,
@@ -9,6 +10,7 @@ import {
   Language,
   LockSettingType,
   NameCase,
+  RelationshipType,
   Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
@@ -26,8 +28,19 @@ import {
 } from '@/engine/modules/dictionary/generator.actions';
 import { isListed } from '@/engine/modules/dictionary/membership';
 import {
+  changeOpenMapAction,
   clearAction,
+  drawEndRelationshipAction,
+  drawStartAddRelationshipAction,
+  drawStartRelationshipAction,
+  editMemoAction,
+  editMemoEndAction,
+  editTableAction,
+  editTableEndAction,
+  editTableGroupAction,
+  editTableGroupEndAction,
   focusColumnAction,
+  focusTableAction,
   loadJsonAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -73,6 +86,7 @@ import {
   changeTableColorAction,
   changeTableGroupAction,
   changeTableNameAction,
+  changeZIndexAction as changeTableZIndexAction,
   moveTableAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
@@ -1673,6 +1687,130 @@ describe('createRxStore', () => {
       readonly = true;
       store.redo();
       expect(store.state.doc.tableIds).toEqual([]);
+    });
+  });
+
+  describe('readonly, on a store that also refuses what opens an edit', () => {
+    /** Every way to open an edit, on the table t1, and two dialogs that only read. */
+    const openingActions = () => [
+      focusTableAction({ tableId: 't1', focusType: FocusType.tableName }),
+      editTableAction(),
+      editMemoAction({ id: 'm1' }),
+      editTableGroupAction({ id: 'g1' }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN }),
+      changeOpenMapAction({ [Open.mapColumns]: true }),
+      changeOpenMapAction({ [Open.automaticTablePlacement]: true }),
+      changeOpenMapAction({ [Open.timeTravel]: true }),
+      changeOpenMapAction({ [Open.tableProperties]: true }),
+      changeOpenMapAction({ [Open.diffViewer]: true }),
+    ];
+
+    function setup({ readonlyEditState = true } = {}) {
+      let readonly = false;
+      const store = make(createContext(), {
+        getReadonly: () => readonly,
+        readonlyEditState,
+      });
+      store.dispatchSync(addTable('t1'));
+      return {
+        store,
+        setReadonly: (value: boolean) => {
+          readonly = value;
+        },
+      };
+    }
+
+    it('drops each opening and keeps the focus and the dialogs that only read', () => {
+      const { store, setReadonly } = setup();
+      setReadonly(true);
+
+      store.dispatchSync(...openingActions());
+
+      const { editor } = store.state;
+      expect(editor.focusTable?.tableId).toBe('t1');
+      expect(editor.focusTable?.edit).toBe(false);
+      expect(editor.editMemoId).toBeNull();
+      expect(editor.editTableGroupId).toBeNull();
+      expect(editor.drawRelationship).toBeNull();
+      expect(editor.openMap[Open.mapColumns]).toBeFalsy();
+      expect(editor.openMap[Open.automaticTablePlacement]).toBeFalsy();
+      expect(editor.openMap[Open.timeTravel]).toBeFalsy();
+      expect(editor.openMap[Open.tableProperties]).toBe(true);
+      expect(editor.openMap[Open.diffViewer]).toBe(true);
+      expect(store.history.size).toBe(1);
+    });
+
+    it('lets each close through, so what stood open as it turned readonly ends', () => {
+      const { store, setReadonly } = setup();
+      store.dispatchSync(...openingActions());
+      setReadonly(true);
+
+      store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
+      expect(store.state.editor.drawRelationship?.start).toBeNull();
+
+      store.dispatchSync(
+        editTableEndAction(),
+        editMemoEndAction(),
+        editTableGroupEndAction(),
+        drawEndRelationshipAction(),
+        changeOpenMapAction({
+          [Open.mapColumns]: false,
+          [Open.automaticTablePlacement]: false,
+          [Open.timeTravel]: false,
+        })
+      );
+
+      const { editor } = store.state;
+      expect(editor.focusTable?.edit).toBe(false);
+      expect(editor.editMemoId).toBeNull();
+      expect(editor.editTableGroupId).toBeNull();
+      expect(editor.drawRelationship).toBeNull();
+      expect(editor.openMap[Open.mapColumns]).toBe(false);
+      expect(editor.openMap[Open.automaticTablePlacement]).toBe(false);
+      expect(editor.openMap[Open.timeTravel]).toBe(false);
+      expect(editor.openMap[Open.tableProperties]).toBe(true);
+    });
+
+    it('still raises a table, which writes no document', () => {
+      const { store, setReadonly } = setup();
+      setReadonly(true);
+
+      store.dispatchSync(changeTableZIndexAction({ id: 't1', zIndex: 9 }));
+
+      expect(store.state.collections.tableEntities.t1.ui.zIndex).toBe(9);
+    });
+
+    it('opens each edit while it is writable', () => {
+      const { store } = setup();
+
+      store.dispatchSync(...openingActions());
+      store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
+
+      const { editor } = store.state;
+      expect(editor.focusTable?.edit).toBe(true);
+      expect(editor.editMemoId).toBe('m1');
+      expect(editor.editTableGroupId).toBe('g1');
+      expect(editor.drawRelationship?.start?.tableId).toBe('t1');
+      expect(editor.openMap[Open.mapColumns]).toBe(true);
+      expect(editor.openMap[Open.automaticTablePlacement]).toBe(true);
+      expect(editor.openMap[Open.timeTravel]).toBe(true);
+    });
+
+    it('opens each edit in a readonly store that does not ask for it', () => {
+      const { store, setReadonly } = setup({ readonlyEditState: false });
+      setReadonly(true);
+
+      store.dispatchSync(...openingActions());
+      store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
+
+      const { editor } = store.state;
+      expect(editor.focusTable?.edit).toBe(true);
+      expect(editor.editMemoId).toBe('m1');
+      expect(editor.editTableGroupId).toBe('g1');
+      expect(editor.drawRelationship?.start?.tableId).toBe('t1');
+      expect(editor.openMap[Open.mapColumns]).toBe(true);
+      expect(editor.openMap[Open.automaticTablePlacement]).toBe(true);
+      expect(editor.openMap[Open.timeTravel]).toBe(true);
     });
   });
 

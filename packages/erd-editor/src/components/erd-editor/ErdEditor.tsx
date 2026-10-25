@@ -178,7 +178,7 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
   const getReadonly = () => props.readonly;
   const appContextValue = createAppContext(
     { toWidth: text.toWidth },
-    { getReadonly }
+    { getReadonly, readonlyEditState: true }
   );
   // The host hands the document over before the ResizeObserver below has
   // measured anything, and a load pulled against the store's default size

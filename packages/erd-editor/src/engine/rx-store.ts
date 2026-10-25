@@ -15,7 +15,9 @@ import {
 
 import {
   ChangeActionTypes,
+  EditStateOpenActionTypes,
   HistoryActionTypes,
+  opensEditDialog,
   StreamActionTypes,
   StreamRegroupColorActionTypes,
   StreamRegroupMoveActionTypes,
@@ -76,6 +78,12 @@ export type RxStore = Store & {
 
 export type RxStoreOptions = {
   getReadonly?: () => boolean;
+  /**
+   * While readonly, also drops what opens an edit: a name or cell editor, a
+   * relationship draw and a dialog that writes the document. Only the editor
+   * element's store sets it; the viewer's and the diff panes' leave it off.
+   */
+  readonlyEditState?: boolean;
   getHistory?: (options: HistoryOptions) => History;
   /** Closes stream buffers on flushStreamBuffers() instead of after 200 ms. */
   manualStreamFlush?: boolean;
@@ -101,6 +109,7 @@ export function createRxStore(
   context: EngineContext,
   {
     getReadonly = () => false,
+    readonlyEditState = false,
     getHistory,
     manualStreamFlush = false,
     observable = true,
@@ -288,7 +297,12 @@ export function createRxStore(
     .add(
       redirected$
         .pipe(
-          readonlyIgnoreFilter(getReadonly, [Tag.shared]),
+          readonlyIgnoreFilter(
+            getReadonly,
+            [Tag.shared],
+            readonlyEditState ? EditStateOpenActionTypes : [],
+            readonlyEditState ? opensEditDialog : undefined
+          ),
           viewIgnoreFilter(getView, [Tag.shared])
         )
         .subscribe(store.dispatchSync)
