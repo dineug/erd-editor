@@ -1,53 +1,53 @@
 {
-  "baseCommit": "0447c2ae9182c83b898a59e5fb0cf1ec48e76eaf",
-  "recordedAt": "2026-10-24T17:03:28.493Z",
+  "baseCommit": "9330a940257291a8542faccd007f4d3bd0dbe670",
+  "recordedAt": "2026-10-25T12:48:55.631Z",
   "gzipLevel": 9,
   "entries": {
     ".": {
-      "bytes": 2360264,
-      "gzip": 639857,
+      "bytes": 2376588,
+      "gzip": 651037,
       "lazyGzip": 0,
       "budgetGzip": null,
       "budgetNote": null
     },
     "./erd-editor.js": {
-      "bytes": 2359154,
-      "gzip": 639567,
+      "bytes": 2363696,
+      "gzip": 641703,
       "lazyGzip": 0,
       "budgetGzip": 800000,
       "budgetNote": "800,000 B set by the owner (2026-10-21) when logical names and the word, term and domain dictionaries landed with the Dictionary tab on @dineug/grid. They measure 671,645 B against main's 593,899 B: about 19.5 kB for the grid, 19.3 kB for the dictionaries, 17.5 kB for their strings in 24 languages, and about 12 kB for logical names and domains through the engine, the canvas and the document schema. The budget stays a regression watch with room for the features after these, not a measured margin. The measurement moved from the dist union to per-entry consumer bundles; to be re-pinned."
     },
     "./erd-viewer.js": {
-      "bytes": 71476,
-      "gzip": 22027,
-      "lazyGzip": 0,
+      "bytes": 553045,
+      "gzip": 170194,
+      "lazyGzip": 168209,
       "budgetGzip": null,
       "budgetNote": null
     },
     "./engine.js": {
-      "bytes": 294895,
-      "gzip": 84515,
+      "bytes": 293441,
+      "gzip": 84074,
       "lazyGzip": 0,
       "budgetGzip": null,
       "budgetNote": null
     },
     "./peer.js": {
-      "bytes": 351745,
-      "gzip": 100461,
+      "bytes": 351675,
+      "gzip": 101075,
       "lazyGzip": 0,
       "budgetGzip": null,
       "budgetNote": null
     },
     "umd:erd-editor": {
-      "bytes": 5866285,
-      "gzip": 1533625,
+      "bytes": 5871394,
+      "gzip": 1533623,
       "lazyGzip": 0,
       "budgetGzip": null,
       "budgetNote": null
     },
     "umd:erd-viewer": {
-      "bytes": 71672,
-      "gzip": 22440,
+      "bytes": 1517711,
+      "gzip": 412573,
       "lazyGzip": 0,
       "budgetGzip": null,
       "budgetNote": null
