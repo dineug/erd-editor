@@ -170,9 +170,12 @@ export type CreateSchemaSQLOptions = SchemaSQLOptions & {
 };
 
 /**
- * The DDL of the document in a database, the document's own by default: the
- * header, the before script, the DROP block, the tables and the after script.
- * Given table ids, only those tables, their indexes and foreign keys.
+ * The DDL of the document in the bracket the state shows: the header, the
+ * before script, the DROP block, the tables and the after script. Given table
+ * ids, only those tables, their indexes and foreign keys.
+ *
+ * @param database Left out, the one the state shows: the document's, unless a
+ * readonly reader picked another on their screen.
  */
 export function createSchemaSQL(
   state: RootState,

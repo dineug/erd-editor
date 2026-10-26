@@ -83,6 +83,53 @@ describe("a readonly editor's Schema SQL tab over a document with its locks off"
     await editor.expectDocumentKept();
   });
 
+  it('captions the database and the bracket This window only while readonly, and as the document saves them once writable', async () => {
+    const editor = await openReadonlyEditor();
+    await editor.openTab('Schema SQL');
+    const captionOf = () => {
+      const group = panelOf(editor).querySelector('section[role="group"]')!;
+      expect(group.querySelector('#schema-sql-database')).not.toBeNull();
+      return [
+        group.getAttribute('aria-label'),
+        group.firstElementChild?.textContent,
+      ];
+    };
+    expect(captionOf()).toEqual(['This window only', 'This window only']);
+
+    editor.el.readonly = false;
+    await drawn();
+    expect(captionOf()).toEqual([
+      'Saved in the document',
+      'Saved in the document',
+    ]);
+
+    editor.el.readonly = true;
+    await drawn();
+    expect(captionOf()).toEqual(['This window only', 'This window only']);
+  });
+
+  it("writes getSchemaSQL's default in the database and the bracket this screen shows, the document's once writable again", async () => {
+    const editor = await openReadonlyEditor();
+    const { el } = editor;
+    const documentDDL = el.getSchemaSQL();
+    expect(documentDDL).toBe(el.getSchemaSQL('MySQL'));
+    expect(documentDDL).toContain('CREATE TABLE users');
+
+    await editor.openTab('Schema SQL');
+    await choose(editor, 'schema-sql-database', Database.PostgreSQL);
+    await choose(editor, 'schema-sql-bracket', BracketType.doubleQuote);
+    const shown = el.getSchemaSQL();
+    expect(shown).toBe(el.getSchemaSQL('PostgreSQL'));
+    expect(shown).toContain('CREATE TABLE "users"');
+    expect(shown).not.toBe(documentDDL);
+    expect(documentSettings(editor)).toEqual(SEED);
+    await editor.expectDocumentKept();
+
+    el.readonly = false;
+    await drawn();
+    expect(el.getSchemaSQL()).toBe(documentDDL);
+  });
+
   it("takes every choice of the window's own, which the document never holds", async () => {
     const editor = await openReadonlyEditor();
     await editor.openTab('Schema SQL');

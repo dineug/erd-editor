@@ -156,9 +156,9 @@ export interface ErdEditorElement extends ErdEditorProps, HTMLElement {
   setSchemaAML: SetSchema;
   setSchemaJSON: (value: string, options?: SchemaJSONImportOptions) => void;
   /**
-   * The document's DDL: the vendor given or the document's own, created as
-   * the options ask, a choice the vendor lacks falling back as the Schema SQL
-   * tab does; the document's before and after scripts are always in it.
+   * The DDL in the vendor given, else the database this editor shows, in the
+   * bracket it shows, as the options ask, a choice the vendor lacks falling
+   * back as the Schema SQL tab does; the before and after scripts are in it.
    */
   getSchemaSQL: (
     databaseVendor?: DatabaseVendor,
@@ -410,7 +410,10 @@ const ErdEditor: FC<ErdEditorProps, ErdEditorElement> = (props, ctx) => {
             </div>
           ) : settings.canvasType === CanvasType.generatorCode ? (
             <div class={styles.scope}>
-              <GeneratorCode isDarkMode={isDarkMode} />
+              <GeneratorCode
+                isDarkMode={isDarkMode}
+                readonly={props.readonly}
+              />
             </div>
           ) : settings.canvasType === CanvasType.dictionary ? (
             <div class={styles.scope}>

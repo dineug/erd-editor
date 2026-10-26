@@ -284,6 +284,11 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
     });
     const scripts = settings.ddlScripts;
     const theme = props.isDarkMode ? 'dark' : 'light';
+    // A readonly reader's database and bracket turn their own screen alone,
+    // which no file, peer or change event hears.
+    const settingsCaption = props.readonly
+      ? t('schemaSql.thisWindowOnly')
+      : t('code.savedInDocument');
     const warning =
       resolved.statements === SchemaSQLStatements.recreate
         ? formatDropWarning(i18n.value, settings.database, props.tables)
@@ -346,9 +351,9 @@ const SchemaSQLOptions: FC<SchemaSQLOptionsProps> = (props, ctx) => {
           <section
             class={styles.group}
             role="group"
-            aria-label={t('code.savedInDocument')}
+            aria-label={settingsCaption}
           >
-            <span class={styles.caption}>{t('code.savedInDocument')}</span>
+            <span class={styles.caption}>{settingsCaption}</span>
             <div class={styles.row}>
               <label prop:htmlFor="schema-sql-database">
                 {t('common.database')}

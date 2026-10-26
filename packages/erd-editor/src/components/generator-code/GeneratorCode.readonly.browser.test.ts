@@ -94,6 +94,32 @@ describe("a readonly editor's Code Generator tab over a document with its locks 
     await editor.expectDocumentKept();
   });
 
+  it('captions the settings This window only while readonly, and as the document saves them once writable', async () => {
+    const editor = await openReadonlyEditor();
+    await editor.openTab('Code Generator');
+    const captionOf = () => {
+      const group = editor.shadow.querySelector(
+        '.generator-code-options section[role="group"]'
+      )!;
+      return [
+        group.getAttribute('aria-label'),
+        group.firstElementChild?.textContent,
+      ];
+    };
+    expect(captionOf()).toEqual(['This window only', 'This window only']);
+
+    editor.el.readonly = false;
+    await drawn();
+    expect(captionOf()).toEqual([
+      'Saved in the document',
+      'Saved in the document',
+    ]);
+
+    editor.el.readonly = true;
+    await drawn();
+    expect(captionOf()).toEqual(['This window only', 'This window only']);
+  });
+
   it('copies and saves the code this screen shows, the document left as it was', async () => {
     const editor = await openReadonlyEditor();
     await editor.openTab('Code Generator');
