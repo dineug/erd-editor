@@ -3,6 +3,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
 import { getVisibleIds } from '@/konva/scene/viewLayout';
+import { MIN_STUB, PATH_LINE_HEIGHT } from '@/utils/draw-relationship';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { isHorizontal, outwardSign } from '@/utils/draw-relationship/stub';
@@ -19,6 +20,11 @@ const BLOCK_COST = 100_000;
 const MAX_CHANNELS = 6;
 /** Upper bound on channel pairs tried when the two anchors face different axes. */
 const MAX_MIXED = 4;
+/**
+ * How far a route may turn back over its own stub and still clear the markers:
+ * the shortest stub ends this far past the guide line's start.
+ */
+const BACKTRACK_ALLOWANCE = MIN_STUB - PATH_LINE_HEIGHT;
 
 export type Obstacles = {
   ids: string[];
@@ -197,6 +203,15 @@ function channels(
 type Candidate = { points: Point[]; bends: number };
 
 /**
+ * Gives an empty list of outward lanes one, a clearance out from the turning
+ * point, so a route between two sides on different axes always has a corner
+ * that leaves and arrives outward rather than none.
+ */
+function stepOut(lanes: number[], from: number, sign: number) {
+  if (!lanes.length) lanes.push(from + sign * ROUTE_CLEARANCE);
+}
+
+/**
  * Builds the candidate polylines for one pair of turning points. A route may
  * only leave and arrive heading outward from its table or it doubles back
  * through the cardinality guide line, which is what the tests below check.
@@ -286,6 +301,15 @@ function candidates(
     const ys = channels(m.y, l.y, obstacles, false, spanLow, spanHigh)
       .filter(y => (y - l.y) * lSign >= 0)
       .slice(0, MAX_MIXED);
+    if (!xs.length || !ys.length) {
+      const middle = (m.x + l.x) / 2;
+      if ((middle - m.x) * mSign > -BACKTRACK_ALLOWANCE) {
+        push([m, { x: middle, y: m.y }, { x: middle, y: l.y }, l]);
+      } else {
+        stepOut(xs, m.x, mSign);
+        stepOut(ys, l.y, lSign);
+      }
+    }
     for (const x of xs) {
       for (const y of ys) {
         push([m, { x, y: m.y }, { x, y }, { x: l.x, y }, l]);
@@ -301,6 +325,15 @@ function candidates(
     const xs = channels(m.x, l.x, obstacles, true, spanLow, spanHigh)
       .filter(x => (x - l.x) * lSign >= 0)
       .slice(0, MAX_MIXED);
+    if (!xs.length || !ys.length) {
+      const middle = (m.y + l.y) / 2;
+      if ((middle - m.y) * mSign > -BACKTRACK_ALLOWANCE) {
+        push([m, { x: m.x, y: middle }, { x: l.x, y: middle }, l]);
+      } else {
+        stepOut(ys, m.y, mSign);
+        stepOut(xs, l.x, lSign);
+      }
+    }
     for (const y of ys) {
       for (const x of xs) {
         push([m, { x: m.x, y }, { x, y }, { x, y: l.y }, l]);

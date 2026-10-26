@@ -268,6 +268,85 @@ describe('routeOrthogonal', () => {
     expect(points[points.length - 1]).toEqual(rightFacing);
   });
 
+  it('steps out of a side when no lane lies outward of it', () => {
+    // A 134 x 30 table at the origin and one 60 up and 80 right of it: every
+    // lane the router knows sits behind the right-facing end, so it used to
+    // fall back to a route that ran 5.5 back over that end's markers.
+    const boxes = obstacles([
+      { id: 'a', left: 2, top: 2, right: 132, bottom: 28 },
+      { id: 'b', left: 82, top: -58, right: 212, bottom: -32 },
+    ]);
+
+    const points = routeOrthogonal(
+      { x: 158, y: 15 },
+      Direction.right,
+      { x: 147, y: -6 },
+      Direction.bottom,
+      boxes,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 158, y: 15 },
+      { x: 174, y: 15 },
+      { x: 174, y: 4.5 },
+      { x: 147, y: 4.5 },
+      { x: 147, y: -6 },
+    ]);
+  });
+
+  it('keeps the two-bend route when it turns back less than the stub clears', () => {
+    // Two pixels back over a 24 stub still ends past the 21 the markers take.
+    const boxes = obstacles([
+      { id: 'a', left: 2, top: 2, right: 132, bottom: 28 },
+      { id: 'b', left: 89, top: -58, right: 219, bottom: -32 },
+    ]);
+
+    const points = routeOrthogonal(
+      { x: 158, y: 15 },
+      Direction.right,
+      { x: 154, y: -6 },
+      Direction.bottom,
+      boxes,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 158, y: 15 },
+      { x: 156, y: 15 },
+      { x: 156, y: -6 },
+      { x: 154, y: -6 },
+    ]);
+  });
+
+  it('steps out of a top or bottom side the same way', () => {
+    // The same layout turned a quarter, so the start leaves downwards.
+    const boxes = obstacles([
+      { id: 'a', left: 2, top: 2, right: 28, bottom: 132 },
+      { id: 'b', left: -58, top: 82, right: -32, bottom: 212 },
+    ]);
+
+    const points = routeOrthogonal(
+      { x: 15, y: 158 },
+      Direction.bottom,
+      { x: -6, y: 147 },
+      Direction.right,
+      boxes,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 15, y: 158 },
+      { x: 15, y: 174 },
+      { x: 4.5, y: 174 },
+      { x: 4.5, y: 147 },
+      { x: -6, y: 147 },
+    ]);
+  });
+
   it('joins two ends that face different axes with a single bend when it can', () => {
     // The end turning point is above its anchor, so a route arriving from above
     // carries straight on into the guide line. Below, the same corner would
