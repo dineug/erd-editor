@@ -102,6 +102,7 @@ These are owner decisions of 2026-10-09.
 ## Testing Requirements
 
 - **`GeneratorCode.test.ts`** holds the snapshot rule, the 640 px fold, the focus hand-over, Save file and Copy, and the one table Table Properties shows.
+- **`GeneratorCode.readonly.browser.test.ts`** runs in real Chromium on a readonly element over a document with every lock off. Each list rewrites the code on that screen alone while `value`, `runtimeValue`, a peer and the `change` event keep the document's settings, and Copy and Save file take the code shown.
 - **`generatorCodeView.test.ts`** holds the view's first value, one view per editor, its fold apart from the Schema SQL tab's, and `toggleGeneratorCodePanel`.
 - **`languageSettings.test.ts`** holds the settings each language follows and `codeFileExtension`, `.txt` included.
 - **`generator-code-options/GeneratorCodeOptions.test.ts`** holds the panel's settings, the dimmed settings and their note, the left-to-right mark, the panel with no lock, and its Save file and Copy.

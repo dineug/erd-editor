@@ -484,6 +484,43 @@ describe('ErdView - the press and the light (AC-V6)', () => {
     await click(view.stage, BARE);
     expect(view.app.store.state.editor.selectedMap).toEqual({});
   });
+
+  it('raises the table a palette jump lands on above every other, in its store and on the canvas, and keeps no screen apart from the document', async () => {
+    const view = await mountView();
+    const { tableEntities, memoEntities } = view.app.store.state.collections;
+    const highestOfTheRest = () =>
+      Math.max(
+        tableEntities.orders.ui.zIndex,
+        tableEntities.notes.ui.zIndex,
+        memoEntities.memo.ui.zIndex
+      );
+    const drawnAbove = () =>
+      view.stage.findOne('#table-users')!.zIndex() >
+      view.stage.findOne('#table-orders')!.zIndex();
+    expect(tableEntities.users.ui.zIndex).toBeLessThan(highestOfTheRest());
+    expect(drawnAbove()).toBe(false);
+
+    view.root.focus();
+    chord(view.root, 'k', 'KeyK', true);
+    await settle();
+    const input = view.shadow.querySelector<HTMLInputElement>(
+      '.quick-search input'
+    )!;
+    input.value = '#users';
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await settle();
+    view.shadow
+      .querySelector('.quick-search-row')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+
+    expect(tableEntities.users.ui.zIndex).toBeGreaterThan(highestOfTheRest());
+    expect(drawnAbove()).toBe(true);
+    // A store built with the editor's readonly option would keep the
+    // document's viewport aside under the screen the fit and the jump moved.
+    expect(view.app.store.readonlyEditState).toBe(false);
+    expect(view.app.store.state.editor.screenBaseline).toBeNull();
+  });
 });
 
 /**

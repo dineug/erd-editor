@@ -1018,6 +1018,38 @@ describe('the Flow mode of the visualization tab', () => {
     expect(moved.b).toEqual(landed.b);
   });
 
+  it('selects and raises the card a press lands on in a readonly editor as in any other, and moves it on the view alone', async () => {
+    const flags = { readonly: false };
+    const app = createTestAppContext({
+      getReadonly: () => flags.readonly,
+      readonlyEditState: true,
+    });
+    seed(app);
+    flags.readonly = true;
+    const mounted = await mountVisualization(app);
+    await enterFlow(mounted);
+    const { tableEntities } = app.store.state.collections;
+    const highestOfTheRest = () =>
+      Math.max(...['b', 'c', 'd'].map(id => tableEntities[id].ui.zIndex));
+    const landed = positionsOf(app)!;
+    const documentUi = { ...tableEntities.a.ui };
+    expect(documentUi.zIndex).toBeLessThan(highestOfTheRest());
+
+    await clickTable('a');
+
+    expect(Object.keys(app.store.state.editor.selectedMap)).toEqual(['a']);
+    expect(tableEntities.a.ui.zIndex).toBeGreaterThan(highestOfTheRest());
+
+    fireScenePointer(bodyOf('a'), 'mousedown', { clientX: 100, clientY: 100 });
+    movePointer(160, 180);
+    releasePointer();
+    await settle();
+
+    expect(positionsOf(app)!.a).not.toEqual(landed.a);
+    expect(tableEntities.a.ui.x).toBe(documentUi.x);
+    expect(tableEntities.a.ui.y).toBe(documentUi.y);
+  });
+
   it('pins the light on a click of the table icon, which is no button', async () => {
     const app = createTestAppContext();
     seed(app);
