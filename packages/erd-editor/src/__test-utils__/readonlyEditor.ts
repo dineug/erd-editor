@@ -77,8 +77,12 @@ export async function drawn() {
   }
 }
 
-/** Past the outbound pipe's stream window and the change event's, both 200 ms. */
-const pastTheWindows = () => new Promise(resolve => setTimeout(resolve, 260));
+/**
+ * Past the change event's 200 ms debounce, which no signal outside the store
+ * marks; the outbound pipe's two stream stages are flushed instead.
+ */
+const pastTheChangeWindow = () =>
+  new Promise(resolve => setTimeout(resolve, 260));
 
 const teardowns: Array<() => void> = [];
 
@@ -173,8 +177,11 @@ export async function openReadonlyEditor({
       await drawn();
     },
     expectDocumentKept: async () => {
-      await pastTheWindows();
+      await pastTheChangeWindow();
       await drawn();
+      // A pan or a zoom the pipe still holds would reach the peer only after
+      // both of its 200 ms stages, so it is sent now, and the peer takes it.
+      sharedStore.flushStreamBuffers();
 
       expect(el.value).toBe(value);
       expect(el.runtimeValue).toBe(runtimeValue);

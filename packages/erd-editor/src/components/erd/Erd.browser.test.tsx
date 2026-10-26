@@ -2087,12 +2087,11 @@ describe('Erd - a readonly editor reads its scene', () => {
     expect(lift.defaultPrevented).toBe(true);
   });
 
-  it('lets a diff pane press select as it does in an editor, and pans nothing under it', async () => {
+  it("lets a diff pane press select in its pane as it does in an editor, the reader's own selection left empty", async () => {
     const reader = await mountReader();
     const { app, stage } = reader;
     app.emitter.emit(openDiffViewerAction({ value: toJson(app.store.state) }));
     await settleScene();
-    const before = originOf(reader);
 
     const [pane] = stages.filter(
       candidate =>
@@ -2102,8 +2101,33 @@ describe('Erd - a readonly editor reads its scene', () => {
 
     expect(pane.findOne('#table-users')!.getAttr('selected')).toBe(true);
     expect(app.store.state.editor.selectedMap).toEqual({});
-    expect(originOf(reader)).toEqual(before);
   });
+
+  it.each([
+    ['the diff viewer', openDiffViewer],
+    [
+      'Table Properties',
+      ({ emitter, store }: AppContext) => {
+        emitter.emit(openTablePropertiesAction({ tableId: 'users' }));
+        store.dispatchSync(
+          changeOpenMapAction({ [Open.tableProperties]: true })
+        );
+      },
+    ],
+  ])(
+    'pans nothing for a drag its own stage takes while %s stands over it',
+    async (_, open) => {
+      const reader = await mountReader();
+      const { app, stage } = reader;
+      open(app);
+      await settleScene();
+      const before = originOf(reader);
+
+      await dragFrom(stage, bareOf(stage), { x: -200, y: 150 });
+
+      expect(originOf(reader)).toEqual(before);
+    }
+  );
 });
 
 /** Every control that edits is gone from the scene, and the colour edges take no press. */

@@ -66,6 +66,7 @@ const quickSearch = vi.hoisted(() => ({
   props: null as null | {
     appearance?: string;
     locale?: string;
+    readonly?: boolean;
     topLevel?: unknown;
   },
 }));
@@ -570,6 +571,20 @@ describe('<erd-editor>', () => {
     el.enableThemeBuilder = false;
     await flush();
     expect(quickSearch.props?.appearance).toBeUndefined();
+  });
+
+  it('hands the palette the readonly it holds, as it turns and as it turns back', async () => {
+    const { el } = await createEditor();
+    expect(quickSearch.props).not.toBeNull();
+    expect(quickSearch.props?.readonly).toBeFalsy();
+
+    el.readonly = true;
+    await flush();
+    expect(quickSearch.props?.readonly).toBe(true);
+
+    el.readonly = false;
+    await flush();
+    expect(quickSearch.props?.readonly).toBe(false);
   });
 
   it('feeds root keydown events into the shared keydown stream', async () => {

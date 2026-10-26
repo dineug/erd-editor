@@ -387,6 +387,25 @@ describe('createSharedStore', () => {
       expect(fixture.store.state.collections.tableEntities.t1.ui.x).toBe(240);
     });
 
+    it('sends none of a history replay made while readonly, which reaches the store past both state filters', () => {
+      vi.useFakeTimers();
+      const fixture = makeReadonly();
+      fixture.store.dispatchSync(addTable('t2'));
+      vi.advanceTimersByTime(400);
+      expect(fixture.types()).toEqual(['table.add']);
+      fixture.reset();
+      fixture.setReadonly(true);
+
+      // Time Travel's Apply steps the history itself, past the readonly guard
+      // of the store's own undo.
+      fixture.store.history.undo();
+      // A quiet period on each side of the circuit breaker.
+      vi.advanceTimersByTime(400);
+
+      expect(fixture.seen).toEqual([]);
+      expect(fixture.store.state.doc.tableIds).toEqual(['t1']);
+    });
+
     it('sends none of what its screen takes back once writable, and leads its next pan with where the screen stands', () => {
       vi.useFakeTimers();
       const fixture = makeReadonly();
