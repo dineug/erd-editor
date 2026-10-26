@@ -2271,7 +2271,8 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
     const { app, props } = await setup({}, { wired: true });
     const closeColorPicker = vi.fn();
     const dragendColumnAll = vi.fn();
-    app.emitter.on({ closeColorPicker, dragendColumnAll });
+    const duplicateDragCancel = vi.fn();
+    app.emitter.on({ closeColorPicker, dragendColumnAll, duplicateDragCancel });
     openEditState(app);
     app.store.dispatchSync(
       scrollToAction({ originX: -120, originY: 80 }),
@@ -2286,6 +2287,7 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
     expectEditStateClosed(app);
     expect(closeColorPicker).toHaveBeenCalledTimes(1);
     expect(dragendColumnAll).toHaveBeenCalledTimes(1);
+    expect(duplicateDragCancel).toHaveBeenCalledTimes(1);
     expect(app.store.state.settings).toEqual(settings);
     expect(app.store.state.editor.screenBaseline).toBeNull();
   });
@@ -2293,12 +2295,17 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
   it('ends them once as the element mounts readonly', async () => {
     const closeColorPicker = vi.fn();
     const dragendColumnAll = vi.fn();
+    const duplicateDragCancel = vi.fn();
     const { app } = await setup(
       { readonly: true },
       {
         seed: app => {
           openEditState(app);
-          app.emitter.on({ closeColorPicker, dragendColumnAll });
+          app.emitter.on({
+            closeColorPicker,
+            dragendColumnAll,
+            duplicateDragCancel,
+          });
         },
       }
     );
@@ -2306,6 +2313,7 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
     expectEditStateClosed(app);
     expect(closeColorPicker).toHaveBeenCalledTimes(1);
     expect(dragendColumnAll).toHaveBeenCalledTimes(1);
+    expect(duplicateDragCancel).toHaveBeenCalledTimes(1);
   });
 
   it('gives the settings back as it turns writable, the viewport, the tab and the name view kept on the screen', async () => {

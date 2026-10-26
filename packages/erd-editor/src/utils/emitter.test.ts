@@ -5,6 +5,7 @@ import {
   closeColorPickerAction,
   copyAction,
   dragendColumnAllAction,
+  duplicateDragCancelAction,
   duplicateDragStartAction,
   Emitter,
   mouseTrackerEndAction,
@@ -246,6 +247,10 @@ describe('action creators', () => {
   it('lets the duplicate drag start action be built without a payload', () => {
     expect(duplicateDragStartAction()).toEqual({
       type: 'duplicateDragStart',
+      payload: undefined,
+    });
+    expect(duplicateDragCancelAction()).toEqual({
+      type: 'duplicateDragCancel',
       payload: undefined,
     });
   });

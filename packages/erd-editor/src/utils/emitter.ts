@@ -46,6 +46,7 @@ const InternalActionType = {
   openDiffViewer: 'openDiffViewer',
   openAutomaticTablePlacement: 'openAutomaticTablePlacement',
   duplicateDragStart: 'duplicateDragStart',
+  duplicateDragCancel: 'duplicateDragCancel',
   dragSelectStart: 'dragSelectStart',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
@@ -95,6 +96,7 @@ type InternalActionMap = {
     tableIds: string[];
     memoIds: string[];
   } | void;
+  [InternalActionType.duplicateDragCancel]: void;
   [InternalActionType.dragSelectStart]: {
     x: number;
     y: number;
@@ -210,6 +212,10 @@ export const openAutomaticTablePlacementAction = createAction<
 export const duplicateDragStartAction = createAction<
   InternalActionMap[typeof InternalActionType.duplicateDragStart]
 >(InternalActionType.duplicateDragStart);
+
+export const duplicateDragCancelAction = createAction<
+  InternalActionMap[typeof InternalActionType.duplicateDragCancel]
+>(InternalActionType.duplicateDragCancel);
 
 export const dragSelectStartAction = createAction<
   InternalActionMap[typeof InternalActionType.dragSelectStart]

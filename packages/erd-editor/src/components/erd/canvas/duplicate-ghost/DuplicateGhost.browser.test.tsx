@@ -25,7 +25,10 @@ import {
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { renderScene } from '@/konva/scene/renderScene';
-import { duplicateDragStartAction } from '@/utils/emitter';
+import {
+  duplicateDragCancelAction,
+  duplicateDragStartAction,
+} from '@/utils/emitter';
 
 type Mounted = {
   stage: Stage;
@@ -539,6 +542,30 @@ describe('DuplicateGhost - commit', () => {
 
     expect(app.store.state.doc.tableIds).toHaveLength(3);
     expect(lastTable(app).ui).toMatchObject({ x: 160, y: 230 });
+  });
+
+  it('lets go of its copies on a cancel, so the release duplicates nothing', async () => {
+    const { app } = await mountGhost();
+    seedTable(app, 't1', 100, 200);
+    select(app, { t1: SelectType.table });
+
+    await startGesture(app);
+    await movePointer([[60, 30]]);
+    expect(ghostsIn().length).toBe(1);
+
+    app.emitter.emit(duplicateDragCancelAction());
+    await flush();
+    await whenDrawn();
+    expect(ghostsIn().length).toBe(0);
+
+    await movePointer([[120, 90]]);
+    await dropAndSettle();
+
+    expect(ghostsIn().length).toBe(0);
+    expect(app.store.state.doc.tableIds).toEqual(['t1']);
+    expect(app.store.state.editor.selectedMap).toEqual({
+      t1: SelectType.table,
+    });
   });
 
   // Covers the outcome, not the mechanism: unmounting unsubscribes drag$

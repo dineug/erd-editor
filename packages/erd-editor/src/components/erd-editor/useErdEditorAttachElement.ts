@@ -43,6 +43,7 @@ import { arrayHas } from '@/utils/arrayHas';
 import {
   closeColorPickerAction,
   dragendColumnAllAction,
+  duplicateDragCancelAction,
   mouseTrackerEndAction,
   mouseTrackerStartAction,
   openDiffViewerAction,
@@ -192,9 +193,9 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   /**
-   * Ends what a reader may not hold: an open editor, a draw, a column drag, the
-   * selection, the hand tool and the dialogs that write, each a close the filter
-   * passes. Table Properties, the diff viewer and the image export stay open.
+   * Ends what a reader may not hold: an open editor, a draw, a column drag, an
+   * Alt drag's copies, the selection, the hand tool and the dialogs that write.
+   * Table Properties, the diff viewer and the image export stay open.
    */
   const closeEditState = () => {
     store.dispatchSync(
@@ -207,10 +208,11 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
       changeHandToolAction({ value: false }),
       changeOpenMapAction(CLOSED_EDIT_DIALOGS)
     );
-    // The picker and a column drag's pointer are the ERD tab's own state, which
-    // no action reaches; every table lets go of a drag it holds.
+    // The picker, a column drag's pointer and the Alt drag's copies are the ERD
+    // tab's own state, which no action reaches, and a copy's drop would unselect.
     emitter.emit(closeColorPickerAction());
     emitter.emit(dragendColumnAllAction());
+    emitter.emit(duplicateDragCancelAction());
   };
 
   // One batch, so no peer's setter lands between a setting given back and the

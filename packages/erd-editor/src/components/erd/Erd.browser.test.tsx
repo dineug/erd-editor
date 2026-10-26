@@ -748,6 +748,40 @@ describe('Erd - what an editor lets go of once it turns readonly', () => {
     expect(tableXOf(mounted)).toBe(startX + 40);
   });
 
+  it('drops the copies an Alt drag holds, whose release then adds nothing and keeps the selection', async () => {
+    const mounted = await mountTurningReadonly();
+    const { store } = mounted.app;
+    const ghosts = () => sceneStageOf().find('.duplicate-ghost').length;
+
+    fireScenePointer(tableBodyOf(), 'mousedown', {
+      altKey: true,
+      button: 0,
+      clientX: 450,
+      clientY: 100,
+    });
+    movePointer(520, 180);
+    await flush();
+    await whenDrawn();
+    expect(ghosts()).toBe(1);
+
+    await turnReadonly();
+    expect(ghosts()).toBe(0);
+
+    // A jump's outline, which a duplicate's unselect would take off at the release.
+    store.dispatchSync(selectAction({ [TABLE_ID]: SelectType.table }));
+    movePointer(560, 200);
+    await flush();
+    await whenDrawn();
+    expect(ghosts()).toBe(0);
+
+    releasePointer(560, 200);
+    await flush();
+    await whenDrawn();
+
+    expect(store.state.doc.tableIds).toEqual([TABLE_ID]);
+    expect(selectedIds(mounted)).toEqual([TABLE_ID]);
+  });
+
   it.each([
     ['time travel', Open.timeTravel, openTimeTravel],
     [
