@@ -37,7 +37,6 @@ import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { fontSize6 } from '@/styles/typography.styles';
 
@@ -149,16 +148,12 @@ describe('Settings', () => {
       expect(root().querySelector(`.${styles.section}`)).toBeTruthy();
     });
 
-    it('renders the three preference rows in order', async () => {
+    it('renders the two preference rows in order', async () => {
       await setup();
 
       expect(
         rows().map(row => row.firstElementChild?.textContent?.trim())
-      ).toEqual([
-        'Relationship DataType Sync',
-        'Maximum comment width',
-        'Recalculation table width',
-      ]);
+      ).toEqual(['Relationship DataType Sync', 'Maximum comment width']);
     });
   });
 
@@ -432,17 +427,10 @@ describe('Settings', () => {
       expect(heading().textContent?.trim()).toBe('ko:Preferences');
       expect(
         rows().map(row => row.firstElementChild?.textContent?.trim())
-      ).toEqual([
-        'ko:Relationship DataType Sync',
-        'ko:Maximum comment width',
-        'ko:Recalculation table width',
-      ]);
+      ).toEqual(['ko:Relationship DataType Sync', 'ko:Maximum comment width']);
       const input = rows()[1].querySelector('input') as HTMLInputElement;
       expect(input.title).toBe('ko:Maximum comment width');
       expect(input.placeholder).toBe('ko:Maximum comment width');
-      expect(rows()[2].querySelector('button')?.textContent?.trim()).toBe(
-        'ko:Sync'
-      );
       expect(
         root()
           .querySelector(`.${styles.lockSection}`)
@@ -502,28 +490,6 @@ describe('Settings', () => {
       await flush();
 
       expect(heading().textContent?.trim()).toBe('ko:Shortcuts');
-    });
-
-    it('shows the recalculation toast in the language its container provides', async () => {
-      const { app } = await setup();
-      const openToast = vi.fn();
-      app.emitter.on({ openToast });
-      click(rows()[2].querySelector('button') as HTMLButtonElement);
-      await flush();
-
-      const toast = document.createElement('div');
-      document.body.append(toast);
-      const provider = provideI18n(
-        toast,
-        createTestI18n('ko-KR', pseudoMessages('ko'))
-      );
-      render(toast, openToast.mock.calls[0][0].payload.message);
-      await flush();
-
-      expect(toast.textContent).toContain('ko:Recalculated table width');
-      render(toast, null);
-      provider.destroy();
-      toast.remove();
     });
   });
 
@@ -625,40 +591,6 @@ describe('Settings', () => {
       expect(input.value).toBe('60px');
       await flush();
       expect(app.store.state.settings.maxWidthComment).toBe(COLUMN_MIN_WIDTH);
-    });
-  });
-
-  describe('recalculation table width', () => {
-    it('recalculates every table width from the injected toWidth', async () => {
-      const { app } = await setup();
-      app.store.dispatchSync(
-        addTableAction({ id: 'table-1', ui: { x: 0, y: 0, zIndex: 2 } })
-      );
-      const table = app.store.state.collections.tableEntities['table-1'];
-      table.name = 'a-long-table-name';
-      table.ui.widthName = 1;
-      await flush();
-
-      const button = rows()[2].querySelector('button') as HTMLButtonElement;
-      click(button);
-      await flush();
-
-      expect(table.ui.widthName).toBe('a-long-table-name'.length * 10);
-    });
-
-    it('emits an openToast action with the confirmation message', async () => {
-      const { app } = await setup();
-      const openToast = vi.fn();
-      app.emitter.on({ openToast });
-
-      click(rows()[2].querySelector('button') as HTMLButtonElement);
-      await flush();
-
-      expect(openToast).toHaveBeenCalledTimes(1);
-      const action = openToast.mock.calls[0][0];
-      expect(action.type).toBe('openToast');
-      expect(action.payload.message).toBeTruthy();
-      expect(action.payload.close).toBeInstanceOf(Promise);
     });
   });
 
@@ -1004,6 +936,32 @@ describe('Settings', () => {
       expect(maxWidthInput().disabled).toBe(true);
       expect(lockRows().every(row => lockButton(row).disabled)).toBe(true);
       expect(columnOrderItems()[0].getAttribute('draggable')).toBe('false');
+    });
+
+    it('offers no table width recalculation, readonly or writable', async () => {
+      const { flags } = await setupReadonly();
+      const section = () =>
+        root().querySelector(`.${styles.section}`) as HTMLDivElement;
+      const otherButtons = () =>
+        Array.from(section().querySelectorAll('button')).filter(
+          button =>
+            button.getAttribute('role') !== 'switch' &&
+            !button.closest(`.${styles.lockRow}`)
+        );
+
+      for (const readonly of [true, false]) {
+        flags.readonly = readonly;
+        await flush();
+
+        expect(
+          rows().map(row => row.firstElementChild?.textContent?.trim()),
+          String(readonly)
+        ).toEqual(['Relationship DataType Sync', 'Maximum comment width']);
+        expect(otherButtons(), String(readonly)).toEqual([]);
+        expect(section().textContent, String(readonly)).not.toMatch(
+          /recalculat/i
+        );
+      }
     });
 
     it('moves no column for a drag begun before the editor turned readonly', async () => {

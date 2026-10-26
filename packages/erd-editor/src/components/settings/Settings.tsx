@@ -12,8 +12,6 @@ import {
 import { useAppContext } from '@/components/appContext';
 import { readonlyBadge } from '@/components/erd/table-properties/TableProperties.styles';
 import { useI18n } from '@/components/localeContext';
-import { localized } from '@/components/localized/Localized';
-import Button from '@/components/primitives/button/Button';
 import Menu from '@/components/primitives/context-menu/menu/Menu';
 import Icon from '@/components/primitives/icon/Icon';
 import Separator from '@/components/primitives/separator/Separator';
@@ -27,7 +25,6 @@ import SettingsLnb, {
 } from '@/components/settings/settings-lnb/SettingsLnb';
 import { takeSettingsPage } from '@/components/settings/settingsPage';
 import Shortcuts from '@/components/settings/shortcuts/Shortcuts';
-import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import {
@@ -37,11 +34,8 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import { fontSize6 } from '@/styles/typography.styles';
-import { recalculateTableWidth } from '@/utils/calcTable';
 import { onPrevent } from '@/utils/domEvent';
-import { relationshipSort } from '@/utils/draw-relationship/sort';
 import { FlipAnimation } from '@/utils/flipAnimation';
-import { delay } from '@/utils/promise';
 import { fromShadowDraggable } from '@/utils/rx-operators/fromShadowDraggable';
 import {
   maxWidthCommentInRange,
@@ -78,18 +72,6 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
   const handleChangeRelationshipDataTypeSync = (value: boolean) => {
     const { store } = app.value;
     store.dispatch(changeRelationshipDataTypeSyncAction({ value }));
-  };
-
-  const handleRecalculationTableWidth = () => {
-    const { store, emitter, toWidth } = app.value;
-    recalculateTableWidth(store.state, { toWidth, clock: store.context.clock });
-    relationshipSort(store.state);
-    openStatusToast(emitter, {
-      key: 'settings.toast.tableWidthRecalculated',
-      tone: 'success',
-      title: localized('settings.toast.tableWidthRecalculated'),
-      close: delay(2000),
-    });
   };
 
   const handleChangeColumnOrderAction = (value: number, target: number) => {
@@ -231,22 +213,6 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                   />
                 </div>
 
-                <div class={styles.row}>
-                  <div>{t('settings.recalculateTableWidth')}</div>
-                  <div class={styles.vertical(16)}></div>
-                  <Button
-                    variant="soft"
-                    size="1"
-                    text={
-                      <>
-                        <Icon size={14} name="refresh-cw" />
-                        <div class={styles.vertical(8)}></div>
-                        <span>{t('settings.sync')}</span>
-                      </>
-                    }
-                    onClick={handleRecalculationTableWidth}
-                  />
-                </div>
                 <div class={styles.lockSection}>
                   <div>{t('settings.lockHeading')}</div>
                   <Separator space={12} />

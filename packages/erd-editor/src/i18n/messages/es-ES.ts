@@ -306,10 +306,6 @@ export const esES = {
   'settings.relationshipDataTypeSync':
     'Sincronizar el tipo de datos en las relaciones',
   'settings.maxCommentWidth': 'Ancho máximo de comentario',
-  'settings.recalculateTableWidth': 'Recalcular el ancho de las tablas',
-  'settings.sync': 'Sincronizar',
-  'settings.toast.tableWidthRecalculated':
-    'Se ha recalculado el ancho de las tablas',
   'settings.lockHeading': 'Bloqueo',
   'settings.lockSetting': 'Bloquear {name}',
   'settings.unlockSetting': 'Desbloquear {name}',

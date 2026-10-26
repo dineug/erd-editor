@@ -305,9 +305,6 @@ export const deDE = {
   'settings.relationshipDataTypeSync':
     'Datentyp-Synchronisierung für Beziehungen',
   'settings.maxCommentWidth': 'Maximale Kommentarbreite',
-  'settings.recalculateTableWidth': 'Tabellenbreite neu berechnen',
-  'settings.sync': 'Ausführen',
-  'settings.toast.tableWidthRecalculated': 'Tabellenbreite neu berechnet',
   'settings.lockHeading': 'Sperren',
   'settings.lockSetting': '{name} sperren',
   'settings.unlockSetting': '{name} entsperren',

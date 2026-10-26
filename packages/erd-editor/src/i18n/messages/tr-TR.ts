@@ -296,10 +296,6 @@ export const trTR = {
   'settings.preferences': 'Tercihler',
   'settings.relationshipDataTypeSync': 'İlişkilerde veri türü eşitleme',
   'settings.maxCommentWidth': 'En fazla açıklama genişliği',
-  'settings.recalculateTableWidth': 'Tablo genişliklerini yeniden hesapla',
-  'settings.sync': 'Eşitle',
-  'settings.toast.tableWidthRecalculated':
-    'Tablo genişlikleri yeniden hesaplandı',
   'settings.lockHeading': 'Kilit',
   'settings.lockSetting': '{name} ayarını kilitle',
   'settings.unlockSetting': '{name} ayarının kilidini aç',
