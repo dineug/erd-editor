@@ -173,6 +173,40 @@ describe('routeOrthogonal', () => {
   const leftFacing = { x: 100, y: 100 };
   const rightFacing = { x: 500, y: 300 };
 
+  it('tries a lane once however many tables in a row share it', () => {
+    // Six tables stacked with one left edge put six copies of lane 464 among
+    // the channels tried, and the free lane at 424 fell past the cap.
+    const stack = Array.from({ length: 6 }, (_, index) => ({
+      id: `t${index}`,
+      left: 480,
+      top: 100 + index * 40,
+      right: 520,
+      bottom: 130 + index * 40,
+    }));
+    const boxes = obstacles([
+      ...stack,
+      { id: 'w', left: 440, top: 150, right: 470, bottom: 250 },
+      { id: 'e', left: 530, top: 150, right: 560, bottom: 250 },
+    ]);
+
+    const points = routeOrthogonal(
+      { x: 0, y: 0 },
+      Direction.right,
+      { x: 1000, y: 400 },
+      Direction.left,
+      boxes,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 0, y: 0 },
+      { x: 424, y: 0 },
+      { x: 424, y: 400 },
+      { x: 1000, y: 400 },
+    ]);
+  });
+
   it('picks the same lane between two tied ones whatever order the tables come in', () => {
     // The lanes clear of c1 and c2 sit 70 either side of the midpoint, which c3
     // blocks, so the two routes cost the same. Peers and an undone removal hold

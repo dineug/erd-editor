@@ -197,7 +197,16 @@ function channels(
   }
 
   lanes.sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle) || a - b);
-  return [middle, ...lanes.slice(0, MAX_CHANNELS)];
+
+  // Tables standing in a row put their edges on one lane, and copies of it
+  // would fill the channels tried while a free lane just past them waits.
+  const tried = [middle];
+  for (const lane of lanes) {
+    if (tried.length > MAX_CHANNELS) break;
+    if (tried.some(other => Math.abs(other - lane) < 0.5)) continue;
+    tried.push(lane);
+  }
+  return tried;
 }
 
 type Candidate = { points: Point[]; bends: number };
