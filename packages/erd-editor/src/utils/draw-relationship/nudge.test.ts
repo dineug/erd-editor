@@ -483,6 +483,48 @@ describe('nudgeRoutes', () => {
     expect(b[b.length - 1]).toEqual({ x: 300, y: 200 });
   });
 
+  it("moves a segment alone on its lane off another connector's anchor run", () => {
+    // a runs straight between its two anchors, so its one run is fixed; b's
+    // middle run lies over it and, alone on its lane, was never moved off.
+    const a = line([0, 0], [200, 0]);
+    const b = line([50, -60], [50, 0], [150, 0], [150, 60]);
+
+    nudgeRoutes(
+      new Map([
+        ['a', a],
+        ['b', b],
+      ]),
+      NO_OBSTACLES,
+      new Map([
+        ['a', ['t0', 't1']],
+        ['b', ['t2', 't3']],
+      ])
+    );
+
+    expect(a).toEqual(line([0, 0], [200, 0]));
+    expect(b).toEqual(line([50, -60], [50, -10], [150, -10], [150, 60]));
+  });
+
+  it('leaves a segment alone on its lane where no move off the run is safe', () => {
+    // Tables close above and below the lane leave no rung clear of both.
+    const a = line([0, 0], [200, 0]);
+    const b = line([50, -60], [50, 0], [150, 0], [150, 60]);
+
+    nudgeRoutes(
+      new Map([
+        ['a', a],
+        ['b', b],
+      ]),
+      boxes(['t4', 60, -30, 140, -3], ['t5', 60, 3, 140, 30]),
+      new Map([
+        ['a', ['t0', 't1']],
+        ['b', ['t2', 't3']],
+      ])
+    );
+
+    expect(b).toEqual(line([50, -60], [50, 0], [150, 0], [150, 60]));
+  });
+
   it('re-reads how far a segment runs between the two axis passes', () => {
     // Separating the upright bundle at x = 100..106 stretches a's flat run
     // leftwards. Read from the extent collected before that, the flat run looks
