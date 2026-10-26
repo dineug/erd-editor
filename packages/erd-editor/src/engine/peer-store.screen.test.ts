@@ -4,11 +4,14 @@ import { setSettingLock } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
 import { cloneDeep, pick } from 'es-toolkit';
 import {
+  afterAll,
   afterEach,
+  beforeAll,
   beforeEach,
   describe,
   expect,
   it,
+  type MockInstance,
   vi,
 } from 'vite-plus/test';
 
@@ -64,7 +67,7 @@ type Reader = {
   sharedStore: SharedStore;
   /** The replica its host feeds what the element sent and took, when it has one. */
   replica: ReplicationStore | null;
-  /** The host's change event, each batch by its types. */
+  /** What change$ hands the element, each batch by its types. */
   changes: string[][];
   receive: (actions: AnyAction[]) => void;
   /** What the element does as readonly turns false: one batch, then writable. */
@@ -177,13 +180,34 @@ function openSession(value: string, { replica = false } = {}): Session {
   return session;
 }
 
+/**
+ * What a reader's realm answers for Node, which r-html's observable checks each
+ * value against: an element's page has one, so a load onto a measured screen
+ * reads the scene's view state there as it does here, and a peer never does.
+ */
+class AbsentNode {}
+
+beforeAll(() => {
+  Reflect.set(globalThis, 'Node', AbsentNode);
+});
+
+afterAll(() => {
+  Reflect.deleteProperty(globalThis, 'Node');
+});
+
+let reducerErrors: MockInstance<typeof console.error>;
+
 beforeEach(() => {
   vi.useFakeTimers();
+  reducerErrors = vi.spyOn(console, 'error');
 });
 
 afterEach(() => {
   sessions.splice(0).forEach(session => session.destroy());
   vi.useRealTimers();
+  // A store logs what a reducer throws rather than throwing it.
+  expect(reducerErrors).not.toHaveBeenCalled();
+  reducerErrors.mockRestore();
 });
 
 /** Lets the hooks a batch schedules and the change event's window run out. */

@@ -207,8 +207,9 @@ export function createRxStore(
       )
     )
   );
-  // While readonly only a peer's edit reaches the host's change event: a
-  // setting or the viewport a reader turns is its own screen, no edit to save.
+  // While readonly only a peer's edit passes, and the element sends no change
+  // event for it then; a setting or the viewport a reader turns is its own
+  // screen, no edit to save.
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(
