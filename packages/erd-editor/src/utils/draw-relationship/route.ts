@@ -212,6 +212,16 @@ function sharedChannel(a: number, b: number, sign: number) {
 }
 
 /**
+ * Whether two facing ends' stubs, both clamped to MIN_STUB, overlap so far that
+ * a step out of either end lands inside the other table, which is drawn over
+ * it. The route then turns across the gap between the tables instead.
+ */
+function hidesStepOut(m: number, l: number, mSign: number) {
+  const overlap = (m - l) * mSign;
+  return overlap > MIN_STUB - ROUTE_CLEARANCE && overlap <= 2 * MIN_STUB;
+}
+
+/**
  * Gives an empty list of outward lanes one, a clearance out from the turning
  * point, so a route between two sides on different axes always has a corner
  * that leaves and arrives outward rather than none.
@@ -268,6 +278,9 @@ function candidates(
     if (mSign === lSign) {
       const x = sharedChannel(m.x, l.x, mSign);
       push([m, { x, y: m.y }, { x, y: l.y }, l]);
+    } else if (hidesStepOut(m.x, l.x, mSign) && Math.abs(m.y - l.y) >= 0.5) {
+      const x = (m.x + l.x) / 2;
+      push([m, { x, y: m.y }, { x, y: l.y }, l]);
     }
     // The target behind an end: step out of both, cross in the free band above
     // or below, and come back in.
@@ -292,6 +305,9 @@ function candidates(
     }
     if (mSign === lSign) {
       const y = sharedChannel(m.y, l.y, mSign);
+      push([m, { x: m.x, y }, { x: l.x, y }, l]);
+    } else if (hidesStepOut(m.y, l.y, mSign) && Math.abs(m.x - l.x) >= 0.5) {
+      const y = (m.y + l.y) / 2;
       push([m, { x: m.x, y }, { x: l.x, y }, l]);
     }
     const xs = channels(m.x, l.x, obstacles, true, spanLow, spanHigh);

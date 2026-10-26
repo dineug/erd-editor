@@ -308,6 +308,63 @@ describe('routeOrthogonal', () => {
     ]);
   });
 
+  it('turns across the gap between two facing tables too close to step out of', () => {
+    // 36 apart and 30 out of line, so each 24 stub reaches past the other
+    // table's edge, and a step out of either end ran inside the other table.
+    const points = routeOrthogonal(
+      { x: 124, y: 50 },
+      Direction.right,
+      { x: 112, y: 80 },
+      Direction.left,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 124, y: 50 },
+      { x: 118, y: 50 },
+      { x: 118, y: 80 },
+      { x: 112, y: 80 },
+    ]);
+  });
+
+  it('turns across the gap between two facing tables above each other', () => {
+    const points = routeOrthogonal(
+      { x: 50, y: 124 },
+      Direction.bottom,
+      { x: 80, y: 112 },
+      Direction.top,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 50, y: 124 },
+      { x: 50, y: 118 },
+      { x: 80, y: 118 },
+      { x: 80, y: 112 },
+    ]);
+  });
+
+  it('keeps stepping out of two facing tables a step apart or more', () => {
+    // 44 apart, a step out of each end still lands in the gap, and the S it
+    // draws there keeps both corners clear of the markers.
+    const points = routeOrthogonal(
+      { x: 124, y: 50 },
+      Direction.right,
+      { x: 120, y: 80 },
+      Direction.left,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toHaveLength(6);
+    expect(points[1]).toEqual({ x: 140, y: 50 });
+  });
+
   it('steps out of a side when no lane lies outward of it', () => {
     // A 134 x 30 table at the origin and one 60 up and 80 right of it: every
     // lane the router knows sits behind the right-facing end, so it used to
