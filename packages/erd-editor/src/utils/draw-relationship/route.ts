@@ -6,6 +6,8 @@ import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { MIN_STUB, PATH_LINE_HEIGHT } from '@/utils/draw-relationship';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import type { DirtyBox } from '@/utils/draw-relationship/incremental';
+import { searchRoute } from '@/utils/draw-relationship/search';
 import { isHorizontal, outwardSign } from '@/utils/draw-relationship/stub';
 
 /** Clearance kept between a route and the table boxes it passes. */
@@ -386,6 +388,26 @@ function candidates(
   return out;
 }
 
+/** A route, and the box holding every table whose move could change it. */
+export type RouteResult = {
+  points: Point[];
+  reach: DirtyBox;
+};
+
+function boxOfPoints(points: Point[]): DirtyBox {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  for (const { x, y } of points) {
+    if (x < left) left = x;
+    if (x > right) right = x;
+    if (y < top) top = y;
+    if (y > bottom) bottom = y;
+  }
+  return { left, top, right, bottom };
+}
+
 /**
  * The cheapest orthogonal polyline from m to l, or a two-bend fallback when
  * nothing is feasible — a connector always has to be drawn.
@@ -399,6 +421,24 @@ export function routeOrthogonal(
   skipA: string,
   skipB: string
 ): Point[] {
+  return routeWithReach(m, mDirection, l, lDirection, obstacles, skipA, skipB)
+    .points;
+}
+
+/**
+ * routeOrthogonal, with the box its answer depends on. When every candidate
+ * passes through a table, a search through the lanes near the two ends looks
+ * for a way round with more bends, and the box it searched is that answer's.
+ */
+export function routeWithReach(
+  m: Point,
+  mDirection: number,
+  l: Point,
+  lDirection: number,
+  obstacles: Obstacles,
+  skipA: string,
+  skipB: string
+): RouteResult {
   const options = candidates(m, mDirection, l, lDirection, obstacles);
 
   let best: Point[] | null = null;
@@ -415,9 +455,25 @@ export function routeOrthogonal(
     }
   }
 
-  if (best) return best;
+  if (best && bestCost < BLOCK_COST) {
+    return { points: best, reach: boxOfPoints(best) };
+  }
 
-  return isHorizontal(mDirection)
-    ? [m, { x: (m.x + l.x) / 2, y: m.y }, { x: (m.x + l.x) / 2, y: l.y }, l]
-    : [m, { x: m.x, y: (m.y + l.y) / 2 }, { x: l.x, y: (m.y + l.y) / 2 }, l];
+  const { points, region } = searchRoute(
+    m,
+    mDirection,
+    l,
+    lDirection,
+    obstacles,
+    ROUTE_CLEARANCE,
+    BEND_COST
+  );
+  const chosen =
+    points ??
+    best ??
+    (isHorizontal(mDirection)
+      ? [m, { x: (m.x + l.x) / 2, y: m.y }, { x: (m.x + l.x) / 2, y: l.y }, l]
+      : [m, { x: m.x, y: (m.y + l.y) / 2 }, { x: l.x, y: (m.y + l.y) / 2 }, l]);
+
+  return { points: chosen, reach: region };
 }

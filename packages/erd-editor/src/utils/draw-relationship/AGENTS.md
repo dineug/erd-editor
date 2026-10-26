@@ -13,6 +13,7 @@
 | --- | --- |
 | `sort.ts` | `relationshipSort`, the whole geometry pass, routing included; `placeLoops` |
 | `route.ts`, `nudge.ts` | The router and the nudge pass, run inside the sort pass |
+| `search.ts` | `searchRoute`: the way round a table for a route every candidate of the router takes through one |
 | `pathFinding.ts` | `getRelationshipPath`: the path a connector draws, built from the anchors, stub slots and route the sort wrote. It places no end and routes nothing |
 | `index.ts` | The `WeakMap` sort channels, `setAnchors`, `clearSortChannel`, `viewVersions`, the route versions and their drag hold (`holdRouteRedraws`), the marker sizes (`LINE_SIZE`, `LINE_HEIGHT`, `CIRCLE_RADIUS`), the stub lengths, `ROUTE_CORNER_RADIUS` |
 | `corner.ts` | Flattens a document corner to `ROUTE_CORNER_SEGMENTS` chords |
@@ -31,6 +32,10 @@
 - **`sort.ts` is the whole geometry pass.** Routing (`route.ts`, `nudge.ts`) belongs to it, because routing needs every table and every route. `pathFinding.ts` only draws.
 - **A rendering-only value goes in a sort channel.** Put it in the `WeakMap` sort channels of `index.ts`, never a new schema field. Anchors are schema fields, which the runtime value (`toJson`) carries, though the file form (`toDocumentJson`) leaves them out and every store derives them again, on a load in `settleDocument` and after an edit in the sort hooks.
 - **A document connector leaves sides whose stubs can meet.** Its sides are the nearest of the sixteen side-midpoint pairs, except a nearest pair on two axes whose shortest stubs do not face each other, which gives way to the nearest pair whose stubs do (`getAndSetDirection`). A view keeps the nearest pair, since its curve needs no corner.
+- **A route the candidates cannot get past a table searches a way round.** The router scores a few candidates of up to four bends. When every one passes through a table, `searchRoute` looks for the cheapest route through no table, the two it joins included, on the lanes a clearance from the tables within `SEARCH_MARGIN` of the two turning points, scored as the candidates are. It finds none past `MAX_SEARCH_POINTS` lanes crossed, and the blocked candidate stays.
+  - The search may turn at a turning point and arrive at one from the side, never back along the stub: that is how it gets out between tables standing close.
+  - Its answer depends on every table in the box it searched, so the route cache keeps that box for the route (`RouteResult.reach`).
+  - Measured 2026-10-27 on `data/test.json` (59 routed connectors): runs through a third table went from 60 to 13, and a drag sort's median from 0.31 to 0.93 ms. On a 20 x 20 grid of tables with 600 relationships, a drag sort's median went from 7.4 to 8.9 ms.
 - **One channel per source.** A view keeps its anchors in its own channel, so `setAnchors` writes the entity only for the document. The document's sort and a view's then never read each other's routes.
 - **Clear a sort channel per connector.** `clearSortChannel` clears the connectors it is given, never a whole channel, since channels are module-wide and a page may host two stores.
 - **Bump `viewVersions` only on an actual change.** A view channel setter bumps a connector's version only when its value changed. An unconditional bump redraws every static connector on each drag sort.

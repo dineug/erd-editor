@@ -31,9 +31,9 @@ import type {
   ViewSource,
 } from '@/utils/draw-relationship/geometrySource';
 import {
-  boundsOfPoints,
   createDirtyLanes,
   diffTableBoxes,
+  type DirtyBox,
   getSortCache,
   markRoute,
   type NudgeMemo,
@@ -43,7 +43,7 @@ import {
 import { nudgeRoutes } from '@/utils/draw-relationship/nudge';
 import {
   collectObstacles,
-  routeOrthogonal,
+  routeWithReach,
 } from '@/utils/draw-relationship/route';
 import { stubEnds } from '@/utils/draw-relationship/stub';
 
@@ -277,6 +277,7 @@ function routeRelationships(
 
     let pristine: Point[];
     let points: Point[];
+    let bounds: DirtyBox;
 
     if (
       moved !== null &&
@@ -286,8 +287,9 @@ function routeRelationships(
     ) {
       pristine = was.pristine;
       points = clonePoints(pristine);
+      bounds = was.bounds;
     } else {
-      points = routeOrthogonal(
+      const routed = routeWithReach(
         m,
         start.direction,
         l,
@@ -296,6 +298,8 @@ function routeRelationships(
         start.tableId,
         end.tableId
       );
+      points = routed.points;
+      bounds = routed.reach;
       pristine = clonePoints(points);
       dirty.add(id);
       if (was) markRoute(lanes, was.nudged);
@@ -316,7 +320,7 @@ function routeRelationships(
       endTableId: end.tableId,
       pristine,
       nudged: points,
-      bounds: boundsOfPoints(pristine),
+      bounds,
     });
   }
 

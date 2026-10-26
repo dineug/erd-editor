@@ -117,22 +117,6 @@ function same(a: DirtyBox, b: DirtyBox) {
   );
 }
 
-export function boundsOfPoints(points: Point[]): DirtyBox {
-  let left = Infinity;
-  let top = Infinity;
-  let right = -Infinity;
-  let bottom = -Infinity;
-
-  for (const { x, y } of points) {
-    if (x < left) left = x;
-    if (x > right) right = x;
-    if (y < top) top = y;
-    if (y > bottom) bottom = y;
-  }
-
-  return { left, top, right, bottom };
-}
-
 function overlaps(a: DirtyBox, b: DirtyBox) {
   return (
     a.left <= b.right &&
