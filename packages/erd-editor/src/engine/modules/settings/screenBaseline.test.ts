@@ -621,15 +621,51 @@ describe('a load that replaces the document', () => {
     expect(store.state.editor.screenBaseline?.language).toBe(held);
   });
 
-  it('ends every baseline on the reader’s own load, which lands as it always did', () => {
+  it('ends the viewport’s and each unlocked unit’s baseline on the reader’s own load, which lands as it always did, and keeps a locked unit’s', () => {
     const store = makeHeld();
+    const baseline = { ...store.state.editor.screenBaseline };
 
     store.dispatchSync(local(loadJsonAction({ value: loadOf(LOADED) }), 5));
 
-    expect(store.state.editor.screenBaseline).toBeNull();
+    expect(store.state.editor.screenBaseline).toEqual({
+      language: baseline.language,
+      canvasType: baseline.canvasType,
+      nameViewMode: baseline.nameViewMode,
+    });
     expect(store.state.settings).toMatchObject({
+      language: Language.Kotlin,
+      canvasType: CanvasType.schemaSQL,
+      nameViewMode: NameViewMode.logical,
+      show: Show.tableComment | Show.columnDataType,
       database: Database.SQLite,
       originX: 300,
+    });
+  });
+
+  it('ends the baseline of each unit the reader’s own load unlocks, which shows the loaded value', () => {
+    const store = makeHeld();
+    const baseline = { ...store.state.editor.screenBaseline };
+
+    store.dispatchSync(
+      local(
+        loadJsonAction({
+          value: loadOf(settings => {
+            LOADED(settings);
+            settings.lockSettings =
+              unlock(settings.lockSettings, LockSettingType.canvasType) |
+              LockSettingType.unlockNameViewMode;
+          }),
+        }),
+        5
+      )
+    );
+
+    expect(store.state.editor.screenBaseline).toEqual({
+      language: baseline.language,
+    });
+    expect(store.state.settings).toMatchObject({
+      canvasType: CanvasType.generatorCode,
+      nameViewMode: NameViewMode.both,
     });
   });
 

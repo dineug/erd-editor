@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { setSettingLock } from '@dineug/erd-editor-schema';
+import { isSettingLocked, setSettingLock } from '@dineug/erd-editor-schema';
 import type { AnyAction } from '@dineug/r-html';
 import { cloneDeep, pick } from 'es-toolkit';
 import {
@@ -33,7 +33,10 @@ import {
   changeViewportAction,
   loadJsonAction,
 } from '@/engine/modules/editor/atom.actions';
-import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
+import {
+  initialLoadJsonAction$,
+  loadJsonAction$,
+} from '@/engine/modules/editor/generator.actions';
 import {
   changeBracketTypeAction,
   changeCanvasTypeAction,
@@ -500,4 +503,83 @@ describe('an undo once writable again, every lock off', () => {
       expect(screen.rxStore.state.editor.screenBaseline).toBeNull();
     }
   );
+});
+
+describe('the reader’s own load once writable again', () => {
+  /** A reader with a replica who turned the tab, the name view and the viewport while readonly. */
+  function openTurned(value: string) {
+    const session = openSession(value, { replica: true });
+    const { rxStore } = session.screen;
+    rxStore.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL }),
+      toNameViewModeAction(rxStore.state, NameViewMode.logical, true),
+      scrollToAction({ originX: 40, originY: -30 }),
+      changeZoomLevelAction({ value: 0.5 })
+    );
+    settle();
+    session.screen.turnWritable();
+    settle();
+    return session;
+  }
+
+  /** What the element's two values say against what its replica holds. */
+  function expectReplicaAgrees({ rxStore, replica }: Reader) {
+    expect(documentJsonOf(rxStore)).toBe(replica!.value);
+    expect(JSON.parse(runtimeJsonOf(rxStore)).settings).toEqual(
+      JSON.parse(replica!.runtimeValue).settings
+    );
+  }
+
+  it('keeps the document’s tab under the tab lock, so a peer’s unlock leaves the value on the replica’s tab', () => {
+    const value = seedWith(true);
+    const { screen, peer } = openTurned(value);
+
+    screen.rxStore.dispatchSync(loadJsonAction$(toLoadValue(value)));
+    screen.sharedStore.flushStreamBuffers();
+    settle();
+    peer.dispatch([
+      changeLockSettingsAction$(LockSettingType.canvasType, false),
+    ]);
+    settle();
+
+    const replicaLocks = JSON.parse(screen.replica!.value).settings
+      .lockSettings;
+    for (const lockSettings of [
+      screen.rxStore.state.settings.lockSettings,
+      replicaLocks,
+    ]) {
+      expect(isSettingLocked(lockSettings, LockSettingType.canvasType)).toBe(
+        false
+      );
+    }
+    expect(screen.rxStore.state.settings.canvasType).toBe(CanvasType.schemaSQL);
+    expect(JSON.parse(documentJsonOf(screen.rxStore)).settings.canvasType).toBe(
+      CanvasType.ERD
+    );
+    expectReplicaAgrees(screen);
+  });
+
+  it('ends the viewport’s baseline and each unlocked unit’s, which show what the load holds', () => {
+    const value = seedWith(false);
+    const { screen } = openTurned(value);
+    const loaded = JSON.parse(value);
+    Object.assign(loaded.settings, {
+      canvasType: CanvasType.generatorCode,
+      nameViewMode: NameViewMode.both,
+    });
+
+    screen.rxStore.dispatchSync(
+      loadJsonAction$(toLoadValue(JSON.stringify(loaded)))
+    );
+    screen.sharedStore.flushStreamBuffers();
+    settle();
+
+    expect(screen.rxStore.state.editor.screenBaseline).toBeNull();
+    expect(screen.rxStore.state.settings).toMatchObject({
+      canvasType: CanvasType.generatorCode,
+      nameViewMode: NameViewMode.both,
+    });
+    expect(placement(documentJsonOf(screen.rxStore))).toEqual(placement(value));
+    expectReplicaAgrees(screen);
+  });
 });

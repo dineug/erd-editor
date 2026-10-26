@@ -112,6 +112,7 @@ const UNIT_LOCKS: Partial<
   Record<ScreenSettingUnit, (typeof LockSettingTypeList)[number]>
 > = {
   canvasType: LockSettingType.canvasType,
+  nameViewMode: LockSettingType.unlockNameViewMode,
   language: LockSettingType.language,
   tableNameCase: LockSettingType.tableNameCase,
   columnNameCase: LockSettingType.columnNameCase,
@@ -128,10 +129,15 @@ const LOAD_HELD_UNITS: ReadonlyArray<ScreenSettingUnit> = [
   'bracketType',
 ];
 
+const isUnitLocked = (settings: Settings, unit: ScreenSettingUnit): boolean => {
+  const lock = UNIT_LOCKS[unit];
+  return !isNil(lock) && isSettingLocked(settings.lockSettings, lock);
+};
+
 /**
- * Lands a replacing load on the baseline, the settings landed and the screen
- * as it stood before. The reader's own load ends every unit. A peer's lands
- * the viewport and an unlocked name view, ending them, and keeps the rest.
+ * Lands a replacing load on the baseline, the screen as it stood before. Any
+ * load ends the viewport and an unlocked name view and keeps a locked unit, as
+ * a replica keeps its value; a peer's holds the rest, the reader's own ends it.
  */
 export function landScreenBaseline(
   state: RootState,
@@ -139,28 +145,24 @@ export function landScreenBaseline(
   tags: number | undefined
 ): void {
   const { editor, settings } = state;
-  if (!isRemoteWrite(tags)) {
-    editor.screenBaseline = null;
-    return;
-  }
-
-  endScreenBaseline(editor, 'viewport');
-  if (
-    !isSettingLocked(settings.lockSettings, LockSettingType.unlockNameViewMode)
-  ) {
-    endScreenBaseline(editor, 'nameViewMode');
-  }
-
-  // A locked unit's screen is already back, its baseline kept; an unlocked
-  // one takes the loaded value into its baseline and its screen back.
   const baseline = editor.screenBaseline;
   if (!baseline) return;
-  LOAD_HELD_UNITS.forEach(unit => {
-    const lock = UNIT_LOCKS[unit];
-    if (!hasScreenBaseline(editor, unit)) return;
-    if (!isNil(lock) && isSettingLocked(settings.lockSettings, lock)) return;
 
-    holdSetting(baseline, settings, unit);
-    holdSetting(settings, screen, unit);
+  const ended: ScreenUnit[] = ['viewport'];
+  if (!isUnitLocked(settings, 'nameViewMode')) ended.push('nameViewMode');
+
+  // A peer's load keeps the screen of an unlocked unit, the loaded value held
+  // beneath it; the reader's own load shows what it loaded, as it always did.
+  LOAD_HELD_UNITS.forEach(unit => {
+    if (!hasScreenBaseline(editor, unit) || isUnitLocked(settings, unit)) {
+      return;
+    }
+    if (isRemoteWrite(tags)) {
+      holdSetting(baseline, settings, unit);
+      holdSetting(settings, screen, unit);
+    } else {
+      ended.push(unit);
+    }
   });
+  endScreenBaseline(editor, ...ended);
 }
