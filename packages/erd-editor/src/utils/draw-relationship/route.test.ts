@@ -173,6 +173,31 @@ describe('routeOrthogonal', () => {
   const leftFacing = { x: 100, y: 100 };
   const rightFacing = { x: 500, y: 300 };
 
+  it('picks the same lane between two tied ones whatever order the tables come in', () => {
+    // The lanes clear of c1 and c2 sit 70 either side of the midpoint, which c3
+    // blocks, so the two routes cost the same. Peers and an undone removal hold
+    // the tables in different orders, and both have to draw this one route.
+    const c1 = { id: 'c1', left: 400, top: 150, right: 481, bottom: 250 };
+    const c2 = { id: 'c2', left: 653, top: 150, right: 720, bottom: 250 };
+    const c3 = { id: 'c3', left: 500, top: 150, right: 634, bottom: 250 };
+    const route = (boxes: Obstacles) =>
+      routeOrthogonal(
+        { x: 300, y: 100 },
+        Direction.right,
+        { x: 834, y: 300 },
+        Direction.left,
+        boxes,
+        'a',
+        'b'
+      );
+
+    const forward = route(obstacles([c1, c2, c3]));
+    const backward = route(obstacles([c2, c1, c3]));
+
+    expect(forward).toEqual(backward);
+    expect(forward[1]).toEqual({ x: 497, y: 100 });
+  });
+
   it('produces an axis-aligned polyline between the two turning points', () => {
     const points = routeOrthogonal(
       leftFacing,

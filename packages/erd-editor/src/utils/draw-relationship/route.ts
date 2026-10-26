@@ -167,7 +167,7 @@ function polylineLength(points: Point[]) {
 /**
  * Channel coordinates worth turning at on one axis: the midpoint, and a lane
  * just clear of each table reaching into the band the route crosses. Sorted by
- * distance before truncating, never truncated by document order.
+ * distance, then coordinate, so no truncation or tie follows document order.
  */
 function channels(
   from: number,
@@ -190,7 +190,7 @@ function channels(
     lanes.push(low[index] - ROUTE_CLEARANCE, high[index] + ROUTE_CLEARANCE);
   }
 
-  lanes.sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle));
+  lanes.sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle) || a - b);
   return [middle, ...lanes.slice(0, MAX_CHANNELS)];
 }
 
