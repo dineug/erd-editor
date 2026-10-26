@@ -73,7 +73,7 @@ for both.
 
 ## What is covered
 
-53 spec files. Ten of the groups exist because the DOM scene got their subject
+54 spec files. Ten of the groups exist because the DOM scene got their subject
 for free and the canvas has to draw and dispatch it itself:
 
 | Spec                            | What it holds down                                                |
@@ -234,6 +234,18 @@ the menu kept and the hints dropped on a small screen; and the palette arrow
 landing on Search and the preferences arrow midway between Theme and the
 language button, the palette's label on the side the text starts, in English
 and in Arabic.
+
+`readonly.spec.ts` holds down a readonly editor turned through the element's
+`readonly` attribute: while it is set, no edit overlay, none of the floating
+toolbar's hand and select pair, add buttons and notations, and neither the
+canvas menu's edit rows nor the table menu's, all back once it is removed; a
+drag that starts on a table pans, the table staying where the document has it
+and nothing selected, and once writable a press on its header selects and
+moves it; the Settings tab's Read only badge over disabled switches and lock
+buttons with no row of the column order to drag, its controls back once
+writable; and the Code Generator's language picked while readonly rewriting
+that screen's code while `value` keeps the document's language, which the
+screen takes back once writable.
 
 `relationship-map-columns.spec.ts` holds down the two buttons a relationship
 draw puts beside the table it would end on, and Map Columns behind them. The
