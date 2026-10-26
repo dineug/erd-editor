@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { AnyAction, FC, html } from '@dineug/r-html';
+import { AnyAction, CompositionActions, FC, html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
@@ -9,8 +9,10 @@ import {
   Mounted,
 } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
+import type { ErdTarget } from '@/components/erd/goToErdTarget';
 import { useErdShortcut } from '@/components/erd/useErdShortcut';
 import { openExplorer } from '@/components/explorer/explorerCommands';
+import { jumpTo } from '@/components/explorer/explorerNavigation';
 import { explorerViewOf } from '@/components/explorer/explorerView';
 import { Open } from '@/constants/open';
 import {
@@ -2284,5 +2286,264 @@ describe('useErdShortcut - Escape ends an edit before it unselects', () => {
     await flush();
 
     expect(getTable(seeded.app, seeded.tableId)?.name).toBe('accounts');
+  });
+});
+
+describe('useErdShortcut - a readonly editor', () => {
+  /**
+   * An editor store as the element builds it, a table of two columns written
+   * while writable, then turned readonly and jumped to its first column as an
+   * Explorer row jumps; every dispatch the hook asks for from then on is kept.
+   */
+  async function setupReader(target?: (tableId: string) => ErdTarget) {
+    let readonly = false;
+    const base = createTestAppContext({
+      getReadonly: () => readonly,
+      readonlyEditState: true,
+    });
+    const sent: CompositionActions[] = [];
+    const { store } = base;
+    const app: AppContext = {
+      ...base,
+      store: {
+        ...store,
+        dispatch: (...actions: CompositionActions) => {
+          sent.push(actions);
+          store.dispatch(...actions);
+        },
+        dispatchSync: (...actions: CompositionActions) => {
+          sent.push(actions);
+          store.dispatchSync(...actions);
+        },
+      },
+    };
+    await setup(app);
+    const tableId = seedTable(app);
+    const columnId = seedColumn(app, tableId);
+    seedColumn(app, tableId);
+
+    readonly = true;
+    jumpTo(
+      app.store,
+      target?.(tableId) ?? {
+        kind: 'column',
+        tableId,
+        columnId,
+        focusType: FocusType.columnName,
+      }
+    );
+    await flush();
+    sent.length = 0;
+
+    const setReadonly = (value: boolean) => {
+      readonly = value;
+    };
+    return { app, tableId, columnId, sent, setReadonly };
+  }
+
+  /** Every chord a reader's keys skip, each pressed where it would act: on the jump's table and cell. */
+  const SKIPPED = [
+    KeyBindingName.edit,
+    KeyBindingName.addTable,
+    KeyBindingName.addColumn,
+    KeyBindingName.addMemo,
+    KeyBindingName.addTableGroup,
+    KeyBindingName.groupSelectedTables,
+    KeyBindingName.removeTable,
+    KeyBindingName.removeColumn,
+    KeyBindingName.removeSelection,
+    KeyBindingName.primaryKey,
+    KeyBindingName.selectAllTable,
+    KeyBindingName.selectAllColumn,
+    KeyBindingName.relationshipZeroOne,
+    KeyBindingName.relationshipZeroN,
+    KeyBindingName.relationshipOneOnly,
+    KeyBindingName.relationshipOneN,
+    KeyBindingName.handTool,
+  ];
+
+  it.each(SKIPPED)(
+    'sends nothing and asks the host for no focus for %s',
+    async type => {
+      const { app, sent } = await setupReader();
+      const focus = vi.fn();
+      document.body.addEventListener(focusEvent.type, focus);
+
+      shortcut(app, type);
+      await flush();
+      document.body.removeEventListener(focusEvent.type, focus);
+
+      expect(sent).toEqual([]);
+      expect(focus).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(SKIPPED)('sends %s again once writable', async type => {
+    const { app, sent, setReadonly } = await setupReader();
+    setReadonly(false);
+
+    shortcut(app, type);
+    await flush();
+
+    expect(sent).not.toEqual([]);
+  });
+
+  it('opens no editor for Enter or Tab on the cell an Explorer row focused, and leaves Tab to the page', async () => {
+    const { app, columnId, sent } = await setupReader();
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId,
+      focusType: FocusType.columnName,
+    });
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
+
+    vi.useFakeTimers();
+    shortcut(app, KeyBindingName.edit);
+    app.keydown$.next(tab);
+    vi.runAllTimers();
+    vi.useRealTimers();
+    await flush();
+
+    expect(sent).toEqual([]);
+    expect(tab.defaultPrevented).toBe(false);
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId,
+      focusType: FocusType.columnName,
+      edit: false,
+    });
+  });
+
+  it('leaves a paste to the page, adding nothing to the table a jump selected', async () => {
+    const { app, tableId, sent } = await setupReader();
+    const { event, preventDefault } = createClipboardEvent({
+      'text/plain': 'email\tVARCHAR(255)',
+    });
+
+    app.emitter.emit(pasteAction({ event }));
+    await flush();
+
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(sent).toEqual([]);
+    expect(getTable(app, tableId)?.columnIds).toHaveLength(2);
+  });
+
+  it.each([
+    ['an Explorer column row', undefined],
+    [
+      'a palette # row',
+      (tableId: string): ErdTarget => ({ kind: 'table', tableId }),
+    ],
+  ])(
+    'opens Table Properties on the table %s selected',
+    async (_name, target) => {
+      const { app, tableId } = await setupReader(target);
+      const listener = vi.fn();
+      app.emitter.on({ openTableProperties: listener });
+
+      shortcut(app, KeyBindingName.tableProperties);
+      await flush();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener.mock.calls[0][0].payload).toEqual({ tableId });
+      expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(true);
+    }
+  );
+
+  it('zooms, turns zen mode and stands the Flow view on the table a jump selected', async () => {
+    const { app, tableId } = await setupReader();
+    app.store.dispatchSync(changeZoomLevelAction({ value: 0.8 }));
+
+    shortcut(app, KeyBindingName.zoomIn);
+    await flush();
+    expect(app.store.state.settings.zoomLevel).toBe(0.84);
+    shortcut(app, KeyBindingName.zoomOut);
+    shortcut(app, KeyBindingName.zoomOut);
+    await flush();
+    expect(app.store.state.settings.zoomLevel).toBe(0.76);
+    shortcut(app, KeyBindingName.zoomReset);
+    await flush();
+    expect(app.store.state.settings.zoomLevel).toBe(1);
+
+    shortcut(app, KeyBindingName.zenMode);
+    await flush();
+    expect(app.store.state.editor.zenMode).toBe(true);
+
+    shortcut(app, KeyBindingName.focusView);
+    await flush();
+    expect(app.store.state.settings.canvasType).toBe(CanvasType.visualization);
+    expect(app.store.state.editor.views.flow?.centerIds).toEqual([tableId]);
+  });
+
+  it('copies the column a jump focused, walks the focus with the arrows and unselects on Escape', async () => {
+    const { app, tableId, columnId } = await setupReader();
+
+    const payload = JSON.parse(await copyToClipboard(app)) as ClipboardPayload;
+    expect(payload.kind).toBe(PayloadKind.columns);
+
+    app.keydown$.next(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    await flush();
+    expect(app.store.state.editor.focusTable?.columnId).toBe(
+      getTable(app, tableId)!.columnIds[1]
+    );
+    expect(app.store.state.editor.focusTable?.columnId).not.toBe(columnId);
+
+    pressStop(app);
+    await flush();
+    expect(app.store.state.editor.selectedMap).toEqual({});
+    expect(app.store.state.editor.focusTable).toBeNull();
+  });
+
+  it('moves the focus with Shift and an arrow without adding the column it reaches, until writable', async () => {
+    const { app, tableId, columnId, setReadonly } = await setupReader();
+    const [, second] = getTable(app, tableId)!.columnIds;
+    const shiftArrow = (key: string) =>
+      app.keydown$.next(new KeyboardEvent('keydown', { key, shiftKey: true }));
+
+    shiftArrow('ArrowDown');
+    await flush();
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId: second,
+      selectColumnIds: [second],
+    });
+    const payload = JSON.parse(await copyToClipboard(app)) as ClipboardPayload;
+    expect(payload.columns.map(column => column.sourceId)).toEqual([second]);
+
+    shiftArrow('ArrowUp');
+    await flush();
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId,
+      selectColumnIds: [columnId],
+    });
+
+    setReadonly(false);
+    shiftArrow('ArrowDown');
+    await flush();
+    expect(app.store.state.editor.focusTable).toMatchObject({
+      columnId: second,
+      selectColumnIds: [columnId, second],
+    });
+  });
+
+  it('hands undo and redo to the store, which refuses both while readonly', async () => {
+    const { app, tableId, setReadonly } = await setupReader();
+    const columnCount = () => getTable(app, tableId)?.columnIds.length;
+
+    shortcut(app, KeyBindingName.undo);
+    await flush();
+    expect(columnCount()).toBe(2);
+
+    setReadonly(false);
+    shortcut(app, KeyBindingName.undo);
+    await flush();
+    expect(columnCount()).toBe(1);
+
+    setReadonly(true);
+    shortcut(app, KeyBindingName.redo);
+    await flush();
+    expect(columnCount()).toBe(1);
+
+    setReadonly(false);
+    shortcut(app, KeyBindingName.redo);
+    await flush();
+    expect(columnCount()).toBe(2);
   });
 });

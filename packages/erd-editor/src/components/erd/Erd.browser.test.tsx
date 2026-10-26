@@ -1419,6 +1419,7 @@ describe('Erd - a readonly editor reads its scene', () => {
     await jumpThroughPalette(reader, '@user_id');
     expect(app.store.state.editor.openMap[Open.search]).toBeFalsy();
     expect(app.store.state.editor.focusTable).toMatchObject(FOCUSED_COLUMN);
+    reader.sent.length = 0;
 
     chordOn(shell, 'Enter', 'Enter');
     await settleScene();
@@ -1427,7 +1428,8 @@ describe('Erd - a readonly editor reads its scene', () => {
     chordOn(shell, 'Tab', 'Tab');
     await settleScene();
     expectNoEditState(reader);
-    expect(app.store.state.editor.focusTable).not.toBeNull();
+    expect(app.store.state.editor.focusTable).toMatchObject(FOCUSED_COLUMN);
+    expect(editsOf(reader)).toEqual([]);
   });
 
   it('raises the table menu for a right press on a table alone, Table Properties its one row, selecting nothing for any', async () => {
@@ -1692,6 +1694,37 @@ describe('Erd - a readonly editor reads its scene', () => {
     expect(app.store.state.editor.selectedMap).toEqual({});
   });
 
+  it('opens Table Properties, read only, for its chord on the table a palette # row or an Explorer row selected', async () => {
+    const reader = await mountReader();
+    const { app, container, shell } = reader;
+    const opened = vi.fn();
+    app.emitter.on({ openTableProperties: opened });
+    const tablePropertiesChord = async () => {
+      shell.focus();
+      chordOn(shell, ' ', 'Space', { alt: true });
+      await settleScene();
+    };
+
+    await jumpThroughPalette(reader, '#orders');
+    await tablePropertiesChord();
+    expect(opened).toHaveBeenCalledTimes(1);
+    expect(opened.mock.calls[0][0].payload).toEqual({ tableId: 'orders' });
+    expect(container.querySelector('.table-properties')?.textContent).toContain(
+      'Read only'
+    );
+
+    Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]'))
+      .find(item => item.id.endsWith(':t:users'))!
+      .click();
+    await settleScene();
+    expect(container.querySelector('.table-properties')).toBeNull();
+    await tablePropertiesChord();
+    expect(opened).toHaveBeenCalledTimes(2);
+    expect(opened.mock.calls[1][0].payload).toEqual({ tableId: 'users' });
+    expect(container.querySelector('.table-properties')).not.toBeNull();
+    expectNoEditState(reader);
+  });
+
   it('selects nothing for the select all chord or a modifier drag, which pans and draws no marquee', async () => {
     const reader = await mountReader();
     const { app, shell, stage } = reader;
@@ -1743,6 +1776,7 @@ describe('Erd - a readonly editor reads its scene', () => {
     expectNoEditState(reader);
     expect(app.store.state.editor.drawTableGroup).toBe(false);
     expect(app.store.state.editor.selectedMap).toEqual({});
+    expect(editsOf(reader)).toEqual([]);
   });
 
   it('opens no colour picker, and holds a middle press over a takeover with its lift', async () => {
