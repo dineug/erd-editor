@@ -13,6 +13,7 @@ import {
   copyAnchor,
   DirectionName,
   DirectionNameList,
+  heldRouteRedraws,
   LINE_SIZE,
   nextSortEpoch,
   ObjectPoint,
@@ -332,9 +333,10 @@ function routeRelationships(
     moved === null ? undefined : createMemo(previous, dirty, lanes)
   );
 
+  const held = heldRouteRedraws(state);
   for (const [id, points] of routes) {
     const origin = origins.get(id);
-    if (origin) setRoute(origin, points);
+    if (origin) setRoute(origin, points, 'document', held);
   }
 
   cache.entries = entries;

@@ -3,6 +3,10 @@ import { observable } from '@dineug/r-html';
 import type { HeldTableGroupBoxes } from '@/engine/modules/table-group/generator.actions';
 import { RootState } from '@/engine/state';
 import { freezeView, sceneKeyOf, thawView } from '@/konva/scene/viewFreeze';
+import {
+  holdRouteRedraws,
+  releaseRouteRedraws,
+} from '@/utils/draw-relationship';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { getTableGroupRects, isTableGroupShown } from '@/utils/tableGroup';
 
@@ -25,7 +29,8 @@ const heldBoxes = new Map<string, HeldTableGroupBoxes>();
 
 /**
  * Raises the flag, holds the scene's view as it stands until endEntityDrag,
- * and, in the document while groups show, the box each group shows.
+ * and, in the document, the redraws of the static connectors' routes and,
+ * while groups show, the box each group shows.
  */
 export function beginEntityDrag(
   root: RootState,
@@ -39,6 +44,7 @@ export function beginEntityDrag(
       ? getTableGroupRects(root)
       : new Map()
   );
+  if (source === 'document') holdRouteRedraws(root);
   state.active[key] = true;
   freezeView(root, source);
 }
@@ -52,6 +58,7 @@ export function endEntityDrag(
   Reflect.deleteProperty(state.active, key);
   Reflect.deleteProperty(state.travelled, key);
   heldBoxes.delete(key);
+  if (source === 'document') releaseRouteRedraws(root);
   thawView(root, source);
 }
 

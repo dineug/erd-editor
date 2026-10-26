@@ -19,7 +19,7 @@
 
 | Directory | Purpose |
 | --- | --- |
-| `draw-relationship/` | `draw-relationship/AGENTS.md`. Relationship geometry: `sort.ts`, the `WeakMap` sort channels, `viewVersions`, referential actions at a connector's child end (`src/utils/referentialAction.ts`), compact ends and round corners, the window of the sort hooks |
+| `draw-relationship/` | `draw-relationship/AGENTS.md`. Relationship geometry: `sort.ts`, the `WeakMap` sort channels, `viewVersions` and the route versions, referential actions at a connector's child end (`src/utils/referentialAction.ts`), compact ends and round corners, the window of the sort hooks |
 | `generator-code/` | `generator-code/AGENTS.md`: the Code Generator's writers, the rules they share and one section per generator |
 | `schema-sql/` | `schema-sql/AGENTS.md`: the SQL writers: Snowflake's `bracketType`, SQL Server comments and `MS_Description`, defaults as stored, dotted names, foreign key pairs, `createSchemaSQL`'s order, Oracle triggers, referential actions |
 

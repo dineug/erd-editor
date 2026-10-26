@@ -14,7 +14,7 @@
 | `sort.ts` | `relationshipSort`, the whole geometry pass, routing included; `placeLoops` |
 | `route.ts`, `nudge.ts` | The router and the nudge pass, run inside the sort pass |
 | `pathFinding.ts` | `getRelationshipPath`: the path a connector draws, built from the anchors, stub slots and route the sort wrote. It places no end and routes nothing |
-| `index.ts` | The `WeakMap` sort channels, `setAnchors`, `clearSortChannel`, `viewVersions`, the marker sizes (`LINE_SIZE`, `LINE_HEIGHT`, `CIRCLE_RADIUS`), the stub lengths, `ROUTE_CORNER_RADIUS` |
+| `index.ts` | The `WeakMap` sort channels, `setAnchors`, `clearSortChannel`, `viewVersions`, the route versions and their drag hold (`holdRouteRedraws`), the marker sizes (`LINE_SIZE`, `LINE_HEIGHT`, `CIRCLE_RADIUS`), the stub lengths, `ROUTE_CORNER_RADIUS` |
 | `corner.ts` | Flattens a document corner to `ROUTE_CORNER_SEGMENTS` chords |
 | `bezier.ts` | A view's curve, flattened the same way |
 | `loop.ts` | A self loop's curve; `loopReach` |
@@ -33,6 +33,9 @@
 - **One channel per source.** A view keeps its anchors in its own channel, so `setAnchors` writes the entity only for the document. The document's sort and a view's then never read each other's routes.
 - **Clear a sort channel per connector.** `clearSortChannel` clears the connectors it is given, never a whole channel, since channels are module-wide and a page may host two stores.
 - **Bump `viewVersions` only on an actual change.** A view channel setter bumps a connector's version only when its value changed. An unconditional bump redraws every static connector on each drag sort.
+- **A document route redraws its connector when it alone changes.** The entity's proxy redraws a connector whose anchors moved; a route a moved table pushed aside has its own version, bumped by `setRoute` when the route changed by 0.01 or more.
+  - The version is made by the first render that reads the route (`getRoute`), never by a sort. A peer's or a replica's store draws nothing and has no `Node`, where an r-html observable throws as it is read (`sort.domFree.test.ts`).
+  - A drag of the document holds these redraws back (`beginEntityDrag` calls `holdRouteRedraws`, `endEntityDrag` calls `releaseRouteRedraws`) and redraws each held connector once at the drop. The drag draws what it moves on layers of its own, and a static connector redrawn each frame would repaint the layer every static table sits in. So while the drag runs, a static connector keeps the route it had as the drag began.
 - Which `GeometrySource` a function or scene passes, and where a scene root provides it: `src/components/AGENTS.md`.
 
 ### Referential action labels
