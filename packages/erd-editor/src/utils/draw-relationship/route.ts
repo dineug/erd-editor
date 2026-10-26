@@ -203,6 +203,15 @@ function channels(
 type Candidate = { points: Point[]; bends: number };
 
 /**
+ * Where two ends facing the same way, which only tables drawn over each other
+ * give, turn into one channel: a clearance past the further turning point, so
+ * each end arrives heading outward and neither stub is walked back over.
+ */
+function sharedChannel(a: number, b: number, sign: number) {
+  return (sign > 0 ? Math.max(a, b) : Math.min(a, b)) + sign * ROUTE_CLEARANCE;
+}
+
+/**
  * Gives an empty list of outward lanes one, a clearance out from the turning
  * point, so a route between two sides on different axes always has a corner
  * that leaves and arrives outward rather than none.
@@ -256,8 +265,12 @@ function candidates(
       if ((x - m.x) * mSign < 0 || (x - l.x) * lSign < 0) continue;
       push([m, { x, y: m.y }, { x, y: l.y }, l]);
     }
-    // Both anchors facing the same way with the target behind: step out, cross
-    // in the free band above or below, and come back in.
+    if (mSign === lSign) {
+      const x = sharedChannel(m.x, l.x, mSign);
+      push([m, { x, y: m.y }, { x, y: l.y }, l]);
+    }
+    // The target behind an end: step out of both, cross in the free band above
+    // or below, and come back in.
     const ys = channels(m.y, l.y, obstacles, false, spanLow, spanHigh);
     for (const y of ys) {
       const a = m.x + mSign * ROUTE_CLEARANCE;
@@ -275,6 +288,10 @@ function candidates(
     const ys = channels(m.y, l.y, obstacles, false, spanLow, spanHigh);
     for (const y of ys) {
       if ((y - m.y) * mSign < 0 || (y - l.y) * lSign < 0) continue;
+      push([m, { x: m.x, y }, { x: l.x, y }, l]);
+    }
+    if (mSign === lSign) {
+      const y = sharedChannel(m.y, l.y, mSign);
       push([m, { x: m.x, y }, { x: l.x, y }, l]);
     }
     const xs = channels(m.x, l.x, obstacles, true, spanLow, spanHigh);

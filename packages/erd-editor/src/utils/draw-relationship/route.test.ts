@@ -268,6 +268,46 @@ describe('routeOrthogonal', () => {
     expect(points[points.length - 1]).toEqual(rightFacing);
   });
 
+  it('joins two ends facing the same way through one shared channel', () => {
+    // Two tables drawn over each other, both connected from their bottoms. A
+    // step out of each end and back made a staircase of four bends.
+    const points = routeOrthogonal(
+      { x: 67, y: 54 },
+      Direction.bottom,
+      { x: 77, y: 64 },
+      Direction.bottom,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 67, y: 54 },
+      { x: 67, y: 80 },
+      { x: 77, y: 80 },
+      { x: 77, y: 64 },
+    ]);
+  });
+
+  it('joins two ends facing the same way sideways too', () => {
+    const points = routeOrthogonal(
+      { x: 54, y: 67 },
+      Direction.left,
+      { x: 64, y: 77 },
+      Direction.left,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 54, y: 67 },
+      { x: 38, y: 67 },
+      { x: 38, y: 77 },
+      { x: 64, y: 77 },
+    ]);
+  });
+
   it('steps out of a side when no lane lies outward of it', () => {
     // A 134 x 30 table at the origin and one 60 up and 80 right of it: every
     // lane the router knows sits behind the right-facing end, so it used to
