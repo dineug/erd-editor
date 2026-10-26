@@ -164,16 +164,29 @@ const Toolbar: FC<ToolbarProps> = (props, ctx) => {
         on:mousedown={handleUnselectAll}
         on:touchstart={handleUnselectAll}
       >
-        <input
-          title={t('toolbar.databaseName')}
-          placeholder={t('toolbar.databaseName')}
-          style={{ width: `${TOOLBAR_DATABASE_NAME_WIDTH}px` }}
-          type="text"
-          spellcheck="false"
-          prop:dir="auto"
-          prop:value={settings.databaseName ?? ''}
-          on:input={handleChangeDatabaseName}
-        />
+        {props.readonly ? (
+          <div
+            class={styles.databaseName}
+            title={settings.databaseName || t('toolbar.databaseName')}
+            aria-label={t('toolbar.databaseName')}
+            style={{ width: `${TOOLBAR_DATABASE_NAME_WIDTH}px` }}
+            prop:dir="auto"
+            bool:data-empty={!settings.databaseName}
+          >
+            {settings.databaseName || t('toolbar.databaseName')}
+          </div>
+        ) : (
+          <input
+            title={t('toolbar.databaseName')}
+            placeholder={t('toolbar.databaseName')}
+            style={{ width: `${TOOLBAR_DATABASE_NAME_WIDTH}px` }}
+            type="text"
+            spellcheck="false"
+            prop:dir="auto"
+            prop:value={settings.databaseName ?? ''}
+            on:input={handleChangeDatabaseName}
+          />
+        )}
         <div class={styles.vertical}></div>
         <div
           class={[

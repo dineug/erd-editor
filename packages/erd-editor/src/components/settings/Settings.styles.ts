@@ -30,6 +30,13 @@ export const contentArea = css`
   padding-inline-start: 16px;
 `;
 
+/* The page's name, and while readonly the badge that says so after it. */
+export const header = css`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
 export const content = css`
   display: flex;
   width: 100%;
@@ -116,8 +123,12 @@ export const lockButton = css`
     color: var(--active);
   }
 
-  &:hover {
+  &:not(:disabled):hover {
     background-color: var(--context-menu-hover);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
   }
 
   &:focus-visible {
@@ -157,5 +168,14 @@ export const columnOrderItem = css`
 
   &.dragging {
     opacity: 0.5;
+  }
+
+  &[data-readonly] {
+    cursor: default;
+  }
+
+  &[data-readonly]:hover {
+    background-color: transparent;
+    color: var(--foreground);
   }
 `;

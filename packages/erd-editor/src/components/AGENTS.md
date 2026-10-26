@@ -87,6 +87,11 @@
 - **Key a status toast by its message and values.** The same key opened again replaces the toast still up (`ToastContainer.tsx`), so a press repeated shows one toast. A key also names the values the message shows (`feedback.importOnly:sql`), so two different reports both stay up.
 - **Something still running shows lucide's turning `loader-circle`,** its text with no trailing ellipsis (`busy`). A `progress` fills a ring instead.
 
+### The Settings tab and the toolbar in a readonly editor
+
+- **The Settings tab is a display** (`settings/Settings.tsx`, which reads `store.getReadonly()` as it renders, so a turn either way redraws it). After the page name it carries the badge Table Properties carries, `tableProperties.readOnly` beside a `lock`, in that panel's own `readonlyBadge` style (`erd/table-properties/TableProperties.styles.ts`), and it keeps every setting in view: both switches (`primitives/switch/Switch.tsx`'s `disabled`), the width field and the seven lock buttons are disabled, and the column order rows neither drag nor draw a grip, said by `data-readonly`, since the drag sets their classes by hand. Each Lock row shows what it shows in a writable editor, so a lock that is off shows the live value dimmed, which is the reader's own screen value. None of them dispatches, and a column drag begun before the turn moves nothing more (`settings/Settings.test.ts`).
+- **The toolbar shows the database name as text** (`toolbar/Toolbar.tsx`, through its `readonly` prop): as wide as the field it replaces and in its font, the control font each engine's own stylesheet gives an input (`-moz-field`, `-webkit-small-control`) under the reset's family, so the placeholder fits as the field's does (`src/i18n/AGENTS.md`); `dir="auto"`, the field's placeholder dimmed while the document names no database, and nothing that takes typing. Its title is the whole name, which the width may cut short, or the label while there is none, and the label is its `aria-label`. Undo, Redo and Time Travel stay hidden, and the tabs, Search and the Explorer stay (`toolbar/Toolbar.test.ts`, `toolbar/Toolbar.databaseName.browser.test.ts`).
+
 ## Testing Requirements
 
 - **A component spec mounts through `src/__test-utils__`.** It uses `mountAndFlush` and `flush`.

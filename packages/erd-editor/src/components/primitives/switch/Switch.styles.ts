@@ -35,6 +35,11 @@ export const switchButton = css`
     transition-duration: 0.12s, 0.14s, 0.14s, 0.14s;
     background-position-x: 100%;
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
 `;
 
 export const size1 = css`

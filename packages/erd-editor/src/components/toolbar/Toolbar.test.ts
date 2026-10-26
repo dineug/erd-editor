@@ -1,4 +1,4 @@
-import { html } from '@dineug/r-html';
+import { FC, html, observable } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { iconNameOf } from '@/__test-utils__/icon';
@@ -34,7 +34,10 @@ import {
   viewCloseAction,
   viewOpenAction,
 } from '@/engine/modules/editor/view.actions';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  changeDatabaseNameAction,
+} from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { attachActionTag, Tag } from '@/engine/tag';
 import { createI18n } from '@/i18n/translate';
@@ -789,6 +792,111 @@ describe('Toolbar', () => {
       await setup();
 
       expect(menu('Time Travel').style.maxWidth).toBe('26px');
+    });
+  });
+
+  describe("a readonly editor's database name", () => {
+    /** The bar under a host that hands it the flag's readonly, as the element hands it its own. */
+    async function setupTurning(readonly: boolean) {
+      const flags = observable({ readonly });
+      const Host: FC = () => () =>
+        html`<${Toolbar}
+          enableThemeBuilder=${false}
+          readonly=${flags.readonly}
+        />`;
+      mounted = await mountAndFlush(html`<${Host} />`);
+      return { ...mounted, flags };
+    }
+
+    const nameText = () =>
+      root().querySelector(
+        `.${String(styles.databaseName)}`
+      ) as HTMLDivElement | null;
+
+    it('shows the name as text where the field stood, as wide, taking no typing', async () => {
+      const { app } = await setup({ readonly: true });
+      app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
+      await flush();
+
+      const el = nameText() as HTMLDivElement;
+      expect(root().querySelector('input')).toBeNull();
+      expect(root().firstElementChild).toBe(el);
+      expect(el.textContent?.trim()).toBe('shop');
+      expect(el.title).toBe('shop');
+      expect(el.getAttribute('aria-label')).toBe('database name');
+      expect(el.getAttribute('dir')).toBe('auto');
+      expect(el.style.width).toBe('150px');
+      expect(el.hasAttribute('data-empty')).toBe(false);
+      expect(el.isContentEditable).toBe(false);
+    });
+
+    it("shows the field's placeholder, dimmed, while the document names no database", async () => {
+      await setup({ readonly: true });
+
+      expect(nameText()?.textContent?.trim()).toBe('database name');
+      expect(nameText()?.hasAttribute('data-empty')).toBe(true);
+      expect(nameText()?.title).toBe('database name');
+    });
+
+    it('names a long database in full in its title, which the text may cut short', async () => {
+      const { app } = await setup({ readonly: true });
+      const name = 'ecommerce_production_analytics_warehouse';
+      app.store.dispatchSync(changeDatabaseNameAction({ value: name }));
+      await flush();
+
+      expect(nameText()?.textContent?.trim()).toBe(name);
+      expect(nameText()?.title).toBe(name);
+      expect(nameText()?.getAttribute('aria-label')).toBe('database name');
+    });
+
+    it('keeps the tabs, Search and the Explorer, and no Undo, Redo or Time Travel', async () => {
+      const { app } = await setup({ readonly: true });
+      app.store.dispatchSync(addTable('t1'));
+      await flush();
+
+      expect(
+        Array.from(root().querySelectorAll<HTMLElement>('[title]'), el =>
+          el.getAttribute('title')
+        )
+      ).toEqual([
+        'database name',
+        'Entity Relationship Diagram',
+        'Visualization',
+        'Schema SQL',
+        'Code Generator',
+        'Dictionary',
+        'Settings',
+        toShortcutTitle(app.keyBindingMap, 'Search', KeyBindingName.search),
+        toShortcutTitle(
+          app.keyBindingMap,
+          'Explorer',
+          KeyBindingName.findReplace
+        ),
+      ]);
+    });
+
+    it('turns into the field as the editor turns writable, and back into text as it turns readonly', async () => {
+      const { app, flags } = await setupTurning(true);
+      app.store.dispatchSync(changeDatabaseNameAction({ value: 'shop' }));
+      await flush();
+      expect(nameText()?.textContent?.trim()).toBe('shop');
+
+      flags.readonly = false;
+      await flush();
+
+      expect(nameText()).toBeNull();
+      const el = input('database name');
+      expect(el.value).toBe('shop');
+      el.value = 'sakila';
+      el.dispatchEvent(new InputEvent('input', { bubbles: true }));
+      await flush();
+      expect(app.store.state.settings.databaseName).toBe('sakila');
+
+      flags.readonly = true;
+      await flush();
+
+      expect(input('database name')).toBeNull();
+      expect(nameText()?.textContent?.trim()).toBe('sakila');
     });
   });
 });

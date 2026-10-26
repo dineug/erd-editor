@@ -11,6 +11,7 @@ describe('Settings.styles', () => {
       styles.root,
       styles.lnbArea,
       styles.contentArea,
+      styles.header,
       styles.content,
       styles.section,
       styles.row,
@@ -70,6 +71,27 @@ describe('Settings.styles', () => {
     expect(row).toContain('height: 24px');
     expect(row).toContain('align-items: center');
     expect(row).toContain('margin-bottom: 16px');
+  });
+
+  it("lays the page name out in a row with room for a readonly editor's badge after it", () => {
+    const header = source(styles.header);
+    expect(header).toContain('display: flex');
+    expect(header).toContain('align-items: center');
+    expect(header).toContain('gap: 8px');
+  });
+
+  it('shows a lock that takes no press with no hover, and a column row that moves none with none', () => {
+    const lock = source(styles.lockButton);
+    expect(lock).toContain('&:not(:disabled):hover');
+    expect(lock).toContain('&:disabled');
+    expect(lock).toContain('cursor: not-allowed');
+
+    const item = source(styles.columnOrderItem);
+    const readonly = item.slice(item.indexOf('&[data-readonly]'));
+    expect(readonly).toContain('cursor: default');
+    expect(readonly).toContain('&[data-readonly]:hover');
+    expect(readonly).toContain('background-color: transparent');
+    expect(readonly).toContain('color: var(--foreground)');
   });
 
   it('spaces the lock value from its button on the side it ends at', () => {
