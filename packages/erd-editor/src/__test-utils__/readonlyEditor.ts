@@ -88,13 +88,15 @@ export function closeReadonlyEditors() {
 }
 
 /**
- * A readonly editor as a host builds one, its shadow root opened so a spec
- * presses its controls, over the lock-off seed, measured at the size given.
+ * An editor as a host builds one, readonly unless told otherwise, its shadow
+ * root opened so a spec presses its controls, over the lock-off seed, measured
+ * at the size given. The spec that opens it removes it.
  */
-export async function openReadonlyEditor({
+export async function openLockOffEditor({
+  readonly = true,
   width = 1100,
   height = 700,
-} = {}): Promise<ReadonlyEditor> {
+} = {}): Promise<ErdEditorElement> {
   const attachShadow = Element.prototype.attachShadow;
   const opened = vi
     .spyOn(Element.prototype, 'attachShadow')
@@ -103,7 +105,7 @@ export async function openReadonlyEditor({
     });
 
   const el = document.createElement('erd-editor');
-  el.readonly = true;
+  el.readonly = readonly;
   el.setAttribute(
     'style',
     `display: block; width: ${width}px; height: ${height}px;`
@@ -113,6 +115,18 @@ export async function openReadonlyEditor({
   opened.mockRestore();
   el.setInitialValue(createLockOffValue());
   await drawn();
+  return el;
+}
+
+/**
+ * A readonly editor as a host builds one, its shadow root opened so a spec
+ * presses its controls, over the lock-off seed, measured at the size given.
+ */
+export async function openReadonlyEditor({
+  width = 1100,
+  height = 700,
+} = {}): Promise<ReadonlyEditor> {
+  const el = await openLockOffEditor({ width, height });
 
   const sharedStore: SharedStore = el.getSharedStore({
     mouseTracker: false,

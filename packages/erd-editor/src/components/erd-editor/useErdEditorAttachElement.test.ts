@@ -95,6 +95,7 @@ import {
   changeShowAction,
   changeZoomLevelAction,
   scrollToAction,
+  streamScrollToAction,
   toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
@@ -103,6 +104,7 @@ import {
   moveTableAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { createReplicationStore } from '@/engine/replication-store';
 import type { Unsubscribe } from '@/internal-types';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
 import {
@@ -2418,6 +2420,65 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
     } finally {
       controller.unmount();
       stopViewport();
+    }
+  });
+
+  it('sends a pan its shared store still held as it turns readonly, so a replica lands where the element stands once writable', async () => {
+    vi.useFakeTimers();
+    try {
+      const { app, ctx, props } = await setup({}, { wired: true });
+      const { store } = app;
+      // Every lock off, so the file holds the live viewport the pans move.
+      ctx.setInitialValue('{"version":"3.0.0","settings":{"lockSettings":0}}');
+      const replica = createReplicationStore({
+        toWidth: text => text.length * 10,
+      });
+      replica.setInitialValue(ctx.value);
+      const sharedStore = ctx.getSharedStore({
+        mouseTracker: false,
+        focusTracker: false,
+      });
+      const unsubscribe = sharedStore.subscribe(actions =>
+        replica.dispatchSync(cloneDeep(actions))
+      );
+      const originX = (value: string) => JSON.parse(value).settings.originX;
+
+      try {
+        store.dispatchSync(scrollToAction({ originX: 0, originY: 0 }));
+        await vi.advanceTimersByTimeAsync(300);
+        expect(originX(replica.value)).toBe(0);
+
+        // Within the outbound pipe's 200 ms window, so it still holds the pan.
+        store.dispatchSync(
+          streamScrollToAction({ movementX: 30, movementY: 0 })
+        );
+        await vi.advanceTimersByTimeAsync(50);
+        props.readonly = true;
+        await vi.advanceTimersByTimeAsync(0);
+        // Sent at the turn, well before the window would have let it go.
+        expect(originX(replica.value)).toBe(30);
+        store.dispatchSync(
+          streamScrollToAction({ movementX: 100, movementY: 0 })
+        );
+        await vi.advanceTimersByTimeAsync(50);
+        // Nothing of the reader's own pan has reached the replica.
+        expect(originX(replica.value)).toBe(30);
+        props.readonly = false;
+        await vi.advanceTimersByTimeAsync(0);
+        store.dispatchSync(
+          streamScrollToAction({ movementX: 7, movementY: 0 })
+        );
+        await vi.advanceTimersByTimeAsync(500);
+
+        expect(originX(ctx.value)).toBe(137);
+        expect(replica.value).toBe(ctx.value);
+      } finally {
+        unsubscribe();
+        sharedStore.destroy();
+        replica.destroy();
+      }
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

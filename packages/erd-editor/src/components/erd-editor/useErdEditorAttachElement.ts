@@ -224,10 +224,24 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     store.dispatchSync(restoreScreenSettingsAction$());
   };
 
+  /**
+   * Sends a pan or a drag the shared stores still hold from before the turn,
+   * which would otherwise reach a replica behind the absolute placement that
+   * leads the first pan once writable, and land it off the screen by its steps.
+   */
+  const sendHeldStreams = () => {
+    sharedStoreSet.forEach(sharedStore => sharedStore.flushStreamBuffers());
+  };
+
   const destroySet = new Set<Unsubscribe>([
     watch(props).subscribe(propName => {
       if (propName === 'readonly') {
-        props.readonly ? closeEditState() : restoreScreen();
+        if (props.readonly) {
+          sendHeldStreams();
+          closeEditState();
+        } else {
+          restoreScreen();
+        }
         return;
       }
       if (propName === 'enableLocalePicker') {
@@ -247,9 +261,14 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     localeHost.destroy,
   ]);
 
+  let firstMount = true;
+
   onMounted(() => {
-    // A host that builds the element readonly turns nothing the watch hears.
-    if (props.readonly) closeEditState();
+    // Readonly from the start may come from no write the watch hears, so the
+    // first mount closes too. A host that moves the element in the page mounts
+    // it again, over a selection a jump left, which stays.
+    if (firstMount && props.readonly) closeEditState();
+    firstMount = false;
 
     addUnsubscribe(
       store.change$.subscribe(emitChange),
