@@ -181,7 +181,7 @@ full. The read-only element has a section of its own, [Viewer](#viewer).
 
 | Attribute | Property | Description |
 | --- | --- | --- |
-| `readonly` | `readonly` | Blocks editing and `change`; only `setInitialValue()` still loads. |
+| `readonly` | `readonly` | Blocks editing and `change`; only `setInitialValue()` still loads. Takes the edit UI away and keeps navigation, export, the diff viewer and Table Properties to read; a setting the reader changes stays on their own screen. |
 | `system-dark-mode` | `systemDarkMode` | Sets the appearance to `system`. |
 | `enable-theme-builder` | `enableThemeBuilder` | Shows the theme builder and the palette's Theme. |
 | `enable-locale-picker` | `enableLocalePicker` | Shows the language button and the palette's Display Language, System by default. |

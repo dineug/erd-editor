@@ -45,7 +45,7 @@
 - **Owner decisions of 2026-10-06 shape Map Columns.** Map Columns maps the parent's key onto the child's columns, a row per key column. The rules from here through Text and direction come from those decisions.
 - **Two ways open it.** It opens for a new relationship from the buttons beside a draw's target. It opens for a held relationship from the relationship menu.
 - The buttons beside a draw's target: `src/components/erd/AGENTS.md`.
-- **The menu row respects readonly and a draw.** The relationship menu hides the row in readonly. It ends an armed draw before the dialog opens, since the draw's buttons would otherwise come back over the table once the dialog closed (`handleOpenMapColumns`).
+- **The menu row respects readonly and a draw.** The relationship menu hides the row in readonly, where `Erd.tsx` raises no relationship menu at all. It ends an armed draw before the dialog opens, since the draw's buttons would otherwise come back over the table once the dialog closed (`handleOpenMapColumns`).
 - The modal contract Map Columns keeps (shortcuts, undo, Find and Replace and the palette): `src/components/export-image/AGENTS.md` (Rules, The shared modal).
 
 ### The key

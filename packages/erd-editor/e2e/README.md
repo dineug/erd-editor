@@ -266,8 +266,8 @@ sharing its tenant column; the relationship menu changes a relationship's
 columns in place, its id, type and ON DELETE kept, a column it no longer uses
 kept without its FK mark, a removed column shown as `(removed)` until another
 is picked; with data type sync on the child takes the parent's type in the same
-undo. A read-only editor shows neither the buttons nor the relationship menu's
-Map Columns item, the chords of Find and Replace and the palette close the
+undo. A read-only editor shows neither the buttons nor a menu over the
+relationship, the chords of Find and Replace and the palette close the
 dialog for them, Escape closes it writing nothing, opening it from
 the menu ends an armed draw, and under touch a tap on a table mints new columns
 at once, as it always has, with no buttons ever shown: not after a tap on empty
