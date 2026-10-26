@@ -94,6 +94,46 @@ describe('relationshipSort incremental reuse', () => {
     expect(drawingOf(incremental)).toEqual(drawingOf(fresh));
   });
 
+  it('draws a table moved into the lanes a route turns at as a sort from scratch', () => {
+    // D comes to stand across the band the route from A up to B turns in,
+    // far from the route itself, and gives it a nearer lane to turn at.
+    const layout = (d: { x: number; y: number }) => {
+      const state: RootState = {
+        ...schemaV3Parser({}),
+        editor: createEditor(),
+        lww: {},
+      };
+      state.settings.show = 0;
+      for (const [id, x, y] of [
+        ['A', 550, 400],
+        ['B', 400, 50],
+        ['C', 450, 250],
+        ['D', d.x, d.y],
+        ['E', 0, 150],
+      ] as const) {
+        state.collections.tableEntities[id] = createTable({ id, ui: { x, y } });
+        state.doc.tableIds.push(id);
+      }
+      state.collections.relationshipEntities.r = createRelationship({
+        id: 'r',
+        start: { tableId: 'A' },
+        end: { tableId: 'B' },
+      });
+      state.doc.relationshipIds.push('r');
+      return state;
+    };
+    const incremental = layout({ x: 50, y: 300 });
+    relationshipSort(incremental);
+
+    incremental.collections.tableEntities.D.ui.x = 200;
+    incremental.collections.tableEntities.D.ui.y = 200;
+    relationshipSort(incremental);
+    const fresh = layout({ x: 200, y: 200 });
+    relationshipSort(fresh);
+
+    expect(drawingOf(incremental)).toEqual(drawingOf(fresh));
+  });
+
   it('draws a removed relationship exactly as a sort without it', () => {
     const incremental = createScene();
     relationshipSort(incremental);

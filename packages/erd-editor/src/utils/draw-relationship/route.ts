@@ -173,8 +173,17 @@ function polylineLength(points: Point[]) {
 }
 
 /**
+ * The stretch of the other axis a run turning at one of these lanes covers, a
+ * clearance wider each way: only a table reaching into it can sit in the run's
+ * way, and so give the run a lane to turn at.
+ */
+function band(a: number, b: number): [number, number] {
+  return [Math.min(a, b) - ROUTE_CLEARANCE, Math.max(a, b) + ROUTE_CLEARANCE];
+}
+
+/**
  * Channel coordinates worth turning at on one axis: the midpoint, and a lane
- * just clear of each table reaching into the band the route crosses. Sorted by
+ * just clear of each table reaching into the band the run crosses. Sorted by
  * distance, then coordinate, so no truncation or tie follows document order.
  */
 function channels(
@@ -182,8 +191,7 @@ function channels(
   to: number,
   obstacles: Obstacles,
   horizontal: boolean,
-  spanLow: number,
-  spanHigh: number
+  [spanLow, spanHigh]: [number, number]
 ): number[] {
   const middle = (from + to) / 2;
   const low = obstacles[horizontal ? 'left' : 'top'];
@@ -258,8 +266,6 @@ function candidates(
   const mSign = outwardSign(mDirection);
   const lSign = outwardSign(lDirection);
 
-  const spanLow = Math.min(m.x, l.x, m.y, l.y);
-  const spanHigh = Math.max(m.x, l.x, m.y, l.y);
   const out: Candidate[] = [];
 
   const push = (points: Point[]) => {
@@ -281,7 +287,7 @@ function candidates(
   };
 
   if (mH && lH) {
-    const xs = channels(m.x, l.x, obstacles, true, spanLow, spanHigh);
+    const xs = channels(m.x, l.x, obstacles, true, band(m.y, l.y));
     for (const x of xs) {
       if ((x - m.x) * mSign < 0 || (x - l.x) * lSign < 0) continue;
       push([m, { x, y: m.y }, { x, y: l.y }, l]);
@@ -295,10 +301,10 @@ function candidates(
     }
     // The target behind an end: step out of both, cross in the free band above
     // or below, and come back in.
-    const ys = channels(m.y, l.y, obstacles, false, spanLow, spanHigh);
+    const a = m.x + mSign * ROUTE_CLEARANCE;
+    const b = l.x + lSign * ROUTE_CLEARANCE;
+    const ys = channels(m.y, l.y, obstacles, false, band(a, b));
     for (const y of ys) {
-      const a = m.x + mSign * ROUTE_CLEARANCE;
-      const b = l.x + lSign * ROUTE_CLEARANCE;
       push([
         m,
         { x: a, y: m.y },
@@ -309,7 +315,7 @@ function candidates(
       ]);
     }
   } else if (!mH && !lH) {
-    const ys = channels(m.y, l.y, obstacles, false, spanLow, spanHigh);
+    const ys = channels(m.y, l.y, obstacles, false, band(m.x, l.x));
     for (const y of ys) {
       if ((y - m.y) * mSign < 0 || (y - l.y) * lSign < 0) continue;
       push([m, { x: m.x, y }, { x: l.x, y }, l]);
@@ -321,10 +327,10 @@ function candidates(
       const y = (m.y + l.y) / 2;
       push([m, { x: m.x, y }, { x: l.x, y }, l]);
     }
-    const xs = channels(m.x, l.x, obstacles, true, spanLow, spanHigh);
+    const a = m.y + mSign * ROUTE_CLEARANCE;
+    const b = l.y + lSign * ROUTE_CLEARANCE;
+    const xs = channels(m.x, l.x, obstacles, true, band(a, b));
     for (const x of xs) {
-      const a = m.y + mSign * ROUTE_CLEARANCE;
-      const b = l.y + lSign * ROUTE_CLEARANCE;
       push([
         m,
         { x: m.x, y: a },
@@ -339,10 +345,10 @@ function candidates(
     if ((l.x - m.x) * mSign >= 0 && (m.y - l.y) * lSign >= 0) {
       push([m, { x: l.x, y: m.y }, l]);
     }
-    const xs = channels(m.x, l.x, obstacles, true, spanLow, spanHigh)
+    const xs = channels(m.x, l.x, obstacles, true, band(m.y, l.y))
       .filter(x => (x - m.x) * mSign >= 0)
       .slice(0, MAX_MIXED);
-    const ys = channels(m.y, l.y, obstacles, false, spanLow, spanHigh)
+    const ys = channels(m.y, l.y, obstacles, false, band(m.x, l.x))
       .filter(y => (y - l.y) * lSign >= 0)
       .slice(0, MAX_MIXED);
     if (!xs.length || !ys.length) {
@@ -363,10 +369,10 @@ function candidates(
     if ((l.y - m.y) * mSign >= 0 && (m.x - l.x) * lSign >= 0) {
       push([m, { x: m.x, y: l.y }, l]);
     }
-    const ys = channels(m.y, l.y, obstacles, false, spanLow, spanHigh)
+    const ys = channels(m.y, l.y, obstacles, false, band(m.x, l.x))
       .filter(y => (y - m.y) * mSign >= 0)
       .slice(0, MAX_MIXED);
-    const xs = channels(m.x, l.x, obstacles, true, spanLow, spanHigh)
+    const xs = channels(m.x, l.x, obstacles, true, band(m.y, l.y))
       .filter(x => (x - l.x) * lSign >= 0)
       .slice(0, MAX_MIXED);
     if (!xs.length || !ys.length) {
@@ -394,18 +400,36 @@ export type RouteResult = {
   reach: DirtyBox;
 };
 
-function boxOfPoints(points: Point[]): DirtyBox {
-  let left = Infinity;
-  let top = Infinity;
-  let right = -Infinity;
-  let bottom = -Infinity;
-  for (const { x, y } of points) {
-    if (x < left) left = x;
-    if (x > right) right = x;
-    if (y < top) top = y;
-    if (y > bottom) bottom = y;
+/**
+ * The box of every candidate tried, the two turning points included. A table
+ * outside it, by more than the cache's touch distance, neither gave a lane nor
+ * stood in any candidate's way, so moving it changes no score.
+ */
+function boxOfCandidates(m: Point, l: Point, options: Candidate[]): DirtyBox {
+  const box: DirtyBox = {
+    left: Math.min(m.x, l.x),
+    top: Math.min(m.y, l.y),
+    right: Math.max(m.x, l.x),
+    bottom: Math.max(m.y, l.y),
+  };
+  for (const { points } of options) {
+    for (const { x, y } of points) {
+      if (x < box.left) box.left = x;
+      if (x > box.right) box.right = x;
+      if (y < box.top) box.top = y;
+      if (y > box.bottom) box.bottom = y;
+    }
   }
-  return { left, top, right, bottom };
+  return box;
+}
+
+function union(a: DirtyBox, b: DirtyBox): DirtyBox {
+  return {
+    left: Math.min(a.left, b.left),
+    top: Math.min(a.top, b.top),
+    right: Math.max(a.right, b.right),
+    bottom: Math.max(a.bottom, b.bottom),
+  };
 }
 
 /**
@@ -455,9 +479,8 @@ export function routeWithReach(
     }
   }
 
-  if (best && bestCost < BLOCK_COST) {
-    return { points: best, reach: boxOfPoints(best) };
-  }
+  const reach = boxOfCandidates(m, l, options);
+  if (best && bestCost < BLOCK_COST) return { points: best, reach };
 
   const { points, region } = searchRoute(
     m,
@@ -475,5 +498,5 @@ export function routeWithReach(
       ? [m, { x: (m.x + l.x) / 2, y: m.y }, { x: (m.x + l.x) / 2, y: l.y }, l]
       : [m, { x: m.x, y: (m.y + l.y) / 2 }, { x: l.x, y: (m.y + l.y) / 2 }, l]);
 
-  return { points: chosen, reach: region };
+  return { points: chosen, reach: union(reach, region) };
 }
