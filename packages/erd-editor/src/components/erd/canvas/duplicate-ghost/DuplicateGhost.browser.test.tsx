@@ -544,7 +544,7 @@ describe('DuplicateGhost - commit', () => {
     expect(lastTable(app).ui).toMatchObject({ x: 160, y: 230 });
   });
 
-  it('lets go of its copies on a cancel, so the release duplicates nothing', async () => {
+  it('lets go of its copies on a cancel, so the release duplicates nothing, and copies again on the next drag', async () => {
     const { app } = await mountGhost();
     seedTable(app, 't1', 100, 200);
     select(app, { t1: SelectType.table });
@@ -566,6 +566,14 @@ describe('DuplicateGhost - commit', () => {
     expect(app.store.state.editor.selectedMap).toEqual({
       t1: SelectType.table,
     });
+
+    // A cancel with nothing held changes nothing, and the next drag copies.
+    app.emitter.emit(duplicateDragCancelAction());
+    await startGesture(app);
+    await movePointer([[60, 30]]);
+    expect(ghostsIn().length).toBe(1);
+    await dropAndSettle();
+    expect(app.store.state.doc.tableIds).toHaveLength(2);
   });
 
   // Covers the outcome, not the mechanism: unmounting unsubscribes drag$
