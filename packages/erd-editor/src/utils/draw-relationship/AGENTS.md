@@ -30,6 +30,7 @@
 
 - **`sort.ts` is the whole geometry pass.** Routing (`route.ts`, `nudge.ts`) belongs to it, because routing needs every table and every route. `pathFinding.ts` only draws.
 - **A rendering-only value goes in a sort channel.** Put it in the `WeakMap` sort channels of `index.ts`, never a new schema field. Anchors are schema fields, which the runtime value (`toJson`) carries, though the file form (`toDocumentJson`) leaves them out and every store derives them again, on a load in `settleDocument` and after an edit in the sort hooks.
+- **A document connector leaves sides whose stubs can meet.** Its sides are the nearest of the sixteen side-midpoint pairs, except a nearest pair on two axes whose shortest stubs do not face each other, which gives way to the nearest pair whose stubs do (`getAndSetDirection`). A view keeps the nearest pair, since its curve needs no corner.
 - **One channel per source.** A view keeps its anchors in its own channel, so `setAnchors` writes the entity only for the document. The document's sort and a view's then never read each other's routes.
 - **Clear a sort channel per connector.** `clearSortChannel` clears the connectors it is given, never a whole channel, since channels are module-wide and a page may host two stores.
 - **Bump `viewVersions` only on an actual change.** A view channel setter bumps a connector's version only when its value changed. An unconditional bump redraws every static connector on each drag sort.

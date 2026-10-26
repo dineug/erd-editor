@@ -116,6 +116,52 @@ describe('relationshipSort', () => {
     });
   });
 
+  it('leaves the nearest pair of sides on two axes for the nearest whose stubs face', () => {
+    // B sits 50 below A and 60 to its right. A's right side and B's top are
+    // nearest, but B's stub ends left of A's, so the route had to turn back
+    // over A's markers; A's bottom and B's top face across the 50 between them.
+    addTable(state, 'A', 0, 0);
+    addTable(state, 'B', 60, 80);
+    const relationship = addRelationship(state, 'r', 'A', 'B');
+
+    relationshipSort(state);
+
+    expect(relationship.start).toMatchObject({
+      x: TABLE_WIDTH / 2,
+      y: TABLE_HEIGHT,
+      direction: Direction.bottom,
+    });
+    expect(relationship.end).toMatchObject({
+      x: 60 + TABLE_WIDTH / 2,
+      y: 80,
+      direction: Direction.top,
+    });
+  });
+
+  it('keeps the nearest pair of sides on two axes when its stubs already face', () => {
+    // B's stub ends past A's, so one bend joins them.
+    addTable(state, 'A', 0, 0);
+    addTable(state, 'B', 100, 60);
+    const relationship = addRelationship(state, 'r', 'A', 'B');
+
+    relationshipSort(state);
+
+    expect(relationship.start.direction).toBe(Direction.right);
+    expect(relationship.end.direction).toBe(Direction.top);
+  });
+
+  it('keeps the nearest pair of sides when no pair has stubs that face', () => {
+    // B overlaps A across and sits 30 above it, so every stub pair crosses.
+    addTable(state, 'A', 0, 0);
+    addTable(state, 'B', 80, -60);
+    const relationship = addRelationship(state, 'r', 'A', 'B');
+
+    relationshipSort(state);
+
+    expect(relationship.start.direction).toBe(Direction.right);
+    expect(relationship.end.direction).toBe(Direction.bottom);
+  });
+
   it('routes a self relationship around the top-right corner', () => {
     addTable(state, 'A', 10, 20);
     const relationship = addRelationship(state, 'r', 'A', 'A');

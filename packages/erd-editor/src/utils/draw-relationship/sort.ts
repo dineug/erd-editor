@@ -15,6 +15,7 @@ import {
   DirectionNameList,
   heldRouteRedraws,
   LINE_SIZE,
+  MIN_STUB,
   nextSortEpoch,
   ObjectPoint,
   setAnchors,
@@ -182,7 +183,8 @@ export function relationshipSort(
       const [startDirection, endDirection] = getAndSetDirection(
         startGraph.objectPoint,
         endGraph.objectPoint,
-        relationshipShape
+        relationshipShape,
+        source
       );
 
       startGraph[startDirection].push({
@@ -526,47 +528,105 @@ function orderAngle(
   return normalizeAngle(theta - SIDE_START_ANGLE[direction]);
 }
 
+/** Which way each side faces, as the unit step a stub grows along. */
+const OUTWARD: Record<DirectionName, { x: number; y: number }> = {
+  [DirectionName.left]: { x: -1, y: 0 },
+  [DirectionName.right]: { x: 1, y: 0 },
+  [DirectionName.top]: { x: 0, y: -1 },
+  [DirectionName.bottom]: { x: 0, y: 1 },
+};
+
+const isSideways = (direction: DirectionName) =>
+  direction === DirectionName.left || direction === DirectionName.right;
+
 /**
- * Chooses which side of each table the relationship leaves from: the nearest of
- * the sixteen side-midpoint pairs, DirectionNameList order breaking ties.
- * Obstacles are not consulted — routing past a table is the router's job.
+ * Whether the shortest stubs out of these two side midpoints face each other:
+ * each lies ahead of the other's side, which is what lets the router join them
+ * in one bend or two without turning back over either end's markers.
  */
-function getAndSetDirection(
+function stubsFace(
+  start: ObjectPoint,
+  startSide: DirectionName,
+  end: ObjectPoint,
+  endSide: DirectionName
+) {
+  if (startSide === endSide) return false;
+
+  const a = OUTWARD[startSide];
+  const b = OUTWARD[endSide];
+  const mx = start[startSide].x + a.x * MIN_STUB;
+  const my = start[startSide].y + a.y * MIN_STUB;
+  const lx = end[endSide].x + b.x * MIN_STUB;
+  const ly = end[endSide].y + b.y * MIN_STUB;
+
+  return (
+    (lx - mx) * a.x + (ly - my) * a.y >= 0 &&
+    (mx - lx) * b.x + (my - ly) * b.y >= 0
+  );
+}
+
+/**
+ * The nearest of the sixteen side-midpoint pairs that accept takes, the first
+ * in DirectionNameList order breaking a tie. With no test it starts from the
+ * two bottom sides; with one, from no pair, and it finds none if none passes.
+ */
+function nearestSides(
   start: ObjectPoint,
   end: ObjectPoint,
-  relationship: ChangeRelationship
-): DirectionTuple {
-  const direction: DirectionTuple = [
-    DirectionName.bottom,
-    DirectionName.bottom,
-  ];
-
-  let min = euclideanDistance(start.bottom, end.bottom);
-  relationship.start.x = start.bottom.x;
-  relationship.start.y = start.bottom.y;
-  relationship.end.x = end.bottom.x;
-  relationship.end.y = end.bottom.y;
-  relationship.start.direction = Direction.bottom;
-  relationship.end.direction = Direction.bottom;
+  accept?: (startSide: DirectionName, endSide: DirectionName) => boolean
+): DirectionTuple | null {
+  let nearest: DirectionTuple | null = accept
+    ? null
+    : [DirectionName.bottom, DirectionName.bottom];
+  let min = accept ? Infinity : euclideanDistance(start.bottom, end.bottom);
 
   for (const key of DirectionNameList) {
     for (const key2 of DirectionNameList) {
       const k = key as DirectionName;
       const k2 = key2 as DirectionName;
-      const temp = euclideanDistance(start[k], end[k2]);
-      if (min <= temp) continue;
+      const distance = euclideanDistance(start[k], end[k2]);
+      if (min <= distance) continue;
+      if (accept && !accept(k, k2)) continue;
 
-      min = temp;
-      direction[0] = k;
-      direction[1] = k2;
-      relationship.start.x = start[k].x;
-      relationship.start.y = start[k].y;
-      relationship.start.direction = directionNameToDirection[k];
-      relationship.end.x = end[k2].x;
-      relationship.end.y = end[k2].y;
-      relationship.end.direction = directionNameToDirection[k2];
+      min = distance;
+      nearest = [k, k2];
     }
   }
+
+  return nearest;
+}
+
+/**
+ * Chooses which side of each table the relationship leaves from, by the rule in
+ * this directory's AGENTS.md. Obstacles are not consulted: routing past a table
+ * is the router's job.
+ */
+function getAndSetDirection(
+  start: ObjectPoint,
+  end: ObjectPoint,
+  relationship: ChangeRelationship,
+  source: GeometrySource
+): DirectionTuple {
+  let direction = nearestSides(start, end) as DirectionTuple;
+  const [startSide, endSide] = direction;
+
+  if (
+    source === 'document' &&
+    isSideways(startSide) !== isSideways(endSide) &&
+    !stubsFace(start, startSide, end, endSide)
+  ) {
+    direction =
+      nearestSides(start, end, (k, k2) => stubsFace(start, k, end, k2)) ??
+      direction;
+  }
+
+  const [k, k2] = direction;
+  relationship.start.x = start[k].x;
+  relationship.start.y = start[k].y;
+  relationship.start.direction = directionNameToDirection[k];
+  relationship.end.x = end[k2].x;
+  relationship.end.y = end[k2].y;
+  relationship.end.direction = directionNameToDirection[k2];
 
   return direction;
 }
