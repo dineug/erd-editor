@@ -49,6 +49,7 @@ import {
   changeMemoValueAction,
   resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
+import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { Memo as MemoType } from '@/internal-types';
 import { type RenderedScene, renderScene } from '@/konva/scene/renderScene';
@@ -97,6 +98,13 @@ const createProps = (value?: Partial<MemoType>): MemoType =>
     },
     ...value,
   });
+
+/** The memo and a table beside it in the document, which a selection names only once it lists them. */
+const listSelectable = (app: AppContext) =>
+  app.store.dispatchSync(
+    addMemoAction({ id: MEMO_ID, ui: { x: 30, y: 40, zIndex: 2 } }),
+    addTableAction({ id: 'other', ui: { x: 600, y: 400, zIndex: 2 } })
+  );
 
 const teardowns: Array<() => void> = [];
 const apps = new Set<AppContext>();
@@ -420,6 +428,7 @@ describe('the memo scene', () => {
 
     expect(nodeNamed(stage, 'memo-body').attrs.stroke).toBe(theme.memoBorder);
 
+    listSelectable(app);
     app.store.dispatchSync(selectAction({ [MEMO_ID]: SelectType.memo }));
     await flush();
     await whenDrawn();
@@ -434,6 +443,7 @@ describe('the memo scene', () => {
 
     expect(root.getAttr('selected')).toBe(false);
 
+    listSelectable(app);
     app.store.dispatchSync(selectAction({ [MEMO_ID]: SelectType.memo }));
     await flush();
     await whenDrawn();
@@ -527,6 +537,7 @@ describe('the memo scene', () => {
 
   it('never writes a peer selection into the local selection map', async () => {
     const app = createTestAppContext();
+    listSelectable(app);
     app.store.dispatchSync(selectAction({ other: SelectType.table }));
     const stage = await mountMemo(createProps(), app);
 
@@ -638,9 +649,7 @@ describe('the memo scene', () => {
  */
 async function mountStoredMemo() {
   const app = createTestAppContext();
-  app.store.dispatchSync(
-    addMemoAction({ id: MEMO_ID, ui: { x: 30, y: 40, zIndex: 2 } })
-  );
+  listSelectable(app);
   app.store.dispatchSync(
     resizeMemoAction({ id: MEMO_ID, x: 30, y: 40, width: 200, height: 150 })
   );

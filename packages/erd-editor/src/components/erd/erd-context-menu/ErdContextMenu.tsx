@@ -93,6 +93,26 @@ export const ErdContextMenuType = {
 } as const;
 export type ErdContextMenuType = ValuesType<typeof ErdContextMenuType>;
 
+const READING_MENUS = [
+  ErdContextMenuType.ERD,
+  ErdContextMenuType.table,
+] as const;
+
+/** A menu that keeps rows for a readonly reader. */
+type ReadingMenuType = (typeof READING_MENUS)[number];
+
+/**
+ * The menus that keep rows for a readonly reader, the canvas's and a table's.
+ * Any other would stand empty, so the ERD tab raises none of them while
+ * readonly and takes one already open away as the editor turns readonly.
+ */
+export const READING_MENU_TYPES: ReadonlySet<ErdContextMenuType> = new Set(
+  READING_MENUS
+);
+
+const isReadingMenu = (type: ErdContextMenuType): type is ReadingMenuType =>
+  READING_MENU_TYPES.has(type);
+
 const referentialActionItems: Array<{
   field: ReferentialActionField;
   labelKey: PlainMessageKey;
@@ -486,6 +506,137 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     };
   };
 
+  /** Table Properties, which a readonly reader opens to read. */
+  const tablePropertiesItem = () => (
+    <ContextMenu.Item
+      onClick={handleOpenTableProperties}
+      children={
+        <ContextMenu.Menu
+          icon={<Icon name="table-properties" size={14} />}
+          name={i18n.value.t('common.tableProperties')}
+          right={
+            <Kbd
+              shortcut={app.value.keyBindingMap.tableProperties[0]?.shortcut}
+            />
+          }
+        />
+      }
+    />
+  );
+
+  /** View Option, whose rows a readonly reader turns on its own screen alone. */
+  const viewOptionItem = () => (
+    <ContextMenu.Item
+      children={
+        <ContextMenu.Menu
+          icon={<Icon name="eye" size={14} />}
+          name={i18n.value.t('contextMenu.viewOption')}
+          right={chevronRightIcon}
+        />
+      }
+      subChildren={
+        <>
+          {createShowMenus(app.value, i18n.value).map(menu => (
+            <ContextMenu.Item
+              onClick={menu.onClick}
+              children={
+                <ContextMenu.Menu
+                  icon={menu.checked ? <Icon name="check" size={14} /> : null}
+                  name={menu.name}
+                />
+              }
+            />
+          ))}
+        </>
+      }
+    />
+  );
+
+  const nameViewItem = () => (
+    <ContextMenu.Item
+      children={
+        <ContextMenu.Menu
+          name={i18n.value.t('common.nameView')}
+          right={chevronRightIcon}
+        />
+      }
+      subChildren={
+        <>
+          {createNameViewMenus(app.value, i18n.value).map(menu => (
+            <ContextMenu.Item
+              onClick={menu.onClick}
+              children={
+                <ContextMenu.Menu
+                  icon={menu.checked ? <Icon name="check" size={14} /> : null}
+                  name={menu.name}
+                />
+              }
+            />
+          ))}
+        </>
+      }
+    />
+  );
+
+  const exportItem = () => (
+    <ContextMenu.Item
+      children={
+        <ContextMenu.Menu
+          icon={<Icon name="file-output" size={14} />}
+          name={i18n.value.t('common.export')}
+          right={chevronRightIcon}
+        />
+      }
+      subChildren={
+        <>
+          {createExportMenus(app.value, props.onClose, i18n.value).map(menu => (
+            <ContextMenu.Item
+              onClick={menu.onClick}
+              children={
+                <ContextMenu.Menu
+                  icon={<Icon name={menu.icon} size={14} />}
+                  name={menu.name}
+                />
+              }
+            />
+          ))}
+        </>
+      }
+    />
+  );
+
+  const diffViewerItem = () => (
+    <ContextMenu.Item
+      onClick={handleOpenDiffViewer}
+      children={
+        <ContextMenu.Menu
+          icon={<Icon name="file-diff" size={14} />}
+          name={i18n.value.t('contextMenu.diffViewer')}
+        />
+      }
+    />
+  );
+
+  /**
+   * The rows a readonly reader keeps, which change nothing in the document,
+   * keyed by the menus READING_MENU_TYPES names: a table's Table Properties,
+   * and the canvas's view, export and diff rows.
+   */
+  const readingRowsOf = {
+    [ErdContextMenuType.ERD]: () => (
+      <>
+        {viewOptionItem()}
+        {nameViewItem()}
+        {exportItem()}
+        {diffViewerItem()}
+      </>
+    ),
+    [ErdContextMenuType.table]: tablePropertiesItem,
+  } satisfies Record<ReadingMenuType, () => unknown>;
+
+  const readingRows = () =>
+    isReadingMenu(props.type) ? readingRowsOf[props.type]() : undefined;
+
   return () => {
     const { keyBindingMap, store } = app.value;
     const { t } = i18n.value;
@@ -513,7 +664,9 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     return (
       <ContextMenu.Root
         children={
-          props.type === ErdContextMenuType.table ? (
+          readonly ? (
+            readingRows()
+          ) : props.type === ErdContextMenuType.table ? (
             <>
               <ContextMenu.Item
                 onClick={handleChangeColumnPrimaryKey}
@@ -531,20 +684,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   />
                 }
               />
-              <ContextMenu.Item
-                onClick={handleOpenTableProperties}
-                children={
-                  <ContextMenu.Menu
-                    icon={<Icon name="table-properties" size={14} />}
-                    name={t('common.tableProperties')}
-                    right={
-                      <Kbd
-                        shortcut={keyBindingMap.tableProperties[0]?.shortcut}
-                      />
-                    }
-                  />
-                }
-              />
+              {tablePropertiesItem()}
               <ContextMenu.Item
                 onClick={handleFocusFlowTable}
                 children={
@@ -662,42 +802,38 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   />
                 }
               />
-              {readonly ? null : (
-                <>
-                  <ContextMenu.Item
-                    onClick={handleRenameTableGroup}
-                    children={
-                      <ContextMenu.Menu
-                        icon={<Icon name="pencil" size={14} />}
-                        name={t('contextMenu.rename')}
-                      />
-                    }
+              <ContextMenu.Item
+                onClick={handleRenameTableGroup}
+                children={
+                  <ContextMenu.Menu
+                    icon={<Icon name="pencil" size={14} />}
+                    name={t('contextMenu.rename')}
                   />
-                  <ContextMenu.Item
-                    onClick={handleOpenTableGroupColorPicker}
-                    children={
-                      <ContextMenu.Menu
-                        icon={<Icon name="palette" size={14} />}
-                        name={t('common.color')}
-                      />
-                    }
+                }
+              />
+              <ContextMenu.Item
+                onClick={handleOpenTableGroupColorPicker}
+                children={
+                  <ContextMenu.Menu
+                    icon={<Icon name="palette" size={14} />}
+                    name={t('common.color')}
                   />
-                  {removeColorItem}
-                  <ContextMenu.Item
-                    onClick={handleRemoveTableGroup}
-                    children={
-                      <ContextMenu.Menu
-                        name={t(
-                          props.tableGroupId
-                            ? getTableGroupRemoval(props.tableGroupId).labelKey
-                            : 'contextMenu.delete'
-                        )}
-                        right={<Kbd shortcut={removeShortcut} />}
-                      />
-                    }
+                }
+              />
+              {removeColorItem}
+              <ContextMenu.Item
+                onClick={handleRemoveTableGroup}
+                children={
+                  <ContextMenu.Menu
+                    name={t(
+                      props.tableGroupId
+                        ? getTableGroupRemoval(props.tableGroupId).labelKey
+                        : 'contextMenu.delete'
+                    )}
+                    right={<Kbd shortcut={removeShortcut} />}
                   />
-                </>
-              )}
+                }
+              />
             </>
           ) : props.type === ErdContextMenuType.relationship ? (
             <>
@@ -780,12 +916,10 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   }
                 />
               ))}
-              {app.value.store.getReadonly() ? null : (
-                <ContextMenu.Item
-                  onClick={handleOpenMapColumns}
-                  children={<ContextMenu.Menu name={t('mapColumns.title')} />}
-                />
-              )}
+              <ContextMenu.Item
+                onClick={handleOpenMapColumns}
+                children={<ContextMenu.Menu name={t('mapColumns.title')} />}
+              />
               <ContextMenu.Item
                 onClick={handleRemoveRelationship}
                 children={<ContextMenu.Menu name={t('contextMenu.delete')} />}
@@ -819,7 +953,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   }
                 />
               ) : null}
-              {readonly || !isTableGroupShown(store.state) ? null : (
+              {isTableGroupShown(store.state) ? (
                 <ContextMenu.Item
                   onClick={handleAddTableGroup}
                   children={
@@ -834,7 +968,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                     />
                   }
                 />
-              )}
+              ) : null}
               <ContextMenu.Item
                 onClick={handleToggleExplorer}
                 children={
@@ -874,62 +1008,9 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   </>
                 }
               />
-              <ContextMenu.Item
-                children={
-                  <ContextMenu.Menu
-                    icon={<Icon name="eye" size={14} />}
-                    name={t('contextMenu.viewOption')}
-                    right={chevronRightIcon}
-                  />
-                }
-                subChildren={
-                  <>
-                    {createShowMenus(app.value, i18n.value).map(menu => (
-                      <ContextMenu.Item
-                        onClick={menu.onClick}
-                        children={
-                          <ContextMenu.Menu
-                            icon={
-                              menu.checked ? (
-                                <Icon name="check" size={14} />
-                              ) : null
-                            }
-                            name={menu.name}
-                          />
-                        }
-                      />
-                    ))}
-                  </>
-                }
-              />
-              <ContextMenu.Item
-                children={
-                  <ContextMenu.Menu
-                    name={t('common.nameView')}
-                    right={chevronRightIcon}
-                  />
-                }
-                subChildren={
-                  <>
-                    {createNameViewMenus(app.value, i18n.value).map(menu => (
-                      <ContextMenu.Item
-                        onClick={menu.onClick}
-                        children={
-                          <ContextMenu.Menu
-                            icon={
-                              menu.checked ? (
-                                <Icon name="check" size={14} />
-                              ) : null
-                            }
-                            name={menu.name}
-                          />
-                        }
-                      />
-                    ))}
-                  </>
-                }
-              />
-              {readonly || !store.state.doc.tableIds.length ? null : (
+              {viewOptionItem()}
+              {nameViewItem()}
+              {store.state.doc.tableIds.length ? (
                 <ContextMenu.Item
                   onClick={() =>
                     handleRederive({ scope: RederiveScope.document })
@@ -941,7 +1022,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                     />
                   }
                 />
-              )}
+              ) : null}
               <ContextMenu.Item
                 children={
                   <ContextMenu.Menu
@@ -995,22 +1076,18 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   </>
                 }
               />
-              {app.value.store.getReadonly() ? null : (
-                <ContextMenu.Item
-                  children={
-                    <ContextMenu.Menu
-                      icon={<Icon name="file-input" size={14} />}
-                      name={t('common.importAndAdd')}
-                      right={chevronRightIcon}
-                    />
-                  }
-                  subChildren={
-                    <>
-                      {createImportMenus(
-                        app.value,
-                        props.onClose,
-                        'append'
-                      ).map(menu => (
+              <ContextMenu.Item
+                children={
+                  <ContextMenu.Menu
+                    icon={<Icon name="file-input" size={14} />}
+                    name={t('common.importAndAdd')}
+                    right={chevronRightIcon}
+                  />
+                }
+                subChildren={
+                  <>
+                    {createImportMenus(app.value, props.onClose, 'append').map(
+                      menu => (
                         <ContextMenu.Item
                           onClick={menu.onClick}
                           children={
@@ -1020,39 +1097,12 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                             />
                           }
                         />
-                      ))}
-                    </>
-                  }
-                />
-              )}
-              <ContextMenu.Item
-                children={
-                  <ContextMenu.Menu
-                    icon={<Icon name="file-output" size={14} />}
-                    name={t('common.export')}
-                    right={chevronRightIcon}
-                  />
-                }
-                subChildren={
-                  <>
-                    {createExportMenus(
-                      app.value,
-                      props.onClose,
-                      i18n.value
-                    ).map(menu => (
-                      <ContextMenu.Item
-                        onClick={menu.onClick}
-                        children={
-                          <ContextMenu.Menu
-                            icon={<Icon name={menu.icon} size={14} />}
-                            name={menu.name}
-                          />
-                        }
-                      />
-                    ))}
+                      )
+                    )}
                   </>
                 }
               />
+              {exportItem()}
               <ContextMenu.Item
                 children={
                   <ContextMenu.Menu
@@ -1079,15 +1129,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                   </>
                 }
               />
-              <ContextMenu.Item
-                onClick={handleOpenDiffViewer}
-                children={
-                  <ContextMenu.Menu
-                    icon={<Icon name="file-diff" size={14} />}
-                    name={t('contextMenu.diffViewer')}
-                  />
-                }
-              />
+              {diffViewerItem()}
             </>
           )
         }

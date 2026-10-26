@@ -230,7 +230,7 @@ const appendLandingAction$ = ({
  */
 function landAppend(app: AppContext, json: string, layout: AppendLayout): void {
   const { store } = app;
-  // Readonly drops the adds alone, so the selection and scroll would still land.
+  // Readonly drops the adds alone, so the unselect and the scroll would still land.
   if (store.getReadonly()) return;
 
   const append = toSchemaAppend(store.state, json, layout, app);

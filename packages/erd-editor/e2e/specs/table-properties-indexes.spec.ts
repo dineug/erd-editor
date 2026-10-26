@@ -162,7 +162,18 @@ test.describe('table properties — frame', () => {
       if (!editor) throw new Error('erd-editor is not mounted');
       editor.readonly = true;
     });
-    await erd.clickTableHeader('student');
+    // A readonly reader's press selects nothing, so the table is the one a
+    // jump leaves selected, here the palette's row for it.
+    const palette = erd.host.locator('.quick-search');
+    await erd.focusCanvas();
+    await erd.press(Shortcut.search);
+    await page.keyboard.type('#student');
+    await palette
+      .locator('.quick-search-row', { hasText: 'student' })
+      .first()
+      .click();
+    await expect(palette).toHaveCount(0);
+    await expect(erd.selectedTables()).toHaveCount(1);
     await erd.focusHost();
     await erd.press(Shortcut.tableProperties);
 

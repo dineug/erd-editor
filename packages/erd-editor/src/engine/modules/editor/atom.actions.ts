@@ -17,10 +17,12 @@ import {
   landLoadedSettings,
   rememberCanvasType,
 } from '@/engine/modules/settings/atom.actions';
+import { endScreenBaseline } from '@/engine/modules/settings/screenBaseline';
 import { settleDocument } from '@/engine/settle';
 import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { toScenePoint } from '@/konva/scene/viewport';
+import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { hasCanvasType } from '@/utils/validation';
 
@@ -109,11 +111,34 @@ export const selectAction = createAction<ActionMap[typeof ActionType.select]>(
   ActionType.select
 );
 
+/** The document list that names a live entity of each select type. */
+const SELECT_LISTS = {
+  [SelectType.table]: 'tableIds',
+  [SelectType.memo]: 'memoIds',
+  [SelectType.tableGroup]: 'tableGroupIds',
+} as const satisfies Record<SelectType, keyof RootState['doc']>;
+
+/**
+ * Selects only the ids the document lists for their type, never the collections, which keep removed
+ * entities: a select behind an add the readonly filter dropped then leaves nothing selected. Each
+ * list becomes one set per call, so a marquee naming every entity stays linear.
+ */
 const select: ReducerType<typeof ActionType.select> = (
-  { editor },
+  { doc, editor },
   { payload }
 ) => {
-  Object.assign(editor.selectedMap, payload);
+  const listed = new Map<SelectType, (id: string) => boolean>();
+
+  for (const [id, type] of Object.entries(payload)) {
+    let isListed = listed.get(type);
+    if (!isListed) {
+      isListed = arrayHas(doc[SELECT_LISTS[type]]);
+      listed.set(type, isListed);
+    }
+    if (isListed(id)) {
+      editor.selectedMap[id] = type;
+    }
+  }
 };
 
 export const changeViewportAction = createAction<
@@ -203,7 +228,7 @@ export const loadJsonAction = createAction<
  */
 const loadJson: ReducerType<typeof ActionType.loadJson> = (
   state,
-  { payload, version: actionVersion },
+  { payload, version: actionVersion, tags },
   ctx
 ) => {
   const { version, settings, doc, collections } = parser(payload.value);
@@ -215,7 +240,12 @@ const loadJson: ReducerType<typeof ActionType.loadJson> = (
   }
 
   rememberCanvasType(state);
-  landLoadedSettings(state, settings, actionVersion ?? ctx.clock.getVersion());
+  landLoadedSettings(
+    state,
+    settings,
+    actionVersion ?? ctx.clock.getVersion(),
+    tags
+  );
   state.version = version;
   state.doc = doc;
   state.collections = collections;
@@ -244,9 +274,9 @@ export const initialLoadJsonAction = createAction<
 >(ActionType.initialLoadJson);
 
 /**
- * Opens a document: the file's settings, and no register of the document held
- * before, whose versions would refuse the edits of peers that opened the file
- * afresh. A store already sharing asks its peers for theirs again.
+ * Opens a document: the file's settings, and no register or screen baseline
+ * of the document held before, whose versions would refuse the edits of peers
+ * that opened the file afresh. A store already sharing asks its peers again.
  */
 const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state,
@@ -264,6 +294,7 @@ const initialLoadJson: ReducerType<typeof ActionType.initialLoadJson> = (
   state.doc = doc;
   state.collections = collections;
   state.lww = {};
+  state.editor.screenBaseline = null;
   rememberCanvasType(state);
   clearViews(state.editor);
   releaseHidden(state);
@@ -945,6 +976,22 @@ const mergeLWW: ReducerType<typeof ActionType.mergeLWW> = (
   );
 };
 
+export const endScreenSettingsAction = createAction<
+  ActionMap[typeof ActionType.endScreenSettings]
+>(ActionType.endScreenSettings);
+
+/**
+ * Drops the baseline of each unit named, the screen standing for the
+ * document's value again: what a readonly editor turning writable sends once
+ * its screen has taken that value back.
+ */
+const endScreenSettings: ReducerType<typeof ActionType.endScreenSettings> = (
+  { editor },
+  { payload: { units } }
+) => {
+  endScreenBaseline(editor, ...units);
+};
+
 export const editorReducers = {
   [ActionType.changeHasHistory]: changeHasHistory,
   [ActionType.selectAll]: selectAll,
@@ -986,6 +1033,7 @@ export const editorReducers = {
   [ActionType.dragSelectRect]: dragSelectRect,
   [ActionType.getLWW]: getLWW,
   [ActionType.mergeLWW]: mergeLWW,
+  [ActionType.endScreenSettings]: endScreenSettings,
   ...viewReducers,
 };
 
@@ -1030,5 +1078,6 @@ export const actions = {
   dragSelectRectAction,
   getLWWAction,
   mergeLWWAction,
+  endScreenSettingsAction,
   ...viewActions,
 };

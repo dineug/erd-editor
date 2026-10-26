@@ -7,6 +7,7 @@ describe('Toolbar.styles', () => {
   it('compiles every export to a distinct non empty class identifier', () => {
     const identifiers = [
       String(styles.root),
+      String(styles.databaseName),
       String(styles.vertical),
       String(styles.menu),
     ];
@@ -14,7 +15,7 @@ describe('Toolbar.styles', () => {
     for (const identifier of identifiers) {
       expect(identifier).toMatch(/\S/);
     }
-    expect(new Set(identifiers).size).toBe(3);
+    expect(new Set(identifiers).size).toBe(4);
   });
 
   it('is stable: stringifying the same template twice yields one class', () => {
@@ -46,6 +47,24 @@ describe('Toolbar.styles', () => {
     expect(source).toContain('& > input');
     expect(source).toContain('margin-inline-end: 15px');
     expect(source).not.toContain('margin-right');
+  });
+
+  it("spaces a readonly editor's database name as the field, cutting a long one short", () => {
+    const source = styles.databaseName.strings.join('');
+
+    expect(source).toContain('font: -moz-field');
+    expect(source).toContain('font: -webkit-small-control');
+    expect(source).toContain('font-family: var(--text-font-family)');
+    expect(source.indexOf('font: -moz-field')).toBeLessThan(
+      source.indexOf('font: -webkit-small-control')
+    );
+    expect(source).toContain('flex-shrink: 0');
+    expect(source).toContain('margin-inline-end: 15px');
+    expect(source).toContain('overflow: hidden');
+    expect(source).toContain('text-overflow: ellipsis');
+    expect(source).toContain('color: var(--active)');
+    expect(source).toContain('&[data-empty]');
+    expect(source).toContain('color: var(--placeholder)');
   });
 
   it('renders the vertical rule as a fixed width spacer', () => {

@@ -52,12 +52,12 @@ describe('actions$', () => {
 });
 
 describe('addMemoAction$', () => {
-  it('emits unselectAll, select and add in that order', () => {
+  it('emits unselectAll, add and select in that order', () => {
     expect(typesOf(store, addMemoAction$())).toEqual([
       'editor.unselectAll',
       'editor.focusTableEnd',
-      'editor.select',
       ActionType.addMemo,
+      'editor.select',
     ]);
   });
 
@@ -246,10 +246,10 @@ describe('selectMemoAction$', () => {
     expect(memoOf(store, 'm1').ui.zIndex).toBe(21);
   });
 
-  it('creates and selects an unknown memo id', () => {
+  it('selects no unknown memo id, though its raise leaves a stub the document does not list', () => {
     store.dispatchSync(selectMemoAction$('ghost', false));
 
-    expect(store.state.editor.selectedMap).toEqual({ ghost: SelectType.memo });
+    expect(store.state.editor.selectedMap).toEqual({});
     expect(memoOf(store, 'ghost')).toBeDefined();
     expect(store.state.doc.memoIds).toEqual(['m1', 'm2']);
   });

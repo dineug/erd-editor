@@ -311,9 +311,6 @@ export const frFR = {
   'settings.relationshipDataTypeSync':
     'Synchronisation du type de données des relations',
   'settings.maxCommentWidth': 'Largeur maximale des commentaires',
-  'settings.recalculateTableWidth': 'Recalcul de la largeur des tables',
-  'settings.sync': 'Synchroniser',
-  'settings.toast.tableWidthRecalculated': 'Largeur des tables recalculée',
   'settings.lockHeading': 'Verrouillage',
   'settings.lockSetting': 'Verrouiller {name}',
   'settings.unlockSetting': 'Déverrouiller {name}',

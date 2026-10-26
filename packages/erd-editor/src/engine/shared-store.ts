@@ -3,6 +3,7 @@ import { isEmpty } from 'es-toolkit/compat';
 import { filter, map, merge, Observable, Subject, Subscription } from 'rxjs';
 
 import {
+  ChangeActionTypes,
   SharedActionTypes,
   SharedFollowingActionTypes,
 } from '@/engine/actions';
@@ -21,6 +22,7 @@ import {
   flushOnNotifier,
   quietPeriodOrNotifier,
 } from '@/engine/rx-operators/flushOnNotifier';
+import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';
 import { RxStore } from '@/engine/rx-store';
 import { attachActionsTag, attachActionTag, Tag } from '@/engine/tag';
 import { Unsubscribe } from '@/internal-types';
@@ -77,6 +79,7 @@ export function createSharedStore(
   const compressor = createSharedStreamActionsCompressor(
     manualStreamFlush ? flushOnNotifier(flush$) : quietPeriodOrNotifier(flush$)
   );
+  const getReadonly = store.readonlyEditState ? store.getReadonly : () => false;
 
   let isConnection = true;
   let firstSubscribe = true;
@@ -90,7 +93,11 @@ export function createSharedStore(
     )
       .pipe(
         actionsFilter(SharedActionTypes),
-        ignoreTagFilter([Tag.shared]),
+        ignoreTagFilter([Tag.shared, Tag.screen]),
+        // A readonly editor sends no change, while presence and the registers
+        // pass. Ahead of the compressors, so a drag they hold from before the
+        // switch still leaves.
+        readonlyIgnoreFilter(getReadonly, [], ChangeActionTypes),
         compressor,
         bufferCircuitBreaker(openingNotifier$, closingNotifier$),
         compressor,

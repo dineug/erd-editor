@@ -1,6 +1,7 @@
-import { html, render } from '@dineug/r-html';
+import { html, observable, render } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { iconNameOf } from '@/__test-utils__/icon';
 import {
   createTestAppContext,
   createTestI18n,
@@ -10,6 +11,8 @@ import {
   provideI18n,
   pseudoMessages,
 } from '@/__test-utils__/index';
+import type { AppContext } from '@/components/appContext';
+import * as tablePropertiesStyles from '@/components/erd/table-properties/TableProperties.styles';
 import Settings from '@/components/settings/Settings';
 import * as styles from '@/components/settings/Settings.styles';
 import { Lnb } from '@/components/settings/settings-lnb/SettingsLnb';
@@ -25,6 +28,7 @@ import {
   LockSettingType,
   NameViewMode,
 } from '@/constants/schema';
+import { documentJsonOf } from '@/engine/documentJson';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import {
   changeCanvasTypeAction,
@@ -33,7 +37,6 @@ import {
   changeZoomLevelAction,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createI18n } from '@/i18n/translate';
 import { fontSize6 } from '@/styles/typography.styles';
 
@@ -83,9 +86,13 @@ const lnbItems = () =>
   Array.from<HTMLDivElement>(root().querySelectorAll(`.${lnbStyles.item}`));
 
 const heading = () =>
+  root().querySelector(`.${styles.header} > .${fontSize6}`) as HTMLDivElement;
+
+/** Table Properties' own badge, which the tab carries rather than a copy of its look. */
+const badge = () =>
   root().querySelector(
-    `.${styles.contentArea} > .${fontSize6}`
-  ) as HTMLDivElement;
+    `.${String(tablePropertiesStyles.readonlyBadge)}`
+  ) as HTMLSpanElement | null;
 
 const click = (el: Element) =>
   el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -141,16 +148,12 @@ describe('Settings', () => {
       expect(root().querySelector(`.${styles.section}`)).toBeTruthy();
     });
 
-    it('renders the three preference rows in order', async () => {
+    it('renders the two preference rows in order', async () => {
       await setup();
 
       expect(
         rows().map(row => row.firstElementChild?.textContent?.trim())
-      ).toEqual([
-        'Relationship DataType Sync',
-        'Maximum comment width',
-        'Recalculation table width',
-      ]);
+      ).toEqual(['Relationship DataType Sync', 'Maximum comment width']);
     });
   });
 
@@ -424,17 +427,10 @@ describe('Settings', () => {
       expect(heading().textContent?.trim()).toBe('ko:Preferences');
       expect(
         rows().map(row => row.firstElementChild?.textContent?.trim())
-      ).toEqual([
-        'ko:Relationship DataType Sync',
-        'ko:Maximum comment width',
-        'ko:Recalculation table width',
-      ]);
+      ).toEqual(['ko:Relationship DataType Sync', 'ko:Maximum comment width']);
       const input = rows()[1].querySelector('input') as HTMLInputElement;
       expect(input.title).toBe('ko:Maximum comment width');
       expect(input.placeholder).toBe('ko:Maximum comment width');
-      expect(rows()[2].querySelector('button')?.textContent?.trim()).toBe(
-        'ko:Sync'
-      );
       expect(
         root()
           .querySelector(`.${styles.lockSection}`)
@@ -494,28 +490,6 @@ describe('Settings', () => {
       await flush();
 
       expect(heading().textContent?.trim()).toBe('ko:Shortcuts');
-    });
-
-    it('shows the recalculation toast in the language its container provides', async () => {
-      const { app } = await setup();
-      const openToast = vi.fn();
-      app.emitter.on({ openToast });
-      click(rows()[2].querySelector('button') as HTMLButtonElement);
-      await flush();
-
-      const toast = document.createElement('div');
-      document.body.append(toast);
-      const provider = provideI18n(
-        toast,
-        createTestI18n('ko-KR', pseudoMessages('ko'))
-      );
-      render(toast, openToast.mock.calls[0][0].payload.message);
-      await flush();
-
-      expect(toast.textContent).toContain('ko:Recalculated table width');
-      render(toast, null);
-      provider.destroy();
-      toast.remove();
     });
   });
 
@@ -617,40 +591,6 @@ describe('Settings', () => {
       expect(input.value).toBe('60px');
       await flush();
       expect(app.store.state.settings.maxWidthComment).toBe(COLUMN_MIN_WIDTH);
-    });
-  });
-
-  describe('recalculation table width', () => {
-    it('recalculates every table width from the injected toWidth', async () => {
-      const { app } = await setup();
-      app.store.dispatchSync(
-        addTableAction({ id: 'table-1', ui: { x: 0, y: 0, zIndex: 2 } })
-      );
-      const table = app.store.state.collections.tableEntities['table-1'];
-      table.name = 'a-long-table-name';
-      table.ui.widthName = 1;
-      await flush();
-
-      const button = rows()[2].querySelector('button') as HTMLButtonElement;
-      click(button);
-      await flush();
-
-      expect(table.ui.widthName).toBe('a-long-table-name'.length * 10);
-    });
-
-    it('emits an openToast action with the confirmation message', async () => {
-      const { app } = await setup();
-      const openToast = vi.fn();
-      app.emitter.on({ openToast });
-
-      click(rows()[2].querySelector('button') as HTMLButtonElement);
-      await flush();
-
-      expect(openToast).toHaveBeenCalledTimes(1);
-      const action = openToast.mock.calls[0][0];
-      expect(action.type).toBe('openToast');
-      expect(action.payload.message).toBeTruthy();
-      expect(action.payload.close).toBeInstanceOf(Promise);
     });
   });
 
@@ -848,6 +788,197 @@ describe('Settings', () => {
       await flush();
 
       expect(app.store.state.settings.columnOrder).toEqual(before);
+    });
+  });
+
+  describe('a readonly editor', () => {
+    /**
+     * The tab over a store whose readonly follows the flag, seeded while
+     * writable with the Language lock alone on, a width and the sync off. The
+     * tab's store counts each dispatch it is handed and still forwards it.
+     */
+    async function setupReadonly(readonly = true) {
+      const flags = observable({ readonly: false });
+      const app = createTestAppContext({ getReadonly: () => flags.readonly });
+      app.store.dispatchSync(
+        initialLoadJsonAction$(
+          JSON.stringify({
+            version: '3.0.0',
+            settings: {
+              lockSettings:
+                LockSettingType.language | LockSettingType.unlockNameViewMode,
+              zoomLevel: 0.5,
+              originX: -40,
+              originY: 90,
+              language: Language.Kotlin,
+              maxWidthComment: 120,
+              relationshipDataTypeSync: false,
+            },
+          })
+        )
+      );
+      flags.readonly = readonly;
+      const dispatch = vi.fn(app.store.dispatch);
+      const dispatchSync = vi.fn(app.store.dispatchSync);
+      const counted: AppContext = {
+        ...app,
+        store: { ...app.store, dispatch, dispatchSync },
+      };
+      mounted = await mountAndFlush(html`<${Settings} />`, counted);
+      return { app, flags, dispatch, dispatchSync };
+    }
+
+    /** Presses both switches, commits a width, presses every lock and drags a column over another. */
+    const operateEveryControl = async () => {
+      click(switchIn(0));
+      click(switchIn(1));
+      const input = maxWidthInput();
+      input.value = '150';
+      fire(input, 'change');
+      for (const row of lockRows()) click(lockButton(row));
+      const items = columnOrderItems();
+      fire(items[0], 'dragstart');
+      fire(items[2], 'dragover');
+      await wait(120);
+      await flush();
+      fire(items[0], 'dragend');
+      await flush();
+    };
+
+    it('says it is read only after the page name, on either page', async () => {
+      await setupReadonly();
+
+      expect(heading().textContent?.trim()).toBe(Lnb.preferences);
+      expect(badge()?.textContent?.trim()).toBe('Read only');
+      expect(iconNameOf(badge())).toBe('lock');
+
+      click(lnbItems()[1]);
+      await flush();
+
+      expect(heading().textContent?.trim()).toBe(Lnb.shortcuts);
+      expect(badge()?.textContent?.trim()).toBe('Read only');
+    });
+
+    it('carries no badge in a writable editor', async () => {
+      await setupReadonly(false);
+
+      expect(badge()).toBeNull();
+    });
+
+    it('shows every setting the document holds in a control that takes no press', async () => {
+      await setupReadonly();
+
+      expect(switchIn(0).disabled).toBe(true);
+      expect(switchIn(0).getAttribute('aria-checked')).toBe('false');
+      expect(switchIn(1).disabled).toBe(true);
+      expect(switchIn(1).getAttribute('aria-checked')).toBe('true');
+      expect(maxWidthInput().disabled).toBe(true);
+      expect(maxWidthInput().value).toBe('120px');
+      expect(lockRows().every(row => lockButton(row).disabled)).toBe(true);
+      expect(
+        lockRows().map(row => lockButton(row).getAttribute('aria-pressed'))
+      ).toEqual(['false', 'false', 'true', 'false', 'false', 'false', 'false']);
+      for (const item of columnOrderItems()) {
+        expect(item.getAttribute('draggable')).toBe('false');
+        expect(item.hasAttribute('data-readonly')).toBe(true);
+        expect(iconNameOf(item)).toBeNull();
+      }
+    });
+
+    it('keeps each lock row showing what it shows in a writable editor', async () => {
+      await setupReadonly();
+
+      const [view, , code, , , , nameView] = lockRows();
+      expect(lockValue(view).textContent?.trim()).toBe('50% · -40, 90');
+      expect(lockValue(view).hasAttribute('data-locked')).toBe(false);
+      expect(lockValue(code).textContent?.trim()).toBe('Kotlin');
+      expect(lockValue(code).hasAttribute('data-locked')).toBe(true);
+      expect(lockValue(nameView).textContent?.trim()).toBe('Physical Names');
+      expect(lockValue(nameView).hasAttribute('data-locked')).toBe(false);
+    });
+
+    it('dispatches nothing when every control is operated, the document left as it was', async () => {
+      const { app, dispatch, dispatchSync } = await setupReadonly();
+      const before = documentJsonOf(app.store);
+
+      await operateEveryControl();
+
+      expect(dispatch).not.toHaveBeenCalled();
+      expect(dispatchSync).not.toHaveBeenCalled();
+      expect(documentJsonOf(app.store)).toBe(before);
+      expect(app.store.state.settings.columnOrder[0]).toBe(
+        ColumnType.columnLogicalName
+      );
+    });
+
+    it('hands every control back as the editor turns writable, and takes them again as it turns readonly', async () => {
+      const { app, flags } = await setupReadonly();
+
+      flags.readonly = false;
+      await flush();
+
+      expect(badge()).toBeNull();
+      expect(switchIn(0).disabled).toBe(false);
+      expect(maxWidthInput().disabled).toBe(false);
+      expect(lockRows().some(row => lockButton(row).disabled)).toBe(false);
+      expect(columnOrderItems()[0].getAttribute('draggable')).toBe('true');
+      expect(iconNameOf(columnOrderItems()[0])).toBe('grip-vertical');
+      click(switchIn(0));
+      await flush();
+      expect(app.store.state.settings.relationshipDataTypeSync).toBe(true);
+
+      flags.readonly = true;
+      await flush();
+
+      expect(badge()?.textContent?.trim()).toBe('Read only');
+      expect(switchIn(0).disabled).toBe(true);
+      expect(switchIn(0).getAttribute('aria-checked')).toBe('true');
+      expect(maxWidthInput().disabled).toBe(true);
+      expect(lockRows().every(row => lockButton(row).disabled)).toBe(true);
+      expect(columnOrderItems()[0].getAttribute('draggable')).toBe('false');
+    });
+
+    it('offers no table width recalculation, readonly or writable', async () => {
+      const { flags } = await setupReadonly();
+      const section = () =>
+        root().querySelector(`.${styles.section}`) as HTMLDivElement;
+      const otherButtons = () =>
+        Array.from(section().querySelectorAll('button')).filter(
+          button =>
+            button.getAttribute('role') !== 'switch' &&
+            !button.closest(`.${styles.lockRow}`)
+        );
+
+      for (const readonly of [true, false]) {
+        flags.readonly = readonly;
+        await flush();
+
+        expect(
+          rows().map(row => row.firstElementChild?.textContent?.trim()),
+          String(readonly)
+        ).toEqual(['Relationship DataType Sync', 'Maximum comment width']);
+        expect(otherButtons(), String(readonly)).toEqual([]);
+        expect(section().textContent, String(readonly)).not.toMatch(
+          /recalculat/i
+        );
+      }
+    });
+
+    it('moves no column for a drag begun before the editor turned readonly', async () => {
+      const { app, flags, dispatch } = await setupReadonly(false);
+      const before = [...app.store.state.settings.columnOrder];
+      const items = columnOrderItems();
+
+      fire(items[0], 'dragstart');
+      flags.readonly = true;
+      await flush();
+      fire(items[2], 'dragover');
+      await wait(120);
+      await flush();
+
+      expect(dispatch).not.toHaveBeenCalled();
+      expect(app.store.state.settings.columnOrder).toEqual(before);
+      fire(items[0], 'dragend');
     });
   });
 });

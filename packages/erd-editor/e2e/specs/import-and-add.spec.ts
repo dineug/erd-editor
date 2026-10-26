@@ -228,20 +228,50 @@ test.describe('Import and Add', () => {
     });
   }
 
-  test('offers no Import and Add in a read-only editor, in the palette or the menu', async ({
+  test('offers neither import to a read-only editor, in the palette or the menu, and both once writable', async ({
     erd,
     page,
   }) => {
     await erd.seed(twoTables());
-    await page.evaluate(() => {
-      document.querySelector('erd-editor')!.readonly = true;
-    });
+    const turnReadonly = (readonly: boolean) =>
+      page.evaluate(value => {
+        document.querySelector('erd-editor')!.readonly = value;
+      }, readonly);
+    const palette = erd.host.locator('.quick-search');
+    // A row by its whole name, since Import's starts Import and Add's.
+    const paletteRow = (name: string) =>
+      palette.getByText(name, { exact: true });
 
+    await turnReadonly(true);
     await erd.focusHost();
     await erd.press(Shortcut.search);
-    const palette = erd.host.locator('.quick-search');
-    await expect(palette).toContainText('Import');
-    await expect(palette).not.toContainText('Import and Add');
+    // Export stays, so the palette is drawn with the rows a reader keeps.
+    await expect(paletteRow('Export')).toBeVisible();
+    await expect(paletteRow('Import')).toHaveCount(0);
+    await expect(paletteRow('Import and Add')).toHaveCount(0);
+    await erd.press('Escape');
+    await expect(palette).toHaveCount(0);
+
+    // A reader's canvas menu keeps the rows that change nothing in the
+    // document, so neither import is one of them.
+    await erd.openContextMenuAt(MENU_ORIGIN.x, MENU_ORIGIN.y);
+    await expect(
+      erd.contextMenu.getByText('Export', { exact: true })
+    ).toBeVisible();
+    await expect(
+      erd.contextMenu.getByText('Import', { exact: true })
+    ).toHaveCount(0);
+    await expect(
+      erd.contextMenu.getByText('Import and Add', { exact: true })
+    ).toHaveCount(0);
+    await erd.press('Escape');
+    await expect(erd.contextMenu).toHaveCount(0);
+
+    await turnReadonly(false);
+    await erd.focusHost();
+    await erd.press(Shortcut.search);
+    await expect(paletteRow('Import')).toBeVisible();
+    await expect(paletteRow('Import and Add')).toBeVisible();
     await erd.press('Escape');
     await expect(palette).toHaveCount(0);
 
@@ -251,6 +281,6 @@ test.describe('Import and Add', () => {
     ).toBeVisible();
     await expect(
       erd.contextMenu.getByText('Import and Add', { exact: true })
-    ).toHaveCount(0);
+    ).toBeVisible();
   });
 });

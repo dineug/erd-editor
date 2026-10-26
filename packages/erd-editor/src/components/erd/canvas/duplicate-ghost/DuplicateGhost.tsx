@@ -55,6 +55,13 @@ const DuplicateGhost: FC<DuplicateGhostProps> = (props, ctx) => {
     state.ghostDy = 0;
   };
 
+  /** Lets go of the copies with no duplicate, as a turn to readonly asks. */
+  const cancel = () => {
+    subscription?.unsubscribe();
+    subscription = null;
+    clear();
+  };
+
   const commit = () => {
     if (unmounted || (state.tables.length === 0 && state.memos.length === 0)) {
       return;
@@ -142,6 +149,7 @@ const DuplicateGhost: FC<DuplicateGhostProps> = (props, ctx) => {
     addUnsubscribe(
       emitter.on({
         duplicateDragStart: ({ payload }) => handleDragStart(payload),
+        duplicateDragCancel: cancel,
       }),
       () => subscription?.unsubscribe()
     );

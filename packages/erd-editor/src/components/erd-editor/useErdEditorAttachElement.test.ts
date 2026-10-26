@@ -16,6 +16,7 @@ import {
   Ref,
   ref,
 } from '@dineug/r-html';
+import { cloneDeep } from 'es-toolkit';
 import {
   afterEach,
   beforeEach,
@@ -25,6 +26,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { openSearchOn } from '@/__test-utils__/explorerSearch';
 import {
   createTestAppContext,
   flush,
@@ -37,17 +39,37 @@ import {
   ErdEditorProps,
 } from '@/components/erd-editor/ErdEditor';
 import { useErdEditorAttachElement } from '@/components/erd-editor/useErdEditorAttachElement';
+import {
+  measureRoot,
+  observeViewport,
+} from '@/components/erd-editor/viewportLayout';
+import ExplorerController, {
+  EDIT_SEARCH_DELAY,
+} from '@/components/explorer/explorer-controller/ExplorerController';
+import { explorerViewOf } from '@/components/explorer/explorerView';
 import { TABLE_SORT_START } from '@/constants/layout';
+import { Open } from '@/constants/open';
 import {
   BracketType,
+  CanvasType,
   ColumnOption,
   Database,
+  Language,
+  NameViewMode,
   OrderType,
   ReferentialAction,
+  RelationshipType,
+  Show,
 } from '@/constants/schema';
 import {
+  changeHandToolAction,
+  changeOpenMapAction,
   dragSelectRectAction,
+  dragstartColumnAction,
+  drawStartRelationshipAction,
+  editMemoAction,
   editTableAction,
+  editTableGroupAction,
   focusColumnAction,
   focusTableAction,
   focusTableEndAction,
@@ -63,11 +85,27 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import {
+  addMemoAction,
+  changeMemoValueAction,
+} from '@/engine/modules/memo/atom.actions';
+import {
+  changeCanvasTypeAction,
+  changeDatabaseAction,
+  changeLanguageAction,
+  changeShowAction,
+  changeZoomLevelAction,
+  scrollToAction,
+  streamScrollToAction,
+  toNameViewModeAction,
+} from '@/engine/modules/settings/atom.actions';
+import {
   addTableAction,
   changeTableNameAction,
   moveTableAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { createReplicationStore } from '@/engine/replication-store';
+import type { Unsubscribe } from '@/internal-types';
 import type { ElkLayoutPoint, ElkLayoutRequest } from '@/services/elk-layout';
 import {
   AccentColor,
@@ -87,6 +125,7 @@ import {
   setThemeOptionsAction,
   toggleSearchAction,
 } from '@/utils/emitter';
+import { FindField } from '@/utils/find-replace';
 
 type Layout = (request: ElkLayoutRequest) => Promise<ElkLayoutPoint[]>;
 
@@ -295,12 +334,16 @@ const schemaSQLFixture = (path: string) =>
   );
 
 /**
- * Mounts the hook on a store of its own. Wired, the store reads readonly from
- * the props, as ErdEditor builds it, so the store's own guards answer for it.
+ * Mounts the hook on a store of its own, seeded first when given a seed.
+ * Wired, the store reads readonly from the props and drops what opens an edit,
+ * as ErdEditor builds it, so the store's own guards answer for it.
  */
 async function setup(
   initialProps: Partial<ErdEditorProps> = {},
-  { wired = false } = {}
+  {
+    wired = false,
+    seed,
+  }: { wired?: boolean; seed?: (app: AppContext) => void } = {}
 ) {
   const props = observable<ErdEditorProps>(
     {
@@ -314,8 +357,11 @@ async function setup(
     { shallow: true }
   );
   const app = createTestAppContext(
-    wired ? { getReadonly: () => props.readonly } : undefined
+    wired
+      ? { getReadonly: () => props.readonly, readonlyEditState: true }
+      : undefined
   );
+  seed?.(app);
   const ctx = document.createElement('div') as unknown as ErdEditorElement;
   document.body.append(ctx);
 
@@ -2172,3 +2218,267 @@ function collectSharedSelection(app: AppContext) {
 function collectSharedDragSelect(app: AppContext) {
   return collectDispatched(app, sharedDragSelectTrackerAction.type);
 }
+
+/** Every dialog a reader may meet open, the three that write and the three that only read. */
+const OPEN_DIALOGS = {
+  [Open.mapColumns]: true,
+  [Open.automaticTablePlacement]: true,
+  [Open.timeTravel]: true,
+  [Open.tableProperties]: true,
+  [Open.diffViewer]: true,
+  [Open.exportImage]: true,
+};
+
+/** A table focused on its name with its cell editor open, and every other edit state there is. */
+function openEditState(app: AppContext) {
+  app.store.dispatchSync(
+    addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 1 } }),
+    selectAction({ t1: SelectType.table }),
+    focusTableAction({ tableId: 't1', focusType: FocusType.tableName }),
+    editTableAction(),
+    editMemoAction({ id: 'm1' }),
+    editTableGroupAction({ id: 'g1' }),
+    changeHandToolAction({ value: true }),
+    drawStartRelationshipAction({ relationshipType: RelationshipType.OneN }),
+    dragstartColumnAction({ tableId: 't1', columnIds: ['c1'] }),
+    changeOpenMapAction(OPEN_DIALOGS)
+  );
+}
+
+function expectEditStateClosed(app: AppContext) {
+  const { editor } = app.store.state;
+  expect(editor.focusTable).toBeNull();
+  expect(editor.selectedMap).toEqual({});
+  expect(editor.editMemoId).toBeNull();
+  expect(editor.editTableGroupId).toBeNull();
+  expect(editor.drawRelationship).toBeNull();
+  expect(editor.draggableColumn).toBeNull();
+  expect(editor.draggingColumnMap).toEqual({});
+  expect(editor.handTool).toBe(false);
+  expect(editor.openMap).toMatchObject({
+    [Open.mapColumns]: false,
+    [Open.automaticTablePlacement]: false,
+    [Open.timeTravel]: false,
+    [Open.tableProperties]: true,
+    [Open.diffViewer]: true,
+    [Open.exportImage]: true,
+  });
+}
+
+/** Waits out the change event's quiet period, and the search an edit asks for. */
+const settleChange = () => new Promise(resolve => setTimeout(resolve, 260));
+
+describe('useErdEditorAttachElement turned readonly at run time', () => {
+  it('ends the edit state a reader may not hold, keeping what reads open and every setting as it stood', async () => {
+    const { app, props } = await setup({}, { wired: true });
+    const closeColorPicker = vi.fn();
+    const dragendColumnAll = vi.fn();
+    const duplicateDragCancel = vi.fn();
+    const cancelElkPlacement = vi.fn();
+    app.emitter.on({
+      closeColorPicker,
+      dragendColumnAll,
+      duplicateDragCancel,
+      cancelElkPlacement,
+    });
+    openEditState(app);
+    app.store.dispatchSync(
+      scrollToAction({ originX: -120, originY: 80 }),
+      changeZoomLevelAction({ value: 0.75 }),
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+    );
+    const settings = cloneDeep(app.store.state.settings);
+
+    props.readonly = true;
+    await flush();
+
+    expectEditStateClosed(app);
+    expect(closeColorPicker).toHaveBeenCalledTimes(1);
+    expect(dragendColumnAll).toHaveBeenCalledTimes(1);
+    expect(duplicateDragCancel).toHaveBeenCalledTimes(1);
+    expect(cancelElkPlacement).toHaveBeenCalledTimes(1);
+    expect(app.store.state.settings).toEqual(settings);
+    expect(app.store.state.editor.screenBaseline).toBeNull();
+  });
+
+  it('ends them once as the element mounts readonly', async () => {
+    const closeColorPicker = vi.fn();
+    const dragendColumnAll = vi.fn();
+    const duplicateDragCancel = vi.fn();
+    const cancelElkPlacement = vi.fn();
+    const { app } = await setup(
+      { readonly: true },
+      {
+        seed: app => {
+          openEditState(app);
+          app.emitter.on({
+            closeColorPicker,
+            dragendColumnAll,
+            duplicateDragCancel,
+            cancelElkPlacement,
+          });
+        },
+      }
+    );
+
+    expectEditStateClosed(app);
+    expect(closeColorPicker).toHaveBeenCalledTimes(1);
+    expect(dragendColumnAll).toHaveBeenCalledTimes(1);
+    expect(duplicateDragCancel).toHaveBeenCalledTimes(1);
+    expect(cancelElkPlacement).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives the settings back as it turns writable, the viewport, the tab and the name view kept on the screen', async () => {
+    const { app, ctx, props } = await setup({}, { wired: true });
+    const { store } = app;
+    const onChange = vi.fn();
+    ctx.addEventListener('change', onChange);
+    const value = ctx.value;
+    const saved = cloneDeep(store.state.settings);
+    expect(saved.language).not.toBe(Language.Kotlin);
+    expect(saved.database).not.toBe(Database.Oracle);
+    expect(saved.nameViewMode).not.toBe(NameViewMode.logical);
+
+    props.readonly = true;
+    await flush();
+    store.dispatchSync(
+      changeLanguageAction({ value: Language.Kotlin }),
+      changeDatabaseAction({ value: Database.Oracle }),
+      changeShowAction({
+        show: Show.tableComment,
+        value: !(saved.show & Show.tableComment),
+      }),
+      scrollToAction({ originX: -300, originY: 120 }),
+      changeZoomLevelAction({ value: 0.6 }),
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL }),
+      toNameViewModeAction(store.state, NameViewMode.logical, true)
+    );
+    expect(store.state.settings.language).toBe(Language.Kotlin);
+    expect(ctx.value).toBe(value);
+
+    props.readonly = false;
+    await flush();
+    await settleChange();
+
+    const { settings, editor } = store.state;
+    expect(settings.language).toBe(saved.language);
+    expect(settings.database).toBe(saved.database);
+    expect(settings.show).toBe(saved.show);
+    expect(settings).toMatchObject({
+      originX: -300,
+      originY: 120,
+      zoomLevel: 0.6,
+      canvasType: CanvasType.schemaSQL,
+      nameViewMode: NameViewMode.logical,
+    });
+    expect(Object.keys(editor.screenBaseline ?? {}).sort()).toEqual([
+      'canvasType',
+      'nameViewMode',
+      'viewport',
+    ]);
+    expect(ctx.value).toBe(value);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('runs the search again over the View Option it gives back as it turns writable', async () => {
+    const { app, ctx, props } = await setup({}, { wired: true });
+    const { store } = app;
+    store.dispatchSync(
+      addMemoAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 1 } }),
+      changeMemoValueAction({ id: 'm1', value: 'read me' })
+    );
+    const stopViewport: Unsubscribe = observeViewport(store);
+    measureRoot(store, { width: 1200, height: 800 });
+    const controller = mount(html`<${ExplorerController} />`, app);
+    const settle = async () => {
+      await new Promise(resolve => setTimeout(resolve, EDIT_SEARCH_DELAY + 50));
+      await flush();
+    };
+    const matches = () => explorerViewOf(store).matches.length;
+
+    try {
+      openSearchOn(app, 'read me', [FindField.memo]);
+      await settle();
+      expect(matches()).toBe(1);
+      const value = ctx.value;
+
+      props.readonly = true;
+      await flush();
+      store.dispatchSync(
+        changeShowAction({ show: Show.hideMemo, value: true })
+      );
+      await settle();
+      expect(matches()).toBe(0);
+
+      props.readonly = false;
+      await flush();
+      await settle();
+
+      expect(store.state.settings.show & Show.hideMemo).toBe(0);
+      expect(matches()).toBe(1);
+      expect(ctx.value).toBe(value);
+    } finally {
+      controller.unmount();
+      stopViewport();
+    }
+  });
+
+  it('sends a pan its shared store still held as it turns readonly, so a replica lands where the element stands once writable', async () => {
+    vi.useFakeTimers();
+    try {
+      const { app, ctx, props } = await setup({}, { wired: true });
+      const { store } = app;
+      // Every lock off, so the file holds the live viewport the pans move.
+      ctx.setInitialValue('{"version":"3.0.0","settings":{"lockSettings":0}}');
+      const replica = createReplicationStore({
+        toWidth: text => text.length * 10,
+      });
+      replica.setInitialValue(ctx.value);
+      const sharedStore = ctx.getSharedStore({
+        mouseTracker: false,
+        focusTracker: false,
+      });
+      const unsubscribe = sharedStore.subscribe(actions =>
+        replica.dispatchSync(cloneDeep(actions))
+      );
+      const originX = (value: string) => JSON.parse(value).settings.originX;
+
+      try {
+        store.dispatchSync(scrollToAction({ originX: 0, originY: 0 }));
+        await vi.advanceTimersByTimeAsync(300);
+        expect(originX(replica.value)).toBe(0);
+
+        // Within the outbound pipe's 200 ms window, so it still holds the pan.
+        store.dispatchSync(
+          streamScrollToAction({ movementX: 30, movementY: 0 })
+        );
+        await vi.advanceTimersByTimeAsync(50);
+        props.readonly = true;
+        await vi.advanceTimersByTimeAsync(0);
+        // Sent at the turn, well before the window would have let it go.
+        expect(originX(replica.value)).toBe(30);
+        store.dispatchSync(
+          streamScrollToAction({ movementX: 100, movementY: 0 })
+        );
+        await vi.advanceTimersByTimeAsync(50);
+        // Nothing of the reader's own pan has reached the replica.
+        expect(originX(replica.value)).toBe(30);
+        props.readonly = false;
+        await vi.advanceTimersByTimeAsync(0);
+        store.dispatchSync(
+          streamScrollToAction({ movementX: 7, movementY: 0 })
+        );
+        await vi.advanceTimersByTimeAsync(500);
+
+        expect(originX(ctx.value)).toBe(137);
+        expect(replica.value).toBe(ctx.value);
+      } finally {
+        unsubscribe();
+        sharedStore.destroy();
+        replica.destroy();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

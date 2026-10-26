@@ -49,6 +49,7 @@ export type GeneratorCodeProps = {
   isDarkMode: boolean;
   /** One table's code, as Table Properties shows it, with no panel. */
   tableId?: string;
+  readonly?: boolean;
 };
 
 const GeneratorCode: FC<GeneratorCodeProps> = (props, ctx) => {
@@ -184,6 +185,7 @@ const GeneratorCode: FC<GeneratorCodeProps> = (props, ctx) => {
           {panel === 'open' ? (
             <GeneratorCodeOptions
               isDarkMode={props.isDarkMode}
+              readonly={Boolean(props.readonly)}
               onHide={handleHide}
               onSave={handleSave}
               onCopy={handleCopy}

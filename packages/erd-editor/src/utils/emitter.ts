@@ -45,7 +45,9 @@ const InternalActionType = {
   mouseTrackerEnd: 'mouseTrackerEnd',
   openDiffViewer: 'openDiffViewer',
   openAutomaticTablePlacement: 'openAutomaticTablePlacement',
+  cancelElkPlacement: 'cancelElkPlacement',
   duplicateDragStart: 'duplicateDragStart',
+  duplicateDragCancel: 'duplicateDragCancel',
   dragSelectStart: 'dragSelectStart',
 } as const;
 type InternalActionType = ValuesType<typeof InternalActionType>;
@@ -91,10 +93,12 @@ type InternalActionMap = {
   [InternalActionType.openAutomaticTablePlacement]: {
     placement: TablePlacement;
   };
+  [InternalActionType.cancelElkPlacement]: void;
   [InternalActionType.duplicateDragStart]: {
     tableIds: string[];
     memoIds: string[];
   } | void;
+  [InternalActionType.duplicateDragCancel]: void;
   [InternalActionType.dragSelectStart]: {
     x: number;
     y: number;
@@ -207,9 +211,18 @@ export const openAutomaticTablePlacementAction = createAction<
   InternalActionMap[typeof InternalActionType.openAutomaticTablePlacement]
 >(InternalActionType.openAutomaticTablePlacement);
 
+/** Aborts every ELK placement the ERD tab still waits on, which it hears with another tab shown too. */
+export const cancelElkPlacementAction = createAction<
+  InternalActionMap[typeof InternalActionType.cancelElkPlacement]
+>(InternalActionType.cancelElkPlacement);
+
 export const duplicateDragStartAction = createAction<
   InternalActionMap[typeof InternalActionType.duplicateDragStart]
 >(InternalActionType.duplicateDragStart);
+
+export const duplicateDragCancelAction = createAction<
+  InternalActionMap[typeof InternalActionType.duplicateDragCancel]
+>(InternalActionType.duplicateDragCancel);
 
 export const dragSelectStartAction = createAction<
   InternalActionMap[typeof InternalActionType.dragSelectStart]

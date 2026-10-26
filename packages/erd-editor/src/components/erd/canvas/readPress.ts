@@ -25,6 +25,11 @@ export type ViewPressOptions = {
   canvas: Ref<HTMLDivElement>;
   /** Whether a pinch takes the press, a second finger's, which then never pans. */
   pinches: (event: MouseEvent | TouchEvent) => boolean;
+  /**
+   * Whether a finger pans before the root holds the focus, as on a root that
+   * holds every touch from the start; false if unset, leaving it to the page.
+   */
+  pansBeforeFocus?: boolean;
 };
 
 export type ViewPress = {
@@ -36,6 +41,8 @@ export type ViewPress = {
   handleHover: (hit: SceneHit | null) => void;
   /** Puts out what a press and the pointer lit, for a document that replaces the one they stood on. */
   reset: () => void;
+  /** Ends a press still held and its pan, landing no still press, for a host that stops reading mid press. */
+  cancel: () => void;
   destroy: () => void;
 };
 
@@ -54,15 +61,16 @@ export function tableRelationshipIds(
 }
 
 /**
- * The read-only view's press rule: a main press, and a finger once the view
- * holds the focus, pans wherever it lands, and one held still drops a jump's
- * selection and lights a table's relationships, a relationship, or nothing.
+ * The press rule of the read-only view and a readonly ERD tab: a main press, and
+ * a finger once the root holds the focus or at once with pansBeforeFocus, pans;
+ * one held still drops a jump's selection and lights a relationship or a table's.
  */
 export function createViewPress({
   app,
   root,
   canvas,
   pinches,
+  pansBeforeFocus = false,
 }: ViewPressOptions): ViewPress {
   const state = observable({ panning: false });
   // What a still press lit and what the pointer rests on, kept apart so the
@@ -143,8 +151,8 @@ export function createViewPress({
     const hit = sceneHit($canvas, event);
     // A finger before the focus is the page's, which may scroll for it: it pans
     // nothing, and it is a tap only once lifted, since the browser cancels the
-    // one it takes for a scroll.
-    const pans = isMouseEvent(event) || holdsFocus();
+    // one it takes for a scroll. A root that holds every touch leaves none to it.
+    const pans = isMouseEvent(event) || pansBeforeFocus || holdsFocus();
     let travel = 0;
     let lifted = false;
 
@@ -174,5 +182,12 @@ export function createViewPress({
     pan = subscription;
   };
 
-  return { state, handlePress, handleHover, reset, destroy: endPan };
+  return {
+    state,
+    handlePress,
+    handleHover,
+    reset,
+    cancel: endPan,
+    destroy: endPan,
+  };
 }

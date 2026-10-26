@@ -246,6 +246,35 @@ describe('runElkPlacement', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it('drops a layout that lands after its signal aborted, and takes the toast down at the abort', async () => {
+    const app = createApp();
+    addTable(app, 't1');
+    const toasts = listenToasts(app);
+    const onChange = vi.fn();
+    const run = new AbortController();
+    let settle = (_: ElkLayoutPoint[]) => {};
+    hoisted.elkLayout = () =>
+      new Promise(resolve => {
+        settle = resolve;
+      });
+    let closed = false;
+
+    const running = runElkPlacement(app, TablePlacement.flow, onChange, {
+      signal: run.signal,
+    });
+    await flush();
+    toasts[0].close?.then(() => {
+      closed = true;
+    });
+    run.abort();
+    await flush();
+
+    expect(closed).toBe(true);
+    settle([{ id: 't1', x: 4_000, y: 4_000 }]);
+    await running;
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('says so, and places nothing, when no layout comes back', async () => {
     const app = createApp();
     addTable(app, 't1');

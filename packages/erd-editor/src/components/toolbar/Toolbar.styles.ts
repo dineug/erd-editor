@@ -18,6 +18,26 @@ export const root = css`
   }
 `;
 
+/*
+ * A readonly editor's database name: text where the field stood, as wide and
+ * spaced as it, and the field's placeholder, dimmed, while there is no name.
+ */
+export const databaseName = css`
+  /* the field's font: the control font each engine gives an input, in the reset's family */
+  font: -moz-field;
+  font: -webkit-small-control;
+  font-family: var(--text-font-family);
+  flex-shrink: 0;
+  margin-inline-end: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--active);
+
+  &[data-empty] {
+    color: var(--placeholder);
+  }
+`;
+
 export const vertical = css`
   width: 10px;
   height: 100%;

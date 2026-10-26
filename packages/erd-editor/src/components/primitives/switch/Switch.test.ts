@@ -18,6 +18,7 @@ async function setup(props: Partial<SwitchProps> = {}) {
     html`<${Switch}
       size=${props.size}
       value=${props.value ?? false}
+      disabled=${props.disabled}
       .onChange=${props.onChange ?? onChange}
     />`
   );
@@ -118,6 +119,26 @@ describe('Switch', () => {
     button.click();
 
     expect(onChange.mock.calls).toEqual([[true], [true]]);
+  });
+
+  it('shows its value and takes no press while disabled', async () => {
+    const { button, thumb, onChange } = await setup({
+      value: true,
+      disabled: true,
+    });
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-checked')).toBe('true');
+    expect(thumb.hasAttribute('data-checked')).toBe(true);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('stays enabled unless it is asked to be disabled', async () => {
+    const { button } = await setup();
+
+    expect(button.disabled).toBe(false);
   });
 
   it('re-renders the checked state when the value prop changes', async () => {

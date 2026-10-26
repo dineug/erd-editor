@@ -4,6 +4,7 @@ import {
   nextTick,
   observable,
   onMounted,
+  type Ref,
   ref,
   useProvider,
   watch,
@@ -19,13 +20,19 @@ import { runElkPlacement } from '@/components/erd/automatic-table-placement/runE
 import Canvas from '@/components/erd/canvas/Canvas';
 import { editingLayers } from '@/components/erd/canvas/editingLayers';
 import EditOverlay from '@/components/erd/canvas/EditOverlay';
+import { createViewPress } from '@/components/erd/canvas/readPress';
 import DiffViewer from '@/components/erd/diff-viewer/DiffViewer';
 import DrawTargetButtons from '@/components/erd/draw-target/DrawTargetButtons';
 import ErdContextMenu, {
   ErdContextMenuType,
+  READING_MENU_TYPES,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import FloatingToolbar from '@/components/erd/floating-toolbar/FloatingToolbar';
-import { ownsPress, sceneHit } from '@/components/erd/hitTest';
+import {
+  listenSceneHover,
+  ownsPress,
+  sceneHit,
+} from '@/components/erd/hitTest';
 import Minimap from '@/components/erd/minimap/Minimap';
 import { clearRelationshipHighlight } from '@/components/erd/relationshipHighlight';
 import TableGroupDraft from '@/components/erd/table-group/TableGroupDraft';
@@ -37,6 +44,10 @@ import { isEmptyDocument } from '@/components/erd/welcome-screen/welcomeLayout';
 import WelcomeScreen from '@/components/erd/welcome-screen/WelcomeScreen';
 import ColorPicker from '@/components/primitives/color-picker/ColorPicker';
 import { useContextMenuRootProvider } from '@/components/primitives/context-menu/context-menu-root/contextMenuRootContext';
+import {
+  type SceneInteraction,
+  sceneInteractionContext,
+} from '@/components/sceneInteractionContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { Open } from '@/constants/open';
 import { CanvasType } from '@/constants/schema';
@@ -44,6 +55,7 @@ import { WHEEL_ZOOM_STEP } from '@/constants/zoom';
 import {
   changeDrawTableGroupAction,
   changeOpenMapAction,
+  initialLoadJsonAction,
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -123,6 +135,13 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   const root = createRef<HTMLDivElement>();
   const canvas = createRef<HTMLDivElement>();
   const app = useAppContext(ctx);
+  // A getter rather than a value set on each turn, since a scene that mounts
+  // after a set still gets the value the provider started with.
+  const sceneInteraction = useProvider(
+    ctx,
+    sceneInteractionContext,
+    (): SceneInteraction => (app.value.store.getReadonly() ? 'read' : 'edit')
+  );
   const state = observable({
     contextMenuType: ErdContextMenuType.ERD as ErdContextMenuType,
     relationshipId: '' as string | undefined,
@@ -144,7 +163,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   useErdShortcut(ctx);
 
   const { addUnsubscribe } = useUnmounted();
-  addUnsubscribe(() => sceneSource.destroy());
+  addUnsubscribe(() => {
+    sceneInteraction.destroy();
+    sceneSource.destroy();
+  });
 
   const resetScroll = () => {
     // Defensive: the drag subscription outlives the render part, so root can
@@ -177,6 +199,47 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   const groupDraw = useTableGroupDraw({ app: () => app.value, root });
 
+  /**
+   * The editor root, which a still press focuses and whose text a pan keeps
+   * from being selected.
+   */
+  const editorRoot = {
+    get value() {
+      return (root.value && editorRootOf(root.value)) as HTMLDivElement;
+    },
+  } satisfies Ref<HTMLDivElement>;
+
+  // What the pinch made of the press now handled, read by the press rule.
+  let pinched = false;
+
+  /**
+   * A readonly canvas takes a press by the read-only view's rule. Its root holds
+   * every touch (touch-action: none), so a finger pans before the focus too,
+   * as it does in an editor, rather than waiting on a page that never scrolls.
+   */
+  const readPress = createViewPress({
+    app: app.value,
+    root: editorRoot,
+    canvas,
+    pinches: () => pinched,
+    pansBeforeFocus: true,
+  });
+
+  let stopHover: (() => void) | null = null;
+
+  /** Hears the table the pointer rests on, whose relationships it lights, while readonly alone. */
+  const listenHover = (readonly: boolean) => {
+    stopHover?.();
+    stopHover = readonly
+      ? listenSceneHover(canvas.value, readPress.handleHover)
+      : null;
+  };
+
+  addUnsubscribe(() => {
+    stopHover?.();
+    readPress.destroy();
+  });
+
   /** Whether a press on the canvas draws a table group, which a readonly store never does. */
   const drawsTableGroup = () => {
     const { store } = app.value;
@@ -187,6 +250,37 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     const { store } = app.value;
     if (store.state.editor.drawTableGroup) {
       store.dispatch(changeDrawTableGroupAction({ value: false }));
+    }
+  };
+
+  /**
+   * One per ELK placement still waiting on the worker, aborted as the element
+   * turns readonly or Erd goes. Each takes its Placing toast down as it aborts,
+   * and nothing the worker answers after it lands.
+   */
+  const elkRuns = new Set<AbortController>();
+
+  const cancelElkRuns = () => {
+    elkRuns.forEach(run => run.abort());
+    elkRuns.clear();
+  };
+
+  addUnsubscribe(cancelElkRuns);
+
+  /**
+   * The scene's part of a readonly turn: a read press still held ends, landing
+   * nothing under edit, the hover follows the press rule, what it lit goes out
+   * either way, and readonly ends a table group draw and a menu with no row.
+   */
+  const handleReadonlyTurn = () => {
+    readPress.cancel();
+    listenHover(props.readonly);
+    readPress.reset();
+    if (!props.readonly) return;
+
+    cancelTableGroupDraw();
+    if (!READING_MENU_TYPES.has(state.contextMenuType)) {
+      contextMenu.state.show = false;
     }
   };
 
@@ -203,17 +297,22 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (!event.target || getShowOverLayout()) return;
 
     const hit = sceneHit(canvas.value, event);
+    const type: ErdContextMenuType = hit?.kind ?? ErdContextMenuType.ERD;
+
+    // A menu that keeps no row for a readonly reader is never raised for one,
+    // and no group is selected for it either.
+    if (props.readonly && !READING_MENU_TYPES.has(type)) {
+      event.preventDefault();
+      return;
+    }
 
     if (hit?.kind === 'table') {
       state.tableId = hit.id;
       state.columnId = hit.columnId;
-      state.contextMenuType = ErdContextMenuType.table;
     } else if (hit?.kind === 'memo') {
       state.memoId = hit.id;
-      state.contextMenuType = ErdContextMenuType.memo;
     } else if (hit?.kind === 'relationship') {
       state.relationshipId = hit.id;
-      state.contextMenuType = ErdContextMenuType.relationship;
     } else if (hit?.kind === 'tableGroup') {
       // A Mac Ctrl+click and a long touch are main presses, which read the
       // body as canvas and unselect, so the menu they raise selects the group
@@ -223,10 +322,8 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         store.dispatch(selectTableGroupAction$(hit.id, false));
       }
       state.tableGroupId = hit.id;
-      state.contextMenuType = ErdContextMenuType.tableGroup;
-    } else {
-      state.contextMenuType = ErdContextMenuType.ERD;
     }
+    state.contextMenuType = type;
 
     contextMenu.onContextmenu(event);
   };
@@ -286,10 +383,32 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     resetScroll();
   };
 
+  /**
+   * A readonly press pans or lights by the read-only view's rule, except under a
+   * takeover or Table Properties. It still pinches and holds a takeover's middle
+   * press with its lift, as an edit press does.
+   */
+  const handleReadPress = (event: MouseEvent | TouchEvent, el: HTMLElement) => {
+    pinched = pinch.handleTouchstart(event);
+    if (!getShowOverLayout()) readPress.handlePress(event);
+
+    if (
+      isMiddleButtonPress(event) &&
+      isTakenOver(app.value.store.state) &&
+      !el.closest(TAKEOVER_CHROME)
+    ) {
+      event.preventDefault();
+      moveEnd$.pipe(take(1)).subscribe(preventMiddleLift());
+    }
+  };
+
   const handleDragSelect = (event: MouseEvent | TouchEvent) => {
     const el = event.target as HTMLElement | null;
     swallowContextmenu = false;
-    if (!el || pinch.handleTouchstart(event)) return;
+    if (!el) return;
+    // No marquee, selection or carry starts here while readonly.
+    if (props.readonly) return handleReadPress(event, el);
+    if (pinch.handleTouchstart(event)) return;
 
     const showOverLayout = getShowOverLayout();
     const canHideColorPicker = !el.closest('.color-picker');
@@ -455,6 +574,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
    */
   const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
     const { store } = app.value;
+    // The readonly filter would drop the moves but apply the scroll, a screen
+    // write, and move the reader's view to a placement that never landed.
+    if (store.getReadonly()) return;
+
     store.dispatch(toPlacementActions(store.state, tables, SOURCE));
   };
 
@@ -515,12 +638,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     if (props.mouseTracking) {
       handleMouseTrackerStart();
     }
+    listenHover(props.readonly);
 
     addUnsubscribe(
       watch(props).subscribe(propName => {
-        if (propName === 'readonly' && props.readonly) {
-          cancelTableGroupDraw();
-        }
+        if (propName === 'readonly') handleReadonlyTurn();
         if (propName !== 'mouseTracking') return;
 
         props.mouseTracking
@@ -528,8 +650,21 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           : handleMouseTrackerEnd();
       }),
       shortcut$.subscribe(handleColorPickerShortcut),
+      // A document a host loads replaces the one a readonly press lit on.
+      store.subscribe(actions => {
+        if (
+          props.readonly &&
+          actions.some(({ type }) => type === initialLoadJsonAction.type)
+        ) {
+          readPress.reset();
+        }
+      }),
       emitter.on({
         openColorPicker: ({ payload: { x, y, color } }) => {
+          // A reader colours nothing, and the element closed the picker as
+          // it turned readonly, so none opens again until it turns writable.
+          if (props.readonly) return;
+
           const open = () => {
             const rect = $root.getBoundingClientRect();
 
@@ -553,6 +688,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         closeColorPicker: () => {
           state.colorPickerShow = false;
         },
+        // The element sends it as it turns readonly, and it reaches this tab
+        // behind another one, where no prop does.
+        cancelElkPlacement: cancelElkRuns,
         openTableProperties: ({ payload: { tableId } }) => {
           const { doc } = store.state;
           const tablePropertiesIds = state.tablePropertiesIds.filter(id =>
@@ -577,11 +715,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           // preview. ELK answers in one go and its layout is applied where the
           // document already is.
           if (isElkPlacement(placement)) {
+            const run = new AbortController();
+            elkRuns.add(run);
             runElkPlacement(
               app.value,
               placement,
-              handleChangeAutomaticTablePlacement
-            );
+              handleChangeAutomaticTablePlacement,
+              { signal: run.signal }
+            ).finally(() => elkRuns.delete(run));
             return;
           }
 
@@ -593,17 +734,29 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     );
   });
 
+  /** The root's cursor: a read pan's, the hand's, a group draw's or a relationship draw's notation. */
+  const rootCursor = (): string => {
+    const { handTool, drawRelationship } = app.value.store.state.editor;
+    if (readPress.state.panning) return 'grabbing';
+    if (handTool) return state.grabCursor;
+    if (drawsTableGroup()) return 'crosshair';
+    if (!drawRelationship) return '';
+
+    const icon = getRelationshipIcon(
+      drawRelationship.relationshipType,
+      props.isDarkMode
+    );
+    return `url("${icon}") 16 16, auto`;
+  };
+
   return () => {
     const { store } = app.value;
-    const {
-      editor: { drawRelationship, openMap },
-    } = store.state;
+    const { handTool, openMap, zenMode } = store.state.editor;
 
     const showAutomaticTablePlacement = openMap[Open.automaticTablePlacement];
     const showTableProperties = openMap[Open.tableProperties];
     const showTimeTravel = openMap[Open.timeTravel];
     const showDiffViewer = openMap[Open.diffViewer];
-    const { handTool, zenMode } = store.state.editor;
     // An empty document has no travel and draws no scrollbar; the map of it
     // would be as empty, so it is left out the same way. Read off the lists,
     // so a drag step, which moves rects alone, does not run this render again.
@@ -623,21 +776,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       isEmptyDocument(store.state);
 
     const drawsGroup = drawsTableGroup();
-    const cursor = handTool
-      ? state.grabCursor
-      : drawsGroup
-        ? 'crosshair'
-        : drawRelationship
-          ? `url("${getRelationshipIcon(
-              drawRelationship.relationshipType,
-              props.isDarkMode
-            )}") 16 16, auto`
-          : '';
 
     return (
       <div
         class={styles.root}
-        style={{ cursor }}
+        style={{ cursor: rootCursor() }}
         use:ref={ref(root)}
         on:contextmenu={handleContextmenu}
         on:mousedown={contextMenu.onMousedown}
@@ -649,7 +792,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           root={root}
           canvas={canvas}
           grabMove={handTool || drawsGroup}
-          overlay={EditOverlay}
+          overlay={props.readonly ? undefined : EditOverlay}
           layers={editingLayers}
         />
         <DrawTargetButtons root={root} readonly={props.readonly} />
@@ -662,9 +805,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
             enableLocalePicker={props.enableLocalePicker}
           />
         ) : null}
-        {showFloatingToolbar ? (
-          <FloatingToolbar readonly={props.readonly} />
-        ) : null}
+        {showFloatingToolbar ? <FloatingToolbar /> : null}
         {contextMenu.state.show ? (
           <ErdContextMenu
             type={state.contextMenuType}

@@ -11,14 +11,17 @@ import {
   releasePointer,
 } from '@/__test-utils__/index';
 import { seedMapTable } from '@/__test-utils__/mapColumnsSeed';
-import { AppContext } from '@/components/appContext';
+import { AppContext, useAppContext } from '@/components/appContext';
 import {
   hasEntityDragTravelled,
   isEntityDragActive,
 } from '@/components/erd/canvas/entityDrag';
 import type { ScenePointerEvent } from '@/components/erd/canvas/sceneTokens';
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
-import { sceneInteractionContext } from '@/components/sceneInteractionContext';
+import {
+  type SceneInteraction,
+  sceneInteractionContext,
+} from '@/components/sceneInteractionContext';
 import {
   sceneSourceContext,
   useSceneSource,
@@ -77,6 +80,36 @@ const ViewScope: FC<{ children: any }> = (props, ctx) => {
 /** A read-only scene root: a wrapper of its own, the read mode provided inside. */
 const ReadScope: FC<{ children: any }> = (props, ctx) => {
   const provider = useProvider(ctx, sceneInteractionContext, 'read');
+  const { addUnsubscribe } = useUnmounted();
+  addUnsubscribe(() => provider.destroy());
+
+  return () => html`${props.children}`;
+};
+
+/** An editor's scene root, whose mode reads its store's readonly flag, as the ERD tab's does. */
+const EditorScope: FC<{ children: any }> = (props, ctx) => {
+  const app = useAppContext(ctx);
+  const provider = useProvider(
+    ctx,
+    sceneInteractionContext,
+    (): SceneInteraction => (app.value.store.getReadonly() ? 'read' : 'edit')
+  );
+  const { addUnsubscribe } = useUnmounted();
+  addUnsubscribe(() => provider.destroy());
+
+  return () => html`${props.children}`;
+};
+
+/** The mode a turning root reads, which a spec changes while a gesture runs. */
+const turning = { mode: 'edit' as SceneInteraction };
+
+/** A scene root whose mode turns under a press, its store left writable. */
+const TurningScope: FC<{ children: any }> = (props, ctx) => {
+  const provider = useProvider(
+    ctx,
+    sceneInteractionContext,
+    (): SceneInteraction => turning.mode
+  );
   const { addUnsubscribe } = useUnmounted();
   addUnsubscribe(() => provider.destroy());
 
@@ -454,15 +487,35 @@ describe('useMoveEntity - a scene that reads', () => {
     expect(selectedIds()).toEqual([]);
   });
 
-  it('leaves a readonly store with no mode provided selecting on a press, as a readonly editor does', async () => {
-    mounted?.unmount();
-    // Seeded before it turns readonly, which would refuse the table itself.
+  /** A readonly store seeded before it turned readonly, which would refuse the table itself. */
+  const readonlyApp = () => {
     let readonly = false;
-    app = createTestAppContext({ getReadonly: () => readonly });
-    app.store.dispatchSync(
+    const next = createTestAppContext({ getReadonly: () => readonly });
+    next.store.dispatchSync(
       addTableAction({ id: 't1', ui: { x: 300, y: 200, zIndex: 2 } })
     );
     readonly = true;
+    return next;
+  };
+
+  it('selects and lifts nothing in a readonly editor, whose root reads its store', async () => {
+    mounted?.unmount();
+    app = readonlyApp();
+    mounted = await mountAndFlush(
+      html`<div><${EditorScope} .children=${html`<${Probe} />`} /></div>`,
+      app
+    );
+
+    api.onMoveStart(press());
+    await flush();
+
+    expect(selectedIds()).toEqual([]);
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+  });
+
+  it('leaves a readonly store under edit selecting on a press, as a diff pane does', async () => {
+    mounted?.unmount();
+    app = readonlyApp();
     mounted = await mountAndFlush(html`<${Probe} />`, app);
 
     api.onMoveStart(press());
@@ -470,6 +523,76 @@ describe('useMoveEntity - a scene that reads', () => {
 
     expect(selectedIds()).toEqual(['t1']);
     expect(isEntityDragActive(app.store.state)).toBe(true);
+  });
+});
+
+describe('useMoveEntity - a scene that turns to read under a drag', () => {
+  /** A group round the table, which a drop past the click distance would put it in. */
+  const mountTurning = async () => {
+    turning.mode = 'edit';
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 1200, height: 900, zIndex: 1 },
+      })
+    );
+    mounted?.unmount();
+    mounted = await mountAndFlush(
+      html`<div><${TurningScope} .children=${html`<${Probe} />`} /></div>`,
+      app
+    );
+  };
+
+  afterEach(() => {
+    turning.mode = 'edit';
+  });
+
+  it('ends the drag at its next step, which moves nothing and drops nothing into a group', async () => {
+    await mountTurning();
+    const before = pointOf('t1');
+
+    api.onMoveStart(press());
+    movePointer(40, 0);
+    await flush();
+    expect(pointOf('t1').x).toBe(before.x + 40);
+
+    turning.mode = 'read';
+    movePointer(400, 0);
+    await flush();
+
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+    expect(isViewFrozen(app.store.state)).toBe(false);
+    expect(pointOf('t1').x).toBe(before.x + 40);
+
+    releasePointer();
+    await flush();
+    expect(app.store.state.collections.tableEntities.t1.groupId).toBe('');
+  });
+
+  it('drops nothing into a group for a release that comes once read, with no step between', async () => {
+    await mountTurning();
+
+    api.onMoveStart(press());
+    movePointer(40, 0);
+    await flush();
+    turning.mode = 'read';
+    releasePointer();
+    await flush();
+
+    expect(isEntityDragActive(app.store.state)).toBe(false);
+    expect(app.store.state.collections.tableEntities.t1.groupId).toBe('');
+  });
+
+  it('still drops into the group a drag that stays under edit', async () => {
+    await mountTurning();
+
+    api.onMoveStart(press());
+    movePointer(40, 0);
+    await flush();
+    releasePointer();
+    await flush();
+
+    expect(app.store.state.collections.tableEntities.t1.groupId).toBe('g1');
   });
 });
 

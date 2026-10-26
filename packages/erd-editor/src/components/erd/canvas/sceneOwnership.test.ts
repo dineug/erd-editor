@@ -119,6 +119,8 @@ const OUTSIDE_REFERENCES = [
   // presence parts, which a canvas that edits nothing is never handed.
   'components/erd/Erd.tsx @/components/erd/canvas/EditOverlay',
   'components/erd/Erd.tsx @/components/erd/canvas/editingLayers',
+  // A readonly ERD tab takes a press by the read-only view's rule.
+  'components/erd/Erd.tsx @/components/erd/canvas/readPress',
   'components/erd/automatic-table-placement/AutomaticTablePlacement.tsx @/components/erd/canvas/Canvas',
   'components/erd/diff-viewer/diff-erd-viewer/DiffErdViewer.tsx @/components/erd/canvas/Canvas',
   // Rename opens the name editor a title bar's double click opens, which sits
@@ -143,12 +145,16 @@ const OUTSIDE_REFERENCES = [
   'components/erd-view/ErdView.browser.test.tsx @/components/erd/canvas/highlightTransition',
   'components/erd-view/ErdView.tsx @/components/erd/canvas/Canvas',
   'components/erd-view/ErdView.tsx @/components/erd/canvas/highlightTransition',
+  // The read-only view's press rule lives under this root, not beside the view,
+  // since Obsidian's loader, which bundles the editor, may not reach the view.
+  'components/erd-view/ErdView.tsx @/components/erd/canvas/readPress',
   // The viewer element's destroy takes that view down at once, which its spec
   // reads off the transitions the view's editor left.
   'components/erd-viewer/ErdViewer.test.ts @/components/erd/canvas/highlightTransition',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/high-level-table/HighLevelTable',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/table/Table',
   'components/localeContext.browser.test.tsx @/components/erd/canvas/table/column/Column',
+  'components/sceneInteractionContext.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/sceneSourceContext.browser.test.tsx @/components/erd/canvas/CanvasScene',
   'components/themeContext.browser.test.tsx @/components/erd/canvas/memo/Memo',
   'components/visualization/VisualizationFlow.tsx @/components/erd/canvas/Canvas',
@@ -192,7 +198,7 @@ describe('the canvas root keeps its boundary (P6-51)', () => {
     expect(withDomTag).toEqual([...DOM_SHELLS].sort());
   });
 
-  it('is reached from outside by the thirty-two references that own a reason to', () => {
+  it('is reached from outside by the thirty-five references that own a reason to', () => {
     const references = sourceFiles(SRC_ROOT)
       .filter(path => !path.startsWith(CANVAS_ROOT))
       .flatMap(path =>

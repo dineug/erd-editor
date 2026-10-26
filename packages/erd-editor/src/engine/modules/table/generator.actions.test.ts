@@ -109,11 +109,11 @@ beforeEach(() => {
 });
 
 describe('addTableAction$', () => {
-  it('emits unselectAll, select, add and focus in order', () => {
+  it('emits unselectAll, add, select and focus in order', () => {
     expect(typesOf(store, addTableAction$())).toEqual([
       'editor.unselectAll',
-      'editor.select',
       'table.add',
+      'editor.select',
       'editor.focusTable',
     ]);
   });

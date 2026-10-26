@@ -309,9 +309,6 @@ export const ptBR = {
   'settings.relationshipDataTypeSync':
     'Sincronização do tipo de dados nos relacionamentos',
   'settings.maxCommentWidth': 'Largura máxima do comentário',
-  'settings.recalculateTableWidth': 'Recalcular largura das tabelas',
-  'settings.sync': 'Sincronizar',
-  'settings.toast.tableWidthRecalculated': 'Largura das tabelas recalculada',
   'settings.lockHeading': 'Bloqueio',
   'settings.lockSetting': 'Bloquear {name}',
   'settings.unlockSetting': 'Desbloquear {name}',

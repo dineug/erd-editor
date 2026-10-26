@@ -10,9 +10,8 @@ import {
 } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
+import { readonlyBadge } from '@/components/erd/table-properties/TableProperties.styles';
 import { useI18n } from '@/components/localeContext';
-import { localized } from '@/components/localized/Localized';
-import Button from '@/components/primitives/button/Button';
 import Menu from '@/components/primitives/context-menu/menu/Menu';
 import Icon from '@/components/primitives/icon/Icon';
 import Separator from '@/components/primitives/separator/Separator';
@@ -26,7 +25,6 @@ import SettingsLnb, {
 } from '@/components/settings/settings-lnb/SettingsLnb';
 import { takeSettingsPage } from '@/components/settings/settingsPage';
 import Shortcuts from '@/components/settings/shortcuts/Shortcuts';
-import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { COLUMN_MIN_WIDTH } from '@/constants/layout';
 import { CanvasType } from '@/constants/schema';
 import {
@@ -36,11 +34,8 @@ import {
 } from '@/engine/modules/settings/atom.actions';
 import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import { fontSize6 } from '@/styles/typography.styles';
-import { recalculateTableWidth } from '@/utils/calcTable';
 import { onPrevent } from '@/utils/domEvent';
-import { relationshipSort } from '@/utils/draw-relationship/sort';
 import { FlipAnimation } from '@/utils/flipAnimation';
-import { delay } from '@/utils/promise';
 import { fromShadowDraggable } from '@/utils/rx-operators/fromShadowDraggable';
 import {
   maxWidthCommentInRange,
@@ -79,20 +74,10 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
     store.dispatch(changeRelationshipDataTypeSyncAction({ value }));
   };
 
-  const handleRecalculationTableWidth = () => {
-    const { store, emitter, toWidth } = app.value;
-    recalculateTableWidth(store.state, { toWidth, clock: store.context.clock });
-    relationshipSort(store.state);
-    openStatusToast(emitter, {
-      key: 'settings.toast.tableWidthRecalculated',
-      tone: 'success',
-      title: localized('settings.toast.tableWidthRecalculated'),
-      close: delay(2000),
-    });
-  };
-
   const handleChangeColumnOrderAction = (value: number, target: number) => {
     const { store } = app.value;
+    // A drag begun before the editor turned readonly moves nothing more.
+    if (store.getReadonly()) return;
 
     if (value !== target) {
       flipAnimation.snapshot();
@@ -160,6 +145,8 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
     const { store } = app.value;
     const { settings } = store.state;
     const { t } = i18n.value;
+    // A reader sees every setting the document holds and changes none of them.
+    const readonly = store.getReadonly();
     const maxWidthCommentDisabled = settings.maxWidthComment === -1;
     // On the Settings tab an unlocked row names the tab a lock would take,
     // the one the reader came from, as changeLockSettingsAction$ reads it.
@@ -177,7 +164,15 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
           <SettingsLnb value={state.lnb} onChange={handleChangeLnb} />
         </div>
         <div class={styles.contentArea}>
-          <div class={fontSize6}>{t(LnbLabelKey[state.lnb])}</div>
+          <div class={styles.header}>
+            <div class={fontSize6}>{t(LnbLabelKey[state.lnb])}</div>
+            {readonly ? (
+              <span class={readonlyBadge}>
+                <Icon name="lock" size={12} />
+                <span>{t('tableProperties.readOnly')}</span>
+              </span>
+            ) : null}
+          </div>
           <Separator space={12} />
           <div class={['scrollbar', styles.content]}>
             {state.lnb === Lnb.preferences ? (
@@ -187,6 +182,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                   <div class={styles.vertical(16)}></div>
                   <Switch
                     value={settings.relationshipDataTypeSync}
+                    disabled={readonly}
                     onChange={handleChangeRelationshipDataTypeSync}
                   />
                 </div>
@@ -196,6 +192,7 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                   <div class={styles.vertical(16)}></div>
                   <Switch
                     value={!maxWidthCommentDisabled}
+                    disabled={readonly}
                     onChange={handleSwitchMaxWidthComment}
                   />
                   <div class={styles.vertical(8)}></div>
@@ -208,28 +205,14 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                         ? toMaxWidthCommentFormat(COLUMN_MIN_WIDTH)
                         : toMaxWidthCommentFormat(settings.maxWidthComment)
                     }
-                    disabled={maxWidthCommentDisabled}
+                    disabled={readonly || maxWidthCommentDisabled}
                     numberOnly={true}
-                    onChange={handleChangeMaxWidthComment}
+                    onChange={
+                      readonly ? undefined : handleChangeMaxWidthComment
+                    }
                   />
                 </div>
 
-                <div class={styles.row}>
-                  <div>{t('settings.recalculateTableWidth')}</div>
-                  <div class={styles.vertical(16)}></div>
-                  <Button
-                    variant="soft"
-                    size="1"
-                    text={
-                      <>
-                        <Icon size={14} name="refresh-cw" />
-                        <div class={styles.vertical(8)}></div>
-                        <span>{t('settings.sync')}</span>
-                      </>
-                    }
-                    onClick={handleRecalculationTableWidth}
-                  />
-                </div>
                 <div class={styles.lockSection}>
                   <div>{t('settings.lockHeading')}</div>
                   <Separator space={12} />
@@ -271,8 +254,15 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                               }
                               aria-pressed={locked ? 'true' : 'false'}
                               bool:data-locked={locked}
-                              on:click={() =>
-                                handleChangeLock(row.lockSettingType, !locked)
+                              bool:disabled={readonly}
+                              on:click={
+                                readonly
+                                  ? null
+                                  : () =>
+                                      handleChangeLock(
+                                        row.lockSettingType,
+                                        !locked
+                                      )
                               }
                             >
                               {locked ? (
@@ -302,12 +292,19 @@ const Settings: FC<SettingsProps> = (props, ctx) => {
                       columnType => (
                         <div
                           class={styles.columnOrderItem}
-                          draggable="true"
+                          bool:data-readonly={readonly}
+                          draggable={readonly ? 'false' : 'true'}
                           data-id={columnType}
-                          on:dragstart={handleDragstartColumnOrder}
+                          on:dragstart={
+                            readonly ? null : handleDragstartColumnOrder
+                          }
                         >
                           <Menu
-                            icon={<Icon name="grip-vertical" size={14} />}
+                            icon={
+                              readonly ? null : (
+                                <Icon name="grip-vertical" size={14} />
+                              )
+                            }
                             name={t(ColumnTypeToMessageKey[columnType])}
                           />
                         </div>

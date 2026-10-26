@@ -186,7 +186,7 @@ const HighLevelTable: FC<HighLevelTableProps> = (props, ctx) => {
           kind="table-header-color"
           data={getColorEdgePath(rect.height)}
           fill={table.ui.color}
-          listening={interaction.value !== 'read'}
+          listening={interaction() !== 'read'}
           on:click={mainButtonClick(handleOpenColorPicker)}
           on:mouseenter={(event: SceneMouseEvent) => {
             setSceneCursor(event, CURSOR_POINTER);

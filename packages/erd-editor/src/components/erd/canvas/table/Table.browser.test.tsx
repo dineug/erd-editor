@@ -84,6 +84,7 @@ import { getColumnRect, getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 import { Diff, type DiffMap } from '@/utils/diff/diff';
+import { dragendColumnAllAction } from '@/utils/emitter';
 
 type SceneProps = {
   hovered?: boolean;
@@ -1777,5 +1778,32 @@ describe('the column drag the table coordinates', () => {
     await settle();
 
     expect(fixture.stage.findOne(`#column-${moved}`)).toBeUndefined();
+  });
+
+  it('lets go of the drag it began once every table is told the drag ended, so its release ends nothing again', async () => {
+    const fixture = await setupDrag({ tables: 2, columns: 2 });
+    const [source, target] = fixture.tables;
+    const moved = source.columnIds[0];
+    focusColumn(fixture, source, 0);
+
+    await pressHandle(fixture, source, 0);
+    await moveOver(fixture, target, 1);
+    expect(fixture.stage.findOne(`#column-${moved}`)).toBeTruthy();
+
+    fixture.app.emitter.emit(dragendColumnAllAction());
+    await settle();
+    expect(fixture.stage.find(`#column-${moved}`)).toHaveLength(0);
+    expect(fixture.stage.container().style.cursor).not.toBe('grabbing');
+
+    const ended = vi.fn();
+    const off = fixture.app.emitter.on({ dragendColumnAll: ended });
+    const order = columnIdsOf(fixture, target.id).slice();
+    await moveOver(fixture, target, 0);
+    releasePointer();
+    await settle();
+
+    expect(columnIdsOf(fixture, target.id)).toEqual(order);
+    expect(ended).not.toHaveBeenCalled();
+    off();
   });
 });

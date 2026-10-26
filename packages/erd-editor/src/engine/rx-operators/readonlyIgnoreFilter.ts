@@ -7,15 +7,24 @@ import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 
+const dropsNothingElse = () => false;
+
+/**
+ * Drops the edits a readonly host refuses while it is readonly: the
+ * ReadonlyIgnoreActionTypes, the extra types given and each action the extra
+ * predicate names. An action that carries a pass tag goes through regardless.
+ */
 export const readonlyIgnoreFilter = (
   getReadonly: () => boolean,
-  passTags: number[] = []
+  passTags: number[] = [],
+  extraTypes: ReadonlyArray<string> = [],
+  dropsAlso: (action: AnyAction) => boolean = dropsNothingElse
 ) => {
-  const has = arrayHas<string>(ReadonlyIgnoreActionTypes);
+  const has = arrayHas<string>([...ReadonlyIgnoreActionTypes, ...extraTypes]);
   const predicate = (action: AnyAction): boolean => {
     return (
       (!isNil(action.tags) && passTags.some(tag => bHas(action.tags!, tag))) ||
-      !has(action.type)
+      !(has(action.type) || dropsAlso(action))
     );
   };
 

@@ -21,12 +21,20 @@ import { useI18n } from '@/components/localeContext';
 import { createScopeActions } from '@/components/quick-search/actions';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
-import { CanvasType } from '@/constants/schema';
+import { CanvasType, Language } from '@/constants/schema';
 import {
+  changeHandToolAction,
   changeOpenMapAction,
   changeZenModeAction,
+  editMemoAction,
+  editMemoEndAction,
+  editTableGroupAction,
 } from '@/engine/modules/editor/atom.actions';
-import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
+import {
+  changeCanvasTypeAction,
+  changeLanguageAction,
+  changeZoomLevelAction,
+} from '@/engine/modules/settings/atom.actions';
 import { MESSAGES } from '@/i18n/messages/index';
 import { getTableRect } from '@/konva/scene/metrics';
 import { toScreenPoint } from '@/konva/scene/viewport';
@@ -58,6 +66,7 @@ const quickSearch = vi.hoisted(() => ({
   props: null as null | {
     appearance?: string;
     locale?: string;
+    readonly?: boolean;
     topLevel?: unknown;
   },
 }));
@@ -319,6 +328,39 @@ describe('<erd-editor>', () => {
     expect(el.readonly).toBe(false);
   });
 
+  it('turns readonly by its attribute, ending the edit state, and gives the screen back once it reads false', async () => {
+    const { el, app } = await createEditor();
+    const { store } = app;
+    const onChange = vi.fn();
+    el.addEventListener('change', onChange);
+    store.dispatchSync(
+      editMemoAction({ id: 'm1' }),
+      changeHandToolAction({ value: true })
+    );
+    const value = el.value;
+    const { language } = store.state.settings;
+    expect(language).not.toBe(Language.Kotlin);
+
+    el.setAttribute('readonly', '');
+    await flush();
+    expect(el.readonly).toBe(true);
+    expect(store.state.editor.editMemoId).toBeNull();
+    expect(store.state.editor.handTool).toBe(false);
+
+    store.dispatchSync(changeLanguageAction({ value: Language.Kotlin }));
+    expect(store.state.settings.language).toBe(Language.Kotlin);
+    expect(el.value).toBe(value);
+
+    el.setAttribute('readonly', 'false');
+    await flush();
+    await new Promise(resolve => setTimeout(resolve, 260));
+
+    expect(el.readonly).toBe(false);
+    expect(store.state.settings.language).toBe(language);
+    expect(el.value).toBe(value);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('reflects the locale picker and welcome screen attributes onto the props, both off by default', async () => {
     const { el: plain } = await createEditor();
     expect(plain.enableLocalePicker).toBe(false);
@@ -529,6 +571,20 @@ describe('<erd-editor>', () => {
     el.enableThemeBuilder = false;
     await flush();
     expect(quickSearch.props?.appearance).toBeUndefined();
+  });
+
+  it('hands the palette the readonly it holds, as it turns and as it turns back', async () => {
+    const { el } = await createEditor();
+    expect(quickSearch.props).not.toBeNull();
+    expect(quickSearch.props?.readonly).toBeFalsy();
+
+    el.readonly = true;
+    await flush();
+    expect(quickSearch.props?.readonly).toBe(true);
+
+    el.readonly = false;
+    await flush();
+    expect(quickSearch.props?.readonly).toBe(false);
   });
 
   it('feeds root keydown events into the shared keydown stream', async () => {
@@ -953,6 +1009,53 @@ describe('<erd-editor>', () => {
     await new Promise(resolve => setTimeout(resolve, 260));
     expect(onChange).not.toHaveBeenCalled();
     expect(app.store.state.doc.tableIds.length).toBeGreaterThan(0);
+  });
+
+  it('refuses what opens an edit once readonly, and still lets an open one close', async () => {
+    const { el, app } = await createEditor();
+    const { store } = app;
+    store.dispatchSync(editMemoAction({ id: 'm1' }));
+    expect(store.state.editor.editMemoId).toBe('m1');
+
+    el.readonly = true;
+    await flush();
+    store.dispatchSync(
+      editMemoEndAction(),
+      editTableGroupAction({ id: 'g1' }),
+      changeOpenMapAction({ [Open.mapColumns]: true }),
+      changeOpenMapAction({ [Open.themeBuilder]: true })
+    );
+
+    const { editor } = store.state;
+    expect(editor.editMemoId).toBeNull();
+    expect(editor.editTableGroupId).toBeNull();
+    expect(editor.openMap[Open.mapColumns]).toBeFalsy();
+    expect(editor.openMap[Open.themeBuilder]).toBe(true);
+  });
+
+  it('sends a peer none of what a readonly reader changes, through the shared store a host takes', async () => {
+    const { el, app } = await createEditor();
+    const sharedStore = el.getSharedStore();
+    const sent: string[] = [];
+    sharedStore.subscribe(actions =>
+      sent.push(...actions.map(({ type }) => type))
+    );
+
+    el.readonly = true;
+    await flush();
+    app.store.dispatchSync(
+      changeLanguageAction({ value: Language.Kotlin }),
+      changeZoomLevelAction({ value: 0.5 })
+    );
+    expect(app.store.state.settings.language).toBe(Language.Kotlin);
+    expect(sent).not.toContain('settings.changeLanguage');
+    expect(sent).not.toContain('settings.changeZoomLevel');
+
+    el.readonly = false;
+    await flush();
+    app.store.dispatchSync(changeLanguageAction({ value: Language.GraphQL }));
+    expect(sent).toContain('settings.changeLanguage');
+    sharedStore.destroy();
   });
 
   it('imports GraphQL SDL and stays quiet while readonly', async () => {

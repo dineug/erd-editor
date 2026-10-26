@@ -1,4 +1,4 @@
-import { html } from '@dineug/r-html';
+import { html, observable } from '@dineug/r-html';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -49,19 +49,73 @@ afterEach(() => {
   mounted = null;
 });
 
-async function setup(
-  app: AppContext = createTestAppContext(),
-  { readonly = false }: { readonly?: boolean } = {}
-) {
-  mounted = await mountAndFlush(
-    html`<${FloatingToolbar} readonly=${readonly} />`,
-    app
-  );
-  const root = mounted.container.querySelector(
-    '.floating-toolbar'
-  ) as HTMLDivElement;
+async function setup(app: AppContext = createTestAppContext()) {
+  mounted = await mountAndFlush(html`<${FloatingToolbar} />`, app);
+  const root = barOf();
 
   return { app, root };
+}
+
+const barOf = () =>
+  mounted!.container.querySelector('.floating-toolbar') as HTMLDivElement;
+
+/** The bar left to right: each control by its title less its chord, each divider a bar. */
+const rowOf = (root: HTMLElement) =>
+  Array.from(root.children, child =>
+    child.classList.contains(String(styles.divider))
+      ? '|'
+      : child.getAttribute('title')?.replace(/ \(.*\)$/, '')
+  );
+
+const WRITABLE_ROW = [
+  'Hand',
+  'Select',
+  '|',
+  'New Table',
+  'New Memo',
+  'New Table Group',
+  '|',
+  'Zoom out',
+  'Reset zoom',
+  'Zoom in',
+  '|',
+  'Zero One',
+  'Zero N',
+  'One Only',
+  'One N',
+  '|',
+  'Name View',
+  '|',
+  'Zen Mode',
+  '|',
+  'Go to content',
+];
+
+const READONLY_ROW = [
+  'Zoom out',
+  'Reset zoom',
+  'Zoom in',
+  '|',
+  'Name View',
+  '|',
+  'Zen Mode',
+  '|',
+  'Go to content',
+];
+
+/**
+ * An app whose one table lies off the screen, so the bar carries its compass
+ * too, seeded while writable and readonly from then on as the flags say.
+ */
+function createAppAwayFromContent(readonly = false) {
+  const flags = observable({ readonly: false });
+  const app = createTestAppContext({ getReadonly: () => flags.readonly });
+  app.store.dispatchSync(
+    addTableAction({ id: 'users', ui: { x: 0, y: 0, zIndex: 2 } }),
+    scrollToAction({ originX: -5_000, originY: -4_000 })
+  );
+  flags.readonly = readonly;
+  return { app, flags };
 }
 
 const menus = (root: HTMLElement) =>
@@ -213,13 +267,43 @@ describe('FloatingToolbar', () => {
     expect(isActive(byTitle(root, 'Select'))).toBe(true);
   });
 
-  it('offers nothing to add to a readonly editor', async () => {
-    const { root } = await setup(createTestAppContext(), { readonly: true });
+  it('stands every control of a writable editor in its group, a divider between each', async () => {
+    const { root } = await setup(createAppAwayFromContent().app);
 
+    expect(rowOf(root)).toEqual(WRITABLE_ROW);
+  });
+
+  it('keeps only the zoom, the name view, zen mode and the compass in a readonly editor', async () => {
+    const { root } = await setup(createAppAwayFromContent(true).app);
+
+    expect(rowOf(root)).toEqual(READONLY_ROW);
     expect(addButton(root, 'add-table')).toBeNull();
     expect(addButton(root, 'add-memo')).toBeNull();
     expect(addButton(root, 'add-table-group')).toBeNull();
-    expect(root.querySelectorAll(`.${String(styles.divider)}`)).toHaveLength(4);
+    expect(byTitle(root, 'Hand')).toBeNull();
+    expect(byTitle(root, 'Select')).toBeNull();
+    expect(byTitle(root, 'Zero One')).toBeNull();
+  });
+
+  it('draws the other row set as the editor turns readonly and back, on the bar it mounted', async () => {
+    const { app, flags } = createAppAwayFromContent();
+    const { root } = await setup(app);
+    expect(rowOf(root)).toEqual(WRITABLE_ROW);
+
+    flags.readonly = true;
+    await flush();
+
+    expect(barOf()).toBe(root);
+    expect(rowOf(root)).toEqual(READONLY_ROW);
+
+    flags.readonly = false;
+    await flush();
+
+    expect(barOf()).toBe(root);
+    expect(rowOf(root)).toEqual(WRITABLE_ROW);
+    click(byTitle(root, 'Hand'));
+    await flush();
+    expect(app.store.state.editor.handTool).toBe(true);
   });
 
   it('offers no New Memo while memos are hidden, nor New Table Group while groups are', async () => {
@@ -481,7 +565,7 @@ describe('FloatingToolbar', () => {
       changeLockSettingsAction$(LockSettingType.unlockNameViewMode, false)
     );
     readonly = true;
-    const { root } = await setup(app, { readonly: true });
+    const { root } = await setup(app);
     const switches: unknown[] = [];
     app.store.subscribe(actions => {
       for (const { type, payload } of actions) {

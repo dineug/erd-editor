@@ -22,6 +22,7 @@ import { readerNameViewAction } from '@/components/erd/readerNameView';
 import { useI18n } from '@/components/localeContext';
 import Button from '@/components/primitives/button/Button';
 import Slider from '@/components/primitives/slider/Slider';
+import { sceneInteractionContext } from '@/components/sceneInteractionContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
@@ -69,8 +70,11 @@ const TimeTravel: FC<TimeTravelProps> = (props, ctx) => {
   // A replayed history is a document of its own, so it names the document
   // source rather than inheriting whatever scene it was opened over.
   const sceneSource = useProvider(ctx, sceneSourceContext, 'document');
+  // Its scene takes a press as an editor's does, whatever the ERD tab reads.
+  const sceneInteraction = useProvider(ctx, sceneInteractionContext, 'edit');
 
   addUnsubscribe(() => {
+    sceneInteraction.destroy();
     sceneSource.destroy();
     provider.destroy();
   });

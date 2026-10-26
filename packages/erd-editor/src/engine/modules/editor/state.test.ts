@@ -16,6 +16,7 @@ import {
   SelectType,
   VisualizationMode,
 } from '@/engine/modules/editor/state';
+import { addTableAction } from '@/engine/modules/table/atom.actions';
 import { createStore } from '@/engine/store';
 
 const focusTable = (edit: boolean) => ({
@@ -117,6 +118,7 @@ describe('editor/state', () => {
       expect(editor.dragSelect).toBeNull();
       expect(editor.views).toEqual({ flow: null });
       expect(editor.visualizationMode).toBe(VisualizationMode.graph);
+      expect(editor.screenBaseline).toBeNull();
     });
 
     it('gives each editor its own id and its own mutable containers', () => {
@@ -186,7 +188,10 @@ describe('editor/state', () => {
       expect(store.state.editor.selectedMap).toEqual({});
 
       store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
-      store.dispatchSync(selectAction({ t1: SelectType.table }));
+      store.dispatchSync(
+        addTableAction({ id: 't1', ui: { x: 0, y: 0, zIndex: 2 } }),
+        selectAction({ t1: SelectType.table })
+      );
 
       expect(store.state.editor.viewport).toEqual({ width: 800, height: 600 });
       expect(store.state.editor.selectedMap).toEqual({ t1: SelectType.table });

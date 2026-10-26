@@ -305,10 +305,6 @@ export const roRO = {
   'settings.preferences': 'Preferințe',
   'settings.relationshipDataTypeSync': 'Sincronizare tip de date în relații',
   'settings.maxCommentWidth': 'Lățime maximă comentarii',
-  'settings.recalculateTableWidth': 'Recalculare lățime tabele',
-  'settings.sync': 'Sincronizare',
-  'settings.toast.tableWidthRecalculated':
-    'Lățimea tabelelor a fost recalculată',
   'settings.lockHeading': 'Blocare',
   'settings.lockSetting': 'Blocare {name}',
   'settings.unlockSetting': 'Deblocare {name}',

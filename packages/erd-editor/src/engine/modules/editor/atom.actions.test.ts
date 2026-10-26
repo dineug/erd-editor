@@ -95,6 +95,7 @@ import { toScreenPoint } from '@/konva/scene/viewport';
 import { createMemo } from '@/utils/collection/memo.entity';
 import { createTable } from '@/utils/collection/table.entity';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 import { type Rect } from '@/utils/dragSelect';
 
 function createTestStore(enableObservable = true): Store {
@@ -127,6 +128,13 @@ function addMemo(store: Store, id: string) {
   store.state.collections.memoEntities[id] = memo;
   store.state.doc.memoIds.push(id);
   return memo;
+}
+
+function addTableGroup(store: Store, id: string) {
+  const group = createTableGroup({ id });
+  store.state.collections.tableGroupEntities[id] = group;
+  store.state.doc.tableGroupIds.push(id);
+  return group;
 }
 
 /** table t1 with columns c1, c2, c3. */
@@ -195,6 +203,8 @@ describe('editor.selectAll / unselectAll / select', () => {
   });
 
   it('merges the select payload into the existing map', () => {
+    addTable(store, 't1');
+    addMemo(store, 'm1');
     store.dispatchSync(selectAction({ t1: SelectType.table }));
     store.dispatchSync(selectAction({ m1: SelectType.memo }));
 
@@ -204,7 +214,58 @@ describe('editor.selectAll / unselectAll / select', () => {
     });
   });
 
+  it('selects only the ids the document lists for their type', () => {
+    addTable(store, 't1');
+    addTable(store, 't2');
+    addMemo(store, 'm1');
+    addTableGroup(store, 'g1');
+    store.state.collections.tableEntities.gone = createTable({ id: 'gone' });
+
+    store.dispatchSync(
+      selectAction({
+        t1: SelectType.table,
+        m1: SelectType.memo,
+        g1: SelectType.tableGroup,
+        ghost: SelectType.table,
+        gone: SelectType.table,
+        t2: SelectType.memo,
+      })
+    );
+
+    expect(store.state.editor.selectedMap).toEqual({
+      t1: SelectType.table,
+      m1: SelectType.memo,
+      g1: SelectType.tableGroup,
+    });
+  });
+
+  it('reads each id of a list once, however many ids a select names', () => {
+    const plain = createTestStore(false);
+    const ids = Array.from({ length: 1000 }, (_, index) => `t${index}`);
+    let reads = 0;
+    plain.state.doc.tableIds = new Proxy(ids, {
+      get(target, key, receiver) {
+        if (typeof key === 'string' && /^\d+$/.test(key)) reads++;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+
+    plain.dispatchSync(
+      selectAction(
+        Object.fromEntries(
+          [...ids, 'ghost'].map(id => [id, SelectType.table] as const)
+        )
+      )
+    );
+
+    expect(Object.keys(plain.state.editor.selectedMap)).toHaveLength(1000);
+    expect(reads).toBe(1000);
+    plain.destroy();
+  });
+
   it('clears every entry on unselectAll', () => {
+    addTable(store, 't1');
+    addMemo(store, 'm1');
     store.dispatchSync(
       selectAction({ t1: SelectType.table, m1: SelectType.memo })
     );
@@ -920,6 +981,9 @@ describe('editor.loadJson / initialLoadJson', () => {
   ])(
     'lets go of the memos and groups selected or edited when %s lands their hide bits',
     (_, load) => {
+      addTable(store, 't1');
+      addMemo(store, 'm1');
+      addTableGroup(store, 'g1');
       store.dispatchSync(
         selectAction({
           m1: SelectType.memo,
@@ -1005,6 +1069,7 @@ describe('editor.loadJson / initialLoadJson', () => {
   );
 
   it('keeps the memo selection a load that shows the memos lands', () => {
+    addMemo(store, 'm1');
     store.dispatchSync(selectAction({ m1: SelectType.memo }));
 
     store.dispatchSync(loadJsonAction({ value: buildJson(CanvasType.ERD) }));

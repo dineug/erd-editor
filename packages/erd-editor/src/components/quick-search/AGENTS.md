@@ -11,22 +11,22 @@
 
 1. **Read the files on the other side.** A change to the Toggle Explorer row or to what the search opens on reads `src/components/explorer/AGENTS.md`. A change to the list's range reads `src/components/primitives/AGENTS.md` (The tree), which shares `src/utils/virtualRange.ts`. A change to Display Language or to a translated row's name reads `src/i18n/AGENTS.md`.
 2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The specs here run in that test task, `QuickSearch.browser.test.ts` in real Chromium.
-3. **Change a pinned rule and its spec together.** `QuickSearch.test.ts` pins the search over the level's whole list on each keystroke. `actions.test.ts` pins `SEARCH_THRESHOLD`, which `documentSearch.tsx` sets, and what it takes and lets go among the editor's commands. `scopedActions.test.ts` bounds the Hangul spellings a keystroke makes.
-4. **Run the e2e for a visible change.** `e2e/specs/find-replace.spec.ts` drives the palette's field rows in the real element and types through Chromium's own IME (Testing Requirements). `pnpm --filter @dineug/erd-editor e2e` builds the package and runs every Playwright spec, this one included.
+3. **Change a pinned rule and its spec together.** `QuickSearch.test.ts` pins the search over the level's whole list on each keystroke and the level built again at a turn of readonly. `actions.test.ts` pins `SEARCH_THRESHOLD`, which `documentSearch.tsx` sets, what it takes and lets go among the editor's commands, and the rows a readonly editor keeps. `scopedActions.test.ts` bounds the Hangul spellings a keystroke makes.
+4. **Run the e2e for a visible change.** `e2e/specs/find-replace.spec.ts` drives the palette's field rows in the real element and types through Chromium's own IME (Testing Requirements), and `e2e/specs/import-and-add.spec.ts` its imports under readonly and back. `pnpm --filter @dineug/erd-editor e2e` builds the package and runs every Playwright spec, these included.
 
 ## Key Files
 
 | File | Description |
 | --- | --- |
-| `QuickSearch.tsx` | The palette: the top level its host builds (`topLevel`, a `PaletteTopLevel`; the editor hands in `createScopeActions`, and the read-only view `createTableActions` alone), `rebuild`, the virtual list, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount. It imports no command, which `src/viewer/imports.test.ts` holds it to as a module the read-only view composes |
+| `QuickSearch.tsx` | The palette: the top level its host builds (`topLevel`, a `PaletteTopLevel`; the editor hands in `createScopeActions` and its `readonly`, and the read-only view `createTableActions` alone), `rebuild`, the virtual list, the `.quick-search-empty` line, the `isComposing` guard, and the `clearHangulForms` calls on open, close and unmount. It imports no command, which `src/viewer/imports.test.ts` holds it to as a module the read-only view composes |
 | `paletteList.ts` | `PALETTE_ROW_HEIGHT` (45, which the row style matches), `PALETTE_LIST_MAX_HEIGHT` (400) and `paletteListHeight` |
 | `documentSearch.tsx` | `Action`, `PalettePreferences`, `searchActions` and `heldPastFuse`, `SEARCH_THRESHOLD`, `keywordHolder`, `named`, the Hangul ranking, `createMatchAction`, and the table rows (`createTableActions`), which jump through `goToErdTarget` |
-| `actions.tsx` | `createScopeActions` (the editor's top level, which ends with `createTableActions`' rows), `createPreferenceActions`, `createRederiveActions`, and the rows of the imports, the Schema SQL tab and the tabs |
+| `actions.tsx` | `createScopeActions` (the editor's top level, which ends with `createTableActions`' rows), `createPreferenceActions`, `createRederiveActions`, the rows of the imports, the Schema SQL tab and the tabs, and `isWritableErdTab`, which every row that writes asks (A readonly editor's palette) |
 | `scopedActions.tsx` | `scopeBase`, `createPrefixActions`, `createFieldActions` and the rows it builds as they are drawn (`lazyMatchAction`), `rankTableActions` |
 | `paletteQuery.ts` | The prefix grammar and `WIDE_PREFIXES` |
 | `hangul.ts` | The Hangul letter matching and ranking, `clearHangulForms`, `hitRange` |
-| `QuickSearch.test.ts` | Pins the search over the level's whole list on each keystroke |
-| `actions.test.ts` | Pins `documentSearch.tsx`'s `SEARCH_THRESHOLD` at 0.4 and, over the editor's commands, what it takes (`tabel`, `imprt`) and lets go (`talbe`, `mmeo`) |
+| `QuickSearch.test.ts` | Pins the search over the level's whole list on each keystroke, and the level built again on a change of the language, an option in force or `readonly` |
+| `actions.test.ts` | Pins `documentSearch.tsx`'s `SEARCH_THRESHOLD` at 0.4 and, over the editor's commands, what it takes (`tabel`, `imprt`) and lets go (`talbe`, `mmeo`), and the rows each tab lists writable and readonly, across a turn of readonly either way |
 | `documentSearch.test.ts` | The fuzzy search and the Hangul ranking over rows of its own, with no command |
 | `scopedActions.test.ts` | Bounds the spellings of the document's texts over 200 Korean tables |
 | `QuickSearch.browser.test.ts` | Types through Chromium's own IME over CDP |
@@ -120,9 +120,16 @@
   - A language row's alias is its English name and its code.
   - A table row ignores the field.
 - **Open a submenu on its option in force.** The keyboard lands on that option (`Action.checked`), scrolled to it, as the locale picker opens.
-- **Rebuild an open palette on a change.** An open palette builds its level again when the language or an option in force changes (`rebuild` in `QuickSearch.tsx`). So no row keeps the language it opened in.
-  - It keeps what is typed and the submenu shown.
-  - It finds the submenu again by its row's message key (`Action.id`), or shows the top level once the host took that row away.
+- **Rebuild an open palette on a change.** An open palette builds its level again when the language, an option in force or its host's `readonly` changes (`rebuild` in `QuickSearch.tsx`). So no row keeps the language it opened in, and a keyword typed before a turn of readonly lists what the editor offers after it.
+  - It keeps what is typed, searched again, and the submenu shown.
+  - It finds the submenu again by its row's message key (`Action.id`) among the rows listed, or shows the top level once the host took that row away or its filter hides it, as a turn to readonly hides Import.
+
+### A readonly editor's palette
+
+- **A readonly editor lists no row that writes the document or opens an editor** (`isWritableErdTab` in `actions.tsx`), rather than listing it and letting the store drop what it sends. Its ERD tab drops New Table, New Memo, New Table Group, Group Selected Tables, the four relationship draws, Auto Layout, Import, Import and Add and the Derive rows. It keeps Tab, Name View, Database, Export, Toggle Explorer, Theme and Display Language, and the `#`, `@` and `:` rows, whose jumps leave the one selection a reader holds.
+- **The other tabs list what a writable editor's do.** Database, Bracket, Language and the two name cases turn the reader's own screen there (`src/engine/AGENTS.md`, Screen-only settings), and the options panel rows and Schema SQL's Statements and Header a window's own choices, so no row of theirs writes the document.
+- **The rows that write ask `store.getReadonly()` as the list draws,** the formats under Import and Import and Add and the placements under Auto Layout among them, so a palette held open across a turn of the element's readonly draws the other set at once.
+- **The element hands the palette its `readonly` too,** whose turn builds the open level again (Rebuild an open palette on a change): what is typed is searched again, `No commands match` and the prefix rows with it, and a submenu whose row the turn hid gives way to the top level. `actions.test.ts` pins both sets and the turn, `QuickSearch.test.ts` the level built again, and `src/components/erd/Erd.browser.test.tsx` and `e2e/specs/import-and-add.spec.ts` check the rows drawn.
 
 ### Rules held elsewhere
 

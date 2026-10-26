@@ -889,12 +889,12 @@ describe('createScopeActions / Import and Export', () => {
     expect(importAndAdd.filter?.(app)).toBe(false);
   });
 
-  it('offers no Import and Add in a readonly editor, Import still offered', () => {
+  it('offers neither Import nor Import and Add to a readonly editor', () => {
     app.store.destroy();
     app = createTestAppContext({ getReadonly: () => true });
 
     expect(find(scope(), 'Import and Add').filter?.(app)).toBe(false);
-    expect(find(scope(), 'Import').filter?.(app)).toBe(true);
+    expect(find(scope(), 'Import').filter?.(app)).toBe(false);
   });
 
   it('finds the GraphQL import entry by its sdl keywords', () => {
@@ -2127,5 +2127,159 @@ describe('createPreferenceActions', () => {
     expect(names(submenu(rows, '테마'))).toEqual(['시스템', 'Light', 'Dark']);
     expect(languages[0]).toMatchObject({ name: '시스템', alias: ['System'] });
     expect(names(searchActions(languages, 'system'))[0]).toBe('시스템');
+  });
+});
+
+describe('createScopeActions / readonly', () => {
+  let locked = false;
+
+  beforeEach(() => {
+    locked = false;
+    app.store.destroy();
+    app = createTestAppContext({ getReadonly: () => locked });
+  });
+
+  /** The editor's top level with both pickers given, as the element builds it. */
+  const topLevel = () =>
+    preferences({ appearance: Appearance.dark, locale: 'system' });
+
+  /** The names an open palette lists of the rows it holds, every filter asked now. */
+  const listed = (actions: Action[]) =>
+    names(actions.filter(action => action.filter?.(app) ?? true));
+
+  /** Two tables, both selected, one holding the focused column, so every row that writes has something to reach. */
+  const seedEveryReach = () => {
+    const users = addTable('users');
+    const orders = addTable('orders', 400);
+    app.store.dispatchSync(
+      addColumnAction({ id: 'users.id', tableId: users }),
+      focusColumnAction({
+        tableId: users,
+        columnId: 'users.id',
+        focusType: FocusType.columnName,
+        $mod: false,
+        shiftKey: false,
+      })
+    );
+    app.store.dispatchSync(
+      selectAction({ [users]: SelectType.table, [orders]: SelectType.table })
+    );
+  };
+
+  /** What the ERD tab of a writable editor lists over that document. */
+  const WRITABLE_ERD_ROWS = [
+    'Tab',
+    'Name View',
+    'Derive Physical Name Again',
+    'Derive Physical Names Again',
+    'Derive Physical Names Again',
+    'Derive Physical Names Again',
+    'Database',
+    'Import',
+    'Import and Add',
+    'Export',
+    'New Table',
+    'New Memo',
+    'New Table Group',
+    'Group Selected Tables',
+    'Zero One',
+    'Zero N',
+    'One Only',
+    'One N',
+    'Auto Layout',
+    'Toggle Explorer',
+    'Theme',
+    'Display Language',
+    'orders',
+    'users',
+  ];
+
+  /** What a readonly editor's ERD tab keeps: the rows that read the document or turn the reader's own screen. */
+  const READONLY_ERD_ROWS = [
+    'Tab',
+    'Name View',
+    'Database',
+    'Export',
+    'Toggle Explorer',
+    'Theme',
+    'Display Language',
+    'orders',
+    'users',
+  ];
+
+  it('keeps on the ERD tab the rows that read the document or turn the screen, and no row that writes', () => {
+    setCanvasType(CanvasType.ERD);
+    seedEveryReach();
+    expect(listed(topLevel())).toEqual(WRITABLE_ERD_ROWS);
+
+    locked = true;
+
+    expect(listed(topLevel())).toEqual(READONLY_ERD_ROWS);
+  });
+
+  it('keeps every row of the other tabs, each turning only the screen or a window of its own', () => {
+    setCanvasType(CanvasType.ERD);
+    seedEveryReach();
+
+    for (const canvasType of [
+      CanvasType.visualization,
+      CanvasType.schemaSQL,
+      CanvasType.generatorCode,
+      CanvasType.dictionary,
+      CanvasType.settings,
+    ]) {
+      setCanvasType(canvasType);
+      locked = false;
+      const writable = listed(topLevel());
+      locked = true;
+
+      expect(listed(topLevel())).toEqual(writable);
+    }
+  });
+
+  it('follows a turn either way on the rows an open palette already holds', () => {
+    setCanvasType(CanvasType.ERD);
+    seedEveryReach();
+    const actions = topLevel();
+
+    locked = true;
+    expect(listed(actions)).toEqual(READONLY_ERD_ROWS);
+
+    locked = false;
+    expect(listed(actions)).toEqual(WRITABLE_ERD_ROWS);
+
+    locked = true;
+    expect(listed(actions)).toEqual(READONLY_ERD_ROWS);
+  });
+
+  it('lists the rows under Import, Import and Add and Auto Layout only while writable, a turn either way', () => {
+    setCanvasType(CanvasType.ERD);
+    const actions = topLevel();
+    const nested = ['Import', 'Import and Add', 'Auto Layout'].flatMap(
+      name => find(actions, name).next ?? []
+    );
+    const every = [
+      'json',
+      'Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+      'json',
+      'Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+      'Force',
+      'Flow',
+      'Tree - vertical',
+      'Tree - horizontal',
+    ];
+    expect(listed(nested)).toEqual(every);
+
+    locked = true;
+    expect(listed(nested)).toEqual([]);
+
+    locked = false;
+    expect(listed(nested)).toEqual(every);
   });
 });

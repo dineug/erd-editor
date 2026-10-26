@@ -364,7 +364,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     // A view holds no focus, header cell included: the underline would be the
     // ERD tab's mark on the document, not one a reader made here. A read
     // scene's root takes the press for itself.
-    if (sourceRef.value !== 'document' || interaction.value === 'read') return;
+    if (sourceRef.value !== 'document' || interaction() === 'read') return;
 
     const { store } = app.value;
     store.dispatch(focusTableAction({ tableId: props.table.id, focusType }));
@@ -374,7 +374,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     if (!doubleClick.isDouble(focusType, event)) return;
     // A view edits nothing: the editor this would open is the document
     // overlay's, which draws on the document placement and not on this cell.
-    if (sourceRef.value !== 'document' || interaction.value === 'read') return;
+    if (sourceRef.value !== 'document' || interaction() === 'read') return;
 
     const { store } = app.value;
     store.dispatch(editTableAction());
@@ -483,9 +483,13 @@ const Table: FC<TableProps> = (props, ctx) => {
 
     addUnsubscribe(
       emitter.on({
+        // The table a drag began in lets go of it too, since the end may come
+        // from the editor turning readonly rather than from its own drop.
         dragendColumnAll: () => {
           dragoverSubscription?.unsubscribe();
           dragoverSubscription = null;
+          dragLayerStage = null;
+          state.dragstartId = null;
           endColumnDragPointer(app.value.store.state);
         },
       }),
@@ -624,7 +628,7 @@ const Table: FC<TableProps> = (props, ctx) => {
     // The edge is the card's last child, so no band or row tint covers it.
     const view = source !== 'document';
     // A read scene draws no button that edits, and its colour edge opens nothing.
-    const read = interaction.value === 'read';
+    const read = interaction() === 'read';
 
     // The header line, inside the header group the card's inset places. Both
     // sources keep the two buttons centred on it, in the room past the name

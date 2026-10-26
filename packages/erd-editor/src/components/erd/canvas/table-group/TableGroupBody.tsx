@@ -55,7 +55,7 @@ const TableGroupBody: FC<TableGroupBodyProps> = (props, ctx) => {
     const { group, links } = props;
     links.guardOf(group.id).track('body', event as SceneMouseEvent);
     // A read scene's root takes every press, so no button selects the group there.
-    if (interaction.value === 'read') return;
+    if (interaction() === 'read') return;
     if (isMainButtonPress(event.evt) || isMultiTouch(event.evt)) return;
 
     const { store } = app.value;

@@ -1769,3 +1769,99 @@ describe('QuickSearch top level', () => {
     expect(rowNames()).toEqual(['orders']);
   });
 });
+
+describe('QuickSearch across a turn of readonly', () => {
+  let locked = false;
+
+  const view = () =>
+    html`<${QuickSearch}
+      .topLevel=${createScopeActions}
+      .readonly=${locked}
+    />`;
+
+  /** Turns the host readonly or writable, handing the palette the flag as the element does. */
+  const turn = async (readonly: boolean) => {
+    locked = readonly;
+    render(mounted!.container, view());
+    await flush();
+  };
+
+  const emptyLine = () =>
+    mounted?.container.querySelector('.quick-search-empty') ?? null;
+
+  const rowNamed = (name: string) => {
+    const row = rows()[rowNames().indexOf(name)];
+    if (!row) throw new Error(`row not found: ${name}`);
+    return row;
+  };
+
+  beforeEach(async () => {
+    locked = false;
+    mounted?.unmount();
+    app.store.destroy();
+    app = createTestAppContext({ getReadonly: () => locked });
+    mounted = mount(view(), app);
+    await flush();
+  });
+
+  it('goes back to the top level when a turn to readonly hides the submenu shown', async () => {
+    await open();
+    await click(rowNamed('Import'));
+    expect(rowNames()).toEqual([
+      'json',
+      'Schema SQL',
+      'GraphQL',
+      'DBML',
+      'AML',
+    ]);
+
+    await turn(true);
+
+    expect(rowNames()[0]).toBe('Tab');
+    expect(rowNames()).not.toContain('Import');
+    expect(rowNames()).not.toContain('json');
+    expect(selectedIndex()).toBe(-1);
+
+    await turn(false);
+
+    expect(rowNames()[0]).toBe('Tab');
+    expect(rowNames()).toContain('Import');
+    expect(rowNames()).not.toContain('json');
+  });
+
+  it('keeps a submenu shown that a turn leaves listed, on its option in force', async () => {
+    await open();
+    await click(rowNamed('Database'));
+    const shown = rowNames();
+    const checked = rowNames()[selectedIndex()];
+
+    await turn(true);
+
+    expect(rowNames()).toEqual(shown);
+    expect(rowNames()[selectedIndex()]).toBe(checked);
+  });
+
+  it('searches what is typed again at each turn, saying so once no command holds it', async () => {
+    const PREFIX_ROWS = [
+      'Search tables for "imp"',
+      'Search columns for "imp"',
+      'Search comments & memos for "imp"',
+    ];
+    await open();
+    await type('imp');
+    expect(rowNames()).toEqual(['Import', 'Import and Add']);
+    expect(emptyLine()).toBeNull();
+
+    await turn(true);
+
+    expect(input().value).toBe('imp');
+    expect(rowNames()).toEqual(PREFIX_ROWS);
+    expect(emptyLine()).not.toBeNull();
+
+    await turn(false);
+
+    expect(input().value).toBe('imp');
+    expect(rowNames()).toEqual(['Import', 'Import and Add']);
+    expect(emptyLine()).toBeNull();
+  });
+});

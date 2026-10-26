@@ -214,6 +214,29 @@ describe('SchemaSQLOptions', () => {
     );
   });
 
+  it("captions the database and the bracket This window only in a readonly editor, whose picks stay on the reader's screen", async () => {
+    await mountPanel(createApp(), { readonly: true });
+
+    const groups = Array.from(
+      panelOf().querySelectorAll<HTMLElement>('section[role="group"]')
+    );
+    expect(
+      groups.map(group => [
+        group.getAttribute('aria-label'),
+        group.firstElementChild?.textContent,
+      ])
+    ).toEqual([
+      ['This window only', 'This window only'],
+      ['This window only', 'This window only'],
+      [
+        'Saved in the document · written as is for every database',
+        'Saved in the document · written as is for every database',
+      ],
+    ]);
+    expect(groups[0].querySelector('#schema-sql-database')).not.toBeNull();
+    expect(groups[0].querySelector('#schema-sql-bracket')).not.toBeNull();
+  });
+
   for (const [database, expected] of DEFAULT_SEGMENTS) {
     it(`presses what database ${database} writes for the first intent, the rest it lacks dimmed`, async () => {
       await mountPanel(createApp(database));

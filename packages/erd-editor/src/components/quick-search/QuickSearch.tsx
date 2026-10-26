@@ -57,6 +57,8 @@ export type PaletteTopLevel = (
 export type QuickSearchProps = PalettePreferences & {
   /** The rows the palette opens on, which its host decides: the editor hands in its commands and table jumps. */
   topLevel: PaletteTopLevel;
+  /** Whether the host is readonly, which the rows it builds follow, so a turn builds the level shown again. */
+  readonly?: boolean;
 };
 
 const hasAutocompleteKey = arrayHas([
@@ -226,9 +228,9 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
   };
 
   /**
-   * Builds the level shown again, after the language or an option in force
-   * changed while the palette is open, keeping what is typed: the submenu
-   * shown comes back in the new language while its row is offered, else the top level.
+   * Builds the level shown again once the language, an option in force or the
+   * host's readonly changed while the palette is open, keeping what is typed:
+   * the submenu shown comes back while its row is still listed, else the top level.
    */
   const rebuild = () => {
     if (!isOpen()) return;
@@ -236,7 +238,7 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
     const top = createTopLevel();
     const submenu =
       state.submenu && state.parent
-        ? top.find(action => action.id === state.parent)?.next
+        ? byFilter(top).find(action => action.id === state.parent)?.next
         : undefined;
 
     state.submenu = Boolean(submenu);
@@ -451,7 +453,8 @@ const QuickSearch: FC<QuickSearchProps> = (props, ctx) => {
         name === 'locale' && queueRebuild();
       }),
       watch(props).subscribe(name => {
-        (name === 'appearance' || name === 'locale') && queueRebuild();
+        (name === 'appearance' || name === 'locale' || name === 'readonly') &&
+          queueRebuild();
       }),
       clearHangulForms
     );

@@ -9,10 +9,24 @@ import {
 } from 'vite-plus/test';
 
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
-import { NameViewMode, RelationshipType } from '@/constants/schema';
+import {
+  BracketType,
+  CanvasType,
+  Database,
+  Language,
+  NameCase,
+  NameViewMode,
+  RelationshipType,
+} from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
-import { getLWWAction } from '@/engine/modules/editor/atom.actions';
+import {
+  getLWWAction,
+  sharedDragSelectTrackerAction,
+  sharedFocusTrackerAction,
+  sharedMouseTrackerAction,
+  sharedSelectionTrackerAction,
+} from '@/engine/modules/editor/atom.actions';
 import {
   duplicateAction$,
   initialLoadJsonAction$,
@@ -26,12 +40,23 @@ import {
 } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
+  changeBracketTypeAction,
+  changeCanvasTypeAction,
+  changeColumnNameCaseAction,
+  changeDatabaseAction,
+  changeLanguageAction,
+  changeTableNameCaseAction,
   changeZoomLevelAction,
+  scrollToAction,
+  streamScrollToAction,
+  streamZoomLevelAction,
   toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
+import { restoreScreenSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import {
   addTableAction,
   changeTableColorAction,
+  moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
@@ -64,8 +89,11 @@ function createContext(): EngineContext {
   };
 }
 
-function make(config?: Parameters<typeof createSharedStore>[1]): Fixture {
-  const store = createRxStore(createContext());
+function make(
+  config?: Parameters<typeof createSharedStore>[1],
+  options?: Parameters<typeof createRxStore>[1]
+): Fixture {
+  const store = createRxStore(createContext(), options);
   const shared = createSharedStore(store, config);
   created.push({ store, shared });
   const seen: Array<Array<AnyAction>> = [];
@@ -249,6 +277,175 @@ describe('createSharedStore', () => {
     fixture.store.dispatchSync({ type: 'editor.selectAll', payload: {} });
 
     expect(fixture.seen).toHaveLength(0);
+  });
+
+  describe('over a readonly editor', () => {
+    function makeReadonly(readonlyEditState = true) {
+      let readonly = false;
+      const fixture = make(undefined, {
+        getReadonly: () => readonly,
+        readonlyEditState,
+      });
+      fixture.store.dispatchSync(addTable('t1'));
+      fixture.shared.subscribe(actions => fixture.seen.push(actions));
+      fixture.reset();
+      return {
+        ...fixture,
+        setReadonly: (value: boolean) => {
+          readonly = value;
+        },
+      };
+    }
+
+    it('sends none of the code settings and the database a readonly reader changes', () => {
+      const fixture = makeReadonly();
+      fixture.setReadonly(true);
+
+      fixture.store.dispatchSync(
+        changeLanguageAction({ value: Language.Kotlin }),
+        changeTableNameCaseAction({ value: NameCase.snakeCase }),
+        changeColumnNameCaseAction({ value: NameCase.snakeCase }),
+        changeBracketTypeAction({ value: BracketType.backtick }),
+        changeDatabaseAction({ value: Database.PostgreSQL }),
+        addTable('t2')
+      );
+
+      expect(fixture.seen).toEqual([]);
+      expect(fixture.store.state.settings).toMatchObject({
+        language: Language.Kotlin,
+        database: Database.PostgreSQL,
+      });
+    });
+
+    it('sends no change while readonly, the viewport, the tab and the name view a reader moves among them', () => {
+      vi.useFakeTimers();
+      const fixture = makeReadonly();
+      fixture.setReadonly(true);
+
+      fixture.store.dispatchSync(
+        scrollToAction({ originX: 40, originY: 40 }),
+        changeZoomLevelAction({ value: 0.5 }),
+        changeCanvasTypeAction({ value: CanvasType.schemaSQL }),
+        toNameViewModeAction(fixture.store.state, NameViewMode.logical, true)
+      );
+      fixture.store.dispatchSync(
+        streamScrollToAction({ movementX: 40, movementY: 40 })
+      );
+      fixture.store.dispatchSync(streamZoomLevelAction({ value: 0.1 }));
+      // A quiet period on each side of the circuit breaker.
+      vi.advanceTimersByTime(400);
+
+      expect(fixture.seen).toEqual([]);
+      expect(fixture.store.state.settings).toMatchObject({
+        canvasType: CanvasType.schemaSQL,
+        nameViewMode: NameViewMode.logical,
+      });
+    });
+
+    it('still sends presence and answers a join with its registers', () => {
+      const fixture = makeReadonly();
+      fixture.setReadonly(true);
+
+      fixture.store.dispatchSync(
+        sharedMouseTrackerAction({ x: 1, y: 1 }),
+        sharedFocusTrackerAction({ focus: null }),
+        sharedSelectionTrackerAction({ selectedIds: [] }),
+        sharedDragSelectTrackerAction({ rect: null })
+      );
+      fixture.shared.dispatchSync(getLWWAction());
+
+      expect(fixture.types()).toEqual([
+        'editor.sharedMouseTracker',
+        'editor.sharedFocusTracker',
+        'editor.sharedSelectionTracker',
+        'editor.sharedDragSelectTracker',
+        'editor.getLWW',
+        'editor.mergeLWW',
+      ]);
+      const merge = fixture.seen
+        .flat()
+        .find(action => action.type === 'editor.mergeLWW');
+      expect(Object.keys(merge!.payload.lww)).toContain('t1');
+    });
+
+    it('still sends a drag it held from before it turned readonly', () => {
+      vi.useFakeTimers();
+      const fixture = makeReadonly();
+
+      fixture.store.dispatchSync(
+        moveTableAction({ ids: ['t1'], movementX: 40, movementY: 0 })
+      );
+      fixture.setReadonly(true);
+      fixture.store.dispatchSync(
+        moveTableAction({ ids: ['t1'], movementX: 40, movementY: 0 })
+      );
+      vi.advanceTimersByTime(400);
+
+      const sent = fixture.seen.flat();
+      expect(sent.map(action => action.type)).toEqual(['table.move']);
+      expect(sent[0].payload).toMatchObject({ ids: ['t1'], movementX: 40 });
+      expect(fixture.store.state.collections.tableEntities.t1.ui.x).toBe(240);
+    });
+
+    it('sends none of a history replay made while readonly, which reaches the store past both state filters', () => {
+      vi.useFakeTimers();
+      const fixture = makeReadonly();
+      fixture.store.dispatchSync(addTable('t2'));
+      vi.advanceTimersByTime(400);
+      expect(fixture.types()).toEqual(['table.add']);
+      fixture.reset();
+      fixture.setReadonly(true);
+
+      // Time Travel's Apply steps the history itself, past the readonly guard
+      // of the store's own undo.
+      fixture.store.history.undo();
+      // A quiet period on each side of the circuit breaker.
+      vi.advanceTimersByTime(400);
+
+      expect(fixture.seen).toEqual([]);
+      expect(fixture.store.state.doc.tableIds).toEqual(['t1']);
+    });
+
+    it('sends none of what its screen takes back once writable, and leads its next pan with where the screen stands', () => {
+      vi.useFakeTimers();
+      const fixture = makeReadonly();
+      fixture.setReadonly(true);
+      fixture.store.dispatchSync(
+        changeLanguageAction({ value: Language.Kotlin }),
+        scrollToAction({ originX: 40, originY: 40 })
+      );
+
+      fixture.setReadonly(false);
+      fixture.store.dispatchSync(restoreScreenSettingsAction$());
+      vi.advanceTimersByTime(400);
+      expect(fixture.seen).toEqual([]);
+
+      fixture.store.dispatchSync(
+        streamScrollToAction({ movementX: 30, movementY: 0 })
+      );
+      vi.advanceTimersByTime(400);
+
+      const sent = fixture.seen.flat();
+      expect(sent.map(({ type, payload }) => [type, payload])).toEqual([
+        ['settings.scrollTo', { originX: 40, originY: 40 }],
+        ['settings.changeZoomLevel', { value: 1 }],
+        ['settings.streamScrollTo', { movementX: 30, movementY: 0 }],
+      ]);
+      expect(
+        sent.every(({ tags }) => bHas(tags!, Tag.shared | Tag.following))
+      ).toBe(true);
+    });
+
+    it('sends what a reader changes on a readonly store that does not ask for it', () => {
+      const fixture = makeReadonly(false);
+      fixture.setReadonly(true);
+
+      fixture.store.dispatchSync(
+        changeLanguageAction({ value: Language.Kotlin })
+      );
+
+      expect(fixture.types()).toEqual(['settings.changeLanguage']);
+    });
   });
 
   it('broadcasts a duplicate as entity actions, without the selection framing', () => {

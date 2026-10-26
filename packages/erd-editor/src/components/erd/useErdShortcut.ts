@@ -102,6 +102,31 @@ const keyBindingNameToRelationshipType: Record<string, number> = {
   [KeyBindingName.relationshipOneN]: RelationshipType.OneN,
 };
 
+/**
+ * The chords a readonly reader's keys skip: each adds, removes or edits, arms
+ * a draw or the hand, or selects past what a jump left. The store's filter
+ * drops the writes alone, never the select or focus a chord sends after them.
+ */
+const isEditKeyBindingName = arrayHas<string>([
+  KeyBindingName.edit,
+  KeyBindingName.addTable,
+  KeyBindingName.addColumn,
+  KeyBindingName.addMemo,
+  KeyBindingName.addTableGroup,
+  KeyBindingName.groupSelectedTables,
+  KeyBindingName.removeTable,
+  KeyBindingName.removeColumn,
+  KeyBindingName.removeSelection,
+  KeyBindingName.primaryKey,
+  KeyBindingName.selectAllTable,
+  KeyBindingName.selectAllColumn,
+  KeyBindingName.relationshipZeroOne,
+  KeyBindingName.relationshipZeroN,
+  KeyBindingName.relationshipOneOnly,
+  KeyBindingName.relationshipOneN,
+  KeyBindingName.handTool,
+]);
+
 export function useErdShortcut(ctx: Ctx) {
   const app = useAppContext(ctx);
   const { addUnsubscribe } = useUnmounted();
@@ -137,15 +162,23 @@ export function useErdShortcut(ctx: Ctx) {
       event.key !== MoveKey.Tab &&
       hasMoveKeys(event.key)
     ) {
+      // Shift adds each column reached to the selection, which a reader's
+      // keys never widen past what a jump left, so its arrows only move.
       store.dispatch(
         focusMoveTableAction({
           moveKey: event.key,
-          shiftKey: event.shiftKey,
+          shiftKey: event.shiftKey && !store.getReadonly(),
         })
       );
     }
 
-    if (editor.focusTable && event.key === MoveKey.Tab) {
+    // Tab opens the next cell's editor, past the last one a new column, so a
+    // reader's goes on to the page unprevented, as in the read-only view.
+    if (
+      editor.focusTable &&
+      event.key === MoveKey.Tab &&
+      !store.getReadonly()
+    ) {
       event.preventDefault();
       store.dispatch(focusMoveTableAction$(event.key, event.shiftKey));
 
@@ -173,6 +206,8 @@ export function useErdShortcut(ctx: Ctx) {
     const { editor, settings } = store.state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);
 
+    if (store.getReadonly() && isEditKeyBindingName(type)) return;
+
     if (!isEditingText(editor)) {
       type === KeyBindingName.addTable && store.dispatch(addTableAction$());
       type === KeyBindingName.addColumn && store.dispatch(addColumnAction$());
@@ -181,9 +216,9 @@ export function useErdShortcut(ctx: Ctx) {
         isMemoShown(store.state) &&
         store.dispatch(addMemoAction$());
 
-      // A group comes only where the menus offer one: groups shown, the store
-      // not readonly. The draw's chord toggles it, as a notation's does.
-      if (!store.getReadonly() && isTableGroupShown(store.state)) {
+      // A group comes only where the menus offer one, while groups are shown.
+      // The draw's chord toggles it, as a notation's does.
+      if (isTableGroupShown(store.state)) {
         type === KeyBindingName.addTableGroup &&
           store.dispatch(
             changeDrawTableGroupAction({ value: !editor.drawTableGroup })
@@ -365,6 +400,8 @@ export function useErdShortcut(ctx: Ctx) {
 
   const handlePaste = (event: ClipboardEvent) => {
     const { store } = app.value;
+    // A reader adds nothing, so the paste is left to the page as it came.
+    if (store.getReadonly()) return;
     const { state } = store;
     const { editor, settings } = state;
     const showHighLevelTable = isHighLevelTable(settings.zoomLevel);

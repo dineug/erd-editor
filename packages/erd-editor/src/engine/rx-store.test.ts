@@ -1,16 +1,23 @@
-import { toJson } from '@dineug/erd-editor-schema';
+import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { Open } from '@/constants/open';
 import {
+  BracketType,
   CanvasType,
   Database,
   Language,
   LockSettingType,
+  LockSettingTypeList,
+  NameCase,
+  NameViewMode,
+  RelationshipType,
   Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
+import { documentJsonOf, runtimeJsonOf } from '@/engine/documentJson';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import {
   addDictionaryAction,
@@ -24,8 +31,19 @@ import {
 } from '@/engine/modules/dictionary/generator.actions';
 import { isListed } from '@/engine/modules/dictionary/membership';
 import {
+  changeOpenMapAction,
   clearAction,
+  drawEndRelationshipAction,
+  drawStartAddRelationshipAction,
+  drawStartRelationshipAction,
+  editMemoAction,
+  editMemoEndAction,
+  editTableAction,
+  editTableEndAction,
+  editTableGroupAction,
+  editTableGroupEndAction,
   focusColumnAction,
+  focusTableAction,
   loadJsonAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -61,9 +79,11 @@ import {
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
+  toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
 import {
   changeZoomLevelAction$,
+  restoreScreenSettingsAction$,
   streamZoomLevelAction$,
 } from '@/engine/modules/settings/generator.actions';
 import {
@@ -71,6 +91,7 @@ import {
   changeTableColorAction,
   changeTableGroupAction,
   changeTableNameAction,
+  changeZIndexAction as changeTableZIndexAction,
   moveTableAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
@@ -1625,6 +1646,27 @@ describe('createRxStore', () => {
       expect(store.state.settings.zoomLevel).toBe(0.5);
     });
 
+    it('records no undo entry for a scroll or a zoom, and records again once writable', () => {
+      vi.useFakeTimers();
+      let readonly = true;
+      const store = make(createContext(), { getReadonly: () => readonly });
+
+      store.dispatchSync(scrollToAction({ originX: 40, originY: 40 }));
+      store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+      store.dispatchSync(
+        streamScrollToAction({ movementX: 40, movementY: 40 })
+      );
+      vi.advanceTimersByTime(250);
+      store.dispatchSync(streamZoomLevelAction({ value: 0.1 }));
+      vi.advanceTimersByTime(250);
+
+      expect(store.history.size).toBe(0);
+
+      readonly = false;
+      store.dispatchSync(scrollToAction({ originX: 80, originY: 80 }));
+      expect(store.history.size).toBe(1);
+    });
+
     it('lets shared-tagged actions through', () => {
       const store = make(createContext(), { getReadonly: () => true });
 
@@ -1650,6 +1692,303 @@ describe('createRxStore', () => {
       readonly = true;
       store.redo();
       expect(store.state.doc.tableIds).toEqual([]);
+    });
+  });
+
+  describe('readonly, on a store that also refuses what opens an edit', () => {
+    /** Every way to open an edit, on the table t1, and two dialogs that only read. */
+    const openingActions = () => [
+      focusTableAction({ tableId: 't1', focusType: FocusType.tableName }),
+      editTableAction(),
+      editMemoAction({ id: 'm1' }),
+      editTableGroupAction({ id: 'g1' }),
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN }),
+      changeOpenMapAction({ [Open.mapColumns]: true }),
+      changeOpenMapAction({ [Open.automaticTablePlacement]: true }),
+      changeOpenMapAction({ [Open.timeTravel]: true }),
+      changeOpenMapAction({ [Open.tableProperties]: true }),
+      changeOpenMapAction({ [Open.diffViewer]: true }),
+    ];
+
+    function setup({ readonlyEditState = true } = {}) {
+      let readonly = false;
+      const store = make(createContext(), {
+        getReadonly: () => readonly,
+        readonlyEditState,
+      });
+      store.dispatchSync(addTable('t1'));
+      return {
+        store,
+        setReadonly: (value: boolean) => {
+          readonly = value;
+        },
+      };
+    }
+
+    it('drops each opening and keeps the focus and the dialogs that only read', () => {
+      const { store, setReadonly } = setup();
+      setReadonly(true);
+
+      store.dispatchSync(...openingActions());
+
+      const { editor } = store.state;
+      expect(editor.focusTable?.tableId).toBe('t1');
+      expect(editor.focusTable?.edit).toBe(false);
+      expect(editor.editMemoId).toBeNull();
+      expect(editor.editTableGroupId).toBeNull();
+      expect(editor.drawRelationship).toBeNull();
+      expect(editor.openMap[Open.mapColumns]).toBeFalsy();
+      expect(editor.openMap[Open.automaticTablePlacement]).toBeFalsy();
+      expect(editor.openMap[Open.timeTravel]).toBeFalsy();
+      expect(editor.openMap[Open.tableProperties]).toBe(true);
+      expect(editor.openMap[Open.diffViewer]).toBe(true);
+      expect(store.history.size).toBe(1);
+    });
+
+    it('lets each close through, so what stood open as it turned readonly ends', () => {
+      const { store, setReadonly } = setup();
+      store.dispatchSync(...openingActions());
+      setReadonly(true);
+
+      store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
+      expect(store.state.editor.drawRelationship?.start).toBeNull();
+
+      store.dispatchSync(
+        editTableEndAction(),
+        editMemoEndAction(),
+        editTableGroupEndAction(),
+        drawEndRelationshipAction(),
+        changeOpenMapAction({
+          [Open.mapColumns]: false,
+          [Open.automaticTablePlacement]: false,
+          [Open.timeTravel]: false,
+        })
+      );
+
+      const { editor } = store.state;
+      expect(editor.focusTable?.edit).toBe(false);
+      expect(editor.editMemoId).toBeNull();
+      expect(editor.editTableGroupId).toBeNull();
+      expect(editor.drawRelationship).toBeNull();
+      expect(editor.openMap[Open.mapColumns]).toBe(false);
+      expect(editor.openMap[Open.automaticTablePlacement]).toBe(false);
+      expect(editor.openMap[Open.timeTravel]).toBe(false);
+      expect(editor.openMap[Open.tableProperties]).toBe(true);
+    });
+
+    it('still raises a table, which writes no document', () => {
+      const { store, setReadonly } = setup();
+      setReadonly(true);
+
+      store.dispatchSync(changeTableZIndexAction({ id: 't1', zIndex: 9 }));
+
+      expect(store.state.collections.tableEntities.t1.ui.zIndex).toBe(9);
+    });
+
+    it('opens each edit while it is writable', () => {
+      const { store } = setup();
+
+      store.dispatchSync(...openingActions());
+      store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
+
+      const { editor } = store.state;
+      expect(editor.focusTable?.edit).toBe(true);
+      expect(editor.editMemoId).toBe('m1');
+      expect(editor.editTableGroupId).toBe('g1');
+      expect(editor.drawRelationship?.start?.tableId).toBe('t1');
+      expect(editor.openMap[Open.mapColumns]).toBe(true);
+      expect(editor.openMap[Open.automaticTablePlacement]).toBe(true);
+      expect(editor.openMap[Open.timeTravel]).toBe(true);
+    });
+
+    it('opens each edit in a readonly store that does not ask for it', () => {
+      const { store, setReadonly } = setup({ readonlyEditState: false });
+      setReadonly(true);
+
+      store.dispatchSync(...openingActions());
+      store.dispatchSync(drawStartAddRelationshipAction({ tableId: 't1' }));
+
+      const { editor } = store.state;
+      expect(editor.focusTable?.edit).toBe(true);
+      expect(editor.editMemoId).toBe('m1');
+      expect(editor.editTableGroupId).toBe('g1');
+      expect(editor.drawRelationship?.start?.tableId).toBe('t1');
+      expect(editor.openMap[Open.mapColumns]).toBe(true);
+      expect(editor.openMap[Open.automaticTablePlacement]).toBe(true);
+      expect(editor.openMap[Open.timeTravel]).toBe(true);
+    });
+  });
+
+  describe('readonly, the settings an editor’s reader turns on its own screen', () => {
+    const LOCK_EVERY = LockSettingTypeList.reduce((acc, bit) => acc | bit, 0);
+
+    /** Each setting readonly lets through and the show bits, away from a new document's. */
+    const screenTurns = (store: RxStore) => [
+      changeLanguageAction({ value: Language.Kotlin }),
+      changeTableNameCaseAction({ value: NameCase.snakeCase }),
+      changeColumnNameCaseAction({ value: NameCase.snakeCase }),
+      changeBracketTypeAction({ value: BracketType.backtick }),
+      changeDatabaseAction({ value: Database.PostgreSQL }),
+      changeShowAction({ show: Show.tableComment, value: false }),
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL }),
+      toNameViewModeAction(store.state, NameViewMode.logical, true),
+      scrollToAction({ originX: 40, originY: 40 }),
+      changeZoomLevelAction({ value: 0.5 }),
+    ];
+
+    /** An editor store with every lock off, so each setting it changes reaches the file. */
+    function setup({ readonlyEditState = true } = {}) {
+      vi.useFakeTimers();
+      let readonly = false;
+      const store = make(createContext(), {
+        getReadonly: () => readonly,
+        readonlyEditState,
+      });
+      store.dispatchSync(addTable('t1'), unlock(LOCK_EVERY));
+      vi.advanceTimersByTime(250);
+      const changes: string[][] = [];
+      const subscription = store.change$.subscribe(actions =>
+        changes.push(actions.map(({ type }) => type))
+      );
+      const before = {
+        value: documentJsonOf(store),
+        runtimeValue: runtimeJsonOf(store),
+        history: store.history.size,
+        lww: JSON.stringify(store.state.lww),
+        settings: { ...store.state.settings },
+      };
+      const turn = () => {
+        readonly = true;
+        store.dispatchSync(...screenTurns(store));
+        store.dispatchSync(
+          streamScrollToAction({ movementX: 4, movementY: 4 })
+        );
+        store.dispatchSync(streamZoomLevelAction({ value: 0.1 }));
+        vi.advanceTimersByTime(250);
+      };
+      return {
+        store,
+        changes,
+        before,
+        turn,
+        setReadonly: (value: boolean) => {
+          readonly = value;
+        },
+        stop: () => subscription.unsubscribe(),
+      };
+    }
+
+    it('keeps each on the screen alone, the file, the registers, the history and the change event untouched', () => {
+      const { store, changes, before, turn, stop } = setup();
+
+      turn();
+
+      expect(store.state.settings).toMatchObject({
+        language: Language.Kotlin,
+        database: Database.PostgreSQL,
+        show: before.settings.show & ~Show.tableComment,
+        canvasType: CanvasType.schemaSQL,
+        nameViewMode: NameViewMode.logical,
+        originX: 44,
+        zoomLevel: 0.6,
+      });
+      expect(documentJsonOf(store)).toBe(before.value);
+      expect(runtimeJsonOf(store)).toBe(before.runtimeValue);
+      expect(toDocumentJson(store.state)).not.toBe(before.value);
+      expect(JSON.stringify(store.state.lww)).toBe(before.lww);
+      expect(store.history.size).toBe(before.history);
+      expect(changes).toEqual([]);
+      stop();
+    });
+
+    it('gives the code settings, the database and the show bits back as it turns writable, the view kept', () => {
+      const { store, changes, before, turn, setReadonly, stop } = setup();
+      turn();
+
+      setReadonly(false);
+      store.dispatchSync(restoreScreenSettingsAction$());
+      vi.advanceTimersByTime(250);
+
+      expect(store.state.settings).toMatchObject({
+        language: before.settings.language,
+        tableNameCase: before.settings.tableNameCase,
+        columnNameCase: before.settings.columnNameCase,
+        bracketType: before.settings.bracketType,
+        database: before.settings.database,
+        show: before.settings.show,
+        canvasType: CanvasType.schemaSQL,
+        nameViewMode: NameViewMode.logical,
+        originX: 44,
+      });
+      expect(documentJsonOf(store)).toBe(before.value);
+      expect(store.history.size).toBe(before.history);
+      expect(changes).toEqual([]);
+      stop();
+    });
+
+    it('takes its first writable pan from where the screen stands, which the file then holds', () => {
+      const { store, changes, before, turn, setReadonly, stop } = setup();
+      turn();
+      setReadonly(false);
+      store.dispatchSync(restoreScreenSettingsAction$());
+
+      store.dispatchSync(streamScrollToAction({ movementX: 40, movementY: 0 }));
+      vi.advanceTimersByTime(250);
+
+      expect(changes).toEqual([
+        [
+          'settings.scrollTo',
+          'settings.changeZoomLevel',
+          'settings.streamScrollTo',
+        ],
+      ]);
+      expect(store.state.editor.screenBaseline).toMatchObject({
+        canvasType: CanvasType.ERD,
+      });
+      expect(store.state.editor.screenBaseline).not.toHaveProperty('viewport');
+      expect(JSON.parse(documentJsonOf(store)).settings).toMatchObject({
+        originX: 84,
+        zoomLevel: 0.6,
+      });
+      expect(store.history.size).toBe(before.history + 1);
+
+      store.undo();
+      expect(store.state.settings.originX).toBe(44);
+      stop();
+    });
+
+    it('gives the show bits back while the Flow tab stands, the file keeping its own', () => {
+      const { store, before, setReadonly, stop } = setup();
+      setReadonly(true);
+      store.dispatchSync(
+        changeShowAction({ show: Show.tableComment, value: false }),
+        changeCanvasTypeAction({ value: CanvasType.visualization }),
+        changeVisualizationModeAction({ value: VisualizationMode.flow })
+      );
+      store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+      expect(getActiveView(store.state)).not.toBeNull();
+
+      setReadonly(false);
+      store.dispatchSync(restoreScreenSettingsAction$());
+
+      expect(store.state.settings.show).toBe(before.settings.show);
+      expect(store.state.editor.screenBaseline).toEqual({
+        canvasType: CanvasType.ERD,
+      });
+      expect(documentJsonOf(store)).toBe(before.value);
+      stop();
+    });
+
+    it('writes each as it always did in a readonly store that does not ask for it', () => {
+      const { store, before, turn, stop } = setup({ readonlyEditState: false });
+
+      turn();
+
+      expect(store.state.settings.language).toBe(Language.Kotlin);
+      expect(store.state.editor.screenBaseline).toBeNull();
+      expect(documentJsonOf(store)).not.toBe(before.value);
+      expect(JSON.stringify(store.state.lww)).not.toBe(before.lww);
+      stop();
     });
   });
 
@@ -1690,7 +2029,7 @@ describe('createRxStore', () => {
       subscription.unsubscribe();
     });
 
-    it('filters readonly-ignored actions when readonly', () => {
+    it('emits no scroll or zoom a readonly reader makes, though the viewport is unlocked', () => {
       vi.useFakeTimers();
       let readonly = false;
       const store = make(createContext(), { getReadonly: () => readonly });
@@ -1702,13 +2041,60 @@ describe('createRxStore', () => {
         seen.push(actions)
       );
 
-      store.dispatchSync(changeZoomLevelAction({ value: 0.5 }));
+      store.dispatchSync(
+        scrollToAction({ originX: 40, originY: 40 }),
+        changeZoomLevelAction({ value: 0.5 })
+      );
+      // Writable again inside the debounce window, which sends none of it.
+      vi.advanceTimersByTime(100);
+      readonly = false;
+      vi.advanceTimersByTime(150);
+      expect(seen).toEqual([]);
+      expect(store.state.settings.zoomLevel).toBe(0.5);
+
+      store.dispatchSync(changeZoomLevelAction({ value: 0.8 }));
+      vi.advanceTimersByTime(250);
+      expect(seen.map(actions => actions.map(({ type }) => type))).toEqual([
+        ['settings.changeZoomLevel'],
+      ]);
+
+      subscription.unsubscribe();
+    });
+
+    it("emits only a peer's edit while readonly, none of the code settings and the database its reader changes", () => {
+      vi.useFakeTimers();
+      let readonly = false;
+      const store = make(createContext(), { getReadonly: () => readonly });
+      store.dispatchSync(
+        unlock(LockSettingType.language),
+        unlock(LockSettingType.tableNameCase),
+        unlock(LockSettingType.columnNameCase),
+        unlock(LockSettingType.bracketType)
+      );
+      vi.advanceTimersByTime(250);
+      readonly = true;
+      const seen: Array<Array<AnyAction>> = [];
+      const subscription = store.change$.subscribe(actions =>
+        seen.push(actions)
+      );
+
+      store.dispatchSync(
+        changeLanguageAction({ value: Language.Kotlin }),
+        changeTableNameCaseAction({ value: NameCase.snakeCase }),
+        changeColumnNameCaseAction({ value: NameCase.snakeCase }),
+        changeBracketTypeAction({ value: BracketType.backtick }),
+        changeDatabaseAction({ value: Database.PostgreSQL }),
+        attachActionTag(Tag.shared, addTable('t1'))
+      );
       vi.advanceTimersByTime(250);
 
-      expect(seen).toHaveLength(1);
-      expect(seen[0].map(action => action.type)).toEqual([
-        'settings.changeZoomLevel',
+      expect(seen.map(actions => actions.map(({ type }) => type))).toEqual([
+        ['table.add'],
       ]);
+      expect(store.state.settings).toMatchObject({
+        language: Language.Kotlin,
+        database: Database.PostgreSQL,
+      });
 
       subscription.unsubscribe();
     });

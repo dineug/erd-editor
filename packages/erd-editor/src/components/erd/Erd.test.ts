@@ -1240,20 +1240,29 @@ describe('Erd - table properties', () => {
     expect(root.querySelector('[title="Add Index"]')).toBeTruthy();
   });
 
-  it('hands the editor readonly mode to the floating toolbar, whose add buttons follow it', async () => {
-    const { root, props } = await setup({ readonly: true });
-    const addButtons = () =>
-      ['.add-table', '.add-memo', '.add-table-group'].map(selector =>
-        root.querySelector(`.floating-toolbar ${selector}`)
-      );
+  it("draws the floating toolbar's edit controls as its store's readonly turns, as the element's turns both", async () => {
+    const element = observable({ readonly: true });
+    const { root, props } = await setup(
+      { readonly: true },
+      createTestAppContext({ getReadonly: () => element.readonly })
+    );
+    const editControls = () =>
+      [
+        '.add-table',
+        '.add-memo',
+        '.add-table-group',
+        '[title^="Hand"]',
+        '[title^="Zero One"]',
+      ].map(selector => root.querySelector(`.floating-toolbar ${selector}`));
 
     expect(root.querySelector('.floating-toolbar')).toBeTruthy();
-    expect(addButtons()).toEqual([null, null, null]);
+    expect(editControls()).toEqual([null, null, null, null, null]);
 
+    element.readonly = false;
     props.readonly = false;
     await flush(6);
 
-    expect(addButtons().every(Boolean)).toBe(true);
+    expect(editControls().every(Boolean)).toBe(true);
   });
 
   it('drops table ids that no longer exist in the document', async () => {

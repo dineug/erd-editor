@@ -84,6 +84,13 @@ describe('Switch.styles', () => {
       expect(off).toContain('transition-duration: 0.12s,0.14s,0.14s,0.14s');
       expect(off).toContain('background-position-x: 100%');
     });
+
+    it('dims a disabled switch and shows it takes no press, as a disabled field does', () => {
+      const text = ruleOf(String(switchButton), ':disabled');
+
+      expect(text).toContain('cursor: not-allowed');
+      expect(text).toContain('opacity: 0.5');
+    });
   });
 
   describe('size variants', () => {

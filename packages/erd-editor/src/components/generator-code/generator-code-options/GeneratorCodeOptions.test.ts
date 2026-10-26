@@ -59,10 +59,14 @@ type Handlers = {
   onCopy?: () => void;
 };
 
-async function mountPanel(app: AppContext, handlers: Handlers = {}) {
+async function mountPanel(
+  app: AppContext,
+  { readonly = false, ...handlers }: Handlers & { readonly?: boolean } = {}
+) {
   mounted = await mountAndFlush(
     html`<${GeneratorCodeOptions}
       isDarkMode=${true}
+      readonly=${readonly}
       .onHide=${handlers.onHide ?? (() => {})}
       .onSave=${handlers.onSave ?? (() => {})}
       .onCopy=${handlers.onCopy ?? (() => {})}
@@ -150,6 +154,31 @@ describe('GeneratorCodeOptions', () => {
       const label = row.querySelector('label')!;
       expect(row.querySelector('select')?.id).toBe(label.htmlFor);
     }
+  });
+
+  it("captions the settings This window only in a readonly editor, whose picks stay on the reader's screen", async () => {
+    const captionOf = () => {
+      const group = panelOf().querySelector('section[role="group"]')!;
+      return [
+        group.getAttribute('aria-label'),
+        group.firstElementChild?.textContent,
+      ];
+    };
+    await mountPanel(createApp());
+    expect(captionOf()).toEqual([
+      'Saved in the document',
+      'Saved in the document',
+    ]);
+    mounted?.unmount();
+
+    await mountPanel(createApp(), { readonly: true });
+    expect(captionOf()).toEqual(['This window only', 'This window only']);
+    expect(rowsOf().map(row => row.label)).toEqual([
+      'Language',
+      'Database',
+      'Table Name Case',
+      'Column Name Case',
+    ]);
   });
 
   it('lists every language in the menu order, a rule between the groups and nothing else', async () => {

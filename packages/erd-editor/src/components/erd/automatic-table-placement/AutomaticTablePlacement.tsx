@@ -26,6 +26,7 @@ import { useI18n } from '@/components/localeContext';
 import { localized } from '@/components/localized/Localized';
 import Button from '@/components/primitives/button/Button';
 import Toast from '@/components/primitives/toast/Toast';
+import { sceneInteractionContext } from '@/components/sceneInteractionContext';
 import { sceneSourceContext } from '@/components/sceneSourceContext';
 import { openStatusToast } from '@/components/toast-container/openStatusToast';
 import { Open } from '@/constants/open';
@@ -140,6 +141,8 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   // The preview is a document of its own, so it names the document source
   // rather than inheriting whatever scene it was opened over.
   const sceneSource = useProvider(ctx, sceneSourceContext, 'document');
+  // Its scene takes a press as an editor's does, whatever the ERD tab reads.
+  const sceneInteraction = useProvider(ctx, sceneInteractionContext, 'edit');
 
   const {
     store: { state: originState },
@@ -153,6 +156,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
       app.store.dispatch(changeViewportAction(getViewport()));
     }),
     () => {
+      sceneInteraction.destroy();
       sceneSource.destroy();
       provider.destroy();
       appDestroy(app);
@@ -191,6 +195,16 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   const [close, onClose] = closePromise();
 
   let isClosed = false;
+  let stopSimulation = () => {};
+
+  // An overlay taken away by anything but its own toast, the element turning
+  // readonly among them, presses no Cancel, so the run ends with the overlay
+  // rather than land its placement once the simulation settles.
+  addUnsubscribe(() => {
+    isClosed = true;
+    stopSimulation();
+    onClose();
+  });
 
   const handleClose = () => {
     isClosed = true;
@@ -213,6 +227,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
 
   try {
     const simulation = createAutomaticTablePlacement(store.state);
+    stopSimulation = () => simulation.stop();
 
     const handleApply = () => {
       simulation.stop();

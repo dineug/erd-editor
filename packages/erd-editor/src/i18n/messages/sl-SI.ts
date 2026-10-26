@@ -306,9 +306,6 @@ export const slSI = {
   'settings.relationshipDataTypeSync':
     'Sinhronizacija tipa podatkov v relacijah',
   'settings.maxCommentWidth': 'Največja širina komentarja',
-  'settings.recalculateTableWidth': 'Ponovni izračun širine tabel',
-  'settings.sync': 'Sinhroniziraj',
-  'settings.toast.tableWidthRecalculated': 'Širina tabel je ponovno izračunana',
   'settings.lockHeading': 'Zaklepanje',
   'settings.lockSetting': 'Zakleni: {name}',
   'settings.unlockSetting': 'Odkleni: {name}',

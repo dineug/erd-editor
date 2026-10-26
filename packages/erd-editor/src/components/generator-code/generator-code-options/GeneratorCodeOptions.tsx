@@ -64,15 +64,16 @@ type Setting = {
 
 export type GeneratorCodeOptionsProps = {
   isDarkMode: boolean;
+  readonly: boolean;
   onHide: () => void;
   onSave: () => void;
   onCopy: () => void;
 };
 
 /**
- * The options beside the generated code: the settings the document saves that
- * change it, each dimmed while the language ignores it, then the buttons that
- * save and copy the text.
+ * The options beside the generated code: the settings that change it, which the
+ * document saves, or a readonly reader's screen alone, each dimmed while the
+ * language ignores it, then the buttons that save and copy the text.
  */
 const GeneratorCodeOptions: FC<GeneratorCodeOptionsProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -149,6 +150,11 @@ const GeneratorCodeOptions: FC<GeneratorCodeOptionsProps> = (props, ctx) => {
     const notUsed = t('code.notUsedBy', { language: languageName });
     const databaseUnused = !readsDatabase(language);
     const nameCasesUnused = !readsNameCases(language);
+    // A readonly reader's picks turn their own screen alone, which no file,
+    // peer or change event hears; the Schema SQL panel names its group so too.
+    const caption = props.readonly
+      ? t('schemaSql.thisWindowOnly')
+      : t('code.savedInDocument');
 
     const nameCases = (menus: typeof tableNameCaseMenus) =>
       menus.map<Choice>(menu => ({
@@ -234,12 +240,8 @@ const GeneratorCodeOptions: FC<GeneratorCodeOptionsProps> = (props, ctx) => {
           </button>
         </div>
         <div class={['scrollbar', shell.body]}>
-          <section
-            class={shell.group}
-            role="group"
-            aria-label={t('code.savedInDocument')}
-          >
-            <span class={shell.caption}>{t('code.savedInDocument')}</span>
+          <section class={shell.group} role="group" aria-label={caption}>
+            <span class={shell.caption}>{caption}</span>
             {renderSetting(languageSetting)}
             {renderSetting(database)}
             {databaseUnused ? renderNote(DATABASE_NOTE_ID, notUsed) : null}

@@ -6,6 +6,7 @@ import {
 import { isFunction, isNil } from 'es-toolkit';
 import {
   debounceTime,
+  filter,
   Observable,
   startWith,
   Subject,
@@ -15,7 +16,9 @@ import {
 
 import {
   ChangeActionTypes,
+  EditStateOpenActionTypes,
   HistoryActionTypes,
+  opensEditDialog,
   StreamActionTypes,
   StreamRegroupColorActionTypes,
   StreamRegroupMoveActionTypes,
@@ -46,6 +49,10 @@ import {
 import { flushOnNotifier } from '@/engine/rx-operators/flushOnNotifier';
 import { lockIgnoreFilter } from '@/engine/rx-operators/lockIgnoreFilter';
 import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';
+import {
+  alignViewport,
+  readonlyScreenTag,
+} from '@/engine/rx-operators/readonlyScreenTag';
 import { viewActionRedirect } from '@/engine/rx-operators/viewActionRedirect';
 import { viewIgnoreFilter } from '@/engine/rx-operators/viewIgnoreFilter';
 import { createStore, Store } from '@/engine/store';
@@ -72,10 +79,21 @@ export type RxStore = Store & {
   flushStreamBuffers: () => void;
   /** Whether the editor is readonly now, which drops every edit of the document. */
   getReadonly: () => boolean;
+  /**
+   * Whether it was created with readonlyEditState, which a shared store over
+   * it reads to send none of its changes while it is readonly.
+   */
+  readonlyEditState: boolean;
 };
 
 export type RxStoreOptions = {
   getReadonly?: () => boolean;
+  /**
+   * While readonly, also drops what opens an edit, sends a peer no change and
+   * keeps each setting its reader turns on its own screen. Only the editor
+   * element's store sets it; the viewer's and the diff panes' do not.
+   */
+  readonlyEditState?: boolean;
   getHistory?: (options: HistoryOptions) => History;
   /** Closes stream buffers on flushStreamBuffers() instead of after 200 ms. */
   manualStreamFlush?: boolean;
@@ -101,6 +119,7 @@ export function createRxStore(
   context: EngineContext,
   {
     getReadonly = () => false,
+    readonlyEditState = false,
     getHistory,
     manualStreamFlush = false,
     observable = true,
@@ -109,9 +128,14 @@ export function createRxStore(
   const subscriptionSet = new Set<Subscription | Unsubscribe>();
   const store = createStore(context, observable);
   const hooks = createHooks(store);
+  // A replay passes no operator, so an undo of a pan once writable again is led
+  // by the screen's placement here, or the replica takes it from the old one.
+  const replay: HistoryOptions['dispatch'] = readonlyEditState
+    ? actions => store.dispatchSync(alignViewport(actions, store.state))
+    : store.dispatchSync;
   const historyOptions: HistoryOptions = {
     notify: payload => store.dispatch(changeHasHistoryAction(payload)),
-    dispatch: store.dispatchSync,
+    dispatch: replay,
     getNextVersion: () => context.clock.getNextVersion(),
     getState: () => store.state,
   };
@@ -151,7 +175,12 @@ export function createRxStore(
   const dispatch$ = new Subject<Array<AnyAction>>();
   // The one seam a view has: what is dispatched is read against the state as
   // it stands, so a batch that opens or closes a view is classified before it.
-  const redirected$ = dispatch$.pipe(viewActionRedirect(getView));
+  const viewRedirected$ = dispatch$.pipe(viewActionRedirect(getView));
+  // A setting a readonly reader turns stays its own screen (Tag.screen), which
+  // the history, change$ and the outbound pipe drop and both filters pass.
+  const redirected$ = readonlyEditState
+    ? viewRedirected$.pipe(readonlyScreenTag(getReadonly, () => store.state))
+    : viewRedirected$;
   // An undo entry reads the state its batch has not reached yet, so the history
   // holds one subscription ahead of the reducer and a reset swaps only the
   // stream grouping behind it, which drops what that grouping still buffers.
@@ -178,12 +207,16 @@ export function createRxStore(
       )
     )
   );
+  // While readonly only a peer's edit passes, and the element sends no change
+  // event for it then; a setting or the viewport a reader turns is its own
+  // screen, no edit to save.
   const change$ = new Observable<Array<AnyAction>>(subscriber =>
     store.subscribe(actions => subscriber.next(actions))
   ).pipe(
     actionsFilter(ChangeActionTypes),
+    ignoreTagFilter([Tag.screen]),
     lockIgnoreFilter(() => store.state.settings.lockSettings),
-    readonlyIgnoreFilter(getReadonly, [Tag.shared]),
+    readonlyIgnoreFilter(getReadonly, [Tag.shared], ChangeActionTypes),
     debounceTime(200)
   );
 
@@ -279,8 +312,10 @@ export function createRxStore(
       redirected$
         .pipe(
           actionsFilter(HistoryActionTypes),
-          ignoreTagFilter([Tag.changeOnly, Tag.shared]),
-          readonlyIgnoreFilter(getReadonly),
+          ignoreTagFilter([Tag.changeOnly, Tag.shared, Tag.screen]),
+          // A readonly reader records no entry, its scrolls and zooms included,
+          // so an undo once writable again takes back nothing made while reading.
+          filter(() => !getReadonly()),
           viewIgnoreFilter(getView)
         )
         .subscribe(toHistory)
@@ -288,8 +323,13 @@ export function createRxStore(
     .add(
       redirected$
         .pipe(
-          readonlyIgnoreFilter(getReadonly, [Tag.shared]),
-          viewIgnoreFilter(getView, [Tag.shared])
+          readonlyIgnoreFilter(
+            getReadonly,
+            [Tag.shared, Tag.screen],
+            readonlyEditState ? EditStateOpenActionTypes : [],
+            readonlyEditState ? opensEditDialog : undefined
+          ),
+          viewIgnoreFilter(getView, [Tag.shared, Tag.screen])
         )
         .subscribe(store.dispatchSync)
     )
@@ -311,5 +351,6 @@ export function createRxStore(
     change$,
     flushStreamBuffers,
     getReadonly,
+    readonlyEditState,
   });
 }

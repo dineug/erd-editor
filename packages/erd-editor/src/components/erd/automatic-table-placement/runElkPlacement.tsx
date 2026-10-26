@@ -8,7 +8,7 @@ import {
   toTablePoints,
 } from '@/services/elk-layout';
 
-import { layoutByElk } from './elkPlacement';
+import { layoutByElk, type LayoutByElkOptions } from './elkPlacement';
 
 /**
  * Places every table by ELK and hands the layout straight over. No preview
@@ -16,12 +16,13 @@ import { layoutByElk } from './elkPlacement';
  * lands, and a single undo puts every table back.
  *
  * @example
- * runElkPlacement(app.value, placement, handleChangeAutomaticTablePlacement);
+ * runElkPlacement(app.value, placement, handleChange, { signal });
  */
 export async function runElkPlacement(
   app: AppContext,
   placement: ElkPlacement,
-  onChange: (tables: ElkLayoutPoint[]) => void
+  onChange: (tables: ElkLayoutPoint[]) => void,
+  { signal }: Pick<LayoutByElkOptions, 'signal'> = {}
 ): Promise<void> {
   const { store, emitter } = app;
   const request = createElkLayoutRequest(store.state, placement);
@@ -34,7 +35,7 @@ export async function runElkPlacement(
     return;
   }
 
-  const answer = await layoutByElk(app, request);
+  const answer = await layoutByElk(app, request, { signal });
 
   // A large schema can outlast the patience of whoever asked for it, and a
   // layout nobody is waiting for any more is dropped rather than applied.

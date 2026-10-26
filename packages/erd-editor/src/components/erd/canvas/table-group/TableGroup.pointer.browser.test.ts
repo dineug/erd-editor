@@ -363,17 +363,20 @@ describe('a press on a group title bar', () => {
     expect(groupUi(editor, 'g1')).toMatchObject({ x: G1.x, y: G1.y });
   });
 
-  it('selects in a readonly editor and carries nothing', async () => {
+  it('selects and carries nothing in a readonly editor, whose press pans', async () => {
     const editor = await mountEditor({ readonly: true });
+    const { originX, originY } = stateOf(editor).settings;
 
     await pressAndMove(editor, titleOf(editor, 'g1'), { x: 120, y: 60 });
 
     expect(isEntityDragActive(stateOf(editor))).toBe(false);
     await drop();
-    expect(stateOf(editor).editor.selectedMap).toEqual({
-      g1: SelectType.tableGroup,
-    });
+    expect(stateOf(editor).editor.selectedMap).toEqual({});
     expect(groupUi(editor, 'g1')).toMatchObject({ x: G1.x, y: G1.y });
+    expect(stateOf(editor).settings).toMatchObject({
+      originX: originX + 120,
+      originY: originY + 60,
+    });
   });
 });
 
@@ -824,7 +827,7 @@ describe('the drop of a table drag', () => {
     expect(tableOf(editor, 'member').groupId).toBe('g2');
   });
 
-  it('outlines nothing in a readonly editor, whose drop changes nothing', async () => {
+  it('outlines nothing in a readonly editor, which lifts no table, and changes nothing', async () => {
     const editor = await mountEditor({ readonly: true });
 
     await pressAndMove(editor, centerOf(editor, '#table-member'), {
@@ -833,7 +836,7 @@ describe('the drop of a table drag', () => {
     });
     await settle(1);
 
-    expect(isEntityDragActive(stateOf(editor))).toBe(true);
+    expect(isEntityDragActive(stateOf(editor))).toBe(false);
     expect(dropTargets(editor)).toHaveLength(0);
     await drop();
     expect(tableOf(editor, 'member').groupId).toBe('g1');

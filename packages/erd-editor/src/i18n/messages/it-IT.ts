@@ -306,9 +306,6 @@ export const itIT = {
   'settings.relationshipDataTypeSync':
     'Sincronizzazione tipo di dati nelle relazioni',
   'settings.maxCommentWidth': 'Larghezza massima commenti',
-  'settings.recalculateTableWidth': 'Ricalcolo larghezza tabelle',
-  'settings.sync': 'Sincronizza',
-  'settings.toast.tableWidthRecalculated': 'Larghezza tabelle ricalcolata',
   'settings.lockHeading': 'Blocco',
   'settings.lockSetting': 'Blocca {name}',
   'settings.unlockSetting': 'Sblocca {name}',

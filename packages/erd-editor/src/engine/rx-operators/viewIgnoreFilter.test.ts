@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 
 import {
   ChangeActionTypes,
+  EditStateOpenActionTypes,
   ReadonlyIgnoreActionTypes,
   ViewIgnoreActionTypes,
 } from '@/engine/actions';
@@ -30,18 +31,22 @@ function pipe(getActiveView: () => SceneView | null, passTags?: number[]) {
 }
 
 describe('ViewIgnoreActionTypes', () => {
-  it('is the readonly ignore list less the two document replacements', () => {
+  it('names sixty-three edits, the readonly list less the two document replacements', () => {
+    expect(ViewIgnoreActionTypes).toHaveLength(63);
+    expect(new Set(ViewIgnoreActionTypes).size).toBe(
+      ViewIgnoreActionTypes.length
+    );
     expect(ViewIgnoreActionTypes).toEqual(
       ReadonlyIgnoreActionTypes.filter(
         type => type !== 'editor.loadJson' && type !== 'editor.clear'
       )
     );
-    expect(ViewIgnoreActionTypes.length).toBe(
-      ReadonlyIgnoreActionTypes.length - 2
-    );
-    expect(new Set(ViewIgnoreActionTypes).size).toBe(
-      ViewIgnoreActionTypes.length
-    );
+  });
+
+  it('takes nothing from what a readonly editor also refuses', () => {
+    for (const type of EditStateOpenActionTypes) {
+      expect(ViewIgnoreActionTypes).not.toContain(type);
+    }
   });
 
   it('holds every edit of the document', () => {
@@ -112,6 +117,19 @@ describe('viewIgnoreFilter', () => {
     ]);
 
     expect(emitted).toEqual([[select, canvasType, viewScroll]]);
+  });
+
+  it('lets the Flow tab raise a table, a memo or a group, which writes no document', () => {
+    const { source$, emitted } = pipe(openView);
+    const raises = [
+      action('table.changeZIndex'),
+      action('memo.changeZIndex'),
+      action('tableGroup.changeZIndex'),
+    ];
+
+    source$.next([action('table.move'), ...raises]);
+
+    expect(emitted).toEqual([raises]);
   });
 
   it('lets a document replacement through while a view is active', () => {

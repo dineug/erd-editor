@@ -1,6 +1,6 @@
 /** @jsxHost konva */
 
-import { FC, observable, onUnmounted } from '@dineug/r-html';
+import { FC, observable, onUnmounted, onUpdated } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
 import { useDiffMap } from '@/components/diffContext';
@@ -35,6 +35,7 @@ import {
 import { useMoveEntity } from '@/components/erd/canvas/useMoveEntity';
 import { useSharedSelectEntity } from '@/components/erd/canvas/useSharedSelectEntity';
 import { useI18n } from '@/components/localeContext';
+import { useSceneInteraction } from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_GROUP_TITLE_HEIGHT } from '@/constants/layout';
@@ -76,6 +77,7 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
   const themeRef = useThemeContext(ctx);
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
+  const interaction = useSceneInteraction(ctx);
   const diffMapRef = useDiffMap(ctx);
   const { sharedSelectColor } = useSharedSelectEntity(ctx, props.group.id);
   const state = observable({ removeHover: false });
@@ -123,9 +125,14 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
     handleMouseleave();
     cursor.release();
   });
+  // A read scene draws no x, and konva tells the x it took away no leave.
+  onUpdated(() => {
+    if (interaction() === 'read') cursor.release();
+  });
 
-  // Readonly keeps the x listening, asking for no cursor and removing nothing,
-  // so the leave konva sends it still hands back a cursor taken before.
+  // A readonly store outside a read scene keeps the x listening, asking for no
+  // cursor and removing nothing, so the leave konva sends it still hands back
+  // a cursor taken before.
   const handleRemoveMouseenter = (event: SceneMouseEvent) => {
     state.removeHover = true;
     cursor.set(
@@ -179,6 +186,8 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
     const iconBox = getTableGroupIconBox();
     const removeBox = getTableGroupRemoveBox(width);
     const readonly = store.getReadonly();
+    // A read scene draws no button that edits, the x included.
+    const read = interaction() === 'read';
     const named = Boolean(group.name.trim());
     const borderInset = TABLE_GROUP_BORDER / 2;
     const ringInset = RING_WIDTH / 2;
@@ -247,18 +256,20 @@ const TableGroup: FC<TableGroupProps> = (props, ctx) => {
             visible={!editing}
             listening={false}
           />
-          {sceneIcon({
-            icon: 'x',
-            name: 'table-group-remove',
-            kind: 'icon',
-            size: removeBox.size,
-            color: removeColor(theme, colors, readonly),
-            mouseenter: handleRemoveMouseenter,
-            mouseleave: handleRemoveMouseleave,
-            x: removeBox.x,
-            y: removeBox.y,
-            click: handleRemove,
-          })}
+          {read
+            ? null
+            : sceneIcon({
+                icon: 'x',
+                name: 'table-group-remove',
+                kind: 'icon',
+                size: removeBox.size,
+                color: removeColor(theme, colors, readonly),
+                mouseenter: handleRemoveMouseenter,
+                mouseleave: handleRemoveMouseleave,
+                x: removeBox.x,
+                y: removeBox.y,
+                click: handleRemove,
+              })}
         </k-group>
         <k-rect
           name="table-group-border"

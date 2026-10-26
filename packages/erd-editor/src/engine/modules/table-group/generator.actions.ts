@@ -61,7 +61,6 @@ function* addGroup$(
   const { x, y, width, height } = rect;
 
   yield unselectAllAction$();
-  yield selectAction({ [id]: SelectType.tableGroup });
   yield addTableGroupAction({
     id,
     ...(color ? { color } : {}),
@@ -73,6 +72,7 @@ function* addGroup$(
       zIndex: nextTableGroupZIndex(selectGroups(state)),
     },
   });
+  yield selectAction({ [id]: SelectType.tableGroup });
   if (name) {
     yield changeTableGroupNameAction({ id, value: name });
   }

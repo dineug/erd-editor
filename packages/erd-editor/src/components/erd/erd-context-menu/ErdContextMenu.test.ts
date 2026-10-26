@@ -29,6 +29,7 @@ import {
 import { AppContext } from '@/components/appContext';
 import ErdContextMenu, {
   ErdContextMenuType,
+  READING_MENU_TYPES,
 } from '@/components/erd/erd-context-menu/ErdContextMenu';
 import { openExplorer } from '@/components/explorer/explorerCommands';
 import { explorerViewOf } from '@/components/explorer/explorerView';
@@ -244,6 +245,39 @@ function seedNamedTables(...ids: string[]) {
   });
 }
 
+/** The canvas menu of a writable editor over an empty document. */
+const CANVAS_ROWS = [
+  'New TableAlt + N',
+  'New MemoAlt + M',
+  'New Table GroupAlt + G',
+  'Toggle ExplorerCtrl + F',
+  'Relationship',
+  'View Option',
+  'Name View',
+  'Database',
+  'Import',
+  'Import and Add',
+  'Export',
+  'Auto Layout',
+  'Diff Viewer',
+];
+
+/** What a readonly reader keeps of the canvas menu, rows that change nothing in the document. */
+const READ_CANVAS_ROWS = ['View Option', 'Name View', 'Export', 'Diff Viewer'];
+
+/**
+ * Builds the app the menu reads, whose readonly a spec turns while the menu
+ * stands open, as the element's store reads its prop, and hands back the flag.
+ */
+function createTurningApp() {
+  const flags = observable({ readonly: false });
+  app = createTestAppContext({
+    getReadonly: () => flags.readonly,
+    readonlyEditState: true,
+  });
+  return flags;
+}
+
 /** A table's name, then its columns' names in order. */
 function namesOf(tableId: string): string[] {
   const { collections } = app.store.state;
@@ -280,21 +314,7 @@ describe('ErdContextMenu / ERD type', () => {
   it('renders the erd level menu entries', async () => {
     await mountMenu();
 
-    expect(labelsOf(rootItems())).toEqual([
-      'New TableAlt + N',
-      'New MemoAlt + M',
-      'New Table GroupAlt + G',
-      'Toggle ExplorerCtrl + F',
-      'Relationship',
-      'View Option',
-      'Name View',
-      'Database',
-      'Import',
-      'Import and Add',
-      'Export',
-      'Auto Layout',
-      'Diff Viewer',
-    ]);
+    expect(labelsOf(rootItems())).toEqual(CANVAS_ROWS);
   });
 
   it('draws New Table with the table icon the rest of the editor shows a table by', async () => {
@@ -556,23 +576,41 @@ describe('ErdContextMenu / ERD type', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('leaves Import and Add out of a readonly editor, Import kept', async () => {
-    app = createTestAppContext({ getReadonly: () => true });
+  it('keeps View Option, Name View, Export and Diff Viewer alone for a readonly editor, each still acting', async () => {
+    const flags = createTurningApp();
+    seedNamedTables('a');
+    flags.readonly = true;
     await mountMenu();
 
-    expect(labelsOf(rootItems())).toEqual([
-      'New TableAlt + N',
-      'New MemoAlt + M',
-      'Toggle ExplorerCtrl + F',
-      'Relationship',
-      'View Option',
-      'Name View',
-      'Database',
-      'Import',
-      'Export',
-      'Auto Layout',
-      'Diff Viewer',
+    expect(labelsOf(rootItems())).toEqual(READ_CANVAS_ROWS);
+
+    const show = await openSubMenu(findItem(rootItems(), 'View Option'));
+    const before = app.store.state.settings.show;
+    await click(findItem(itemsOf(show), 'Table Comment'));
+    expect(app.store.state.settings.show).not.toBe(before);
+
+    const exports = await openSubMenu(findItem(rootItems(), 'Export'));
+    await click(findItem(itemsOf(exports), 'json'));
+    expect(exportedFiles).toHaveLength(1);
+
+    await click(findItem(rootItems(), 'Diff Viewer'));
+    expect(importRequests).toEqual([
+      { type: 'json', op: 'diff', accept: '.json' },
     ]);
+  });
+
+  it('redraws its rows as the editor turns readonly under it, and back', async () => {
+    const flags = createTurningApp();
+    await mountMenu();
+    expect(labelsOf(rootItems())).toEqual(CANVAS_ROWS);
+
+    flags.readonly = true;
+    await flush();
+    expect(labelsOf(rootItems())).toEqual(READ_CANVAS_ROWS);
+
+    flags.readonly = false;
+    await flush();
+    expect(labelsOf(rootItems())).toEqual(CANVAS_ROWS);
   });
 
   it('requests an sql file to add from the Import and Add submenu', async () => {
@@ -679,18 +717,56 @@ describe('ErdContextMenu / table type', () => {
     );
   }
 
+  /** The table menu of a writable editor over a table no selection holds. */
+  const TABLE_ROWS = [
+    'Primary KeyAlt + K',
+    'Table PropertiesAlt + Space',
+    'Focus on this tableAlt + F',
+    'Derive Physical Names Again',
+    'Color',
+    'DeleteDelete',
+  ];
+
   it('renders the table level menu entries', async () => {
     seedTable();
     await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
 
-    expect(labelsOf(rootItems())).toEqual([
-      'Primary KeyAlt + K',
-      'Table PropertiesAlt + Space',
-      'Focus on this tableAlt + F',
-      'Derive Physical Names Again',
-      'Color',
-      'DeleteDelete',
-    ]);
+    expect(labelsOf(rootItems())).toEqual(TABLE_ROWS);
+  });
+
+  it('keeps Table Properties alone for a readonly editor, which still opens it', async () => {
+    const flags = createTurningApp();
+    seedTable();
+    flags.readonly = true;
+    const openTableProperties = vi.fn();
+    app.emitter.on({ openTableProperties });
+    await mountMenu({
+      type: ErdContextMenuType.table,
+      tableId: TABLE_ID,
+      columnId: COLUMN_ID,
+    });
+
+    expect(labelsOf(rootItems())).toEqual(['Table PropertiesAlt + Space']);
+
+    await click(findItem(rootItems(), 'Table Properties'));
+    expect(openTableProperties).toHaveBeenCalledTimes(1);
+    expect(app.store.state.editor.openMap[Open.tableProperties]).toBe(true);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('redraws its rows as the editor turns readonly under it, and back', async () => {
+    const flags = createTurningApp();
+    seedTable();
+    await mountMenu({ type: ErdContextMenuType.table, tableId: TABLE_ID });
+    expect(labelsOf(rootItems())).toEqual(TABLE_ROWS);
+
+    flags.readonly = true;
+    await flush();
+    expect(labelsOf(rootItems())).toEqual(['Table PropertiesAlt + Space']);
+
+    flags.readonly = false;
+    await flush();
+    expect(labelsOf(rootItems())).toEqual(TABLE_ROWS);
   });
 
   it('draws no icon beside Delete and names the key that does the same', async () => {
@@ -1360,6 +1436,18 @@ describe('ErdContextMenu / memo type', () => {
     expect(findItem(rootItems(), 'Delete').querySelector('svg')).toBeNull();
   });
 
+  it('lists no row to a readonly editor, and its rows again once writable', async () => {
+    const flags = createTurningApp();
+    seedMemo();
+    flags.readonly = true;
+    await mountMenu({ type: ErdContextMenuType.memo, memoId: MEMO_ID });
+    expect(rootItems()).toEqual([]);
+
+    flags.readonly = false;
+    await flush();
+    expect(labelsOf(rootItems())).toEqual(['Color', 'DeleteDelete']);
+  });
+
   it('opens the color picker on the memo color at the pointer position', async () => {
     seedMemo();
     const openColorPicker = vi.fn();
@@ -1492,7 +1580,7 @@ describe('ErdContextMenu / relationship type', () => {
     ]);
   });
 
-  it('leaves Map Columns out of a readonly editor', async () => {
+  it('lists no row to a readonly editor, Map Columns and Delete among them', async () => {
     app = createTestAppContext({ getReadonly: () => true });
     seedRelationship();
     await mountMenu({
@@ -1500,12 +1588,7 @@ describe('ErdContextMenu / relationship type', () => {
       relationshipId: RELATIONSHIP_ID,
     });
 
-    expect(labelsOf(rootItems())).toEqual([
-      'Relationship Type',
-      'On Delete',
-      'On Update',
-      'Delete',
-    ]);
+    expect(rootItems()).toEqual([]);
   });
 
   it('opens Map Columns on the relationship: the session first, then the open map', async () => {
@@ -2046,18 +2129,12 @@ describe('ErdContextMenu / table groups', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
-    it('offers a readonly editor Select tables alone, which still selects', async () => {
+    it('lists no row to a readonly editor, Select tables among them, since a reader selects by a jump alone', async () => {
       seedGroups();
       locked = true;
       await mountGroupMenu();
 
-      expect(labelsOf(rootItems())).toEqual(['Select tables']);
-      await click(findItem(rootItems(), 'Select tables'));
-
-      expect(app.store.state.editor.selectedMap).toEqual({
-        a: SelectType.table,
-        b: SelectType.table,
-      });
+      expect(rootItems()).toEqual([]);
     });
 
     it('opens no name editor once the editor turns readonly under an open menu', async () => {
@@ -2107,6 +2184,32 @@ describe('ErdContextMenu / table groups', () => {
       ]);
       expect(onClose).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('ErdContextMenu / a readonly reader', () => {
+  it('lists rows in the menus READING_MENU_TYPES names alone, which the ERD tab raises for it', async () => {
+    const flags = createTurningApp();
+    flags.readonly = true;
+
+    const listed: Array<{ type: ErdContextMenuType; rows: boolean }> = [];
+    for (const type of Object.values(ErdContextMenuType)) {
+      await mountMenu({ type });
+      listed.push({ type, rows: rootItems().length > 0 });
+      mounted?.unmount();
+      mounted = null;
+    }
+
+    expect(listed).toEqual(
+      Object.values(ErdContextMenuType).map(type => ({
+        type,
+        rows: READING_MENU_TYPES.has(type),
+      }))
+    );
+    expect([...READING_MENU_TYPES]).toEqual([
+      ErdContextMenuType.ERD,
+      ErdContextMenuType.table,
+    ]);
   });
 });
 

@@ -2,9 +2,11 @@ import { AnyAction, html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
+  cancelElkPlacementAction,
   closeColorPickerAction,
   copyAction,
   dragendColumnAllAction,
+  duplicateDragCancelAction,
   duplicateDragStartAction,
   Emitter,
   mouseTrackerEndAction,
@@ -235,6 +237,10 @@ describe('action creators', () => {
       type: 'openDiffViewer',
       payload: { value: 'diff' },
     });
+    expect(cancelElkPlacementAction()).toEqual({
+      type: 'cancelElkPlacement',
+      payload: undefined,
+    });
     expect(
       duplicateDragStartAction({ tableIds: ['a'], memoIds: ['b'] })
     ).toEqual({
@@ -246,6 +252,10 @@ describe('action creators', () => {
   it('lets the duplicate drag start action be built without a payload', () => {
     expect(duplicateDragStartAction()).toEqual({
       type: 'duplicateDragStart',
+      payload: undefined,
+    });
+    expect(duplicateDragCancelAction()).toEqual({
+      type: 'duplicateDragCancel',
       payload: undefined,
     });
   });

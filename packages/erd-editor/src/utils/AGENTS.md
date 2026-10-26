@@ -33,11 +33,11 @@
   2. It measures that document on a store of its own (`src/components/erd/automatic-table-placement/flowPlacement.ts`), as the PNG export draws on its own, opened in the reader's name view (`readerNameViewAction`), so Flow places the tables at the widths the reader sees. The grid's sort measures in that view too.
   3. It lays the document out by Flow on the ELK worker through `layoutByElk` (`elkPlacement.tsx`, in the same directory).
   4. It replaces the document with one `loadJsonAction$` carrying the points, which start from `TABLE_SORT_START`. So one undo puts the previous document back, and no grid shows in between.
-- **`layoutByElk` is the core `runElkPlacement` shares.** It takes the app context and nothing of `Erd`. Its Cancel and its stop key take the toast down at once, Auto Layout's toast included.
+- **`layoutByElk` is the core `runElkPlacement` shares.** It takes the app context and nothing of `Erd`. Its Cancel and its stop key take the toast down at once, Auto Layout's toast included, and so does an abort of the `signal` it is handed. `runElkPlacement` passes one on from `Erd.tsx`, which aborts each Auto Layout run it started as the editor turns readonly, with the ERD tab shown or behind another, or goes, and never for a tab switch alone (`src/components/erd/AGENTS.md`, The canvas and its presses).
 - **Some cases land the grid without a word.** These are: fewer than two tables or no relationship, a failure, no `SharedWorker`, and Cancel on the toast a slow layout raises (`SLOW_LAYOUT_MS`). The stop key cancels only while that toast is up.
 - **The replace started last lands.** A load meanwhile, from anyone, supersedes a placed import. A placed replace started after it supersedes it too. An append supersedes nothing (Import and Add, below).
 - **The carried settings are read again on landing.** So a tab or setting changed while the import placed stays as changed.
-- **A readonly editor places nothing by any path.** The menu's and the palette's paths are included. `importSchemaPlaced` reads `store.getReadonly()` before it parses, because the readonly filter drops the load only after the layout, and the toast a slow one raises, have run.
+- **A readonly editor places nothing by any path.** Neither the menu nor the palette offers Import while it is readonly, and a host's call is refused as well: `importSchemaPlaced` reads `store.getReadonly()` before it parses, because the readonly filter drops the load only after the layout, and the toast a slow one raises, have run.
 - **`placeByFlow` answers points from the block's corner.** The points start at the corner of the block the tables make, so a caller placing the block elsewhere moves it.
 - **`mcp-server`'s imports keep the grid.** elkjs is outside the peer graph's allowlist and its bundle budget.
 
@@ -60,7 +60,7 @@
 - **Show the ERD tab in an earlier dispatch.** `showErdTab` takes the ERD tab from any other before the landing dispatch, because a batch is classified by the state before it. The owner decision of 2026-10-04 names Graph mode, Schema SQL and Code Generator. Settings follows it as another tab off the canvas. A Flow view must give way too, since `viewIgnoreFilter` would drop every add.
 - **Unreadable or empty input changes nothing.** Text the parser cannot read, or a document with nothing in it, adds nothing and switches no tab.
 - **The engine generators append on the grid.** `appendSchemaAction$` and `appendSchemaJsonAction$` are in the editor barrel. `mcp-server`'s imports run them for `mode: 'append'`: the grid, no selection, no scroll.
-- **A readonly editor adds nothing by any path.** It offers no Import and Add in the menu or the palette (an owner decision of 2026-10-04). `landAppend` reads `store.getReadonly()` first, because the readonly filter drops the adds but not the selection, the scroll or the tab.
+- **A readonly editor adds nothing by any path.** It offers no Import and Add in the menu or the palette (an owner decision of 2026-10-04). `landAppend` reads `store.getReadonly()` first, because the readonly filter drops the adds but not the unselect, the scroll or the tab.
 
 ### Duplicates and the clipboard
 

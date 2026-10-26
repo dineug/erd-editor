@@ -303,9 +303,6 @@ export const nlNL = {
   'settings.relationshipDataTypeSync':
     'Gegevenstypen via relaties synchroniseren',
   'settings.maxCommentWidth': 'Maximale breedte van opmerkingen',
-  'settings.recalculateTableWidth': 'Tabelbreedte opnieuw berekenen',
-  'settings.sync': 'Synchroniseren',
-  'settings.toast.tableWidthRecalculated': 'Tabelbreedte opnieuw berekend',
   'settings.lockHeading': 'Vergrendeling',
   'settings.lockSetting': '{name} vergrendelen',
   'settings.unlockSetting': '{name} ontgrendelen',

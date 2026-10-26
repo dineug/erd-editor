@@ -1,4 +1,5 @@
-import { pick } from 'es-toolkit';
+import { AnyAction } from '@dineug/r-html';
+import { isNil, pick } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
 import {
@@ -7,6 +8,7 @@ import {
   LockSettingTypeList,
 } from '@/constants/schema';
 import { GeneratorAction } from '@/engine/generator.actions';
+import { endScreenSettingsAction } from '@/engine/modules/editor/atom.actions';
 import {
   viewChangeZoomLevelAction,
   viewScrollToAction,
@@ -14,6 +16,7 @@ import {
   viewStreamZoomLevelAction,
 } from '@/engine/modules/editor/view.actions';
 import { RootState } from '@/engine/state';
+import { attachActionsTag, Tag } from '@/engine/tag';
 import { Point } from '@/internal-types';
 import {
   getZoomTransform,
@@ -26,13 +29,20 @@ import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
 import { zoomLevelInRange } from '@/utils/validation';
 
 import {
+  changeBracketTypeAction,
+  changeColumnNameCaseAction,
+  changeDatabaseAction,
+  changeLanguageAction,
   changeLockSettingsAction,
+  changeShowAction,
+  changeTableNameCaseAction,
   changeZoomLevelAction,
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
   UnlockCarriedSettings,
 } from './atom.actions';
+import type { ScreenSettingUnit } from './screenBaseline';
 
 /**
  * How far the scroll has to travel for the scene point given to land under the
@@ -193,6 +203,54 @@ export const changeLockSettingsAction$ = (
     }
 
     yield changeLockSettingsAction({ lockSettingType, value, values });
+  };
+
+/** The setter each setting a writable screen takes back sends its value through. */
+const RESTORED_SETTERS = {
+  language: changeLanguageAction,
+  tableNameCase: changeTableNameCaseAction,
+  columnNameCase: changeColumnNameCaseAction,
+  bracketType: changeBracketTypeAction,
+  database: changeDatabaseAction,
+} as const;
+
+const RESTORED_UNITS: ReadonlyArray<ScreenSettingUnit> = [
+  ...(Object.keys(RESTORED_SETTERS) as ScreenSettingUnit[]),
+  'show',
+];
+
+/**
+ * What a readonly editor turning writable sends in one batch: the document's
+ * code settings, database and show bits back on the screen through their own
+ * setters, tagged as the screen's, then the end of their baseline.
+ */
+export const restoreScreenSettingsAction$ = (): GeneratorAction =>
+  function* ({ editor: { screenBaseline }, settings }) {
+    const units = RESTORED_UNITS.filter(unit => !isNil(screenBaseline?.[unit]));
+    if (!screenBaseline || !units.length) return;
+
+    const restores: AnyAction[] = [];
+    Object.entries(RESTORED_SETTERS).forEach(([unit, setter]) => {
+      const value = screenBaseline[unit as keyof typeof RESTORED_SETTERS];
+      if (!isNil(value) && value !== settings[unit as ScreenSettingUnit]) {
+        restores.push(setter({ value }));
+      }
+    });
+
+    // The bits the screen cleared come back set, and those it set come back
+    // cleared, each as one change, so every listener of a show change hears it.
+    const { show } = screenBaseline;
+    if (!isNil(show)) {
+      const set = show & ~settings.show;
+      const clear = settings.show & ~show;
+      if (set) restores.push(changeShowAction({ show: set, value: true }));
+      if (clear) restores.push(changeShowAction({ show: clear, value: false }));
+    }
+
+    yield [
+      ...attachActionsTag(Tag.screen, restores),
+      endScreenSettingsAction({ units }),
+    ];
   };
 
 export const actions$ = {

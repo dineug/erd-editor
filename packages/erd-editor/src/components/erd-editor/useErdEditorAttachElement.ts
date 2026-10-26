@@ -1,4 +1,3 @@
-import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import { onMounted, Ref, watch } from '@dineug/r-html';
 import { cloneDeep, omit } from 'es-toolkit';
 import { get, isEmpty } from 'es-toolkit/compat';
@@ -7,8 +6,17 @@ import { AppContext, appDestroy } from '@/components/appContext';
 import { useLocaleHost } from '@/components/element-host/localeHost';
 import { useThemeHost } from '@/components/element-host/themeHost';
 import { DatabaseVendorToDatabase } from '@/constants/sql/database';
+import { EDIT_OPEN_KEYS } from '@/engine/actions';
+import { documentJsonOf, runtimeJsonOf } from '@/engine/documentJson';
 import {
+  changeHandToolAction,
+  changeOpenMapAction,
   clearAction,
+  dragendColumnAction,
+  drawEndRelationshipAction,
+  editMemoEndAction,
+  editTableEndAction,
+  editTableGroupEndAction,
   getLWWAction,
   initialClearAction,
   SHARED_DRAG_SELECT_TRACKER_TIMEOUT,
@@ -21,7 +29,9 @@ import {
   initialLoadJsonAction$,
   loadJsonAction$,
   type SchemaImportType,
+  unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
+import { restoreScreenSettingsAction$ } from '@/engine/modules/settings/generator.actions';
 import { createSharedStore, SharedStore } from '@/engine/shared-store';
 import { useNavigatorLanguages } from '@/hooks/useNavigatorLanguages';
 import { useUnmounted } from '@/hooks/useUnmounted';
@@ -31,6 +41,10 @@ import { Unsubscribe } from '@/internal-types';
 import { SYSTEM_APPEARANCE } from '@/themes/radix-ui-theme';
 import { arrayHas } from '@/utils/arrayHas';
 import {
+  cancelElkPlacementAction,
+  closeColorPickerAction,
+  dragendColumnAllAction,
+  duplicateDragCancelAction,
   mouseTrackerEndAction,
   mouseTrackerStartAction,
   openDiffViewerAction,
@@ -71,6 +85,11 @@ const hasOmitKeyBindingName = arrayHas<string>([
 
 const ExternalKeyBindingNameList = KeyBindingNameList.filter(
   key => !hasOmitKeyBindingName(key)
+);
+
+/** The dialogs that write the document, each closed, which the readonly filter lets through. */
+const CLOSED_EDIT_DIALOGS = Object.fromEntries(
+  EDIT_OPEN_KEYS.map(key => [key, false])
 );
 
 type Props = {
@@ -174,8 +193,57 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     getReadonly() || ctx.dispatchEvent(new CustomEvent('change'));
   };
 
+  /**
+   * Ends what a reader may not hold: an open editor, a draw, a column drag, an
+   * Alt drag's copies, an ELK run, the selection, the hand tool and the dialogs
+   * that write. Table Properties, the diff viewer and the image export stay open.
+   */
+  const closeEditState = () => {
+    store.dispatchSync(
+      editTableEndAction(),
+      editMemoEndAction(),
+      editTableGroupEndAction(),
+      drawEndRelationshipAction(),
+      dragendColumnAction(),
+      unselectAllAction$(),
+      changeHandToolAction({ value: false }),
+      changeOpenMapAction(CLOSED_EDIT_DIALOGS)
+    );
+    // The picker, a column drag's pointer, the Alt drag's copies and an ELK run
+    // are the ERD tab's own, which no action reaches, and the tab hears them
+    // behind another tab too; a copy's drop would unselect.
+    emitter.emit(closeColorPickerAction());
+    emitter.emit(dragendColumnAllAction());
+    emitter.emit(duplicateDragCancelAction());
+    emitter.emit(cancelElkPlacementAction());
+  };
+
+  // One batch, so no peer's setter lands between a setting given back and the
+  // end of its baseline; the viewport, the tab and the name view keep the screen.
+  const restoreScreen = () => {
+    store.dispatchSync(restoreScreenSettingsAction$());
+  };
+
+  /**
+   * Sends a pan or a drag the shared stores still hold from before the turn,
+   * which would otherwise reach a replica behind the absolute placement that
+   * leads the first pan once writable, and land it off the screen by its steps.
+   */
+  const sendHeldStreams = () => {
+    sharedStoreSet.forEach(sharedStore => sharedStore.flushStreamBuffers());
+  };
+
   const destroySet = new Set<Unsubscribe>([
     watch(props).subscribe(propName => {
+      if (propName === 'readonly') {
+        if (props.readonly) {
+          sendHeldStreams();
+          closeEditState();
+        } else {
+          restoreScreen();
+        }
+        return;
+      }
       if (propName === 'enableLocalePicker') {
         applyLocale();
         return;
@@ -193,7 +261,15 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
     localeHost.destroy,
   ]);
 
+  let firstMount = true;
+
   onMounted(() => {
+    // Readonly from the start may come from no write the watch hears, so the
+    // first mount closes too. A host that moves the element in the page mounts
+    // it again, over a selection a jump left, which stays.
+    if (firstMount && props.readonly) closeEditState();
+    firstMount = false;
+
     addUnsubscribe(
       store.change$.subscribe(emitChange),
       emitter.on({
@@ -362,14 +438,14 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   Object.defineProperty(ctx, 'value', {
-    get: () => toDocumentJson(store.state),
+    get: () => documentJsonOf(store),
     set: (value: string) => {
       store.dispatchSync(loadJsonAction$(toLoadValue(value)));
     },
   });
 
   Object.defineProperty(ctx, 'runtimeValue', {
-    get: () => toJson(store.state),
+    get: () => runtimeJsonOf(store),
   });
 
   return {
