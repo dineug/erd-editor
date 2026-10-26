@@ -268,11 +268,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   addUnsubscribe(cancelElkRuns);
 
   /**
-   * The scene's own part of a readonly turn, the element ending the store's
-   * edit state: the hover follows the press rule, what it lit goes out either
-   * way, and readonly ends a table group draw and a menu with no row to read.
+   * The scene's part of a readonly turn: a read press still held ends, landing
+   * nothing under edit, the hover follows the press rule, what it lit goes out
+   * either way, and readonly ends a table group draw and a menu with no row.
    */
   const handleReadonlyTurn = () => {
+    readPress.cancel();
     listenHover(props.readonly);
     readPress.reset();
     if (!props.readonly) return;

@@ -41,6 +41,8 @@ export type ViewPress = {
   handleHover: (hit: SceneHit | null) => void;
   /** Puts out what a press and the pointer lit, for a document that replaces the one they stood on. */
   reset: () => void;
+  /** Ends a press still held and its pan, landing no still press, for a host that stops reading mid press. */
+  cancel: () => void;
   destroy: () => void;
 };
 
@@ -180,5 +182,12 @@ export function createViewPress({
     pan = subscription;
   };
 
-  return { state, handlePress, handleHover, reset, destroy: endPan };
+  return {
+    state,
+    handlePress,
+    handleHover,
+    reset,
+    cancel: endPan,
+    destroy: endPan,
+  };
 }

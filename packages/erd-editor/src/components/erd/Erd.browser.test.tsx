@@ -83,6 +83,7 @@ import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import {
   addMemoAction,
   changeMemoValueAction,
+  resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
 import {
   changeShowAction,
@@ -2342,6 +2343,66 @@ describe('Erd - an editor turned readonly at run time', () => {
     expect(hoverListenersOf(stage)).toBe(1);
   });
 
+  it('ends a still read press the turn to writable cuts across, whose release sends nothing, lights nothing and keeps the selection', async () => {
+    const reader = await mountReader();
+    const { app, stage } = reader;
+    const editorId = app.store.state.editor.id;
+    const down = pointerAt(stage, 'mousedown', headerCellOf(stage, 'users'));
+
+    await turnReader(false);
+    app.store.dispatchSync(selectAction({ orders: SelectType.table }));
+    reader.sent.length = 0;
+    releasePointer(down.clientX, down.clientY);
+    await settleScene();
+
+    expect(reader.sent.map(({ type }) => type)).toEqual([]);
+    expect(isRelationshipHighlighted(editorId, 'fk')).toBe(false);
+    expect(app.store.state.editor.selectedMap).toEqual({
+      orders: SelectType.table,
+    });
+  });
+
+  it('ends a read pan the turn to writable cuts across, which pans no further and hands the cursor back', async () => {
+    const reader = await mountReader();
+    const { stage } = reader;
+    const down = pointerAt(stage, 'mousedown', headerCellOf(stage, 'users'));
+    movePointer(down.clientX + 40, down.clientY);
+    await settleScene();
+    expect(erdRootOf(reader).style.cursor).toBe('grabbing');
+
+    await turnReader(false);
+    expect(erdRootOf(reader).style.cursor).toBe('');
+    const origin = originOf(reader);
+    reader.sent.length = 0;
+    movePointer(down.clientX + 100, down.clientY + 30);
+    await settleScene();
+    releasePointer(down.clientX + 100, down.clientY + 30);
+    await settleScene();
+
+    expect(originOf(reader)).toEqual(origin);
+    expect(reader.sent.map(({ type }) => type)).toEqual([]);
+    expect(erdRootOf(reader).style.cursor).toBe('');
+  });
+
+  it('opens no memo editor for a read press on its body the turn to writable cuts across, and opens it for the next click', async () => {
+    const reader = await mountReader();
+    const { app, stage } = reader;
+    const body = nodeCenter(stage, '.memo-textarea-hit');
+    pointerAt(stage, 'mousedown', body);
+
+    await turnReader(false);
+    reader.sent.length = 0;
+    pointerAt(stage, 'mouseup', body);
+    releasePointer();
+    await settleScene();
+
+    expect(reader.sent.map(({ type }) => type)).toEqual([]);
+    expect(app.store.state.editor.editMemoId).toBeNull();
+
+    await clickAt(stage, body);
+    expect(app.store.state.editor.editMemoId).toBe('memo');
+  });
+
   it('writes nothing for a group sash drag the turn cut short', async () => {
     const reader = await mountReader({ readonly: false });
     const { app, stage } = reader;
@@ -2370,6 +2431,43 @@ describe('Erd - an editor turned readonly at run time', () => {
     expect(reader.sent.map(({ type }) => type)).not.toContain(
       'tableGroup.resize'
     );
+  });
+
+  it('writes nothing more for a memo sash drag the turn cut short, writable again within the press, and hands the cursor back', async () => {
+    const reader = await mountReader({ readonly: false });
+    const { app, stage } = reader;
+    const memoUi = () => ({
+      ...app.store.state.collections.memoEntities.memo.ui,
+    });
+    const before = memoUi();
+
+    const down = pointerAt(
+      stage,
+      'mousedown',
+      nodeCenter(stage, '.memo-sash-right')
+    );
+    movePointer(down.clientX + 20, down.clientY);
+    await flush();
+    const resized = memoUi();
+    expect(resized.width).toBeGreaterThan(before.width);
+    expect(stage.container().style.cursor).toBe('ew-resize');
+
+    await turnReader(true);
+    expect(stage.container().style.cursor).toBe('');
+    movePointer(down.clientX + 40, down.clientY);
+    await flush();
+
+    await turnReader(false);
+    movePointer(down.clientX + 80, down.clientY);
+    await flush();
+    releasePointer(down.clientX + 80, down.clientY);
+    await settleScene();
+
+    expect(memoUi()).toEqual(resized);
+    expect(
+      reader.sent.filter(({ type }) => type === resizeMemoAction.type)
+    ).toHaveLength(1);
+    expect(stage.container().style.cursor).toBe('');
   });
 
   it('selects nothing more for a marquee the turn cut short, and sends its rect no further', async () => {

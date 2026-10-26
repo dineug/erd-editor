@@ -123,13 +123,22 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     );
   };
 
+  // Konva makes a click of a press and its lift on the body even when the scene
+  // turned from read to edit between them, as a host turning writable does, so
+  // the lift of a press the body took under read opens no editor.
+  let pressedRead = false;
+
+  const handleValuePress = () => {
+    pressedRead = interaction() === 'read';
+  };
+
   /**
    * Opens the body editor with its caret on the glyph the pointer was over. The
    * point is read in the text group's own space and pushed down by what the
    * body is scrolled, which is where it was folded, so the mapping holds anywhere.
    */
   const handleEditValue = (event: SceneMouseEvent) => {
-    if (props.preview || interaction() === 'read') return;
+    if (props.preview || pressedRead || interaction() === 'read') return;
 
     const { store } = app.value;
     const { memo } = props;
@@ -306,6 +315,7 @@ const Memo: FC<MemoProps> = (props, ctx) => {
             clipY={0}
             clipWidth={memo.ui.width}
             clipHeight={memo.ui.height}
+            on:mousedown={handleValuePress}
             on:click={mainButtonClick(handleEditValue)}
             on:mouseenter={handleValueMouseenter}
             on:mouseleave={handleValueMouseleave}

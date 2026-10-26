@@ -1,6 +1,7 @@
 /** @jsxHost konva */
 
 import { FC, onUnmounted } from '@dineug/r-html';
+import type { Subscription } from 'rxjs';
 
 import { useAppContext } from '@/components/appContext';
 import {
@@ -142,7 +143,13 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
   const app = useAppContext(ctx);
   // A sash unmounted under the pointer sends no leave to hand its cursor back.
   const cursor = createSceneCursorScope();
-  onUnmounted(cursor.release);
+  // A sash the scene takes away mid drag, as a turn to readonly does, ends the
+  // drag, which writes nothing more and lets go of the cursor it held.
+  let gesture: Subscription | null = null;
+  onUnmounted(() => {
+    gesture?.unsubscribe();
+    cursor.release();
+  });
 
   let clientX = 0;
   let clientY = 0;
@@ -262,20 +269,22 @@ const MemoSash: FC<MemoSashProps> = (props, ctx) => {
     const pointer = pointerOf(event);
     clientX = pointer.x;
     clientY = pointer.y;
+    gesture?.unsubscribe();
     // The pointer outruns the thin hit area and the minimum stops the edge
     // under it, so the stage's own hover would hand the cursor away mid drag.
     const release = holdSceneCursor(event, CURSORS[position]);
-    const gesture = drag$.subscribe(dragMove => {
+    const subscription = drag$.subscribe(dragMove => {
       // A memo hidden or removed mid drag, here or by a peer, takes no more of
       // it: no reader could see the box it would write.
       const { state } = app.value.store;
       if (!isMemoShown(state) || !state.doc.memoIds.includes(props.memo.id)) {
-        gesture.unsubscribe();
+        subscription.unsubscribe();
         return;
       }
       handleMove(dragMove, position);
     });
-    gesture.add(release);
+    subscription.add(release);
+    gesture = subscription;
   };
 
   return () => {
