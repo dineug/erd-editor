@@ -138,6 +138,34 @@ describe('relationshipSort', () => {
     });
   });
 
+  it('leaves two facing sides whose stubs cross for the nearest pair whose stubs face', () => {
+    // B stands 36 left of A and 100 up, so the stubs of A's left side and B's
+    // right overlap; A's left and B's bottom face each other past the gap.
+    addTable(state, 'A', 0, 0);
+    addTable(state, 'B', -170, -100);
+    const relationship = addRelationship(state, 'r', 'A', 'B');
+
+    relationshipSort(state);
+
+    expect(relationship.start.direction).toBe(Direction.left);
+    expect(relationship.end).toMatchObject({
+      x: -170 + TABLE_WIDTH / 2,
+      y: -100 + TABLE_HEIGHT,
+      direction: Direction.bottom,
+    });
+  });
+
+  it('keeps two aligned facing sides closer than two stubs, which no other pair beats', () => {
+    addTable(state, 'A', 0, 0);
+    addTable(state, 'B', TABLE_WIDTH + 40, 0);
+    const relationship = addRelationship(state, 'r', 'A', 'B');
+
+    relationshipSort(state);
+
+    expect(relationship.start.direction).toBe(Direction.right);
+    expect(relationship.end.direction).toBe(Direction.left);
+  });
+
   it('keeps the nearest pair of sides on two axes when its stubs already face', () => {
     // B's stub ends past A's, so one bend joins them.
     addTable(state, 'A', 0, 0);

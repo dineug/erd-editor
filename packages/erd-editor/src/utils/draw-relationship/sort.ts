@@ -540,9 +540,6 @@ const OUTWARD: Record<DirectionName, { x: number; y: number }> = {
   [DirectionName.bottom]: { x: 0, y: 1 },
 };
 
-const isSideways = (direction: DirectionName) =>
-  direction === DirectionName.left || direction === DirectionName.right;
-
 /**
  * Whether the shortest stubs out of these two side midpoints face each other:
  * each lies ahead of the other's side, which is what lets the router join them
@@ -614,11 +611,7 @@ function getAndSetDirection(
   let direction = nearestSides(start, end) as DirectionTuple;
   const [startSide, endSide] = direction;
 
-  if (
-    source === 'document' &&
-    isSideways(startSide) !== isSideways(endSide) &&
-    !stubsFace(start, startSide, end, endSide)
-  ) {
+  if (source === 'document' && !stubsFace(start, startSide, end, endSide)) {
     direction =
       nearestSides(start, end, (k, k2) => stubsFace(start, k, end, k2)) ??
       direction;
