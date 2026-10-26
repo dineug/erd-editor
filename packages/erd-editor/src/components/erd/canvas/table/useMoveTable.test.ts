@@ -74,6 +74,9 @@ let mounted: Mounted | null = null;
 afterEach(() => {
   window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
   mounted?.unmount();
+  // The tables each spec adds wake the relationship sort's throttle, which
+  // would otherwise fire once the file's happy-dom environment is gone.
+  mounted?.app.store.destroy();
   mounted = null;
 });
 

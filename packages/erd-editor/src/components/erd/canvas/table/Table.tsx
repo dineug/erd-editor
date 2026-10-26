@@ -483,9 +483,13 @@ const Table: FC<TableProps> = (props, ctx) => {
 
     addUnsubscribe(
       emitter.on({
+        // The table a drag began in lets go of it too, since the end may come
+        // from the editor turning readonly rather than from its own drop.
         dragendColumnAll: () => {
           dragoverSubscription?.unsubscribe();
           dragoverSubscription = null;
+          dragLayerStage = null;
+          state.dragstartId = null;
           endColumnDragPointer(app.value.store.state);
         },
       }),

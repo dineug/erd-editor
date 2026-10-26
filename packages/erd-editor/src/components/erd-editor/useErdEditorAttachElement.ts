@@ -12,6 +12,7 @@ import {
   changeHandToolAction,
   changeOpenMapAction,
   clearAction,
+  dragendColumnAction,
   drawEndRelationshipAction,
   editMemoEndAction,
   editTableEndAction,
@@ -41,6 +42,7 @@ import { SYSTEM_APPEARANCE } from '@/themes/radix-ui-theme';
 import { arrayHas } from '@/utils/arrayHas';
 import {
   closeColorPickerAction,
+  dragendColumnAllAction,
   mouseTrackerEndAction,
   mouseTrackerStartAction,
   openDiffViewerAction,
@@ -190,8 +192,8 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
   };
 
   /**
-   * Ends what a reader may not hold: an open editor, a draw, the selection, the
-   * hand tool and the dialogs that write, each a close the readonly filter
+   * Ends what a reader may not hold: an open editor, a draw, a column drag, the
+   * selection, the hand tool and the dialogs that write, each a close the filter
    * passes. Table Properties, the diff viewer and the image export stay open.
    */
   const closeEditState = () => {
@@ -200,12 +202,15 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
       editMemoEndAction(),
       editTableGroupEndAction(),
       drawEndRelationshipAction(),
+      dragendColumnAction(),
       unselectAllAction$(),
       changeHandToolAction({ value: false }),
       changeOpenMapAction(CLOSED_EDIT_DIALOGS)
     );
-    // The picker is the ERD tab's own state, which no action reaches.
+    // The picker and a column drag's pointer are the ERD tab's own state, which
+    // no action reaches; every table lets go of a drag it holds.
     emitter.emit(closeColorPickerAction());
+    emitter.emit(dragendColumnAllAction());
   };
 
   // One batch, so no peer's setter lands between a setting given back and the

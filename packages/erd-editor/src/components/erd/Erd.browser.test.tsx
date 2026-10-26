@@ -71,6 +71,7 @@ import {
   drawStartRelationshipAction,
   editMemoAction,
   editTableAction,
+  focusColumnAction,
   focusTableAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
@@ -1011,14 +1012,17 @@ const ReaderRoot: FC = () => () => (
  * An editor store as the element builds it, the seed written before it turns
  * readonly, mounted readonly unless told otherwise, drawn and hit-tested.
  */
-async function mountReader({ readonly = true } = {}): Promise<Reader> {
+async function mountReader({
+  readonly = true,
+  seed = READ_SEED,
+} = {}): Promise<Reader> {
   elementFlags.readonly = false;
   const base = createTestAppContext({
     getReadonly: () => elementFlags.readonly,
     readonlyEditState: true,
   });
   base.store.dispatchSync(changeViewportAction({ width: 800, height: 600 }));
-  seedDiff(base, READ_SEED);
+  seedDiff(base, seed);
   base.store.flushStreamBuffers();
   elementFlags.readonly = readonly;
 
@@ -1855,6 +1859,71 @@ const anchorsOf = ({ app }: Reader, id: string) => {
   return [start, end].map(({ x, y, direction }) => ({ x, y, direction }));
 };
 
+/** The reader's document with a second row in orders, so a column drag can cross its own table. */
+const COLUMN_DRAG_SEED: DiffSeed = {
+  ...READ_SEED,
+  tables: READ_SEED.tables?.map(table =>
+    table.id === 'orders'
+      ? {
+          ...table,
+          columns: [
+            ...(table.columns ?? []),
+            { id: 'orders.total', name: 'total' },
+          ],
+        }
+      : table
+  ),
+};
+
+const columnIdsOf = ({ app }: Reader, tableId: string) => [
+  ...app.store.state.collections.tableEntities[tableId].columnIds,
+];
+
+/** Focuses a row, presses the drag handle the focus gives it and moves once, which starts the drag. */
+async function pressColumnHandle(
+  reader: Reader,
+  tableId: string,
+  columnId: string
+) {
+  const { app, stage } = reader;
+  app.store.dispatchSync(
+    focusColumnAction({
+      tableId,
+      columnId,
+      focusType: FocusType.columnName,
+      $mod: false,
+      shiftKey: false,
+    })
+  );
+  await settleScene();
+
+  const down = pointerAt(
+    stage,
+    'mousedown',
+    nodeCenter(stage, '.column-drag-handle')
+  );
+  movePointer(down.clientX + 1, down.clientY + 1);
+  await settleScene();
+}
+
+/** Carries the pointer of the drag under way onto a row's name cell and lets what it sends land. */
+async function dragOntoColumn(stage: Stage, columnId: string) {
+  const content = stage.content.getBoundingClientRect();
+  const { x, y } = columnCellOf(stage, columnId);
+  movePointer(content.left + x, content.top + y);
+  await settleScene();
+}
+
+/** The column the focus names that its table does not list, or null while it names no such row. */
+function strayFocusOf({ app }: Reader) {
+  const { focusTable } = app.store.state.editor;
+  if (!focusTable?.columnId) return null;
+
+  const { columnIds } =
+    app.store.state.collections.tableEntities[focusTable.tableId];
+  return columnIds.includes(focusTable.columnId) ? null : focusTable.columnId;
+}
+
 /** The canvas stage the reader's container holds now, the one it drew first or a new one. */
 const liveStageOf = ({ container }: Reader) => {
   const canvas = container.querySelector('[data-testid="erd-canvas"]');
@@ -2048,6 +2117,57 @@ describe('Erd - an editor turned readonly at run time', () => {
     await settleScene();
     expect(app.store.state.editor.selectedMap).toEqual({});
     expect(reader.sent.map(({ type }) => type)).not.toContain('editor.select');
+  });
+
+  it('ends a column drag the turn cut short, which then draws no ghost, moves no row and focuses none a table lacks', async () => {
+    const reader = await mountReader({
+      readonly: false,
+      seed: COLUMN_DRAG_SEED,
+    });
+    const { app, stage } = reader;
+    const orderOf = () => ({
+      users: columnIdsOf(reader, 'users'),
+      orders: columnIdsOf(reader, 'orders'),
+    });
+    const before = orderOf();
+
+    await pressColumnHandle(reader, 'orders', 'orders.user');
+    expect(app.store.state.editor.draggableColumn).toEqual({
+      tableId: 'orders',
+      columnIds: ['orders.user'],
+    });
+    expect(stage.container().style.cursor).toBe(CURSOR_GRABBING);
+
+    await turnReader(true);
+    reader.sent.length = 0;
+    expect(app.store.state.editor.draggableColumn).toBeNull();
+    expect(app.store.state.editor.draggingColumnMap).toEqual({});
+    expect(stage.container().style.cursor).not.toBe(CURSOR_GRABBING);
+
+    // A row of its own table, then a row of another, each a drop while writable.
+    for (const columnId of ['orders.total', 'users.id']) {
+      await dragOntoColumn(stage, columnId);
+      expect(stage.find('.column-drag-ghost')).toHaveLength(0);
+      expect(strayFocusOf(reader)).toBeNull();
+    }
+    releasePointer();
+    await settleScene();
+
+    // The turn ended the drag in every table, so its release sends nothing.
+    expect(reader.sent.map(({ type }) => type)).toEqual([]);
+    expect(orderOf()).toEqual(before);
+    expect(app.store.state.editor.draggableColumn).toBeNull();
+    expect(app.store.state.editor.draggingColumnMap).toEqual({});
+
+    await turnReader(false);
+    await pressColumnHandle(reader, 'orders', 'orders.user');
+    await dragOntoColumn(stage, 'orders.total');
+    releasePointer();
+    await settleScene();
+    expect(columnIdsOf(reader, 'orders')).toEqual([
+      'orders.total',
+      'orders.user',
+    ]);
   });
 
   it('takes away a menu over a relationship, a memo or a group as it turns readonly, and redraws a table or canvas menu’s rows either way', async () => {

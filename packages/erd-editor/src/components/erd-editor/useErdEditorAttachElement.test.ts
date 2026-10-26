@@ -65,6 +65,7 @@ import {
   changeHandToolAction,
   changeOpenMapAction,
   dragSelectRectAction,
+  dragstartColumnAction,
   drawStartRelationshipAction,
   editMemoAction,
   editTableAction,
@@ -2237,6 +2238,7 @@ function openEditState(app: AppContext) {
     editTableGroupAction({ id: 'g1' }),
     changeHandToolAction({ value: true }),
     drawStartRelationshipAction({ relationshipType: RelationshipType.OneN }),
+    dragstartColumnAction({ tableId: 't1', columnIds: ['c1'] }),
     changeOpenMapAction(OPEN_DIALOGS)
   );
 }
@@ -2248,6 +2250,8 @@ function expectEditStateClosed(app: AppContext) {
   expect(editor.editMemoId).toBeNull();
   expect(editor.editTableGroupId).toBeNull();
   expect(editor.drawRelationship).toBeNull();
+  expect(editor.draggableColumn).toBeNull();
+  expect(editor.draggingColumnMap).toEqual({});
   expect(editor.handTool).toBe(false);
   expect(editor.openMap).toMatchObject({
     [Open.mapColumns]: false,
@@ -2266,7 +2270,8 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
   it('ends the edit state a reader may not hold, keeping what reads open and every setting as it stood', async () => {
     const { app, props } = await setup({}, { wired: true });
     const closeColorPicker = vi.fn();
-    app.emitter.on({ closeColorPicker });
+    const dragendColumnAll = vi.fn();
+    app.emitter.on({ closeColorPicker, dragendColumnAll });
     openEditState(app);
     app.store.dispatchSync(
       scrollToAction({ originX: -120, originY: 80 }),
@@ -2280,24 +2285,27 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
 
     expectEditStateClosed(app);
     expect(closeColorPicker).toHaveBeenCalledTimes(1);
+    expect(dragendColumnAll).toHaveBeenCalledTimes(1);
     expect(app.store.state.settings).toEqual(settings);
     expect(app.store.state.editor.screenBaseline).toBeNull();
   });
 
   it('ends them once as the element mounts readonly', async () => {
     const closeColorPicker = vi.fn();
+    const dragendColumnAll = vi.fn();
     const { app } = await setup(
       { readonly: true },
       {
         seed: app => {
           openEditState(app);
-          app.emitter.on({ closeColorPicker });
+          app.emitter.on({ closeColorPicker, dragendColumnAll });
         },
       }
     );
 
     expectEditStateClosed(app);
     expect(closeColorPicker).toHaveBeenCalledTimes(1);
+    expect(dragendColumnAll).toHaveBeenCalledTimes(1);
   });
 
   it('gives the settings back as it turns writable, the viewport, the tab and the name view kept on the screen', async () => {
