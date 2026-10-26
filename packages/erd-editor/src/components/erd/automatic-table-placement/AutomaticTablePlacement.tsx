@@ -195,6 +195,16 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
   const [close, onClose] = closePromise();
 
   let isClosed = false;
+  let stopSimulation = () => {};
+
+  // An overlay taken away by anything but its own toast, the element turning
+  // readonly among them, presses no Cancel, so the run ends with the overlay
+  // rather than land its placement once the simulation settles.
+  addUnsubscribe(() => {
+    isClosed = true;
+    stopSimulation();
+    onClose();
+  });
 
   const handleClose = () => {
     isClosed = true;
@@ -217,6 +227,7 @@ const AutomaticTablePlacement: FC<AutomaticTablePlacementProps> = (
 
   try {
     const simulation = createAutomaticTablePlacement(store.state);
+    stopSimulation = () => simulation.stop();
 
     const handleApply = () => {
       simulation.stop();

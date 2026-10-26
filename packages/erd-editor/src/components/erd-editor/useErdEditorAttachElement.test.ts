@@ -2272,7 +2272,13 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
     const closeColorPicker = vi.fn();
     const dragendColumnAll = vi.fn();
     const duplicateDragCancel = vi.fn();
-    app.emitter.on({ closeColorPicker, dragendColumnAll, duplicateDragCancel });
+    const cancelElkPlacement = vi.fn();
+    app.emitter.on({
+      closeColorPicker,
+      dragendColumnAll,
+      duplicateDragCancel,
+      cancelElkPlacement,
+    });
     openEditState(app);
     app.store.dispatchSync(
       scrollToAction({ originX: -120, originY: 80 }),
@@ -2288,6 +2294,7 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
     expect(closeColorPicker).toHaveBeenCalledTimes(1);
     expect(dragendColumnAll).toHaveBeenCalledTimes(1);
     expect(duplicateDragCancel).toHaveBeenCalledTimes(1);
+    expect(cancelElkPlacement).toHaveBeenCalledTimes(1);
     expect(app.store.state.settings).toEqual(settings);
     expect(app.store.state.editor.screenBaseline).toBeNull();
   });
@@ -2296,6 +2303,7 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
     const closeColorPicker = vi.fn();
     const dragendColumnAll = vi.fn();
     const duplicateDragCancel = vi.fn();
+    const cancelElkPlacement = vi.fn();
     const { app } = await setup(
       { readonly: true },
       {
@@ -2305,6 +2313,7 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
             closeColorPicker,
             dragendColumnAll,
             duplicateDragCancel,
+            cancelElkPlacement,
           });
         },
       }
@@ -2314,6 +2323,7 @@ describe('useErdEditorAttachElement turned readonly at run time', () => {
     expect(closeColorPicker).toHaveBeenCalledTimes(1);
     expect(dragendColumnAll).toHaveBeenCalledTimes(1);
     expect(duplicateDragCancel).toHaveBeenCalledTimes(1);
+    expect(cancelElkPlacement).toHaveBeenCalledTimes(1);
   });
 
   it('gives the settings back as it turns writable, the viewport, the tab and the name view kept on the screen', async () => {

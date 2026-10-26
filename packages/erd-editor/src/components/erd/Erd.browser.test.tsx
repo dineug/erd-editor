@@ -5,6 +5,7 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import {
   type AnyAction,
+  cache,
   type CompositionActions,
   compositionActionsFlat,
   createRef,
@@ -37,6 +38,7 @@ import {
   seedDiff,
 } from '@/__test-utils__/diffSeed';
 import { type AppContext, useAppContext } from '@/components/appContext';
+import type { createAutomaticTablePlacement } from '@/components/erd/automatic-table-placement/createAutomaticTablePlacement';
 import Erd from '@/components/erd/Erd';
 import * as erdStyles from '@/components/erd/Erd.styles';
 import {
@@ -56,6 +58,7 @@ import * as quickSearchStyles from '@/components/quick-search/QuickSearch.styles
 import { themeContext } from '@/components/themeContext';
 import { Open } from '@/constants/open';
 import { RelationshipType, Show } from '@/constants/schema';
+import { TablePlacement } from '@/constants/tablePlacement';
 import {
   EDIT_OPEN_KEYS,
   EditStateOpenActionTypes,
@@ -91,6 +94,7 @@ import { attachActionTag, Tag } from '@/engine/tag';
 import { useKeyBindingMap } from '@/hooks/useKeyBindingMap';
 import {
   copyAction,
+  openAutomaticTablePlacementAction,
   openColorPickerAction,
   openDiffViewerAction,
   openTablePropertiesAction,
@@ -103,6 +107,17 @@ import {
 } from '@/utils/table-clipboard/payload';
 import { TAKEOVERS } from '@/utils/takeover';
 
+type PlacementSimulation = ReturnType<typeof createAutomaticTablePlacement>;
+
+const hoisted = vi.hoisted(() => ({
+  /** Whether the next preview's simulation runs on its own timer, as the editor's does. */
+  simulationRuns: false,
+  /** Each simulation a placement preview built, in the order it was built. */
+  simulations: [] as PlacementSimulation[],
+  /** Each layout asked of the ELK worker, which a spec awaits to know it answered. */
+  layouts: [] as Array<Promise<unknown>>,
+}));
+
 vi.mock(
   '@/components/erd/automatic-table-placement/createAutomaticTablePlacement',
   async importOriginal => {
@@ -113,14 +128,32 @@ vi.mock(
 
     return {
       ...actual,
-      // Stopped at once: a preview that never settles is all a press needs, and
-      // the d3 timer would otherwise apply the layout after the spec unmounted.
+      // Stopped at once unless a spec lets it run: a preview that never
+      // settles is all a press needs.
       createAutomaticTablePlacement: (
         ...args: Parameters<typeof actual.createAutomaticTablePlacement>
-      ) => actual.createAutomaticTablePlacement(...args).stop(),
+      ) => {
+        const simulation = actual.createAutomaticTablePlacement(...args);
+        hoisted.simulations.push(simulation);
+        return hoisted.simulationRuns ? simulation : simulation.stop();
+      },
     };
   }
 );
+
+vi.mock('@/services/elk-layout', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/services/elk-layout')>();
+
+  return {
+    ...actual,
+    // The real worker answers; the spec holds each answer to know when it came.
+    createElkLayout: (...args: Parameters<typeof actual.createElkLayout>) => {
+      const layout = actual.createElkLayout(...args);
+      hoisted.layouts.push(layout);
+      return layout;
+    },
+  };
+});
 
 const MEMO_ID = 'note';
 
@@ -133,6 +166,9 @@ afterEach(async () => {
   // mouseup completes it, so an unfinished drag would outlive the mount.
   window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
   teardowns.splice(0).forEach(teardown => teardown());
+  hoisted.simulationRuns = false;
+  hoisted.simulations.splice(0).forEach(simulation => simulation.stop());
+  hoisted.layouts.length = 0;
   await whenDrawn();
 });
 
@@ -591,25 +627,67 @@ const ErdTurningReadonly: FC = (_props, ctx) => {
   );
 };
 
+/** Whether the ERD tab is the one shown, which another tab turns off. */
+const erdTab = observable({ shown: true });
+
+/**
+ * The ERD tab kept by cache as the element keeps it, so another tab shown
+ * leaves Erd mounted while it hears no prop the element turns.
+ */
+const ErdBehindTabs: FC = (_props, ctx) => {
+  const app = useAppContext(ctx);
+  useElementTurns(app.value);
+
+  return () => (
+    <div>
+      {cache(
+        erdTab.shown ? (
+          <div>
+            <Erd
+              isDarkMode={false}
+              mouseTracking={false}
+              readonly={elementFlags.readonly}
+            />
+          </div>
+        ) : null
+      )}
+    </div>
+  );
+};
+
 const TABLE_ID = 'users';
 
-/** An Erd with one table, open to edits until the spec turns it readonly. */
-function mountTurningReadonly(): Promise<Mounted> {
+/**
+ * An Erd with one table, open to edits until the spec turns it readonly, kept
+ * behind the element's tabs when asked.
+ */
+function mountTurningReadonly({ behindTabs = false } = {}): Promise<Mounted> {
   elementFlags.readonly = false;
+  erdTab.shown = true;
   const app = createTestAppContext({
     getReadonly: () => elementFlags.readonly,
     readonlyEditState: true,
   });
-  return mountErd(<ErdTurningReadonly />, app, store =>
-    store.dispatchSync(
-      addTableAction({ id: TABLE_ID, ui: { x: 400, y: 80, zIndex: 1 } })
-    )
+  return mountErd(
+    behindTabs ? <ErdBehindTabs /> : <ErdTurningReadonly />,
+    app,
+    store =>
+      store.dispatchSync(
+        addTableAction({ id: TABLE_ID, ui: { x: 400, y: 80, zIndex: 1 } })
+      )
   );
 }
 
 /** Turns the element readonly, or writable again, and waits for what that turn draws. */
 async function turnReadonly(readonly = true) {
   elementFlags.readonly = readonly;
+  await flush();
+  await whenDrawn();
+}
+
+/** Shows another tab in place of the ERD tab, or the ERD tab again. */
+async function showErdTab(shown: boolean) {
+  erdTab.shown = shown;
   await flush();
   await whenDrawn();
 }
@@ -625,6 +703,51 @@ const heldTableOf = () =>
 
 const tableXOf = ({ app }: Mounted) =>
   app.store.state.collections.tableEntities[TABLE_ID].ui.x;
+
+/** Where the reader's view stands and where the table stands, both of which a placement landing moves. */
+const placementScreenOf = ({ app }: Mounted) => {
+  const { settings, collections } = app.store.state;
+  const { x, y } = collections.tableEntities[TABLE_ID].ui;
+  return { originX: settings.originX, originY: settings.originY, x, y };
+};
+
+/** Whether each toast an app opens has been taken down, in the order they opened. */
+function listenToastsClosed({ emitter }: AppContext): boolean[] {
+  const closed: boolean[] = [];
+  teardowns.push(
+    emitter.on({
+      openToast: ({ payload: { close } }) => {
+        const index = closed.push(false) - 1;
+        close?.then(() => {
+          closed[index] = true;
+        });
+      },
+    })
+  );
+  return closed;
+}
+
+/**
+ * The rest of a run as the simulation's own timer steps it: a tick and what
+ * hears it, until the heat reaches its floor, then the end.
+ */
+function settleSimulation(simulation: PlacementSimulation) {
+  while (simulation.alpha() >= simulation.alphaMin()) {
+    simulation.tick();
+    simulation.on('tick')?.call(simulation);
+  }
+  simulation.on('end')?.call(simulation);
+}
+
+/** ELK parses megabytes of script in its worker before the first answer, which the first case here pays for. */
+const ELK_TIMEOUT = 30_000;
+
+const openElkPlacement = ({ emitter }: AppContext) =>
+  emitter.emit(
+    openAutomaticTablePlacementAction({
+      placement: TablePlacement.layeredVertical,
+    })
+  );
 
 describe('Erd - a readonly editor under an Alt drag', () => {
   it('draws no duplicate ghost, and its drop adds no table and selects none', async () => {
@@ -806,6 +929,111 @@ describe('Erd - what an editor lets go of once it turns readonly', () => {
     ).toHaveLength(1);
   });
 
+  it('ends a force placement run, whose toast closes and whose settling moves nothing', async () => {
+    hoisted.simulationRuns = true;
+    const mounted = await mountTurningReadonly();
+    const closed = listenToastsClosed(mounted.app);
+    openPlacementPreview(mounted.app);
+    await flush(6);
+    await whenDrawn();
+    const [simulation] = hoisted.simulations;
+    const stop = vi.spyOn(simulation, 'stop');
+    const before = placementScreenOf(mounted);
+    expect(closed).toEqual([false]);
+
+    await turnReadonly();
+
+    expect(closed).toEqual([true]);
+    expect(stop).toHaveBeenCalled();
+    settleSimulation(simulation);
+    await flush();
+    await whenDrawn();
+    expect(placementScreenOf(mounted)).toEqual(before);
+  });
+
+  it('lands nothing of a force placement nobody applied once it turns writable again', async () => {
+    hoisted.simulationRuns = true;
+    const mounted = await mountTurningReadonly();
+    openPlacementPreview(mounted.app);
+    await flush(6);
+    await whenDrawn();
+    const [simulation] = hoisted.simulations;
+    const before = placementScreenOf(mounted);
+
+    await turnReadonly();
+    await turnReadonly(false);
+    settleSimulation(simulation);
+    await flush();
+    await whenDrawn();
+
+    expect(placementScreenOf(mounted)).toEqual(before);
+    expect(
+      mounted.app.store.state.editor.openMap[Open.automaticTablePlacement]
+    ).toBe(false);
+  });
+
+  it(
+    'cancels an ELK placement still running, whose toast closes and whose answer moves nothing',
+    async () => {
+      const mounted = await mountTurningReadonly();
+      const closed = listenToastsClosed(mounted.app);
+      openElkPlacement(mounted.app);
+      await flush();
+      const before = placementScreenOf(mounted);
+      expect(closed).toEqual([false]);
+
+      await turnReadonly();
+      expect(closed).toEqual([true]);
+
+      await hoisted.layouts[0];
+      await flush();
+      await whenDrawn();
+      expect(placementScreenOf(mounted)).toEqual(before);
+    },
+    ELK_TIMEOUT
+  );
+
+  it(
+    'cancels an ELK placement running behind another tab, and lands none once writable again',
+    async () => {
+      const mounted = await mountTurningReadonly({ behindTabs: true });
+      const closed = listenToastsClosed(mounted.app);
+      openElkPlacement(mounted.app);
+      await flush();
+      const before = placementScreenOf(mounted);
+      expect(closed).toEqual([false]);
+
+      await showErdTab(false);
+      await turnReadonly();
+      expect(closed).toEqual([true]);
+
+      await turnReadonly(false);
+      await hoisted.layouts[0];
+      await flush();
+      await whenDrawn();
+      expect(placementScreenOf(mounted)).toEqual(before);
+    },
+    ELK_TIMEOUT
+  );
+
+  it(
+    'drops a placement that answers while readonly, its scroll included',
+    async () => {
+      const mounted = await mountTurningReadonly();
+      await turnReadonly();
+      const before = placementScreenOf(mounted);
+
+      openElkPlacement(mounted.app);
+      await flush();
+      await hoisted.layouts[0];
+      await flush();
+      await whenDrawn();
+
+      expect(placementScreenOf(mounted)).toEqual(before);
+    },
+    ELK_TIMEOUT
+  );
+
   it('closes time travel before its Apply can step the history', async () => {
     const mounted = await mountTurningReadonly();
     const { store } = mounted.app;
@@ -909,6 +1137,29 @@ describe('Erd - what an editor lets go of once it turns readonly', () => {
 
     expect(store.state.editor.drawTableGroup).toBe(false);
   });
+});
+
+describe('Erd - an ELK placement still running as the editor goes', () => {
+  it(
+    'is cancelled, its toast with it, and its answer moves nothing',
+    async () => {
+      const mounted = await mountTurningReadonly();
+      const closed = listenToastsClosed(mounted.app);
+      openElkPlacement(mounted.app);
+      await flush();
+      const before = placementScreenOf(mounted);
+      expect(closed).toEqual([false]);
+
+      mounted.unmount();
+      await flush();
+      expect(closed).toEqual([true]);
+
+      await hoisted.layouts[0];
+      await flush();
+      expect(placementScreenOf(mounted)).toEqual(before);
+    },
+    ELK_TIMEOUT
+  );
 });
 
 /** The modifier $mod resolves to, read off the platform the way hasAppleDevice reads it. */

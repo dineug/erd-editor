@@ -254,6 +254,20 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   };
 
   /**
+   * One per ELK placement still waiting on the worker, aborted as the element
+   * turns readonly or Erd goes. Each takes its Placing toast down as it aborts,
+   * and nothing the worker answers after it lands.
+   */
+  const elkRuns = new Set<AbortController>();
+
+  const cancelElkRuns = () => {
+    elkRuns.forEach(run => run.abort());
+    elkRuns.clear();
+  };
+
+  addUnsubscribe(cancelElkRuns);
+
+  /**
    * The scene's own part of a readonly turn, the element ending the store's
    * edit state: the hover follows the press rule, what it lit goes out either
    * way, and readonly ends a table group draw and a menu with no row to read.
@@ -565,6 +579,10 @@ const Erd: FC<ErdProps> = (props, ctx) => {
    */
   const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
     const { store } = app.value;
+    // The readonly filter would drop the moves but apply the scroll, a screen
+    // write, and move the reader's view to a placement that never landed.
+    if (store.getReadonly()) return;
+
     store.dispatch(toPlacementActions(store.state, tables, SOURCE));
   };
 
@@ -675,6 +693,9 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         closeColorPicker: () => {
           state.colorPickerShow = false;
         },
+        // The element sends it as it turns readonly, and it reaches this tab
+        // behind another one, where no prop does.
+        cancelElkPlacement: cancelElkRuns,
         openTableProperties: ({ payload: { tableId } }) => {
           const { doc } = store.state;
           const tablePropertiesIds = state.tablePropertiesIds.filter(id =>
@@ -699,11 +720,14 @@ const Erd: FC<ErdProps> = (props, ctx) => {
           // preview. ELK answers in one go and its layout is applied where the
           // document already is.
           if (isElkPlacement(placement)) {
+            const run = new AbortController();
+            elkRuns.add(run);
             runElkPlacement(
               app.value,
               placement,
-              handleChangeAutomaticTablePlacement
-            );
+              handleChangeAutomaticTablePlacement,
+              { signal: run.signal }
+            ).finally(() => elkRuns.delete(run));
             return;
           }
 

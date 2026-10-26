@@ -41,6 +41,7 @@ import { Unsubscribe } from '@/internal-types';
 import { SYSTEM_APPEARANCE } from '@/themes/radix-ui-theme';
 import { arrayHas } from '@/utils/arrayHas';
 import {
+  cancelElkPlacementAction,
   closeColorPickerAction,
   dragendColumnAllAction,
   duplicateDragCancelAction,
@@ -194,8 +195,8 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
 
   /**
    * Ends what a reader may not hold: an open editor, a draw, a column drag, an
-   * Alt drag's copies, the selection, the hand tool and the dialogs that write.
-   * Table Properties, the diff viewer and the image export stay open.
+   * Alt drag's copies, an ELK run, the selection, the hand tool and the dialogs
+   * that write. Table Properties, the diff viewer and the image export stay open.
    */
   const closeEditState = () => {
     store.dispatchSync(
@@ -208,11 +209,13 @@ export function useErdEditorAttachElement({ props, ctx, app, root }: Props) {
       changeHandToolAction({ value: false }),
       changeOpenMapAction(CLOSED_EDIT_DIALOGS)
     );
-    // The picker, a column drag's pointer and the Alt drag's copies are the ERD
-    // tab's own state, which no action reaches, and a copy's drop would unselect.
+    // The picker, a column drag's pointer, the Alt drag's copies and an ELK run
+    // are the ERD tab's own, which no action reaches, and the tab hears them
+    // behind another tab too; a copy's drop would unselect.
     emitter.emit(closeColorPickerAction());
     emitter.emit(dragendColumnAllAction());
     emitter.emit(duplicateDragCancelAction());
+    emitter.emit(cancelElkPlacementAction());
   };
 
   // One batch, so no peer's setter lands between a setting given back and the

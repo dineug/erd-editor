@@ -642,6 +642,35 @@ describe('AutomaticTablePlacement', () => {
       expect(viewport.isConnected).toBe(false);
       expect(viewport.style.width).toBe(before);
     });
+
+    // An overlay taken away by anything but its own toast, the editor turning
+    // readonly among them, presses no Cancel, so the unmount ends the run.
+    it('ends its run once unmounted, its toast down, and reports nothing when the simulation settles', async () => {
+      const app = createOrigin();
+      addTable(app, 't1', 'users');
+      const toasts = listenToasts(app);
+      const onChange = vi.fn();
+
+      await open(app, onChange);
+      const simulation = hoisted.simulations[0];
+      const stop = vi.spyOn(simulation, 'stop');
+      let closed = false;
+      toasts[0].close?.then(() => {
+        closed = true;
+      });
+
+      mounted?.unmount();
+      mounted = null;
+      await flush();
+
+      expect(stop).toHaveBeenCalled();
+      expect(closed).toBe(true);
+      simulation.on('end').call(simulation);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(
+        app.store.state.editor.openMap[Open.automaticTablePlacement]
+      ).toBeUndefined();
+    });
   });
 
   describe('when the simulation cannot be built', () => {

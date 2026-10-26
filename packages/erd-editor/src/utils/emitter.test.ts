@@ -2,6 +2,7 @@ import { AnyAction, html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
+  cancelElkPlacementAction,
   closeColorPickerAction,
   copyAction,
   dragendColumnAllAction,
@@ -235,6 +236,10 @@ describe('action creators', () => {
     expect(openDiffViewerAction({ value: 'diff' })).toEqual({
       type: 'openDiffViewer',
       payload: { value: 'diff' },
+    });
+    expect(cancelElkPlacementAction()).toEqual({
+      type: 'cancelElkPlacement',
+      payload: undefined,
     });
     expect(
       duplicateDragStartAction({ tableIds: ['a'], memoIds: ['b'] })
