@@ -385,18 +385,12 @@ const Erd: FC<ErdProps> = (props, ctx) => {
 
   /**
    * A readonly press pans or lights by the read-only view's rule, except under a
-   * takeover or Table Properties. It still pinches, closes the colour picker and
-   * holds a takeover's middle press with its lift, as an edit press does.
+   * takeover or Table Properties. It still pinches and holds a takeover's middle
+   * press with its lift, as an edit press does.
    */
   const handleReadPress = (event: MouseEvent | TouchEvent, el: HTMLElement) => {
     pinched = pinch.handleTouchstart(event);
     if (!getShowOverLayout()) readPress.handlePress(event);
-    if (pinched) return;
-
-    if (!el.closest('.color-picker')) {
-      const { emitter } = app.value;
-      emitter.emit(closeColorPickerAction());
-    }
 
     if (
       isMiddleButtonPress(event) &&
@@ -740,17 +734,29 @@ const Erd: FC<ErdProps> = (props, ctx) => {
     );
   });
 
+  /** The root's cursor: a read pan's, the hand's, a group draw's or a relationship draw's notation. */
+  const rootCursor = (): string => {
+    const { handTool, drawRelationship } = app.value.store.state.editor;
+    if (readPress.state.panning) return 'grabbing';
+    if (handTool) return state.grabCursor;
+    if (drawsTableGroup()) return 'crosshair';
+    if (!drawRelationship) return '';
+
+    const icon = getRelationshipIcon(
+      drawRelationship.relationshipType,
+      props.isDarkMode
+    );
+    return `url("${icon}") 16 16, auto`;
+  };
+
   return () => {
     const { store } = app.value;
-    const {
-      editor: { drawRelationship, openMap },
-    } = store.state;
+    const { handTool, openMap, zenMode } = store.state.editor;
 
     const showAutomaticTablePlacement = openMap[Open.automaticTablePlacement];
     const showTableProperties = openMap[Open.tableProperties];
     const showTimeTravel = openMap[Open.timeTravel];
     const showDiffViewer = openMap[Open.diffViewer];
-    const { handTool, zenMode } = store.state.editor;
     // An empty document has no travel and draws no scrollbar; the map of it
     // would be as empty, so it is left out the same way. Read off the lists,
     // so a drag step, which moves rects alone, does not run this render again.
@@ -770,23 +776,11 @@ const Erd: FC<ErdProps> = (props, ctx) => {
       isEmptyDocument(store.state);
 
     const drawsGroup = drawsTableGroup();
-    const cursor = readPress.state.panning
-      ? 'grabbing'
-      : handTool
-        ? state.grabCursor
-        : drawsGroup
-          ? 'crosshair'
-          : drawRelationship
-            ? `url("${getRelationshipIcon(
-                drawRelationship.relationshipType,
-                props.isDarkMode
-              )}") 16 16, auto`
-            : '';
 
     return (
       <div
         class={styles.root}
-        style={{ cursor }}
+        style={{ cursor: rootCursor() }}
         use:ref={ref(root)}
         on:contextmenu={handleContextmenu}
         on:mousedown={contextMenu.onMousedown}
@@ -797,7 +791,7 @@ const Erd: FC<ErdProps> = (props, ctx) => {
         <Canvas
           root={root}
           canvas={canvas}
-          grabMove={(handTool && !props.readonly) || drawsGroup}
+          grabMove={handTool || drawsGroup}
           overlay={props.readonly ? undefined : EditOverlay}
           layers={editingLayers}
         />

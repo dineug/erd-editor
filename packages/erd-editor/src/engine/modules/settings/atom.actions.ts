@@ -396,10 +396,10 @@ function replaceCodeSetting(
   tags: number | undefined
 ): void {
   const target = settingWriteTarget(state, tags, field);
-  if (isScreenWrite(tags)) {
+  const write = () => {
     target[field] = value;
-    return;
-  }
+  };
+  if (isScreenWrite(tags)) return write();
 
   replaceOperator(
     state.lww,
@@ -407,9 +407,7 @@ function replaceCodeSetting(
     'settings.code',
     'settings',
     field,
-    () => {
-      target[field] = value;
-    }
+    write
   );
 }
 
@@ -698,16 +696,19 @@ const changeNameViewMode: ReducerType<typeof ActionType.changeNameViewMode> = (
 ) => {
   if (!hasNameViewMode(value)) return;
 
-  const own = editorId === state.editor.id;
-  if (isScreenWrite(tags)) {
-    if (own) keepScreenBaseline(state, 'nameViewMode');
-  } else if (shared === true) {
+  const screen = isScreenWrite(tags);
+  if (shared === true && !screen) {
     replaceNameViewMode(state, version ?? clock.getVersion(), value);
     return;
-  } else if (own) {
+  }
+  if (editorId !== state.editor.id) return;
+
+  if (screen) {
+    keepScreenBaseline(state, 'nameViewMode');
+  } else {
     endScreenBaseline(state.editor, 'nameViewMode');
   }
-  if (own) showNameViewMode(state, value);
+  showNameViewMode(state, value);
 };
 
 /**

@@ -30,7 +30,7 @@ export const isRemoteWrite = (tags?: number): boolean =>
   !isNil(tags) && (bHas(tags, Tag.shared) || bHas(tags, Tag.following));
 
 /** Whether the store holds the document's value of the unit under its screen. */
-export const hasScreenBaseline = (editor: Editor, unit: ScreenUnit): boolean =>
+const hasScreenBaseline = (editor: Editor, unit: ScreenUnit): boolean =>
   !isNil(editor.screenBaseline?.[unit]);
 
 /**
@@ -51,7 +51,10 @@ export function keepScreenBaseline(state: RootState, unit: ScreenUnit): void {
 }
 
 /** Drops the units named from the baseline, so the screen stands for the document again. */
-export function endScreenBaseline(editor: Editor, ...units: ScreenUnit[]) {
+export function endScreenBaseline(
+  editor: Editor,
+  ...units: ScreenUnit[]
+): void {
   const baseline = editor.screenBaseline;
   if (!baseline) return;
 
