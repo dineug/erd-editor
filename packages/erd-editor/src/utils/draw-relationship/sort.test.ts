@@ -371,6 +371,73 @@ describe('relationshipSort', () => {
     });
   });
 
+  it('spreads the right anchors of a short table with a loop as far apart as its markers need', () => {
+    // One row makes A 54px tall, which keeps only 40 to 42 past the inset and
+    // the loop's 28px; the two anchors give up the inset the reserve clears.
+    const a = addTable(state, 'A', 0, 0);
+    a.columnIds = ['c0'];
+    addTable(state, 'B', 400, -100);
+    addTable(state, 'C', 400, 100);
+    addRelationship(state, 'self', 'A', 'A');
+    const ab = addRelationship(state, 'ab', 'A', 'B');
+    const ac = addRelationship(state, 'ac', 'A', 'C');
+
+    relationshipSort(state);
+
+    expect(ab.start).toMatchObject({
+      x: 134,
+      y: 28,
+      direction: Direction.right,
+    });
+    expect(ac.start).toMatchObject({
+      x: 134,
+      y: 42,
+      direction: Direction.right,
+    });
+  });
+
+  it('keeps the anchors of a side two loops fill inside the table', () => {
+    // Two loops on a 30px table reserve 32px of its right side, more than it
+    // has, which put the anchor below the table's bottom edge.
+    addTable(state, 'A', 0, 0);
+    addTable(state, 'B', 400, 0);
+    addRelationship(state, 'self', 'A', 'A');
+    addRelationship(state, 'self2', 'A', 'A');
+    const ab = addRelationship(state, 'ab', 'A', 'B');
+
+    relationshipSort(state);
+
+    expect(ab.start).toMatchObject({
+      x: 134,
+      y: TABLE_HEIGHT,
+      direction: Direction.right,
+    });
+  });
+
+  it('spreads the top anchors a loop squeezes over the inset it already clears', () => {
+    // Nine tables far above A take its top side, which past the inset and the
+    // loop's 28px kept 82px, 10.25 between neighbours, and the markers met.
+    addTable(state, 'A', 0, 0);
+    addRelationship(state, 'self', 'A', 'A');
+    const ups = Array.from({ length: 9 }, (_, index) => {
+      addTable(state, `T${index}`, -400 + index * 100, -2000);
+      return addRelationship(state, `up${index}`, 'A', `T${index}`);
+    });
+
+    relationshipSort(state);
+
+    const xs = ups.map(({ start }) => {
+      expect(start.direction).toBe(Direction.top);
+      return start.x;
+    });
+    xs.sort((a, b) => a - b);
+    expect(xs[0]).toBeGreaterThanOrEqual(0);
+    expect(xs[xs.length - 1]).toBeLessThanOrEqual(TABLE_WIDTH - 28);
+    xs.slice(1).forEach((x, index) => {
+      expect(x - xs[index]).toBeGreaterThanOrEqual(LINE_SIZE * 2);
+    });
+  });
+
   it('caps how far apart two anchors are spread on a tall table', () => {
     // 20 columns make A 510px tall. Dividing that edge by the anchor count puts
     // the two anchors 255px apart, splayed to opposite ends and converging

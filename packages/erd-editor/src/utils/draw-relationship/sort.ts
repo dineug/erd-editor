@@ -104,6 +104,11 @@ const SELF_CORNER_OFFSET = 20;
 const SELF_CORNER_STRIDE = 18;
 /** Gap kept between the outermost loop and the nearest ordinary anchor. */
 const SELF_CLEARANCE = 8;
+/**
+ * How far apart the anchors of a side its loops squeeze must sit for their
+ * markers, LINE_SIZE either side of each anchor, not to run into each other.
+ */
+const SQUEEZED_PITCH = LINE_SIZE * 2;
 
 /**
  * The angle at which each side's clockwise walk begins. Reading the boundary as
@@ -663,6 +668,22 @@ function placeSide(
       high -= reserve;
     } else if (direction === DirectionName.right) {
       low += reserve;
+    }
+  }
+
+  // A side the loops squeeze too short for its markers gives up the inset the
+  // reserve already clears, then the inset at its other end, and reaches no
+  // further than its own edge.
+  const needed = (entries.length - 1) * SQUEEZED_PITCH;
+  if (reserve && high - low < needed) {
+    const edgeLow = isX ? objectPoint.lt.x : objectPoint.lt.y;
+    const edgeHigh = isX ? objectPoint.rb.x : objectPoint.rb.y;
+    if (direction === DirectionName.right) {
+      low = Math.min(edgeLow + reserve, edgeHigh);
+      if (high - low < needed) high = edgeHigh;
+    } else if (direction === DirectionName.top) {
+      high = Math.max(edgeHigh - reserve, edgeLow);
+      if (high - low < needed) low = edgeLow;
     }
   }
   if (high < low) {
