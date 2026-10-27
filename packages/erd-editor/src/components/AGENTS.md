@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-27 -->
 
 # components
 
@@ -36,7 +36,7 @@
 | Directory | Purpose |
 | --- | --- |
 | `erd/` | `erd/AGENTS.md`: the name views, keys and alternate keys, Table Properties, the buttons beside a draw's target, coordinates and scrolling, table groups in the scene, the closed shadow root, overlays, the column drag handle, pointer and key handling (`YIELDS_TO_A_CARET`, Escape, Delete, Backspace), the welcome screen |
-| `export-image/` | `export-image/AGENTS.md`: the one dialog every image export goes through, PNG and SVG, and the contract of the shared modal `primitives/dialog/Dialog.tsx` |
+| `export-image/` | `export-image/AGENTS.md`: the one dialog every image export the editor offers goes through, PNG and SVG, whose options the package root's `toImage` takes, and the contract of the shared modal `primitives/dialog/Dialog.tsx` |
 | `schema-sql/` | `schema-sql/AGENTS.md`: the Schema SQL tab, its options panel and its script editors |
 | `generator-code/` | `generator-code/AGENTS.md`: the Code Generator tab, its options panel, the language menu, Save file and highlighting |
 | `dictionary/` | `dictionary/AGENTS.md`: the Dictionary tab, its four sheets on `@dineug/grid`, how a grid commit resolves to row ids, where a sheet's version comes from, where a check leads and the marks on the cells it names, its keys, the grid's theme, a read-only document, and its CSV import and export |

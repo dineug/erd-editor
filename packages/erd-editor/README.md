@@ -21,7 +21,7 @@ leaking styles either way. It is the same editor as [erd-editor.io](https://erd-
 - **Import** — SQL DDL, GraphQL SDL, DBML and AML from the menu or [`setSchema*`](#importing-a-schema),
   replacing the diagram or adding to it
 - **Export** — DDL for eight databases, also from `getSchemaSQL()`, code in 22 languages and ORMs,
-  PNG and SVG
+  PNG and SVG, also from [`toImage()`](#images)
 - **Navigate** — command palette (`Ctrl`/`Cmd`+`K`), an Explorer tree with find and replace, Graph
   and Flow views
 - **History** — undo and redo, time travel through the session, a diff viewer (`setDiffValue()`)
@@ -402,6 +402,30 @@ Skip a `type` you do not handle: a replacing `setSchemaJSON()` empties the docum
 payload. Unset or `null`, the browser's download and file picker work. The Dictionary tab's Import
 CSV always opens the browser's file picker, since no `type` names CSV, and its Export CSV goes
 through the export callback.
+
+## Images
+
+`toImage()` draws a document, the text a `value` holds, as a PNG `Blob` or an SVG string, with the
+Export image dialog's options. It draws the whole document at 100%, whatever zoom it was saved at,
+and needs a browser: it measures and draws on a canvas, in a `SharedWorker` where there is one.
+
+```js
+import { toImage } from '@dineug/erd-editor';
+
+const png = await toImage(value, { format: 'png', scale: 3 });
+const svg = await toImage(value, { format: 'svg', darkMode: true, background: false });
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `format` | | `'png'` resolves to a `Blob`, `'svg'` to a string. |
+| `background` | `true` | Paint the canvas color behind the diagram; `false` leaves it transparent. |
+| `darkMode` | `false` | Draw the dark theme in place of the light one. |
+| `scale` | `2` | `1`, `2` or `3` image pixels per unit, PNG only; cut to what a canvas holds. |
+
+It rejects text that does not parse, as the viewer's `value` does, and a value outside the table,
+and reads no other option. Empty text, or JSON with none of a document's fields, draws an empty
+diagram. The words the diagram draws itself, such as an unnamed table's placeholder, are English.
 
 ## Headless replica
 
