@@ -5,6 +5,8 @@ import type {
   Event,
 } from '@sentry/react';
 
+import { isEmbedPath } from '@/utils/embedPath';
+
 type TransactionEvent = Parameters<
   NonNullable<BrowserOptions['beforeSendTransaction']>
 >[0];
@@ -12,14 +14,14 @@ type SpanJson = Parameters<NonNullable<BrowserOptions['beforeSendSpan']>>[0];
 type SpanData = Record<string, unknown>;
 
 /**
- * What Limited Use keeps out of Sentry on /gdrive: Drive file ids, which sit in
- * the path of every Drive URL, file names in ui breadcrumbs, and the ?state= and
- * ?file= of the route, which carry ids and the account's OpenID sub.
+ * What stays out of Sentry: Drive file ids and names and the ?state= and ?file=
+ * of /gdrive (Limited Use), the room and key in a /live invite's fragment, and
+ * the document URL an /embed page names in ?src= and then fetches.
  */
 const GOOGLE_HOST =
   /^https?:\/\/[^/?#]*\.(?:googleapis|google)\.com(?:[/?#]|$)/;
 const PRIVATE_PATH =
-  /^(?:https?:\/\/[^/?#]+)?\/(?:gdrive|api\/auth)(?:[/?#]|$)/i;
+  /^(?:https?:\/\/[^/?#]+)?\/(?:gdrive|api\/auth|live|embed)(?:[/?#]|$)/i;
 const GDRIVE_PATH = /^(?:https?:\/\/[^/?#]+)?\/gdrive(?:[/?#]|$)/i;
 const FILE_ID = /(\/files\/)[^/?#]+/g;
 const UNTRACED = /googleapis\.com|accounts\.google\.com|\/api\/auth\//;
@@ -28,10 +30,15 @@ const URL_KEYS = ['url', 'http.url', 'url.full', 'from', 'to'];
 const ELEMENT_KEY = /^(?:lcp\.(?:element|id|url)|cls\.source\.\d+)$/;
 const FILTERED = '[Filtered]';
 
-/** The router matches a percent-decoded path in any case: /GDrive and /%67drive are /gdrive. */
+/**
+ * The router matches a percent-decoded path in any case: /GDrive and /%67drive
+ * are /gdrive. It decodes the path alone, so a broken escape after it does not
+ * keep the path from matching here either.
+ */
 function decoded(url: string): string {
+  const path = url.split(/[?#]/, 1)[0];
   try {
-    return decodeURI(url);
+    return decodeURI(path) + url.slice(path.length);
   } catch {
     return url;
   }
@@ -47,8 +54,8 @@ function isOnGdrive(pathname: string): boolean {
 }
 
 /**
- * A Drive or /gdrive URL without its file ids, query and fragment; any other
- * URL as it is.
+ * A Drive, /gdrive, /api/auth, /live or /embed URL without its file ids, query
+ * and fragment; any other URL as it is.
  */
 export function scrubUrl(url: string): string {
   if (!isPrivateUrl(url)) return url;
@@ -60,9 +67,15 @@ function scrubText(text: string): string {
   return text.split(' ').map(scrubUrl).join(' ');
 }
 
-/** Whether a request gets a span: never one to Google or the auth relay. */
-export function shouldCreateSpanForRequest(url: string): boolean {
-  return !UNTRACED.test(url);
+/**
+ * Whether a request from the page at pathname gets a span: never one to Google
+ * or the auth relay, and none on /embed, whose viewer fetches the document.
+ */
+export function shouldCreateSpanForRequest(
+  url: string,
+  pathname: string
+): boolean {
+  return !isEmbedPath(pathname) && !UNTRACED.test(url);
 }
 
 /** The URLs of span or breadcrumb data scrubbed, and the query and fragment of a private one dropped. */
@@ -99,8 +112,8 @@ function scrubHeaders(headers: Record<string, string> | undefined) {
 
 /**
  * The event with every URL it carries scrubbed: request, referrer, transaction,
- * the root span's data, spans and breadcrumbs. A /gdrive transaction also loses
- * the elements its web vitals name.
+ * the root span's data, spans, breadcrumbs and exception frames. A /gdrive
+ * transaction also loses the elements its web vitals name.
  */
 export function scrubEvent<T extends Event>(event: T): T {
   const { request } = event;
@@ -127,6 +140,16 @@ export function scrubEvent<T extends Event>(event: T): T {
   for (const breadcrumb of event.breadcrumbs ?? []) {
     scrubData(breadcrumb.data);
   }
+  for (const exception of event.exception?.values ?? []) {
+    for (const frame of exception.stacktrace?.frames ?? []) {
+      if (frame.filename !== undefined) {
+        frame.filename = scrubUrl(frame.filename);
+      }
+      if (frame.abs_path !== undefined) {
+        frame.abs_path = scrubUrl(frame.abs_path);
+      }
+    }
+  }
   return event;
 }
 
@@ -151,22 +174,24 @@ function hasQuery(value: unknown): boolean {
   return typeof value === 'string' && /[?#]/.test(value);
 }
 
+/** The URL of a fetch or xhr breadcrumb, '' when it names none; undefined for any other. */
+function requestUrl({ category, data }: Breadcrumb): string | undefined {
+  if (category !== 'fetch' && category !== 'xhr') return undefined;
+  return typeof data?.url === 'string' ? data.url : '';
+}
+
 /**
- * Drops what could carry Google data and scrubs the rest. On /gdrive a ui
- * breadcrumb names what was clicked, "Actions for <file name>" among them, and
- * a navigation with a query carries ?state= or ?file=.
+ * Drops what could carry Google data, and every request on /embed, and scrubs
+ * the rest. On /gdrive a ui breadcrumb names what was clicked, "Actions for
+ * <file name>" among them, and a navigation's query carries ?state= or ?file=.
  */
 export function filterBreadcrumb(
   breadcrumb: Breadcrumb,
   pathname: string
 ): Breadcrumb | null {
   const { category = '', data } = breadcrumb;
-  const url = data?.url;
-  if (
-    (category === 'fetch' || category === 'xhr') &&
-    typeof url === 'string' &&
-    !shouldCreateSpanForRequest(url)
-  ) {
+  const url = requestUrl(breadcrumb);
+  if (url !== undefined && !shouldCreateSpanForRequest(url, pathname)) {
     return null;
   }
   if (isOnGdrive(pathname)) {
@@ -183,11 +208,12 @@ export function filterBreadcrumb(
 }
 
 /**
- * The Sentry options that apply the rules above, for Sentry.init; pathname is
- * read whenever one runs. An interaction's span goes when the tab is hidden,
- * perhaps after Back left /gdrive, so a page that showed /gdrive stays marked.
+ * The options that apply the rules above: tracing for browserTracingIntegration
+ * and init for Sentry.init. pathname is read whenever one runs; what /gdrive or
+ * /embed started stays marked, as Sentry sends some of it after the page left.
  */
 export function sentryPrivacyOptions(pathname: () => string) {
+  // An interaction's span goes when the tab is hidden, perhaps off /gdrive.
   let showedGdrive = false;
   const onGdrive = (route?: unknown) => {
     showedGdrive ||=
@@ -195,21 +221,35 @@ export function sentryPrivacyOptions(pathname: () => string) {
       (typeof route === 'string' && isOnGdrive(route));
     return showedGdrive;
   };
+  // Sentry asks the tracing option as a request starts, and records its
+  // breadcrumb as it ends, an abort too, perhaps after the page left /embed.
+  const embedRequests = new Set<string>();
 
   return {
-    beforeBreadcrumb: (breadcrumb: Breadcrumb) => {
-      onGdrive();
-      return filterBreadcrumb(breadcrumb, pathname());
+    tracing: {
+      shouldCreateSpanForRequest: (url: string) => {
+        const path = pathname();
+        if (isEmbedPath(path)) embedRequests.add(url);
+        return shouldCreateSpanForRequest(url, path);
+      },
     },
-    beforeSend: (event: ErrorEvent) => {
-      onGdrive();
-      return scrubEvent(event);
+    init: {
+      beforeBreadcrumb: (breadcrumb: Breadcrumb) => {
+        onGdrive();
+        const url = requestUrl(breadcrumb);
+        if (url !== undefined && embedRequests.has(url)) return null;
+        return filterBreadcrumb(breadcrumb, pathname());
+      },
+      beforeSend: (event: ErrorEvent) => {
+        onGdrive();
+        return scrubEvent(event);
+      },
+      beforeSendTransaction: (event: TransactionEvent) => {
+        onGdrive(event.transaction);
+        return scrubEvent(event);
+      },
+      beforeSendSpan: (span: SpanJson) =>
+        scrubSpan(span, onGdrive(span.data?.transaction)),
     },
-    beforeSendTransaction: (event: TransactionEvent) => {
-      onGdrive(event.transaction);
-      return scrubEvent(event);
-    },
-    beforeSendSpan: (span: SpanJson) =>
-      scrubSpan(span, onGdrive(span.data?.transaction)),
   };
 }

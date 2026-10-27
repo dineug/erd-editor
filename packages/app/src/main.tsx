@@ -17,20 +17,17 @@ import { registerSW } from '@/registerSW';
 import Root from '@/routes/root/Root';
 import { store } from '@/store';
 import { reportError } from '@/utils/reportError';
-import {
-  sentryPrivacyOptions,
-  shouldCreateSpanForRequest,
-} from '@/utils/sentryScrub';
+import { sentryPrivacyOptions } from '@/utils/sentryScrub';
 
 if (import.meta.env.MODE === 'production') {
+  // Drive file ids, file names and the account's id stay out (Limited Use),
+  // and so do a /live invite's key and the document URL of an /embed page.
+  const privacy = sentryPrivacyOptions(() => location.pathname);
   Sentry.init({
     dsn: 'https://77d8b1a5cdead25c1dea4978fba38a70@o245231.ingest.us.sentry.io/4506887372668928',
-    integrations: [
-      Sentry.browserTracingIntegration({ shouldCreateSpanForRequest }),
-    ],
+    integrations: [Sentry.browserTracingIntegration(privacy.tracing)],
     tracesSampleRate: 0.1,
-    // Drive file ids, file names and the account's id stay out (Limited Use).
-    ...sentryPrivacyOptions(() => location.pathname),
+    ...privacy.init,
   });
 }
 
