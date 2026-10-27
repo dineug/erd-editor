@@ -4,7 +4,7 @@ import type { LocaleMessages } from '@/i18n/translate';
 import type { Settings } from '@/internal-types';
 import type { Theme } from '@/themes/tokens';
 import { withTimeout } from '@/utils/promise';
-import { spawnExportPngWorker } from '@/workers/spawn';
+import { spawnExportPngWorker } from '@/workers/exportPng.spawn';
 
 import type { ExportPngService } from './exportPngService';
 import {

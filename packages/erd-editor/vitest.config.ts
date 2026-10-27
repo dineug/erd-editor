@@ -104,8 +104,8 @@ export default defineConfig({
         // of a production build and its consumer lives under e2e, which no
         // coverage run reaches.
         'src/konva/testHandle.ts',
-        // The umd builds' spawn module; the es build and every spec use the url one.
-        'src/workers/spawn.inline.ts',
+        // The umd builds' spawn modules; the es build and every spec use the url ones.
+        'src/workers/*.spawn.inline.ts',
         // The umd entries, which only re-export what their own modules' specs
         // cover; a umd build alone evaluates one.
         'src/umd/**',

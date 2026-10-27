@@ -36,7 +36,7 @@
 | `shiki/index.ts` | `getShikiService`: spawns the worker on the first code panel that asks, keeps it for the session, answers `null` on a host with none |
 | `shiki/shikiService.ts`, `shiki.shared-worker.ts` | `ShikiService.codeToHtml` over the grammars `constants/language.ts` maps onto, and the worker's entry |
 | `shiki/graphqlGrammar.ts` | `@shikijs/langs/graphql`'s grammar without its `embeddedLangs` (rules in `src/components/generator-code/AGENTS.md`) |
-| `src/workers/spawn.ts` | The one place the three SharedWorkers are constructed |
+| `src/workers/<worker>.spawn.ts` | The one place each SharedWorker is constructed, a module per worker |
 | `src/components/erd/automatic-table-placement/` | The force simulation (`forceGroupBoxes`, `GROUP_BOX_GAP`) and `toPlacementActions` |
 | `src/utils/tableGroup.ts` | `getTableGroupWraps`, a group's padded bounds |
 

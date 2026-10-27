@@ -128,7 +128,7 @@
     },
     {
       "path": "workers",
-      "why": "The worker entries and the module that spawns them; the viewer starts no worker."
+      "why": "The worker entries and the modules that spawn them; the viewer starts no worker."
     },
     {
       "path": "utils/file",

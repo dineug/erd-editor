@@ -1,7 +1,7 @@
 import * as Comlink from 'comlink';
 
 import { withTimeout } from '@/utils/promise';
-import { spawnElkLayoutWorker } from '@/workers/spawn';
+import { spawnElkLayoutWorker } from '@/workers/elkLayout.spawn';
 
 import type { ElkLayoutPoint, ElkLayoutRequest } from './elkGraph';
 import type { ElkLayoutService } from './elkLayoutService';

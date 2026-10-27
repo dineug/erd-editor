@@ -56,11 +56,11 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       // The spawn alias goes first: alias entries match in order, and the bare
-      // @ entry would otherwise claim this specifier too.
+      // @ entry would otherwise claim these specifiers too.
       alias: [
         {
-          find: '@/workers/spawn',
-          replacement: join(packageDir, 'src/workers/spawn.inline.ts'),
+          find: /^@\/workers\/(\w+)\.spawn$/,
+          replacement: join(packageDir, 'src/workers/$1.spawn.inline.ts'),
         },
         { find: '@', replacement: join(packageDir, 'src') },
       ],
