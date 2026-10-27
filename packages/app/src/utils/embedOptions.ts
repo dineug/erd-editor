@@ -15,6 +15,16 @@ export type EmbedGrayColor = Exclude<GrayColor, 'auto'>;
 /** What the viewer's setLocale takes: system, or one of its display languages. */
 export type EmbedLocale = Parameters<ErdViewerElement['setLocale']>[0];
 export type EmbedNameView = NonNullable<ErdViewerElement['nameView']>;
+/** What the options reach of the viewer, which a spec stands in for with a recorder. */
+export type EmbedViewerTarget = Pick<
+  ErdViewerElement,
+  | 'setPresetTheme'
+  | 'setLocale'
+  | 'setSystemLocale'
+  | 'nameView'
+  | 'minimap'
+  | 'controls'
+>;
 
 /** The options of an /embed URL; null is an option the URL leaves to the viewer. */
 export type EmbedOptions = {
@@ -144,4 +154,32 @@ export function embedAppearance(
   systemDark: boolean
 ): ResolvedAppearance {
   return resolveAppearance(theme ?? EMBED_DEFAULTS.theme, systemDark);
+}
+
+type EmbedPreset = Parameters<EmbedViewerTarget['setPresetTheme']>[0];
+
+/** The theme and colors the options name, each key only when named; null for none. */
+function presetOf(options: EmbedOptions): EmbedPreset | null {
+  const preset: EmbedPreset = {};
+  if (options.theme !== null) preset.appearance = options.theme;
+  if (options.accentColor !== null) preset.accentColor = options.accentColor;
+  if (options.grayColor !== null) preset.grayColor = options.grayColor;
+  return Object.keys(preset).length ? preset : null;
+}
+
+/**
+ * Hands an embedded viewer what its URL names and nothing it leaves out, so the
+ * viewer's own defaults stand: the theme, the language, the name view, then the
+ * two parts. It never sets the system language, which stays the page's.
+ */
+export function applyEmbedOptions(
+  viewer: EmbedViewerTarget,
+  options: EmbedOptions
+) {
+  const preset = presetOf(options);
+  if (preset) viewer.setPresetTheme(preset);
+  if (options.locale !== null) viewer.setLocale(options.locale);
+  if (options.nameView !== null) viewer.nameView = options.nameView;
+  viewer.minimap = options.minimap;
+  viewer.controls = options.controls;
 }

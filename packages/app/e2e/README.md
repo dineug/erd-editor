@@ -5,7 +5,9 @@ real browser contexts, a real `RTCPeerConnection` and a real `navigator.locks`
 handover between tabs; for the schema list, the real editor, IndexedDB behind its
 worker, the URL, file choosers, downloads, the pre-paint theme script and the
 browser's language; for the policy pages, `/privacy`, `/terms` and `/support` as
-static files with JavaScript off; for `/gdrive`, the real auth relay under
+static files with JavaScript off; for `/embed`, the real viewer fetching a
+document from another origin under the browser's CORS rules, at the top level
+and in another site's frame; for `/gdrive`, the real auth relay under
 `vp dev`, a popup, cookies, tabs sharing a file and its lock, and the editor
 saving to a Drive in memory.
 
@@ -60,13 +62,15 @@ the relay, so run the two suites apart or set `E2E_RELAY_PORT`.
 ## What makes it deterministic
 
 **A local relay.** `support/relay.mjs` is a small in-memory nostr relay —
-enough of NIP-01 for trystero to complete a WebRTC handshake, and nothing else.
-`playwright.config.ts` starts it alongside the Vite dev server (`vp dev`) and
-points the app at it with `ERD_EDITOR_NOSTR_RELAY_URLS`, so with that variable
-unset in your shell no test touches a public relay. A value already exported
-there is used instead: `ERD_EDITOR_NOSTR_RELAY_URLS=''` runs the suite against
-the public relay pool and the mqtt fallback, a slow, network-dependent smoke
-test. Pointing the variable at a relay also drops the mqtt fallback (see
+enough of NIP-01 for trystero to complete a WebRTC handshake — whose HTTP side
+also answers `/health` and the `/embed` specs' two paths (Documents on another
+origin for `/embed`, below). `playwright.config.ts` starts it alongside the Vite
+dev server (`vp dev`) and points the app at it with
+`ERD_EDITOR_NOSTR_RELAY_URLS`, so with that variable unset in your shell no test
+touches a public relay. A value already exported there is used instead:
+`ERD_EDITOR_NOSTR_RELAY_URLS=''` runs the suite against the public relay pool
+and the mqtt fallback, a slow, network-dependent smoke test. Pointing the
+variable at a relay also drops the mqtt fallback (see
 `src/services/collaborative/room.ts`), which keeps the relay list to one.
 
 Run it with `E2E_RELAY_DEBUG=1` to log every `REQ`/`EVENT` it handles. Outside CI
@@ -136,6 +140,20 @@ Neither dev server reads `public/_headers`, so the check covers the app's own
 refusal (`isFramed`) alone; `src/pagesHeaders.test.ts` holds the file's two
 `/gdrive` rules in the unit tests.
 
+**Documents on another origin for `/embed`.** `support/embed.ts` routes
+`https://docs.e2e.test` in the browser context, every frame included, and names
+each answer's `Access-Control-Allow-Origin`, `*` or another origin: Playwright
+adds that header, from the request's `Origin`, to a routed cross-origin answer
+that lacks one, so the answer with none comes from the relay's own HTTP side,
+`/__docs/no-cors.erd.json`, a real server on another port. Another site's frame is
+the relay's `/__framer?src=…`, which frames the URL it is given as it stands:
+Chrome lets no routed origin frame localhost. The specs build both from
+`E2E_RELAY_PORT`, so a run moved off :5176 stays right. A GitHub page's address is
+fetched from GitHub's raw host, which the spec routes, while `github.com` is
+refused, so nothing leaves the machine. A relay started by hand before these
+paths existed is reused outside CI (Two runs, above) and answers them 404, so
+start it again.
+
 **Static policy pages.** Pages answers `/privacy`, `/terms` and `/support` with
 their files in `public/`; `vp dev` would answer them with the app, so
 `policyPages` in `vite.config.ts` rewrites the three paths, and `policy.spec.ts` reads them with
@@ -167,6 +185,7 @@ banner. `google-workspace:check` then reads the size of each PNG against
 | `locale.spec.ts`        | The app and the editor in a German browser's language while nothing is picked, storing nothing; an editor pick stored as JSON, kept on reload and followed by the other tabs' app and editor; System stored as `"system"`, back to the browser's language; the sidebar's language menu switching the app and the editor, Arabic right to left on `<html>` and the editor, then System; the welcome screen on a new schema until its first table |
 | `gdrive-not-configured.spec.ts` | `/gdrive` without a client id; `/` loads no Drive module or GIS script         |
 | `policy.spec.ts`        | `/privacy`, `/terms` and `/support` with JavaScript off: 200, no script, the points each must make, no email address but `support@erd-editor.io` and no governing law, GitHub Issues, no link to the site but each other, no request to another origin, both themes; `/`'s `<noscript>` links; the sidebar's links in a new tab, none to `/gdrive`; the empty viewer's Editing Guide and GitHub, with `rel="noopener"`, checked on `/gdrive` too by the same `support/resourceLinks.ts` |
+| `embed.spec.ts`         | `/embed?src=`: the viewer filling the viewport alone, no app chrome, the title `ERD Editor`, no framing header from `vp dev`; the erd-editor.io link in the lower right corner, in a new tab with no referrer, clear of the controls; the document drawn in another site's 480 px frame; neither the stored language, no Korean dictionary asked for, nor the stored theme, and no `lang` on `<html>`; a version 3 and a version 2 document; the viewer's own error alone for a 404, an answer that is no JSON, one with no CORS header, which the relay is first checked to send, and one allowing another origin; the theme, name view, minimap, controls and language the URL names; a GitHub file page fetched from the raw host, never from `github.com` |
 | `gdrive/specs/gdrive-auth.spec.ts` | The relay popup, the refresh cookie, one renewal between two tabs, sign-out, the state through sign-in, its `userId` as the first sign-in's `login_hint`, the account switch and the ways out of it, Drive left out, a stray callback link, a preview origin, the CSRF gate |
 | `gdrive/specs/gdrive-fallback.spec.ts` | The token client after a 200 HTML, a 429, a 1027 page or the SPA; no relay call until sign-out; Reconnect Google; no renewal while typing in the editor |
 | `gdrive/specs/gdrive-files.spec.ts` | The list's four extensions, groups and search; opening each; Drive's open and create states, and the ERD Editor folder a create state without a folder uses and a refused one falls back to; rename, disabled for a file Drive lets the account view only or not rename; New file and import, each into one ERD Editor folder the next file reuses, a reloaded page too by its marker after a rename and a move, and the list leaves out; another account's ERD Editor folder shared with this one passed over for one of its own; a backup among the imported files skipped, since backups stay in the local app; an SQL import with its tables placed by their relationships; both Import files while an import runs, until it ends; the account, Sign out and the policy links; the empty viewer's Editing Guide and GitHub, with no files and with some; v2 saved as v3 only once edited; a file that is not an ERD Editor document (no editor) and a view-only one (View only, a read-only editor, no banner), neither ever saved |

@@ -3,6 +3,7 @@ import { Navigate } from 'react-router';
 
 import App from '@/components/app/App';
 import LiveCollaborativeError from '@/components/live-collaborative/live-collaborative-error/LiveCollaborativeError';
+import EmbedShell from '@/routes/embed/EmbedShell';
 import Root from '@/routes/root/Root';
 
 /**
@@ -38,6 +39,25 @@ export const routes: RouteObject[] = [
         lazy: async () => {
           const { default: Component } =
             await import('@/components/gdrive/GdriveRoute');
+          return { Component };
+        },
+        errorElement: <LiveCollaborativeError />,
+      },
+    ],
+  },
+  {
+    // Apart from / so an embedded viewer renders outside Root; the shell puts
+    // Root back for the page without a src. The outermost matched route again.
+    path: '/embed',
+    element: <EmbedShell />,
+    errorElement: <LiveCollaborativeError />,
+    hydrateFallbackElement: <></>,
+    children: [
+      {
+        index: true,
+        lazy: async () => {
+          const { default: Component } =
+            await import('@/components/embed/EmbedRoute');
           return { Component };
         },
         errorElement: <LiveCollaborativeError />,

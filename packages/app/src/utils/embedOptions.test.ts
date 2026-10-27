@@ -2,10 +2,12 @@ import { accentColors, grayColors } from '@radix-ui/themes/props';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
+  applyEmbedOptions,
   DEFAULT_EMBED_HEIGHT,
   EMBED_DEFAULTS,
   embedAppearance,
   type EmbedOptions,
+  type EmbedViewerTarget,
   parseEmbedHeight,
   parseEmbedParams,
   toEmbedUrl,
@@ -379,4 +381,106 @@ describe('embedAppearance', () => {
       expect(embedAppearance(theme, dark)).toBe(shown);
     }
   );
+});
+
+type Call = readonly [name: string, value: unknown];
+
+/** A stand-in for the viewer that records, in order, each call and assignment. */
+function recordingViewer() {
+  const calls: Call[] = [];
+  const viewer: EmbedViewerTarget = {
+    setPresetTheme: theme => {
+      calls.push(['setPresetTheme', theme]);
+    },
+    setLocale: async locale => {
+      calls.push(['setLocale', locale]);
+    },
+    setSystemLocale: async locale => {
+      calls.push(['setSystemLocale', locale]);
+    },
+    set nameView(value) {
+      calls.push(['nameView', value]);
+    },
+    get nameView() {
+      return null;
+    },
+    set minimap(value) {
+      calls.push(['minimap', value]);
+    },
+    get minimap() {
+      return true;
+    },
+    set controls(value) {
+      calls.push(['controls', value]);
+    },
+    get controls() {
+      return true;
+    },
+  };
+  return { viewer, calls };
+}
+
+describe('applyEmbedOptions', () => {
+  it('hands over the theme, the language, the name view, then the parts, in that order', () => {
+    const { viewer, calls } = recordingViewer();
+
+    applyEmbedOptions(
+      viewer,
+      parseEmbedParams(
+        '?src=x&controls=false&minimap=false&name-view=logical&locale=ko-KR' +
+          '&gray-color=sand&accent-color=crimson&theme=dark'
+      )
+    );
+
+    expect(calls).toEqual([
+      [
+        'setPresetTheme',
+        { appearance: 'dark', accentColor: 'crimson', grayColor: 'sand' },
+      ],
+      ['setLocale', 'ko-KR'],
+      ['nameView', 'logical'],
+      ['minimap', false],
+      ['controls', false],
+    ]);
+  });
+
+  it('leaves the theme, the language and the name view to the viewer when the URL names none', () => {
+    const { viewer, calls } = recordingViewer();
+
+    applyEmbedOptions(viewer, parseEmbedParams('?src=x'));
+
+    expect(calls).toEqual([
+      ['minimap', true],
+      ['controls', true],
+    ]);
+  });
+
+  it.each([
+    ['theme=light', { appearance: 'light' }],
+    ['theme=system', { appearance: 'system' }],
+    ['accent-color=crimson', { accentColor: 'crimson' }],
+    ['gray-color=sand', { grayColor: 'sand' }],
+    ['theme=blue&accent-color=auto&gray-color=auto', null],
+  ] as const)('hands over only the theme keys %s names', (query, preset) => {
+    const { viewer, calls } = recordingViewer();
+
+    applyEmbedOptions(viewer, parseEmbedParams(`?src=x&${query}`));
+
+    expect(calls.filter(([name]) => name === 'setPresetTheme')).toEqual(
+      preset ? [['setPresetTheme', preset]] : []
+    );
+  });
+
+  it('passes a language the URL names, system included, and never the system language', () => {
+    const named = recordingViewer();
+    applyEmbedOptions(named.viewer, parseEmbedParams('?src=x&locale=system'));
+    const unknown = recordingViewer();
+    applyEmbedOptions(unknown.viewer, parseEmbedParams('?src=x&locale=ko-kr'));
+
+    expect(named.calls).toContainEqual(['setLocale', 'system']);
+    expect(unknown.calls.map(([name]) => name)).not.toContain('setLocale');
+    expect(
+      [...named.calls, ...unknown.calls].map(([name]) => name)
+    ).not.toContain('setSystemLocale');
+  });
 });

@@ -2,11 +2,12 @@
 
 > The React PWA at [erd-editor.io](https://erd-editor.io)
 
-`@dineug/erd-editor-app` is the site: a React shell around the `<erd-editor>` custom element. It
-depends on `"@dineug/erd-editor": "workspace:*"` for the element and its headless replica
-(`engine.js`). It is private and never published to npm, and no package imports it. Cloudflare
-Pages builds it, with the root [`functions/`](../../functions) as its Pages Functions, and serves
-it as erd-editor.io, which deploys only when the owner starts it, never on a push.
+`@dineug/erd-editor-app` is the site: a React shell around the `<erd-editor>` custom element and,
+at `/embed`, the read-only `<erd-viewer>`. It depends on `"@dineug/erd-editor": "workspace:*"` for
+both elements and the headless replica (`engine.js`). It is private and never published to npm,
+and no package imports it. Cloudflare Pages builds it, with the root
+[`functions/`](../../functions) as its Pages Functions, and serves it as erd-editor.io, which
+deploys only when the owner starts it, never on a push.
 
 ## Usage
 
@@ -16,8 +17,9 @@ The package has no `src/index.ts`; its entry and output:
 - `src/main.tsx` — the boot: it renders the route table in a browser router and, in production,
   starts Sentry and registers the service worker.
 - `src/routes/routes.tsx` — the route table: `/` (the schema list and the editor), `/live` (a
-  collaboration guest) and `/gdrive` (the Google Drive editor), the last two loaded lazily; any
-  other path redirects to `/`.
+  collaboration guest), `/gdrive` (the Google Drive editor) and `/embed` (the document its `?src=`
+  names, in a viewer filling the page another site frames), the last three loaded lazily; any other
+  path redirects to `/`.
 - `src/sw.ts` — the Workbox service worker, which precaches the build.
 - `public/privacy.html`, `terms.html`, `support.html` — static pages served at `/privacy`,
   `/terms` and `/support`, outside the React app.
