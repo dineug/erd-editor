@@ -586,7 +586,7 @@ Snapping channels to the nudge grid was tried and made the pre-v2 collinear coun
 (segments on the identical coordinate) worse by 60%: it puts more routes on one
 coordinate than can be safely spaced apart.
 
-**The router cannot get around a table directly between two aligned anchors.**
+**The router's candidates cannot get around a table directly between two aligned anchors.**
 With both turning points on the same line, the channel template degenerates —
 `[m, {x, y: m.y}, {x, y: l.y}, l]` with `m.y === l.y` is a straight line
 whatever `x` is — and the escape template steps out a fixed `ROUTE_CLEARANCE`
@@ -597,6 +597,9 @@ cheapest blocked one wins and the connector is drawn straight through. Three
 tables in a row, 361px wide, reproduced it on 2026-08-17, when `MIN_STUB` was
 36; it was not tried again at 24. Offset the two ends and the router bends
 around correctly, so this is a gap in the templates rather than in the scoring.
+Since the search for a way round (`src/utils/draw-relationship/AGENTS.md`), a
+connector every candidate takes through a table goes round it instead, unless
+the box it searches holds more lanes than `MAX_SEARCH_POINTS`.
 
 **Side choice is stable enough.** `flips/move` was 0.05 on the `large` corpus,
 the largest there was when this was recorded (2026-08-17) — about six jumps over
