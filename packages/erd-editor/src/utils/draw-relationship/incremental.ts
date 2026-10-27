@@ -40,7 +40,7 @@ export type SortCache = {
 /**
  * How close a moved table has to come to a route's reach before it can change
  * it. The router picks lanes ROUTE_CLEARANCE clear of a table, so one further
- * out than this from every candidate tried changes neither a lane nor a score.
+ * out than this puts no lane inside the reach and stands in no route's way.
  */
 const ROUTE_TOUCH = 40;
 
@@ -129,7 +129,7 @@ function overlaps(a: DirtyBox, b: DirtyBox) {
 
 /**
  * Whether a moved table can change a route: whether it comes within touch of
- * the box of every candidate the router tried, not only of the route it chose.
+ * the route's reach, not only of the route itself.
  */
 export function routeTouches(bounds: DirtyBox, boxes: DirtyBox[]) {
   const reach: DirtyBox = {

@@ -18,9 +18,9 @@ const OBSTACLE_INSET = 2;
 const BEND_COST = 36;
 /** What passing through one table costs. Large enough to always lose. */
 const BLOCK_COST = 100_000;
-/** Upper bound on channel coordinates tried per free axis. */
-const MAX_CHANNELS = 6;
-/** Upper bound on channel pairs tried when the two anchors face different axes. */
+/** Upper bound on channel coordinates tried per free axis, the midpoint included. */
+const MAX_CHANNELS = 7;
+/** Upper bound on channel coordinates tried per axis when the two anchors face different axes. */
 const MAX_MIXED = 4;
 /**
  * How far a route may turn back over its own stub and still clear the markers:
@@ -182,17 +182,28 @@ function band(a: number, b: number): [number, number] {
 }
 
 /**
- * Channel coordinates worth turning at on one axis: the midpoint, and a lane
- * just clear of each table reaching into the band the run crosses. Sorted by
- * distance, then coordinate, so no truncation or tie follows document order.
+ * The channel coordinates tried on one axis, and how far from the midpoint the
+ * last one kept lies when more were left out: a table whose lane would fall
+ * nearer than that takes a place in the list. Infinity when none was left out.
+ */
+type Channels = { lanes: number[]; cut: number };
+
+const anyLane = () => true;
+
+/**
+ * The midpoint and a lane just clear of each table reaching into the band the
+ * run crosses, of those the route can turn at. Sorted by distance, then
+ * coordinate, so no cut or tie follows document order.
  */
 function channels(
   from: number,
   to: number,
   obstacles: Obstacles,
   horizontal: boolean,
-  [spanLow, spanHigh]: [number, number]
-): number[] {
+  [spanLow, spanHigh]: [number, number],
+  limit: number,
+  accept: (lane: number) => boolean = anyLane
+): Channels {
   const middle = (from + to) / 2;
   const low = obstacles[horizontal ? 'left' : 'top'];
   const high = obstacles[horizontal ? 'right' : 'bottom'];
@@ -210,13 +221,16 @@ function channels(
 
   // Tables standing in a row put their edges on one lane, and copies of it
   // would fill the channels tried while a free lane just past them waits.
-  const tried = [middle];
+  const tried = accept(middle) ? [middle] : [];
   for (const lane of lanes) {
-    if (tried.length > MAX_CHANNELS) break;
+    if (!accept(lane)) continue;
     if (tried.some(other => Math.abs(other - lane) < 0.5)) continue;
+    if (tried.length >= limit) {
+      return { lanes: tried, cut: Math.abs(tried[tried.length - 1] - middle) };
+    }
     tried.push(lane);
   }
-  return tried;
+  return { lanes: tried, cut: Infinity };
 }
 
 type Candidate = { points: Point[]; bends: number };
@@ -268,6 +282,9 @@ function offersMiddle(
   return back > -BACKTRACK_ALLOWANCE && (back < 0 || behind);
 }
 
+/** The candidates for one pair of turning points, and each axis's channel cut. */
+type Candidates = { options: Candidate[]; cutX: number; cutY: number };
+
 /**
  * Builds the candidate polylines for one pair of turning points. A route may
  * only leave and arrive heading outward from its table or it doubles back
@@ -279,7 +296,7 @@ function candidates(
   l: Point,
   lDirection: number,
   obstacles: Obstacles
-): Candidate[] {
+): Candidates {
   const mH = isHorizontal(mDirection);
   const lH = isHorizontal(lDirection);
   const mSign = outwardSign(mDirection);
@@ -305,10 +322,21 @@ function candidates(
     out.push({ points: cleaned, bends: cleaned.length - 2 });
   };
 
+  let cutX = Infinity;
+  let cutY = Infinity;
+
   if (mH && lH) {
-    const xs = channels(m.x, l.x, obstacles, true, band(m.y, l.y));
-    for (const x of xs) {
-      if ((x - m.x) * mSign < 0 || (x - l.x) * lSign < 0) continue;
+    const xs = channels(
+      m.x,
+      l.x,
+      obstacles,
+      true,
+      band(m.y, l.y),
+      MAX_CHANNELS,
+      x => (x - m.x) * mSign >= 0 && (x - l.x) * lSign >= 0
+    );
+    cutX = xs.cut;
+    for (const x of xs.lanes) {
       push([m, { x, y: m.y }, { x, y: l.y }, l]);
     }
     if (mSign === lSign) {
@@ -322,8 +350,9 @@ function candidates(
     // or below, and come back in.
     const a = m.x + mSign * ROUTE_CLEARANCE;
     const b = l.x + lSign * ROUTE_CLEARANCE;
-    const ys = channels(m.y, l.y, obstacles, false, band(a, b));
-    for (const y of ys) {
+    const ys = channels(m.y, l.y, obstacles, false, band(a, b), MAX_CHANNELS);
+    cutY = ys.cut;
+    for (const y of ys.lanes) {
       push([
         m,
         { x: a, y: m.y },
@@ -334,9 +363,17 @@ function candidates(
       ]);
     }
   } else if (!mH && !lH) {
-    const ys = channels(m.y, l.y, obstacles, false, band(m.x, l.x));
-    for (const y of ys) {
-      if ((y - m.y) * mSign < 0 || (y - l.y) * lSign < 0) continue;
+    const ys = channels(
+      m.y,
+      l.y,
+      obstacles,
+      false,
+      band(m.x, l.x),
+      MAX_CHANNELS,
+      y => (y - m.y) * mSign >= 0 && (y - l.y) * lSign >= 0
+    );
+    cutY = ys.cut;
+    for (const y of ys.lanes) {
       push([m, { x: m.x, y }, { x: l.x, y }, l]);
     }
     if (mSign === lSign) {
@@ -348,8 +385,9 @@ function candidates(
     }
     const a = m.y + mSign * ROUTE_CLEARANCE;
     const b = l.y + lSign * ROUTE_CLEARANCE;
-    const xs = channels(m.x, l.x, obstacles, true, band(a, b));
-    for (const x of xs) {
+    const xs = channels(m.x, l.x, obstacles, true, band(a, b), MAX_CHANNELS);
+    cutX = xs.cut;
+    for (const x of xs.lanes) {
       push([
         m,
         { x: m.x, y: a },
@@ -364,20 +402,34 @@ function candidates(
     if ((l.x - m.x) * mSign >= 0 && (m.y - l.y) * lSign >= 0) {
       push([m, { x: l.x, y: m.y }, l]);
     }
-    const xs = channels(m.x, l.x, obstacles, true, band(m.y, l.y))
-      .filter(x => (x - m.x) * mSign >= 0)
-      .slice(0, MAX_MIXED);
-    const ys = channels(m.y, l.y, obstacles, false, band(m.x, l.x))
-      .filter(y => (y - l.y) * lSign >= 0)
-      .slice(0, MAX_MIXED);
+    const xs = channels(
+      m.x,
+      l.x,
+      obstacles,
+      true,
+      band(m.y, l.y),
+      MAX_MIXED,
+      x => (x - m.x) * mSign >= 0
+    );
+    const ys = channels(
+      m.y,
+      l.y,
+      obstacles,
+      false,
+      band(m.x, l.x),
+      MAX_MIXED,
+      y => (y - l.y) * lSign >= 0
+    );
+    cutX = xs.cut;
+    cutY = ys.cut;
     if (offersMiddle(m.x, l.x, mSign, l.y, m.y, lSign)) {
       const middle = (m.x + l.x) / 2;
       push([m, { x: middle, y: m.y }, { x: middle, y: l.y }, l]);
     }
-    stepOut(xs, m.x, mSign);
-    stepOut(ys, l.y, lSign);
-    for (const x of xs) {
-      for (const y of ys) {
+    stepOut(xs.lanes, m.x, mSign);
+    stepOut(ys.lanes, l.y, lSign);
+    for (const x of xs.lanes) {
+      for (const y of ys.lanes) {
         push([m, { x, y: m.y }, { x, y }, { x: l.x, y }, l]);
       }
     }
@@ -385,26 +437,40 @@ function candidates(
     if ((l.y - m.y) * mSign >= 0 && (m.x - l.x) * lSign >= 0) {
       push([m, { x: m.x, y: l.y }, l]);
     }
-    const ys = channels(m.y, l.y, obstacles, false, band(m.x, l.x))
-      .filter(y => (y - m.y) * mSign >= 0)
-      .slice(0, MAX_MIXED);
-    const xs = channels(m.x, l.x, obstacles, true, band(m.y, l.y))
-      .filter(x => (x - l.x) * lSign >= 0)
-      .slice(0, MAX_MIXED);
+    const ys = channels(
+      m.y,
+      l.y,
+      obstacles,
+      false,
+      band(m.x, l.x),
+      MAX_MIXED,
+      y => (y - m.y) * mSign >= 0
+    );
+    const xs = channels(
+      m.x,
+      l.x,
+      obstacles,
+      true,
+      band(m.y, l.y),
+      MAX_MIXED,
+      x => (x - l.x) * lSign >= 0
+    );
+    cutX = xs.cut;
+    cutY = ys.cut;
     if (offersMiddle(m.y, l.y, mSign, l.x, m.x, lSign)) {
       const middle = (m.y + l.y) / 2;
       push([m, { x: m.x, y: middle }, { x: l.x, y: middle }, l]);
     }
-    stepOut(ys, m.y, mSign);
-    stepOut(xs, l.x, lSign);
-    for (const y of ys) {
-      for (const x of xs) {
+    stepOut(ys.lanes, m.y, mSign);
+    stepOut(xs.lanes, l.x, lSign);
+    for (const y of ys.lanes) {
+      for (const x of xs.lanes) {
         push([m, { x: m.x, y }, { x, y }, { x, y: l.y }, l]);
       }
     }
   }
 
-  return out;
+  return { options: out, cutX, cutY };
 }
 
 /** A route, and the box holding every table whose move could change it. */
@@ -414,26 +480,27 @@ export type RouteResult = {
 };
 
 /**
- * The box of every candidate tried, the two turning points included. A table
- * outside it, by more than the cache's touch distance, neither gave a lane nor
- * stood in any candidate's way, so moving it changes no score.
+ * Where a table has to come to change the route chosen at this cost. A route
+ * that beats it is shorter than the cost, so every point of it lies within that
+ * distance of both turning points summed; a lane further out is never kept.
  */
-function boxOfCandidates(m: Point, l: Point, options: Candidate[]): DirtyBox {
-  const box: DirtyBox = {
-    left: Math.min(m.x, l.x),
-    top: Math.min(m.y, l.y),
-    right: Math.max(m.x, l.x),
-    bottom: Math.max(m.y, l.y),
+function reachOf(
+  m: Point,
+  l: Point,
+  cost: number,
+  cutX: number,
+  cutY: number
+): DirtyBox {
+  const spreadX = Math.min(cutX, (cost - Math.abs(m.y - l.y)) / 2);
+  const spreadY = Math.min(cutY, (cost - Math.abs(m.x - l.x)) / 2);
+  const middleX = (m.x + l.x) / 2;
+  const middleY = (m.y + l.y) / 2;
+  return {
+    left: Math.min(m.x, l.x, middleX - spreadX),
+    top: Math.min(m.y, l.y, middleY - spreadY),
+    right: Math.max(m.x, l.x, middleX + spreadX),
+    bottom: Math.max(m.y, l.y, middleY + spreadY),
   };
-  for (const { points } of options) {
-    for (const { x, y } of points) {
-      if (x < box.left) box.left = x;
-      if (x > box.right) box.right = x;
-      if (y < box.top) box.top = y;
-      if (y > box.bottom) box.bottom = y;
-    }
-  }
-  return box;
 }
 
 function union(a: DirtyBox, b: DirtyBox): DirtyBox {
@@ -476,7 +543,13 @@ export function routeWithReach(
   skipA: string,
   skipB: string
 ): RouteResult {
-  const options = candidates(m, mDirection, l, lDirection, obstacles);
+  const { options, cutX, cutY } = candidates(
+    m,
+    mDirection,
+    l,
+    lDirection,
+    obstacles
+  );
 
   let best: Point[] | null = null;
   let bestCost = Infinity;
@@ -492,7 +565,7 @@ export function routeWithReach(
     }
   }
 
-  const reach = boxOfCandidates(m, l, options);
+  const reach = reachOf(m, l, bestCost, cutX, cutY);
   if (best && bestCost < BLOCK_COST) return { points: best, reach };
 
   const { points, region } = searchRoute(

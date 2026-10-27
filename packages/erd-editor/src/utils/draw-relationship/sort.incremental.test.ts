@@ -64,6 +64,73 @@ function createScene(moveA?: { x: number; y: number }): RootState {
   return state;
 }
 
+type Sized = [id: string, x: number, y: number, columns: number];
+type Step = { move: string; x: number; y: number } | { drop: string };
+
+function sceneOf(tables: Sized[], pairs: Pair[]): RootState {
+  const state: RootState = {
+    ...schemaV3Parser({}),
+    editor: createEditor(),
+    lww: {},
+  };
+  state.settings.show = 0;
+
+  for (const [id, x, y, count] of tables) {
+    const columns = Array.from({ length: count }, (_, index) =>
+      createColumn({ id: `${id}c${index}`, tableId: id, name: `c${index}` })
+    );
+    const columnIds = columns.map(column => column.id);
+    state.collections.tableEntities[id] = createTable({
+      id,
+      name: id,
+      columnIds,
+      seqColumnIds: columnIds,
+      ui: { x, y },
+    });
+    for (const column of columns) {
+      state.collections.tableColumnEntities[column.id] = column;
+    }
+    state.doc.tableIds.push(id);
+  }
+  for (const [id, start, end] of pairs) {
+    state.collections.relationshipEntities[id] = createRelationship({
+      id,
+      start: { tableId: start },
+      end: { tableId: end },
+    });
+    state.doc.relationshipIds.push(id);
+  }
+
+  return state;
+}
+
+function take(state: RootState, step: Step) {
+  if ('move' in step) {
+    Object.assign(state.collections.tableEntities[step.move].ui, step);
+    return;
+  }
+  state.doc.relationshipIds = state.doc.relationshipIds.filter(
+    id => id !== step.drop
+  );
+  delete state.collections.relationshipEntities[step.drop];
+}
+
+/** The drawing after each step is sorted in turn, and a sort from scratch of the last layout. */
+function stepsAgainstFresh(tables: Sized[], pairs: Pair[], steps: Step[]) {
+  const incremental = sceneOf(tables, pairs);
+  relationshipSort(incremental);
+  for (const step of steps) {
+    take(incremental, step);
+    relationshipSort(incremental);
+  }
+
+  const fresh = sceneOf(tables, pairs);
+  for (const step of steps) take(fresh, step);
+  relationshipSort(fresh);
+
+  return { incremental: drawingOf(incremental), fresh: drawingOf(fresh) };
+}
+
 function drawingOf(state: RootState) {
   return state.doc.relationshipIds.map(id => {
     const relationship = state.collections.relationshipEntities[id];
@@ -132,6 +199,25 @@ describe('relationshipSort incremental reuse', () => {
     relationshipSort(fresh);
 
     expect(drawingOf(incremental)).toEqual(drawingOf(fresh));
+  });
+
+  it('draws a table whose lane changes the lanes a route tries as a sort from scratch', () => {
+    // t1 comes nowhere near r9's candidates, yet its lane took a place in the
+    // list r9 turns at, which only the lanes r9 can turn at may take now.
+    const { incremental, fresh } = stepsAgainstFresh(
+      [
+        ['t1', 574, 168, 4],
+        ['t2', 109.5, 240, 6],
+        ['t6', 351, 325, 2],
+        ['t7', 285.5, 169.5, 0],
+        ['t9', 147.5, 489, 4],
+        ['t10', 174, 387, 0],
+      ],
+      [['r9', 't9', 't7']],
+      [{ move: 't1', x: 310.5, y: 95 }]
+    );
+
+    expect(incremental).toEqual(fresh);
   });
 
   it('draws a removed relationship exactly as a sort without it', () => {
