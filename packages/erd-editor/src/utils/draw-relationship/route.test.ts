@@ -427,6 +427,36 @@ describe('routeOrthogonal', () => {
     ]);
   });
 
+  it('keeps the step out of a side when a table far along the band gives a lane', () => {
+    // A far table reaching into the band put the only outward lane 1,100 past
+    // the step out, which then left the candidates for a loop across the canvas.
+    const near = [
+      { id: 'a', left: 100, top: 200, right: 300, bottom: 300 },
+      { id: 'b', left: 230, top: 50, right: 430, bottom: 150 },
+    ];
+    const route = (boxes: Obstacles) =>
+      routeOrthogonal(
+        { x: 340, y: 250 },
+        Direction.right,
+        { x: 330, y: 174 },
+        Direction.bottom,
+        boxes,
+        'a',
+        'b'
+      );
+
+    const alone = route(obstacles(near));
+    const far = route(
+      obstacles([
+        ...near,
+        { id: 't', left: 1500, top: 180, right: 1700, bottom: 260 },
+      ])
+    );
+
+    expect(alone[1]).toEqual({ x: 356, y: 250 });
+    expect(far).toEqual(alone);
+  });
+
   it('keeps the two-bend route when it turns back less than the stub clears', () => {
     // Two pixels back over a 24 stub still ends past the 21 the markers take.
     const boxes = obstacles([

@@ -241,12 +241,31 @@ function hidesStepOut(m: number, l: number, mSign: number) {
 }
 
 /**
- * Gives an empty list of outward lanes one, a clearance out from the turning
- * point, so a route between two sides on different axes always has a corner
- * that leaves and arrives outward rather than none.
+ * Adds the lane a clearance out from a turning point to its outward lanes, so a
+ * route between sides on two axes always has a corner it leaves and arrives
+ * outward at, which no table's lane, however far, can take away.
  */
 function stepOut(lanes: number[], from: number, sign: number) {
-  if (!lanes.length) lanes.push(from + sign * ROUTE_CLEARANCE);
+  const lane = from + sign * ROUTE_CLEARANCE;
+  if (!lanes.some(other => Math.abs(other - lane) < 0.5)) lanes.push(lane);
+}
+
+/**
+ * Whether two sides on two axes offer the two-bend route through the midpoints:
+ * where the midpoint lanes alone give no corner outward of both ends, and the
+ * route then turns back over its first stub by less than the stub clears.
+ */
+function offersMiddle(
+  mFrom: number,
+  lTo: number,
+  mSign: number,
+  lFrom: number,
+  mTo: number,
+  lSign: number
+) {
+  const back = ((mFrom + lTo) / 2 - mFrom) * mSign;
+  const behind = ((lFrom + mTo) / 2 - lFrom) * lSign < 0;
+  return back > -BACKTRACK_ALLOWANCE && (back < 0 || behind);
 }
 
 /**
@@ -351,15 +370,12 @@ function candidates(
     const ys = channels(m.y, l.y, obstacles, false, band(m.x, l.x))
       .filter(y => (y - l.y) * lSign >= 0)
       .slice(0, MAX_MIXED);
-    if (!xs.length || !ys.length) {
+    if (offersMiddle(m.x, l.x, mSign, l.y, m.y, lSign)) {
       const middle = (m.x + l.x) / 2;
-      if ((middle - m.x) * mSign > -BACKTRACK_ALLOWANCE) {
-        push([m, { x: middle, y: m.y }, { x: middle, y: l.y }, l]);
-      } else {
-        stepOut(xs, m.x, mSign);
-        stepOut(ys, l.y, lSign);
-      }
+      push([m, { x: middle, y: m.y }, { x: middle, y: l.y }, l]);
     }
+    stepOut(xs, m.x, mSign);
+    stepOut(ys, l.y, lSign);
     for (const x of xs) {
       for (const y of ys) {
         push([m, { x, y: m.y }, { x, y }, { x: l.x, y }, l]);
@@ -375,15 +391,12 @@ function candidates(
     const xs = channels(m.x, l.x, obstacles, true, band(m.y, l.y))
       .filter(x => (x - l.x) * lSign >= 0)
       .slice(0, MAX_MIXED);
-    if (!xs.length || !ys.length) {
+    if (offersMiddle(m.y, l.y, mSign, l.x, m.x, lSign)) {
       const middle = (m.y + l.y) / 2;
-      if ((middle - m.y) * mSign > -BACKTRACK_ALLOWANCE) {
-        push([m, { x: m.x, y: middle }, { x: l.x, y: middle }, l]);
-      } else {
-        stepOut(ys, m.y, mSign);
-        stepOut(xs, l.x, lSign);
-      }
+      push([m, { x: m.x, y: middle }, { x: l.x, y: middle }, l]);
     }
+    stepOut(ys, m.y, mSign);
+    stepOut(xs, l.x, lSign);
     for (const y of ys) {
       for (const x of xs) {
         push([m, { x: m.x, y }, { x, y }, { x, y: l.y }, l]);
