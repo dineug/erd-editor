@@ -385,8 +385,15 @@ function separate(
   if (replay(group, memo)) return;
 
   const before = group.map(slot => slot.coordinate);
+  const drawn = group.map(
+    (slot, index) =>
+      memo.coordinate(slot.relationshipId, slot.index, slot.vertical) ??
+      before[index]
+  );
   separateGroup(group, axis, fixed, obstacles, endpoints);
   markMoved(group, before, memo);
+  // A group back on the router's lane still left the one it was drawn at.
+  markMoved(group, drawn, memo);
 }
 
 /** Whether a segment lies over a guide line run, found among them by coordinate. */

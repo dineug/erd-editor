@@ -282,6 +282,42 @@ describe('relationshipSort incremental reuse', () => {
     expect(incremental).toEqual(fresh);
   });
 
+  it('draws a group laid out again on its router lane as a sort from scratch', () => {
+    // A group laid out again went back to the lane the router gave it, which
+    // nothing marked, and a group it had pushed aside replayed that lane.
+    const { incremental, fresh } = stepsAgainstFresh(
+      [
+        ['t0', 121, 305, 6],
+        ['t2', 350.5, 197, 2],
+        ['t3', 228, 429.5, 0],
+        ['t4', 704, 301.5, 5],
+        ['t6', 764, 655, 3],
+        ['t7', 134, 309.5, 6],
+        ['t8', 343, 142, 4],
+        ['t11', 947, 371.5, 2],
+        ['t12', 952.5, 408.5, 6],
+        ['t13', 496.5, 14, 1],
+        ['t14', 918, 397, 1],
+        ['t15', 725.5, 99.5, 5],
+      ],
+      [
+        ['r0', 't12', 't4'],
+        ['r6', 't11', 't7'],
+        ['r7', 't11', 't7'],
+        ['r17', 't2', 't6'],
+        ['r18', 't11', 't8'],
+        ['r20', 't3', 't12'],
+        ['r23', 't0', 't14'],
+        ['r24', 't11', 't7'],
+        ['r25', 't6', 't13'],
+        ['r29', 't6', 't7'],
+      ],
+      [{ move: 't3', x: 176.5, y: 428.5 }, { drop: 'r0' }]
+    );
+
+    expect(incremental).toEqual(fresh);
+  });
+
   it('draws a removed relationship exactly as a sort without it', () => {
     const incremental = createScene();
     relationshipSort(incremental);
