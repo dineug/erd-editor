@@ -286,9 +286,9 @@ function offersMiddle(
 type Candidates = { options: Candidate[]; cutX: number; cutY: number };
 
 /**
- * Builds the candidate polylines for one pair of turning points. A route may
- * only leave and arrive heading outward from its table or it doubles back
- * through the cardinality guide line, which is what the tests below check.
+ * Builds the candidate polylines for one pair of turning points. Each leaves and
+ * arrives heading outward, or it doubles back through the cardinality guide
+ * line, save for those hidesStepOut and offersMiddle allow for their reasons.
  */
 function candidates(
   m: Point,
