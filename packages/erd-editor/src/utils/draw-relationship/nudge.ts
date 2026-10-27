@@ -47,7 +47,7 @@ type Slot = {
   /**
    * False for a connector's first and last run, which are attached to the guide
    * line carrying the cardinality symbols. Collected all the same: a lane parked
-   * on one is as much a doubled line as any other.
+   * on one is as much a doubled line as any other, so it moves off.
    */
   movable: boolean;
   vertical: boolean;
@@ -169,7 +169,12 @@ export function nudgeRoutes(
     refreshExtents(axis);
 
     const slots = axis.filter(slot => slot.movable);
-    if (slots.length < 2) continue;
+    if (!slots.length) continue;
+    // The guide line runs never move, so they are sorted once for the lone
+    // segments to look up; a lone segment can lie over nothing else.
+    const fixed = axis
+      .filter(slot => !slot.movable)
+      .sort((a, b) => a.coordinate - b.coordinate);
 
     slots.sort((a, b) => a.coordinate - b.coordinate || compareSlots(a, b));
 
@@ -179,7 +184,9 @@ export function nudgeRoutes(
     let channel: Slot[] = [];
     const flush = () => {
       if (channel.length > 1) {
-        separateRuns(channel, axis, obstacles, endpoints, memo);
+        separateRuns(channel, axis, fixed, obstacles, endpoints, memo);
+      } else if (channel.length) {
+        separate(channel, axis, fixed, obstacles, endpoints, memo);
       }
       channel = [];
     };
@@ -206,6 +213,7 @@ export function nudgeRoutes(
 function separateRuns(
   channel: Slot[],
   axis: Slot[],
+  fixed: Slot[],
   obstacles: Obstacles,
   endpoints: Map<string, [string, string]>,
   memo?: NudgeMemo
@@ -216,7 +224,9 @@ function separateRuns(
   let reach = -Infinity;
 
   const flush = () => {
-    if (group.length > 1) separate(group, axis, obstacles, endpoints, memo);
+    for (const run of closeRuns(group)) {
+      separate(run, axis, fixed, obstacles, endpoints, memo);
+    }
     group = [];
     // Reset with the group. Carrying the previous reach forward joins every
     // later segment on this line into one giant group, spread so far apart that
@@ -230,6 +240,45 @@ function separateRuns(
     reach = Math.max(reach, slot.high);
   }
   flush();
+}
+
+/**
+ * Splits a group into the sets of segments linked by pairs that run over each
+ * other with lanes a gap or less apart. The channel and the sweep can join two
+ * through a segment far along the axis, which would hang their layout on it.
+ */
+function closeRuns(group: Slot[]): Slot[][] {
+  if (group.length < 2) return group.length ? [group] : [];
+
+  const root = group.map((_, index) => index);
+  const find = (index: number) => {
+    while (root[index] !== index) {
+      root[index] = root[root[index]];
+      index = root[index];
+    }
+    return index;
+  };
+
+  for (let i = 0; i < group.length; i++) {
+    const a = group[i];
+    for (let j = i + 1; j < group.length; j++) {
+      const b = group[j];
+      if (Math.abs(a.coordinate - b.coordinate) > NUDGE_GAP + NUDGE_EPSILON) {
+        continue;
+      }
+      if (a.low >= b.high || b.low >= a.high) continue;
+      root[find(j)] = find(i);
+    }
+  }
+
+  const runs = new Map<number, Slot[]>();
+  group.forEach((slot, index) => {
+    const key = find(index);
+    const run = runs.get(key);
+    if (run) run.push(slot);
+    else runs.set(key, [slot]);
+  });
+  return [...runs.values()];
 }
 
 /**
@@ -281,9 +330,12 @@ function neighboursOf(group: Slot[], axis: Slot[]) {
     if (slot.coordinate > high) high = slot.coordinate;
   }
 
-  // The furthest a lane can sit from where the group already is, plus the
-  // distance at which it would still be read as the same line.
-  const reach = (NUDGE_GAP * (group.length - 1)) / 2 + SEPARATED;
+  // The furthest a lane can sit from where the group already is, the widest
+  // rung either side for a segment alone, plus the distance at which it would
+  // still be read as the same line.
+  const spread =
+    group.length > 1 ? (NUDGE_GAP * (group.length - 1)) / 2 : NUDGE_GAP;
+  const reach = spread + SEPARATED;
   const neighbours: Slot[] = [];
 
   for (const slot of axis) {
@@ -321,32 +373,67 @@ function colourGroup(group: Slot[]): Slot[][] {
 function separate(
   group: Slot[],
   axis: Slot[],
+  fixed: Slot[],
   obstacles: Obstacles,
   endpoints: Map<string, [string, string]>,
   memo?: NudgeMemo
 ) {
   if (!memo) {
-    separateGroup(group, axis, obstacles, endpoints);
+    separateGroup(group, axis, fixed, obstacles, endpoints);
     return;
   }
   if (replay(group, memo)) return;
 
   const before = group.map(slot => slot.coordinate);
-  separateGroup(group, axis, obstacles, endpoints);
+  const drawn = group.map(
+    (slot, index) =>
+      memo.coordinate(slot.relationshipId, slot.index, slot.vertical) ??
+      before[index]
+  );
+  separateGroup(group, axis, fixed, obstacles, endpoints);
   markMoved(group, before, memo);
+  // A group back on the router's lane still left the one it was drawn at.
+  markMoved(group, drawn, memo);
+}
+
+/** Whether a segment lies over a guide line run, found among them by coordinate. */
+function overlapsFixed(slot: Slot, fixed: Slot[]) {
+  let low = 0;
+  let high = fixed.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (fixed[middle].coordinate <= slot.coordinate - SEPARATED) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  for (let index = low; index < fixed.length; index++) {
+    if (fixed[index].coordinate >= slot.coordinate + SEPARATED) break;
+    if (overlapLength(slot, fixed[index]) > 0) return true;
+  }
+  return false;
 }
 
 function separateGroup(
   group: Slot[],
   axis: Slot[],
+  fixed: Slot[],
   obstacles: Obstacles,
   endpoints: Map<string, [string, string]>
 ) {
+  if (group.length === 1 && !overlapsFixed(group[0], fixed)) return;
+
   // A channel is collected by proximity, so most groups arrive already legible.
   // Checked before the baselines below, which cost a countBlocked each.
   const neighbours = neighboursOf(group, axis);
   const before = stillOverlapping(group, neighbours);
   if (!before) return;
+
+  if (group.length === 1) {
+    separateLone(group[0], neighbours, before, obstacles, endpoints);
+    return;
+  }
 
   const baselines = new Map<Slot, Baseline>();
   const originals = group.map(slot => {
@@ -395,6 +482,46 @@ function separateGroup(
   // none removed anything leave the group where the router put it: moving
   // segments that end up as overlapped as they started only adds crossings.
   if (best && bestLeft < before) apply(group, best);
+}
+
+/**
+ * Moves a segment alone on its lane off the runs it lies over, which can only
+ * be a connector's first or last, fixed to the guide line. Each rung of the
+ * ladder is tried either side, the lower first; the first that clears wins.
+ */
+function separateLone(
+  slot: Slot,
+  neighbours: Slot[],
+  before: number,
+  obstacles: Obstacles,
+  endpoints: Map<string, [string, string]>
+) {
+  const baseline = baselineOf(slot, obstacles, endpoints);
+  const origin = slot.coordinate;
+  let best = origin;
+  let bestLeft = before;
+
+  for (const gap of NUDGE_GAPS) {
+    for (const lane of [origin - gap, origin + gap]) {
+      moveSlot(slot, lane);
+      slot.coordinate = lane;
+      const safe = isSafe(slot, obstacles, endpoints, baseline);
+      const left = safe ? stillOverlapping([slot], neighbours) : Infinity;
+      moveSlot(slot, origin);
+      slot.coordinate = origin;
+
+      if (!left) {
+        apply([slot], [lane]);
+        return;
+      }
+      if (left < bestLeft) {
+        best = lane;
+        bestLeft = left;
+      }
+    }
+  }
+
+  if (best !== origin) apply([slot], [best]);
 }
 
 /**

@@ -13,8 +13,9 @@
 | --- | --- |
 | `sort.ts` | `relationshipSort`, the whole geometry pass, routing included; `placeLoops` |
 | `route.ts`, `nudge.ts` | The router and the nudge pass, run inside the sort pass |
+| `search.ts` | `searchRoute`: the way round a table for a route every candidate of the router takes through one |
 | `pathFinding.ts` | `getRelationshipPath`: the path a connector draws, built from the anchors, stub slots and route the sort wrote. It places no end and routes nothing |
-| `index.ts` | The `WeakMap` sort channels, `setAnchors`, `clearSortChannel`, `viewVersions`, the marker sizes (`LINE_SIZE`, `LINE_HEIGHT`, `CIRCLE_RADIUS`), the stub lengths, `ROUTE_CORNER_RADIUS` |
+| `index.ts` | The `WeakMap` sort channels, `setAnchors`, `clearSortChannel`, `viewVersions`, the route versions and their drag hold (`holdRouteRedraws`), the marker sizes (`LINE_SIZE`, `LINE_HEIGHT`, `CIRCLE_RADIUS`), the stub lengths, `ROUTE_CORNER_RADIUS` |
 | `corner.ts` | Flattens a document corner to `ROUTE_CORNER_SEGMENTS` chords |
 | `bezier.ts` | A view's curve, flattened the same way |
 | `loop.ts` | A self loop's curve; `loopReach` |
@@ -30,9 +31,19 @@
 
 - **`sort.ts` is the whole geometry pass.** Routing (`route.ts`, `nudge.ts`) belongs to it, because routing needs every table and every route. `pathFinding.ts` only draws.
 - **A rendering-only value goes in a sort channel.** Put it in the `WeakMap` sort channels of `index.ts`, never a new schema field. Anchors are schema fields, which the runtime value (`toJson`) carries, though the file form (`toDocumentJson`) leaves them out and every store derives them again, on a load in `settleDocument` and after an edit in the sort hooks.
+- **A document connector leaves sides whose stubs can meet.** Its sides are the nearest of the sixteen side-midpoint pairs whose shortest stubs face each other, each ahead of the other's side (`getAndSetDirection`). Where no pair's do, as for two tables standing closer than two stubs with no side clear of the other, it keeps the nearest pair. A view keeps the nearest pair, since its curve needs no corner.
+  - Two facing tables about 50px apart still join in one straight run, and two aligned closer than that keep their facing sides, since no other pair faces.
+- **A route the candidates cannot get past a table searches a way round.** The router scores a few candidates of up to four bends. When every one passes through a table, `searchRoute` looks for the cheapest route through no table, the two it joins included, on the lanes a clearance from the tables within `SEARCH_MARGIN` of the box the two turning points span, scored as the candidates are. It gives up past `MAX_SEARCH_POINTS` lane crossings, or where a turning point lies inside a table, and the blocked candidate stays.
+  - The search may turn at a turning point and arrive at one from the side, never back along or across a stub: that is how it gets out between tables standing close.
+  - Measured 2026-10-27 on `data/test.json` (59 routed connectors): 13 runs pass through a third table, and a drag sort's median is 0.9 ms; on a 20 x 20 grid of tables with 600 relationships it is 7.2 ms. The search runs only for the connectors whose candidates are all blocked, about ten a drag step on either.
+- **A route the cache keeps is the one a sort from scratch draws.** The cache reuses a route until a moved table comes within touch of its reach (`RouteResult.reach`): the box where a lane of any route cheaper than the chosen one could lie, no further out than the last lane a full channel list kept, and the box a search looked in. A lane the route cannot turn at takes no place in that list (`channels`).
+  - The nudge pass lays out together only the segments linked by pairs that run over each other with lanes a gap or less apart (`closeRuns`), so every member of a group lies within reach of a change that could alter it, and it replays a group only while no change reaches it. A group laid out again marks the lanes it left, the one it was last drawn at included.
 - **One channel per source.** A view keeps its anchors in its own channel, so `setAnchors` writes the entity only for the document. The document's sort and a view's then never read each other's routes.
 - **Clear a sort channel per connector.** `clearSortChannel` clears the connectors it is given, never a whole channel, since channels are module-wide and a page may host two stores.
 - **Bump `viewVersions` only on an actual change.** A view channel setter bumps a connector's version only when its value changed. An unconditional bump redraws every static connector on each drag sort.
+- **A document route redraws its connector when it alone changes.** The entity's proxy redraws a connector whose anchors moved; a route a moved table pushed aside has its own version, bumped by `setRoute` when the route changed by 0.01 or more.
+  - The version is made by the first render that reads the route (`getRoute`), never by a sort. A peer's or a replica's store draws nothing and has no `Node`, where an r-html observable throws as it is read (`sort.domFree.test.ts`).
+  - A drag of the document holds these redraws back (`beginEntityDrag` calls `holdRouteRedraws`, `endEntityDrag` calls `releaseRouteRedraws`) and redraws each held connector once at the drop. The drag draws what it moves on layers of its own, and a static connector redrawn each frame would repaint the layer every static table sits in. So while the drag runs, a static connector keeps the route it had as the drag began.
 - Which `GeometrySource` a function or scene passes, and where a scene root provides it: `src/components/AGENTS.md`.
 
 ### Referential action labels
@@ -58,6 +69,7 @@
   - A document corner turns on a quarter circle of `ROUTE_CORNER_RADIUS`, flattened to `ROUTE_CORNER_SEGMENTS` chords (`corner.ts`) as a view's curve is (`bezier.ts`). So the hit path, the route box and the bench still read straight segments. The router and the nudge pass keep working on the orthogonal polyline.
   - A self loop is one curve round the table's top-right corner (`loop.ts`). Its anchors sit 20px from the corner on every table and 18px further for each further loop. They sit closer together where the shorter side has no room (`placeLoops`).
   - A self loop's stubs and control points scale with that offset, so a table's loops are one shape at nested sizes that never cross or touch the table. The route box reaches its curve (`loopReach`).
+  - The loops reserve the top side's far end and the right side's near end for themselves, `SELF_CLEARANCE` past the outermost loop. A side that reserve leaves too short for its anchors to sit `SQUEEZED_PITCH` apart gives up its inset at the loops' end, then at its other end, and its anchors never pass its edge. A Flow card drawn by its name alone is that short.
 - **A label may hide a run's end.** A child end's referential action label can hide up to 14px of a run that turns into the end from the label's side, now that the stub ends inside the label's width. Accepting that over moving the label or lengthening those stubs is an owner decision (2026-10-10). The same holds for a loop's label: it can cover its own curve and, on a table with several loops, the end markers of the loop inside it.
 
 ### Sort hooks

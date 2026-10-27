@@ -173,6 +173,65 @@ describe('routeOrthogonal', () => {
   const leftFacing = { x: 100, y: 100 };
   const rightFacing = { x: 500, y: 300 };
 
+  it('tries a lane once however many tables in a row share it', () => {
+    // Six tables stacked with one left edge put six copies of lane 464 among
+    // the channels tried, and the free lane at 424 fell past the cap.
+    const stack = Array.from({ length: 6 }, (_, index) => ({
+      id: `t${index}`,
+      left: 480,
+      top: 100 + index * 40,
+      right: 520,
+      bottom: 130 + index * 40,
+    }));
+    const boxes = obstacles([
+      ...stack,
+      { id: 'w', left: 440, top: 150, right: 470, bottom: 250 },
+      { id: 'e', left: 530, top: 150, right: 560, bottom: 250 },
+    ]);
+
+    const points = routeOrthogonal(
+      { x: 0, y: 0 },
+      Direction.right,
+      { x: 1000, y: 400 },
+      Direction.left,
+      boxes,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 0, y: 0 },
+      { x: 424, y: 0 },
+      { x: 424, y: 400 },
+      { x: 1000, y: 400 },
+    ]);
+  });
+
+  it('picks the same lane between two tied ones whatever order the tables come in', () => {
+    // The lanes clear of c1 and c2 sit 70 either side of the midpoint, which c3
+    // blocks, so the two routes cost the same. Peers and an undone removal hold
+    // the tables in different orders, and both have to draw this one route.
+    const c1 = { id: 'c1', left: 400, top: 150, right: 481, bottom: 250 };
+    const c2 = { id: 'c2', left: 653, top: 150, right: 720, bottom: 250 };
+    const c3 = { id: 'c3', left: 500, top: 150, right: 634, bottom: 250 };
+    const route = (boxes: Obstacles) =>
+      routeOrthogonal(
+        { x: 300, y: 100 },
+        Direction.right,
+        { x: 834, y: 300 },
+        Direction.left,
+        boxes,
+        'a',
+        'b'
+      );
+
+    const forward = route(obstacles([c1, c2, c3]));
+    const backward = route(obstacles([c2, c1, c3]));
+
+    expect(forward).toEqual(backward);
+    expect(forward[1]).toEqual({ x: 497, y: 100 });
+  });
+
   it('produces an axis-aligned polyline between the two turning points', () => {
     const points = routeOrthogonal(
       leftFacing,
@@ -241,6 +300,212 @@ describe('routeOrthogonal', () => {
     expect(points.length).toBeGreaterThanOrEqual(2);
     expect(points[0]).toEqual(leftFacing);
     expect(points[points.length - 1]).toEqual(rightFacing);
+  });
+
+  it('joins two ends facing the same way through one shared channel', () => {
+    // Two tables drawn over each other, both connected from their bottoms. A
+    // step out of each end and back made a staircase of four bends.
+    const points = routeOrthogonal(
+      { x: 67, y: 54 },
+      Direction.bottom,
+      { x: 77, y: 64 },
+      Direction.bottom,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 67, y: 54 },
+      { x: 67, y: 80 },
+      { x: 77, y: 80 },
+      { x: 77, y: 64 },
+    ]);
+  });
+
+  it('joins two ends facing the same way sideways too', () => {
+    const points = routeOrthogonal(
+      { x: 54, y: 67 },
+      Direction.left,
+      { x: 64, y: 77 },
+      Direction.left,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 54, y: 67 },
+      { x: 38, y: 67 },
+      { x: 38, y: 77 },
+      { x: 64, y: 77 },
+    ]);
+  });
+
+  it('turns across the gap between two facing tables too close to step out of', () => {
+    // 36 apart and 30 out of line, so each 24 stub reaches past the other
+    // table's edge, and a step out of either end ran inside the other table.
+    const points = routeOrthogonal(
+      { x: 124, y: 50 },
+      Direction.right,
+      { x: 112, y: 80 },
+      Direction.left,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 124, y: 50 },
+      { x: 118, y: 50 },
+      { x: 118, y: 80 },
+      { x: 112, y: 80 },
+    ]);
+  });
+
+  it('turns across the gap between two facing tables above each other', () => {
+    const points = routeOrthogonal(
+      { x: 50, y: 124 },
+      Direction.bottom,
+      { x: 80, y: 112 },
+      Direction.top,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 50, y: 124 },
+      { x: 50, y: 118 },
+      { x: 80, y: 118 },
+      { x: 80, y: 112 },
+    ]);
+  });
+
+  it('keeps stepping out of two facing tables a step apart or more', () => {
+    // 44 apart, a step out of each end still lands in the gap, and the S it
+    // draws there keeps both corners clear of the markers.
+    const points = routeOrthogonal(
+      { x: 124, y: 50 },
+      Direction.right,
+      { x: 120, y: 80 },
+      Direction.left,
+      NONE,
+      'a',
+      'b'
+    );
+
+    expect(points).toHaveLength(6);
+    expect(points[1]).toEqual({ x: 140, y: 50 });
+  });
+
+  it('steps out of a side when no lane lies outward of it', () => {
+    // A 134 x 30 table at the origin and one 60 up and 80 right of it: every
+    // lane the router knows sits behind the right-facing end, so it used to
+    // fall back to a route that ran 5.5 back over that end's markers.
+    const boxes = obstacles([
+      { id: 'a', left: 2, top: 2, right: 132, bottom: 28 },
+      { id: 'b', left: 82, top: -58, right: 212, bottom: -32 },
+    ]);
+
+    const points = routeOrthogonal(
+      { x: 158, y: 15 },
+      Direction.right,
+      { x: 147, y: -6 },
+      Direction.bottom,
+      boxes,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 158, y: 15 },
+      { x: 174, y: 15 },
+      { x: 174, y: 4.5 },
+      { x: 147, y: 4.5 },
+      { x: 147, y: -6 },
+    ]);
+  });
+
+  it('keeps the step out of a side when a table far along the band gives a lane', () => {
+    // A far table reaching into the band put the only outward lane 1,100 past
+    // the step out, which then left the candidates for a loop across the canvas.
+    const near = [
+      { id: 'a', left: 100, top: 200, right: 300, bottom: 300 },
+      { id: 'b', left: 230, top: 50, right: 430, bottom: 150 },
+    ];
+    const route = (boxes: Obstacles) =>
+      routeOrthogonal(
+        { x: 340, y: 250 },
+        Direction.right,
+        { x: 330, y: 174 },
+        Direction.bottom,
+        boxes,
+        'a',
+        'b'
+      );
+
+    const alone = route(obstacles(near));
+    const far = route(
+      obstacles([
+        ...near,
+        { id: 't', left: 1500, top: 180, right: 1700, bottom: 260 },
+      ])
+    );
+
+    expect(alone[1]).toEqual({ x: 356, y: 250 });
+    expect(far).toEqual(alone);
+  });
+
+  it('keeps the two-bend route when it turns back less than the stub clears', () => {
+    // Two pixels back over a 24 stub still ends past the 21 the markers take.
+    const boxes = obstacles([
+      { id: 'a', left: 2, top: 2, right: 132, bottom: 28 },
+      { id: 'b', left: 89, top: -58, right: 219, bottom: -32 },
+    ]);
+
+    const points = routeOrthogonal(
+      { x: 158, y: 15 },
+      Direction.right,
+      { x: 154, y: -6 },
+      Direction.bottom,
+      boxes,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 158, y: 15 },
+      { x: 156, y: 15 },
+      { x: 156, y: -6 },
+      { x: 154, y: -6 },
+    ]);
+  });
+
+  it('steps out of a top or bottom side the same way', () => {
+    // The same layout turned a quarter, so the start leaves downwards.
+    const boxes = obstacles([
+      { id: 'a', left: 2, top: 2, right: 28, bottom: 132 },
+      { id: 'b', left: -58, top: 82, right: -32, bottom: 212 },
+    ]);
+
+    const points = routeOrthogonal(
+      { x: 15, y: 158 },
+      Direction.bottom,
+      { x: -6, y: 147 },
+      Direction.right,
+      boxes,
+      'a',
+      'b'
+    );
+
+    expect(points).toEqual([
+      { x: 15, y: 158 },
+      { x: 15, y: 174 },
+      { x: 4.5, y: 174 },
+      { x: 4.5, y: 147 },
+      { x: -6, y: 147 },
+    ]);
   });
 
   it('joins two ends that face different axes with a single bend when it can', () => {

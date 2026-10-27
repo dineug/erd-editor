@@ -28,6 +28,7 @@ export type RouteEntry = {
   pristine: Point[];
   /** What was finally drawn, which is what a reused group is put back onto. */
   nudged: Point[];
+  /** Where every table the route depends on lies: its reach, from routeWithReach. */
   bounds: DirtyBox;
 };
 
@@ -37,9 +38,9 @@ export type SortCache = {
 };
 
 /**
- * How close a moved table has to come to a route before it can change it. The
- * router keeps ROUTE_CLEARANCE from every box and picks lanes just clear of one,
- * so a table further out than this changes neither the lanes nor the scoring.
+ * How close a moved table has to come to a route's reach before it can change
+ * it. The router picks lanes ROUTE_CLEARANCE clear of a table, so one further
+ * out than this puts no lane inside the reach and stands in no route's way.
  */
 const ROUTE_TOUCH = 40;
 
@@ -99,7 +100,7 @@ function boxOf(obstacles: Obstacles, index: number): DirtyBox {
   };
 }
 
-function union(a: DirtyBox, b: DirtyBox): DirtyBox {
+export function union(a: DirtyBox, b: DirtyBox): DirtyBox {
   return {
     left: Math.min(a.left, b.left),
     top: Math.min(a.top, b.top),
@@ -117,22 +118,6 @@ function same(a: DirtyBox, b: DirtyBox) {
   );
 }
 
-export function boundsOfPoints(points: Point[]): DirtyBox {
-  let left = Infinity;
-  let top = Infinity;
-  let right = -Infinity;
-  let bottom = -Infinity;
-
-  for (const { x, y } of points) {
-    if (x < left) left = x;
-    if (x > right) right = x;
-    if (y < top) top = y;
-    if (y > bottom) bottom = y;
-  }
-
-  return { left, top, right, bottom };
-}
-
 function overlaps(a: DirtyBox, b: DirtyBox) {
   return (
     a.left <= b.right &&
@@ -143,9 +128,8 @@ function overlaps(a: DirtyBox, b: DirtyBox) {
 }
 
 /**
- * Whether a moved table can change a route. The bounding box rather than the
- * runs inside it: the router picks its lanes from every table reaching into the
- * band between the two anchors, not only from the ones the route passes.
+ * Whether a moved table can change a route: whether it comes within touch of
+ * the route's reach, not only of the route itself.
  */
 export function routeTouches(bounds: DirtyBox, boxes: DirtyBox[]) {
   const reach: DirtyBox = {

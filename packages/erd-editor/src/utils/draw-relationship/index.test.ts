@@ -28,6 +28,7 @@ import {
   getRoute,
   getRouteBBox,
   getStubSlots,
+  holdRouteRedraws,
   isDirection,
   LINE_HEIGHT,
   LINE_SIZE,
@@ -36,6 +37,7 @@ import {
   nextSortEpoch,
   PATH_END_HEIGHT,
   PATH_LINE_HEIGHT,
+  releaseRouteRedraws,
   ROUTE_BBOX_REACH,
   setRoute,
 } from '@/utils/draw-relationship';
@@ -711,5 +713,99 @@ describe('the view channel and its readers', () => {
     expect(otherRuns()).toBe(1);
     expect(getAnchors(relationship, 'flow')).toBe(relationship);
     expect(getAnchors(other.relationship, 'flow')).not.toBe(other.relationship);
+  });
+});
+
+describe('the document route and its readers', () => {
+  const unsubscribes: Array<() => void> = [];
+
+  afterEach(() => {
+    unsubscribes.splice(0).forEach(unsubscribe => unsubscribe());
+  });
+
+  function watch(read: () => unknown) {
+    let runs = 0;
+    unsubscribes.push(
+      observer(() => {
+        read();
+        runs += 1;
+      })
+    );
+    return () => runs;
+  }
+
+  /** A and B joined by one straight run, and C off it until a spec moves it there. */
+  function createSortedScene() {
+    const scene = createScene();
+    scene.state.collections.tableEntities.C = createTable({
+      id: 'C',
+      ui: { x: 200, y: 600 },
+    });
+    scene.state.doc.tableIds.push('C');
+    relationshipSort(scene.state);
+    return scene;
+  }
+
+  function moveC(state: RootState, x: number, y: number) {
+    state.collections.tableEntities.C.ui.x = x;
+    state.collections.tableEntities.C.ui.y = y;
+  }
+
+  it('redraws a reader of the route when a sort moves the route alone, and not when it does not', async () => {
+    const { state, relationship } = createSortedScene();
+    const straight = getRoute(relationship);
+    const anchors = getAnchors(relationship);
+    const before = { start: { ...anchors.start }, end: { ...anchors.end } };
+    const runs = watch(() => getRoute(relationship));
+
+    relationshipSort(state);
+    await flush();
+    expect(runs()).toBe(1);
+
+    moveC(state, 200, 0);
+    relationshipSort(state);
+    await flush();
+
+    expect(runs()).toBe(2);
+    expect(getRoute(relationship)).not.toEqual(straight);
+    expect(relationship.start).toMatchObject(before.start);
+    expect(relationship.end).toMatchObject(before.end);
+  });
+
+  it('keeps a moved route from its readers while a drag holds the store, and wakes them once as it lets go', async () => {
+    const { state, relationship } = createSortedScene();
+    const runs = watch(() => getRoute(relationship));
+
+    holdRouteRedraws(state);
+    moveC(state, 200, 0);
+    relationshipSort(state);
+    moveC(state, 180, 0);
+    relationshipSort(state);
+    await flush();
+    expect(runs()).toBe(1);
+
+    releaseRouteRedraws(state);
+    releaseRouteRedraws(state);
+    await flush();
+    expect(runs()).toBe(2);
+
+    moveC(state, 200, 600);
+    relationshipSort(state);
+    await flush();
+    expect(runs()).toBe(3);
+  });
+
+  it('leaves another store on the page to redraw while one store holds its own', async () => {
+    const held = createSortedScene();
+    const { state, relationship } = createSortedScene();
+    const runs = watch(() => getRoute(relationship));
+
+    holdRouteRedraws(held.state);
+    moveC(state, 200, 0);
+    relationshipSort(state);
+    await flush();
+    releaseRouteRedraws(held.state);
+
+    expect(runs()).toBe(2);
   });
 });

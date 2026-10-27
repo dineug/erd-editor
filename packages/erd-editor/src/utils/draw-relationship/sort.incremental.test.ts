@@ -64,6 +64,73 @@ function createScene(moveA?: { x: number; y: number }): RootState {
   return state;
 }
 
+type Sized = [id: string, x: number, y: number, columns: number];
+type Step = { move: string; x: number; y: number } | { drop: string };
+
+function sceneOf(tables: Sized[], pairs: Pair[]): RootState {
+  const state: RootState = {
+    ...schemaV3Parser({}),
+    editor: createEditor(),
+    lww: {},
+  };
+  state.settings.show = 0;
+
+  for (const [id, x, y, count] of tables) {
+    const columns = Array.from({ length: count }, (_, index) =>
+      createColumn({ id: `${id}c${index}`, tableId: id, name: `c${index}` })
+    );
+    const columnIds = columns.map(column => column.id);
+    state.collections.tableEntities[id] = createTable({
+      id,
+      name: id,
+      columnIds,
+      seqColumnIds: columnIds,
+      ui: { x, y },
+    });
+    for (const column of columns) {
+      state.collections.tableColumnEntities[column.id] = column;
+    }
+    state.doc.tableIds.push(id);
+  }
+  for (const [id, start, end] of pairs) {
+    state.collections.relationshipEntities[id] = createRelationship({
+      id,
+      start: { tableId: start },
+      end: { tableId: end },
+    });
+    state.doc.relationshipIds.push(id);
+  }
+
+  return state;
+}
+
+function take(state: RootState, step: Step) {
+  if ('move' in step) {
+    Object.assign(state.collections.tableEntities[step.move].ui, step);
+    return;
+  }
+  state.doc.relationshipIds = state.doc.relationshipIds.filter(
+    id => id !== step.drop
+  );
+  delete state.collections.relationshipEntities[step.drop];
+}
+
+/** The drawing after each step is sorted in turn, and a sort from scratch of the last layout. */
+function stepsAgainstFresh(tables: Sized[], pairs: Pair[], steps: Step[]) {
+  const incremental = sceneOf(tables, pairs);
+  relationshipSort(incremental);
+  for (const step of steps) {
+    take(incremental, step);
+    relationshipSort(incremental);
+  }
+
+  const fresh = sceneOf(tables, pairs);
+  for (const step of steps) take(fresh, step);
+  relationshipSort(fresh);
+
+  return { incremental: drawingOf(incremental), fresh: drawingOf(fresh) };
+}
+
 function drawingOf(state: RootState) {
   return state.doc.relationshipIds.map(id => {
     const relationship = state.collections.relationshipEntities[id];
@@ -92,6 +159,163 @@ describe('relationshipSort incremental reuse', () => {
     relationshipSort(fresh);
 
     expect(drawingOf(incremental)).toEqual(drawingOf(fresh));
+  });
+
+  it('draws a table moved into the lanes a route turns at as a sort from scratch', () => {
+    // D comes to stand across the band the route from A up to B turns in,
+    // far from the route itself, and gives it a nearer lane to turn at.
+    const layout = (d: { x: number; y: number }) => {
+      const state: RootState = {
+        ...schemaV3Parser({}),
+        editor: createEditor(),
+        lww: {},
+      };
+      state.settings.show = 0;
+      for (const [id, x, y] of [
+        ['A', 550, 400],
+        ['B', 400, 50],
+        ['C', 450, 250],
+        ['D', d.x, d.y],
+        ['E', 0, 150],
+      ] as const) {
+        state.collections.tableEntities[id] = createTable({ id, ui: { x, y } });
+        state.doc.tableIds.push(id);
+      }
+      state.collections.relationshipEntities.r = createRelationship({
+        id: 'r',
+        start: { tableId: 'A' },
+        end: { tableId: 'B' },
+      });
+      state.doc.relationshipIds.push('r');
+      return state;
+    };
+    const incremental = layout({ x: 50, y: 300 });
+    relationshipSort(incremental);
+
+    incremental.collections.tableEntities.D.ui.x = 200;
+    incremental.collections.tableEntities.D.ui.y = 200;
+    relationshipSort(incremental);
+    const fresh = layout({ x: 200, y: 200 });
+    relationshipSort(fresh);
+
+    expect(drawingOf(incremental)).toEqual(drawingOf(fresh));
+  });
+
+  it('draws a table whose lane changes the lanes a route tries as a sort from scratch', () => {
+    // t1 comes nowhere near r9's candidates, yet its lane took a place in the
+    // list r9 turns at, which only the lanes r9 can turn at may take now.
+    const { incremental, fresh } = stepsAgainstFresh(
+      [
+        ['t1', 574, 168, 4],
+        ['t2', 109.5, 240, 6],
+        ['t6', 351, 325, 2],
+        ['t7', 285.5, 169.5, 0],
+        ['t9', 147.5, 489, 4],
+        ['t10', 174, 387, 0],
+      ],
+      [['r9', 't9', 't7']],
+      [{ move: 't1', x: 310.5, y: 95 }]
+    );
+
+    expect(incremental).toEqual(fresh);
+  });
+
+  it('draws a group whose lanes lie a gap apart as a sort from scratch', () => {
+    // The channel joined two segments more than a gap apart through r8's, far
+    // along the axis, and the pair kept the lanes it was given after r8 left.
+    const { incremental, fresh } = stepsAgainstFresh(
+      [
+        ['t0', 94.5, 79, 5],
+        ['t1', 186.5, 149, 4],
+        ['t2', 368.5, 257, 1],
+        ['t3', 137, 429.5, 6],
+        ['t5', 585, 46.5, 3],
+        ['t7', 109, 344, 3],
+        ['t9', 638, 75.5, 2],
+        ['t10', 530, 466, 5],
+      ],
+      [
+        ['r2', 't5', 't10'],
+        ['r8', 't10', 't5'],
+        ['r11', 't10', 't5'],
+        ['r13', 't3', 't9'],
+        ['r14', 't9', 't3'],
+        ['r15', 't7', 't0'],
+      ],
+      [{ drop: 'r8' }]
+    );
+
+    expect(incremental).toEqual(fresh);
+  });
+
+  it('draws a group joined through a segment of another as a sort from scratch', () => {
+    // r7 runs over neither r14 nor r18, yet the three were laid out together,
+    // joined through r10's run; once r28 left and r7 moved, the pair kept the
+    // lanes the three had been given.
+    const { incremental, fresh } = stepsAgainstFresh(
+      [
+        ['t0', 1054, 753, 4],
+        ['t1', 483.5, 642.5, 5],
+        ['t2', 617.5, 512, 3],
+        ['t3', 764, 581.5, 1],
+        ['t6', 219, 421.5, 4],
+        ['t7', 878.5, 761, 6],
+        ['t8', 1252, 585.5, 4],
+        ['t12', 1027, 475, 6],
+        ['t14', 1200.5, 257.5, 4],
+        ['t16', 641.5, 484.5, 1],
+        ['t19', 136.5, 239, 6],
+        ['t22', 767.5, 369, 3],
+        ['t23', 804.5, 177.5, 4],
+      ],
+      [
+        ['r7', 't8', 't14'],
+        ['r10', 't19', 't8'],
+        ['r14', 't19', 't0'],
+        ['r18', 't6', 't12'],
+        ['r28', 't14', 't8'],
+        ['r29', 't2', 't6'],
+      ],
+      [{ drop: 'r28' }]
+    );
+
+    expect(incremental).toEqual(fresh);
+  });
+
+  it('draws a group laid out again on its router lane as a sort from scratch', () => {
+    // A group laid out again went back to the lane the router gave it, which
+    // nothing marked, and a group it had pushed aside replayed that lane.
+    const { incremental, fresh } = stepsAgainstFresh(
+      [
+        ['t0', 121, 305, 6],
+        ['t2', 350.5, 197, 2],
+        ['t3', 228, 429.5, 0],
+        ['t4', 704, 301.5, 5],
+        ['t6', 764, 655, 3],
+        ['t7', 134, 309.5, 6],
+        ['t8', 343, 142, 4],
+        ['t11', 947, 371.5, 2],
+        ['t12', 952.5, 408.5, 6],
+        ['t13', 496.5, 14, 1],
+        ['t14', 918, 397, 1],
+        ['t15', 725.5, 99.5, 5],
+      ],
+      [
+        ['r0', 't12', 't4'],
+        ['r6', 't11', 't7'],
+        ['r7', 't11', 't7'],
+        ['r17', 't2', 't6'],
+        ['r18', 't11', 't8'],
+        ['r20', 't3', 't12'],
+        ['r23', 't0', 't14'],
+        ['r24', 't11', 't7'],
+        ['r25', 't6', 't13'],
+        ['r29', 't6', 't7'],
+      ],
+      [{ move: 't3', x: 176.5, y: 428.5 }, { drop: 'r0' }]
+    );
+
+    expect(incremental).toEqual(fresh);
   });
 
   it('draws a removed relationship exactly as a sort without it', () => {

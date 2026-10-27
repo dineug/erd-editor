@@ -4,6 +4,7 @@ import {
   RELATIONSHIP_STROKE_WIDTH,
   VIEW_RELATIONSHIP_STROKE_WIDTH,
 } from '@/constants/layout';
+import type { RootState } from '@/engine/state';
 import {
   Point,
   Relationship,
@@ -265,6 +266,55 @@ function observeView(relationship: Relationship, source: ViewSource) {
 }
 
 /**
+ * A version per connector's document route, made by the first render that
+ * reads it, so a store that draws nothing never makes one. The entity's proxy
+ * redraws a connector whose anchors moved; this one, a connector whose route alone did.
+ */
+const routeVersions = new WeakMap<Relationship, Version>();
+
+/** The route redraws each store's drag holds back, by the store's state. */
+const heldRedraws = new WeakMap<RootState, Set<Relationship>>();
+
+function observeRoute(relationship: Relationship) {
+  let held = routeVersions.get(relationship);
+  if (!held) {
+    held = observable({ version: 0 });
+    routeVersions.set(relationship, held);
+  }
+  return held.version;
+}
+
+/** Wakes the renders that read this route, which none may have yet. */
+function bumpRoute(relationship: Relationship) {
+  const held = routeVersions.get(relationship);
+  if (held) held.version += 1;
+}
+
+/**
+ * Holds back, until releaseRouteRedraws, the redraw of each document route a
+ * sort of this store changes. A static connector redrawn on each drag frame
+ * repaints the layer every static table sits in, which the drag never touches.
+ */
+export function holdRouteRedraws(state: RootState) {
+  if (!heldRedraws.has(state)) heldRedraws.set(state, new Set());
+}
+
+/** Redraws, once, every route the store's hold kept back, and lets the hold go. */
+export function releaseRouteRedraws(state: RootState) {
+  const held = heldRedraws.get(state);
+  if (!held) return;
+  heldRedraws.delete(state);
+  for (const relationship of held) bumpRoute(relationship);
+}
+
+/** The redraws a sort of this store keeps back while a drag holds them, if one does. */
+export function heldRouteRedraws(
+  state: RootState
+): Set<Relationship> | undefined {
+  return heldRedraws.get(state);
+}
+
+/**
  * Wakes every render that read this connector from that view's channel.
  * Called only for a change, as the entity's own proxy only notifies a changed
  * field, so a sort that moves one table redraws the connectors it moved and no other.
@@ -302,9 +352,19 @@ const sameSlots = (
 const sameAnchor = (a: Anchor, b: Anchor) =>
   a.x === b.x && a.y === b.y && a.direction === b.direction;
 
+/**
+ * Below this two routes are one. A nudge that settles a lane again lands a few
+ * floating point steps away, and that would redraw a connector nothing moved.
+ */
+const ROUTE_EPSILON = 0.01;
+
 const samePoints = (a: Point[], b: Point[]) =>
   a.length === b.length &&
-  a.every((point, index) => point.x === b[index].x && point.y === b[index].y);
+  a.every(
+    (point, index) =>
+      Math.abs(point.x - b[index].x) < ROUTE_EPSILON &&
+      Math.abs(point.y - b[index].y) < ROUTE_EPSILON
+  );
 
 export function setStubSlots(
   relationship: Relationship,
@@ -330,16 +390,25 @@ export function getStubSlots(
   return channels[source].stubSlots.get(relationship) ?? EMPTY_SLOTS;
 }
 
+/**
+ * Writes a connector's route and wakes whoever read it, only when it changed.
+ * The document's wake waits in held while a drag of its store holds it.
+ */
 export function setRoute(
   relationship: Relationship,
   points: Point[],
-  source: GeometrySource = 'document'
+  source: GeometrySource = 'document',
+  held?: Set<Relationship>
 ) {
   const channel = channels[source];
-  if (source !== 'document') {
-    const held = channel.routes.get(relationship);
-    if (!held || !samePoints(held.points, points)) {
+  const was = channel.routes.get(relationship);
+  if (!was || !samePoints(was.points, points)) {
+    if (source !== 'document') {
       bumpView(relationship, source);
+    } else if (held) {
+      held.add(relationship);
+    } else {
+      bumpRoute(relationship);
     }
   }
   channel.routes.set(relationship, { points, epoch: channel.epoch });
@@ -349,7 +418,11 @@ export function getRoute(
   relationship: Relationship,
   source: GeometrySource = 'document'
 ): Point[] | undefined {
-  if (source !== 'document') observeView(relationship, source);
+  if (source === 'document') {
+    observeRoute(relationship);
+  } else {
+    observeView(relationship, source);
+  }
   return channels[source].routes.get(relationship)?.points;
 }
 

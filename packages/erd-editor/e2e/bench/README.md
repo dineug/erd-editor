@@ -472,11 +472,12 @@ segments an attempt leaves overlapping left large at 4504px; measuring how many
 cannot tell which way round to prefer. It is the question `collinearOverlap` in
 `geometry.ts` asks, and aligning the two was the single largest step.
 
-**Two guards cost overlap and are worth it.** A route may only leave its anchor
-outward, which `routeOrthogonal` enforces when it enumerates candidates; keeping
-that through a nudge costs large 3081 to 3532px and removes 9 connectors on that
-corpus that folded back over their own turning point, 4 of them across the 35px
-run the cardinality symbols are drawn on. Nothing else sees those: the fold stays
+**Two guards cost overlap and are worth it.** A route leaves its anchor outward,
+which `routeOrthogonal` enforces when it enumerates candidates, save for the two
+that turn back by design, each with its reason in `route.ts` (`offersMiddle`,
+`hidesStepOut`); keeping that through a nudge costs large 3081 to 3532px and
+removes 9 connectors on that corpus that folded back over their own turning
+point, 4 of them across the 35px run the cardinality symbols are drawn on. Nothing else sees those: the fold stays
 orthogonal, collapses nothing, and `countBlocked` skips the connector's own two
 tables. Separately, a lane may not push the connector into either table it joins,
 which `countBlocked` also cannot see for the same reason.
@@ -586,7 +587,7 @@ Snapping channels to the nudge grid was tried and made the pre-v2 collinear coun
 (segments on the identical coordinate) worse by 60%: it puts more routes on one
 coordinate than can be safely spaced apart.
 
-**The router cannot get around a table directly between two aligned anchors.**
+**The router's candidates cannot get around a table directly between two aligned anchors.**
 With both turning points on the same line, the channel template degenerates —
 `[m, {x, y: m.y}, {x, y: l.y}, l]` with `m.y === l.y` is a straight line
 whatever `x` is — and the escape template steps out a fixed `ROUTE_CLEARANCE`
@@ -597,6 +598,13 @@ cheapest blocked one wins and the connector is drawn straight through. Three
 tables in a row, 361px wide, reproduced it on 2026-08-17, when `MIN_STUB` was
 36; it was not tried again at 24. Offset the two ends and the router bends
 around correctly, so this is a gap in the templates rather than in the scoring.
+Since the search for a way round (`src/utils/draw-relationship/AGENTS.md`), a
+connector every candidate takes through a table goes round it instead, unless
+its grid of lane crossings holds more than `MAX_SEARCH_POINTS` points (about 64
+lanes each way) or no way round lies within `SEARCH_MARGIN`. A blocking table
+that starts closer than the stub to the anchor's side still has the connector
+drawn through it: the turning point lies inside that table, where the search
+cannot start.
 
 **Side choice is stable enough.** `flips/move` was 0.05 on the `large` corpus,
 the largest there was when this was recorded (2026-08-17) — about six jumps over
@@ -617,7 +625,7 @@ The worst of those lands on two facing sides closer than `2 * MIN_STUB` (72px
 when this was recorded; 9785daff lowered `MIN_STUB` from 36 to 24 on 2026-10-10,
 so the boundary now sits at 48px and these figures were not measured again),
 where the two turning points pass each other and the only route doubles back. Taking
-such pairs out of `getAndSetDirection` was measured and not kept. Routes grew
+such pairs out of `getAndSetDirection` was measured then and not kept. Routes grew
 longer on every corpus (+2.3 / 4.1 / 1.3 / 0.9 / 0.2%), `cross-shared` rose on
 four of the five (x400 310 → 341), `node-cross` on four, collinear overlap on
 x150 and x400, small's `flips/move` went 0.00 → 0.03 (medium's 0.03 → 0.02),
@@ -629,6 +637,13 @@ rose 290 → 309, but the pairs pushed from at most one turn to three or more fe
 3.03 → 2.87%. Apart from those pairs, only the segment count improved, 1–5%
 fewer; a penalty on such pairs in place of the exclusion was not measured.
 Excluding a pair moves the boundary the jump happens at rather than removing it.
+The document has taken such pairs out since 2026-10-27, for the nearest pair
+whose stubs face (`src/utils/draw-relationship/AGENTS.md`), once the search for
+a way round kept the runs through a third table where they were; on the sample
+corpora it took away about a quarter of the routes that turned back over a
+stub, and the figures above were not measured again. Where no pair faces and
+two facing sides under 40px apart stay, out of line, the route turns once
+across the gap between them. A view still takes the nearest pair.
 The short stair between two single anchors a few pixels off level is kept by
 design for the same reason — each anchor sits at the centre of its side, and
 snapping the two level would add a boundary of its own.
