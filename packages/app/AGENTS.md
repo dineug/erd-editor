@@ -21,7 +21,8 @@
 
 | File | Description |
 | --- | --- |
-| `src/main.tsx` | Route table (`/`, lazy `/live`, lazy `/gdrive`, catch-all → `/`), jotai `Provider`; in production only, `Sentry.init` (`tracesSampleRate: 0.1`, the `sentryScrub` options) and `registerSW()` |
+| `src/main.tsx` | The boot: the browser router over `routes`, rendered in the jotai `Provider` once `watchDisplayLanguage` settles; in production only, `Sentry.init` (`tracesSampleRate: 0.1`, the `sentryScrub` options) and `registerSW()` |
+| `src/routes/routes.tsx` | The route table (`/`, lazy `/live`, lazy `/gdrive`, catch-all → `/`), apart from `main.tsx` so a spec can mount it in a memory router without the boot's render and `registerSW()` |
 | `src/store.ts` | The jotai store and the `bridge.on` handlers applying other tabs' mutations |
 | `src/sw.ts` | Service worker — `CacheFirst` for same-origin `.js`, `.css` and the image and font extensions `ASSET_EXTENSIONS` lists, on a path matching `/\.[0-9a-f]{8,}\./`; a new version takes over open tabs only on a `SKIP_WAITING` message, while a first install claims the page at once (`clientsClaim()`) |
 | `src/registerSW.ts` | A waiting worker → `app-update` state → `AppUpdatePrompt`; update checks hourly and when the tab becomes visible |
