@@ -72,6 +72,18 @@ function lowerBound(sorted: number[], value: number) {
   return low;
 }
 
+/** The first index whose coordinate is past value. */
+function upperBound(sorted: number[], value: number) {
+  let low = 0;
+  let high = sorted.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (sorted[middle] <= value) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
+
 /** A binary heap of states by cost, the lower state index first on a tie. */
 function createQueue() {
   const costs: number[] = [];
@@ -133,7 +145,7 @@ export type SearchResult = {
 /**
  * The cheapest orthogonal route from m to l through no table, the two it joins
  * included, turning on lanes a clearance from the tables within SEARCH_MARGIN
- * of the two turning points, or null if there is none.
+ * of the box the two turning points span, or null if there is none.
  */
 export function searchRoute(
   m: Point,
@@ -174,11 +186,22 @@ export function searchRoute(
     );
   }
 
+  // A lane within a pixel of an end gives way to that end's own coordinate, or
+  // the route would leave or arrive a sub-pixel off its turning point. The ends
+  // stay even when they lie that close to each other.
+  const nearEnd = (value: number, a: number, b: number) =>
+    value !== a &&
+    value !== b &&
+    (Math.abs(value - a) < 1 || Math.abs(value - b) < 1);
   const columns = uniqueSorted(
-    xs.filter(x => x >= region.left && x <= region.right)
+    xs.filter(
+      x => x >= region.left && x <= region.right && !nearEnd(x, m.x, l.x)
+    )
   );
   const rows = uniqueSorted(
-    ys.filter(y => y >= region.top && y <= region.bottom)
+    ys.filter(
+      y => y >= region.top && y <= region.bottom && !nearEnd(y, m.y, l.y)
+    )
   );
   const width = columns.length;
   const height = rows.length;
@@ -226,12 +249,12 @@ export function searchRoute(
     }
   }
 
-  // Each end's coordinates are on the grid, or merged into a lane within half
-  // a pixel of them, which is the first at or past half a pixel short of them.
+  // Each end's coordinates are on the grid, or merged into the other end's
+  // within half a pixel of them, the first past half a pixel short of them.
   const start =
-    lowerBound(rows, m.y - 0.5) * width + lowerBound(columns, m.x - 0.5);
+    upperBound(rows, m.y - 0.5) * width + upperBound(columns, m.x - 0.5);
   const goal =
-    lowerBound(rows, l.y - 0.5) * width + lowerBound(columns, l.x - 0.5);
+    upperBound(rows, l.y - 0.5) * width + upperBound(columns, l.x - 0.5);
   if (point[start] || point[goal]) return { points: null, region };
 
   const startHeading = headingOf(mDirection);

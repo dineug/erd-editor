@@ -122,6 +122,47 @@ describe('searchRoute', () => {
     ]);
   });
 
+  it('leaves and arrives on its ends when a lane sits half a pixel off one', () => {
+    // C's bottom lane falls at 100, half a pixel above both ends at 100.5,
+    // and the search started from it, a sub-pixel off its turning point.
+    const boxes: Box[] = [
+      START,
+      ['b', 424, -15, 600, 15],
+      ['c', 150, 60, 250, 84],
+      ['d', 150, 116, 250, 140],
+    ];
+    const { points } = search(
+      { x: 0, y: 100.5 },
+      Direction.right,
+      { x: 400, y: 100.5 },
+      Direction.left,
+      obstacles(boxes)
+    );
+
+    expect(points?.[0]).toEqual({ x: 0, y: 100.5 });
+    expect(points?.[points.length - 1]).toEqual({ x: 400, y: 100.5 });
+    expect(isOrthogonal(points!)).toBe(true);
+    expect(boxes.some(box => entersBox(points!, box))).toBe(false);
+  });
+
+  it('keeps both ends on the grid when they sit under a pixel apart', () => {
+    // Each end took the other's row for a lane a sub-pixel off it, so both left
+    // the grid and the route ran on the lane 31px away, slanting to its ends.
+    const boxes: Box[] = [START, END, ['x', 250, 200, 350, 230]];
+    const { points } = search(
+      { x: 0, y: 0 },
+      Direction.right,
+      { x: 600, y: 0.25 },
+      Direction.left,
+      obstacles(boxes)
+    );
+
+    expect(points).toEqual([
+      { x: 0, y: 0 },
+      { x: 600, y: 0.25 },
+    ]);
+  });
+
   it('picks the same route whatever order the tables come in', () => {
     const boxes: Box[] = [START, END, BETWEEN, ['y', 400, -300, 500, -60]];
     const route = (order: Box[]) =>
