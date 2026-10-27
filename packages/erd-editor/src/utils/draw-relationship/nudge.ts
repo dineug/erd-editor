@@ -289,9 +289,12 @@ function neighboursOf(group: Slot[], axis: Slot[]) {
     if (slot.coordinate > high) high = slot.coordinate;
   }
 
-  // The furthest a lane can sit from where the group already is, plus the
-  // distance at which it would still be read as the same line.
-  const reach = (NUDGE_GAP * (group.length - 1)) / 2 + SEPARATED;
+  // The furthest a lane can sit from where the group already is, the widest
+  // rung either side for a segment alone, plus the distance at which it would
+  // still be read as the same line.
+  const spread =
+    group.length > 1 ? (NUDGE_GAP * (group.length - 1)) / 2 : NUDGE_GAP;
+  const reach = spread + SEPARATED;
   const neighbours: Slot[] = [];
 
   for (const slot of axis) {

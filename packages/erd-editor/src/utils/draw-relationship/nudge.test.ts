@@ -505,6 +505,30 @@ describe('nudgeRoutes', () => {
     expect(b).toEqual(line([50, -60], [50, -10], [150, -10], [150, 60]));
   });
 
+  it("moves a lone segment past a lane another connector's anchor run holds", () => {
+    // c's anchor run sits at x 90, a rung below a's run, so the lane above is
+    // the one that clears both b's run and c's.
+    const a = line([50, 0], [100, 0], [100, 100], [150, 100]);
+    const b = line([100, 40], [100, 60], [300, 60], [300, 80]);
+    const c = line([90, 10], [90, 30], [-100, 30], [-100, 50]);
+
+    nudgeRoutes(
+      new Map([
+        ['a', a],
+        ['b', b],
+        ['c', c],
+      ]),
+      NO_OBSTACLES,
+      new Map([
+        ['a', ['t0', 't1']],
+        ['b', ['t2', 't3']],
+        ['c', ['t4', 't5']],
+      ])
+    );
+
+    expect(a).toEqual(line([50, 0], [110, 0], [110, 100], [150, 100]));
+  });
+
   it('leaves a segment alone on its lane where no move off the run is safe', () => {
     // Tables close above and below the lane leave no rung clear of both.
     const a = line([0, 0], [200, 0]);
