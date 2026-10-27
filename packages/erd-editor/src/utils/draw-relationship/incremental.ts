@@ -100,7 +100,7 @@ function boxOf(obstacles: Obstacles, index: number): DirtyBox {
   };
 }
 
-function union(a: DirtyBox, b: DirtyBox): DirtyBox {
+export function union(a: DirtyBox, b: DirtyBox): DirtyBox {
   return {
     left: Math.min(a.left, b.left),
     top: Math.min(a.top, b.top),

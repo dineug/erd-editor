@@ -6,7 +6,7 @@ import { getVisibleIds } from '@/konva/scene/viewLayout';
 import { MIN_STUB, PATH_LINE_HEIGHT } from '@/utils/draw-relationship';
 import { tableToObjectPoint } from '@/utils/draw-relationship/calc';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
-import type { DirtyBox } from '@/utils/draw-relationship/incremental';
+import { type DirtyBox, union } from '@/utils/draw-relationship/incremental';
 import { searchRoute } from '@/utils/draw-relationship/search';
 import { isHorizontal, outwardSign } from '@/utils/draw-relationship/stub';
 
@@ -190,6 +190,14 @@ type Channels = { lanes: number[]; cut: number };
 
 const anyLane = () => true;
 
+/** Whether the list already holds a lane within half a pixel of this one. */
+function hasLane(lanes: number[], lane: number) {
+  for (let index = 0; index < lanes.length; index++) {
+    if (Math.abs(lanes[index] - lane) < 0.5) return true;
+  }
+  return false;
+}
+
 /**
  * The midpoint and a lane just clear of each table reaching into the band the
  * run crosses, of those the route can turn at. Sorted by distance, then
@@ -224,7 +232,7 @@ function channels(
   const tried = accept(middle) ? [middle] : [];
   for (const lane of lanes) {
     if (!accept(lane)) continue;
-    if (tried.some(other => Math.abs(other - lane) < 0.5)) continue;
+    if (hasLane(tried, lane)) continue;
     if (tried.length >= limit) {
       return { lanes: tried, cut: Math.abs(tried[tried.length - 1] - middle) };
     }
@@ -261,7 +269,7 @@ function hidesStepOut(m: number, l: number, mSign: number) {
  */
 function stepOut(lanes: number[], from: number, sign: number) {
   const lane = from + sign * ROUTE_CLEARANCE;
-  if (!lanes.some(other => Math.abs(other - lane) < 0.5)) lanes.push(lane);
+  if (!hasLane(lanes, lane)) lanes.push(lane);
 }
 
 /**
@@ -500,15 +508,6 @@ function reachOf(
     top: Math.min(m.y, l.y, middleY - spreadY),
     right: Math.max(m.x, l.x, middleX + spreadX),
     bottom: Math.max(m.y, l.y, middleY + spreadY),
-  };
-}
-
-function union(a: DirtyBox, b: DirtyBox): DirtyBox {
-  return {
-    left: Math.min(a.left, b.left),
-    top: Math.min(a.top, b.top),
-    right: Math.max(a.right, b.right),
-    bottom: Math.max(a.bottom, b.bottom),
   };
 }
 
