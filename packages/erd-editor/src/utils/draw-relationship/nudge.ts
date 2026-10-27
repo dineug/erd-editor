@@ -224,7 +224,9 @@ function separateRuns(
   let reach = -Infinity;
 
   const flush = () => {
-    if (group.length) separate(group, axis, fixed, obstacles, endpoints, memo);
+    for (const run of closeRuns(group)) {
+      separate(run, axis, fixed, obstacles, endpoints, memo);
+    }
     group = [];
     // Reset with the group. Carrying the previous reach forward joins every
     // later segment on this line into one giant group, spread so far apart that
@@ -238,6 +240,45 @@ function separateRuns(
     reach = Math.max(reach, slot.high);
   }
   flush();
+}
+
+/**
+ * Splits a group into the sets of segments linked by pairs that run over each
+ * other with lanes a gap or less apart. The channel and the sweep can join two
+ * through a segment far along the axis, which would hang their layout on it.
+ */
+function closeRuns(group: Slot[]): Slot[][] {
+  if (group.length < 2) return group.length ? [group] : [];
+
+  const root = group.map((_, index) => index);
+  const find = (index: number) => {
+    while (root[index] !== index) {
+      root[index] = root[root[index]];
+      index = root[index];
+    }
+    return index;
+  };
+
+  for (let i = 0; i < group.length; i++) {
+    const a = group[i];
+    for (let j = i + 1; j < group.length; j++) {
+      const b = group[j];
+      if (Math.abs(a.coordinate - b.coordinate) > NUDGE_GAP + NUDGE_EPSILON) {
+        continue;
+      }
+      if (a.low >= b.high || b.low >= a.high) continue;
+      root[find(j)] = find(i);
+    }
+  }
+
+  const runs = new Map<number, Slot[]>();
+  group.forEach((slot, index) => {
+    const key = find(index);
+    const run = runs.get(key);
+    if (run) run.push(slot);
+    else runs.set(key, [slot]);
+  });
+  return [...runs.values()];
 }
 
 /**

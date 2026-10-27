@@ -220,6 +220,68 @@ describe('relationshipSort incremental reuse', () => {
     expect(incremental).toEqual(fresh);
   });
 
+  it('draws a group whose lanes lie a gap apart as a sort from scratch', () => {
+    // The channel joined two segments more than a gap apart through r8's, far
+    // along the axis, and the pair kept the lanes it was given after r8 left.
+    const { incremental, fresh } = stepsAgainstFresh(
+      [
+        ['t0', 94.5, 79, 5],
+        ['t1', 186.5, 149, 4],
+        ['t2', 368.5, 257, 1],
+        ['t3', 137, 429.5, 6],
+        ['t5', 585, 46.5, 3],
+        ['t7', 109, 344, 3],
+        ['t9', 638, 75.5, 2],
+        ['t10', 530, 466, 5],
+      ],
+      [
+        ['r2', 't5', 't10'],
+        ['r8', 't10', 't5'],
+        ['r11', 't10', 't5'],
+        ['r13', 't3', 't9'],
+        ['r14', 't9', 't3'],
+        ['r15', 't7', 't0'],
+      ],
+      [{ drop: 'r8' }]
+    );
+
+    expect(incremental).toEqual(fresh);
+  });
+
+  it('draws a group joined through a segment of another as a sort from scratch', () => {
+    // r7 runs over neither r14 nor r18, yet the three were laid out together,
+    // joined through r10's run; once r28 left and r7 moved, the pair kept the
+    // lanes the three had been given.
+    const { incremental, fresh } = stepsAgainstFresh(
+      [
+        ['t0', 1054, 753, 4],
+        ['t1', 483.5, 642.5, 5],
+        ['t2', 617.5, 512, 3],
+        ['t3', 764, 581.5, 1],
+        ['t6', 219, 421.5, 4],
+        ['t7', 878.5, 761, 6],
+        ['t8', 1252, 585.5, 4],
+        ['t12', 1027, 475, 6],
+        ['t14', 1200.5, 257.5, 4],
+        ['t16', 641.5, 484.5, 1],
+        ['t19', 136.5, 239, 6],
+        ['t22', 767.5, 369, 3],
+        ['t23', 804.5, 177.5, 4],
+      ],
+      [
+        ['r7', 't8', 't14'],
+        ['r10', 't19', 't8'],
+        ['r14', 't19', 't0'],
+        ['r18', 't6', 't12'],
+        ['r28', 't14', 't8'],
+        ['r29', 't2', 't6'],
+      ],
+      [{ drop: 'r28' }]
+    );
+
+    expect(incremental).toEqual(fresh);
+  });
+
   it('draws a removed relationship exactly as a sort without it', () => {
     const incremental = createScene();
     relationshipSort(incremental);
