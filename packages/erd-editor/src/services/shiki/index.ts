@@ -1,6 +1,6 @@
 import * as Comlink from 'comlink';
 
-import { spawnShikiWorker } from '@/workers/spawn';
+import { spawnShikiWorker } from '@/workers/shiki.spawn';
 
 import type { ShikiService } from './shikiService';
 

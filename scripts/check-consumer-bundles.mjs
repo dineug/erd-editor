@@ -77,41 +77,47 @@ const ELEMENT_MODULES = {
 
 /**
  * One fixture each. tags is every tag the bundle defines, each once, probe the
- * value the fixture leaves on globalThis, workers, where a case sets it, whether
- * the bundle carries the three SharedWorkers, and forbidden what its graph lacks.
+ * value the fixture leaves on globalThis, workers the SharedWorkers the bundle
+ * carries and no other, and forbidden what its graph lacks.
  */
 const CASES = [
   {
     id: 'viewer-only',
     tags: ['erd-viewer'],
     probe: null,
-    workers: false,
+    workers: [],
     forbidden: VIEWER_BOUNDARY,
   },
   {
     id: 'barrel-named',
     tags: [],
     probe: 'function',
-    workers: false,
+    workers: [],
     forbidden: ELEMENT_MODULES,
+  },
+  {
+    id: 'to-image',
+    tags: [],
+    probe: 'function',
+    workers: ['exportPng.shared-worker'],
   },
   {
     id: 'editor-entry',
     tags: ['erd-editor'],
     probe: 'function',
-    workers: true,
+    workers: WORKER_NAMES,
   },
   {
     id: 'side-effect-free-lib',
     tags: ['erd-editor'],
     probe: 'mounted',
-    workers: true,
+    workers: WORKER_NAMES,
   },
   {
     id: 'define-twice',
     tags: ['erd-editor', 'erd-viewer'],
     probe: true,
-    workers: true,
+    workers: WORKER_NAMES,
   },
 ];
 
@@ -447,13 +453,13 @@ function markersIn(chunkFiles) {
 
 /**
  * What a bundle says about the workers. A lane with a worker graph names the
- * three worker modules in it; the others reference the three files by url.
+ * worker modules in it; the others reference their files by url.
  */
 function workerFailures(lane, bundled, markers, want) {
   const workerModules = bundled.workerModules.filter(id =>
     id.startsWith(WORKER_MODULE_PREFIX)
   );
-  if (!want) {
+  if (!want.length) {
     return [
       ...[...markers].map(marker => `the bundle holds ${marker}`),
       ...workerModules.map(id => `the worker graph holds ${id}`),
@@ -468,7 +474,11 @@ function workerFailures(lane, bundled, markers, want) {
       lane === 'webpack' || lane === 'rspack'
         ? workerModules.includes(`${WORKER_MODULE_PREFIX}${name}.js`)
         : markers.has(name);
-    if (!named) failures.push(`the bundle carries no ${name}`);
+    if (want.includes(name) && !named) {
+      failures.push(`the bundle carries no ${name}`);
+    } else if (!want.includes(name) && named) {
+      failures.push(`the bundle carries ${name}, which it never starts`);
+    }
   }
   return failures;
 }
@@ -518,9 +528,7 @@ function judge(lane, testCase, bundled, markers, evaluated) {
       `left ${JSON.stringify(evaluated.probe)}, expected ${JSON.stringify(testCase.probe)}`
     );
   }
-  if (testCase.workers !== undefined) {
-    failures.push(...workerFailures(lane, bundled, markers, testCase.workers));
-  }
+  failures.push(...workerFailures(lane, bundled, markers, testCase.workers));
   if (testCase.forbidden) {
     failures.push(...graphFailures(bundled, testCase.forbidden));
   }
@@ -665,7 +673,7 @@ async function chromiumOf() {
  * sends it a raw comlink GET of constructor.name, which only a port its service
  * was exposed on answers, as a worker that throws or waits as it starts does not.
  */
-async function workerRunFailures(bundled, outDir) {
+async function workerRunFailures(bundled, outDir, want) {
   const types = [...workerTypesIn(bundled.chunkFiles)];
   if (types.length !== 1) {
     return [`the bundle starts its workers as ${types.join(' and ') || 'nothing'}`];
@@ -673,7 +681,7 @@ async function workerRunFailures(bundled, outDir) {
   const [type] = types;
   const failures = [];
   const workers = [];
-  for (const name of WORKER_NAMES) {
+  for (const name of want) {
     const file = bundled.workerFiles[name];
     if (file) {
       workers.push({ name, url: `/${path.relative(outDir, file).split(path.sep).join('/')}` });
@@ -806,10 +814,12 @@ async function main(argv) {
         const failures = judge(lane, testCase, bundled, markers, evaluated);
 
         let realm = '';
-        if (testCase.workers && bundled.workerFiles) {
-          const run = await workerRunFailures(bundled, outDir);
+        if (testCase.workers.length && bundled.workerFiles) {
+          const run = await workerRunFailures(bundled, outDir, testCase.workers);
           failures.push(...run);
-          if (!run.length) realm += '; the three workers answered in Chromium';
+          if (!run.length) {
+            realm += `; ${testCase.workers.length} of the workers answered in Chromium`;
+          }
         }
         if (lane === 'vite' && testCase.id === 'editor-entry') {
           const exportWorker = bundled.files.find(file =>

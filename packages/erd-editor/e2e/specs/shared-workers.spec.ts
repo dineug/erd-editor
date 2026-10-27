@@ -20,40 +20,41 @@ test.describe('the shared workers on the dev server', () => {
   }) => {
     const started = await erd.page.evaluate(
       async ({ workers, timeout }) => {
-        const spawnModule = '/src/workers/spawn.ts';
-        const spawn = await import(spawnModule);
         // A fresh name per run: a taken name joins the instance holding it,
         // and an instance that failed fires error at its first constructor only.
         const suffix = crypto.randomUUID();
 
         return Promise.all(
-          workers.map(
-            worker =>
-              new Promise<Started>(resolve => {
-                const shared: SharedWorker = spawn[`spawn${worker}Worker`](
-                  `e2e-${worker}-${suffix}`
-                );
-                const errors: string[] = [];
-                const settle = (service: string | null) => {
-                  clearTimeout(timer);
-                  resolve({ worker, service, errors });
-                };
-                const timer = setTimeout(() => settle(null), timeout);
+          workers.map(async worker => {
+            // Each worker's spawn module is named after it, its first letter lower case.
+            const spawnModule = `/src/workers/${worker[0].toLowerCase()}${worker.slice(1)}.spawn.ts`;
+            const spawn = await import(spawnModule);
 
-                shared.addEventListener('error', event => {
-                  errors.push((event as ErrorEvent).message ?? event.type);
-                  settle(null);
-                });
-                // A raw comlink GET, which only a port the service was exposed
-                // on answers, here with the class name of that service.
-                shared.port.onmessage = ({ data }) => settle(data?.value);
-                shared.port.postMessage({
-                  id: worker,
-                  type: 'GET',
-                  path: ['constructor', 'name'],
-                });
-              })
-          )
+            return new Promise<Started>(resolve => {
+              const shared: SharedWorker = spawn[`spawn${worker}Worker`](
+                `e2e-${worker}-${suffix}`
+              );
+              const errors: string[] = [];
+              const settle = (service: string | null) => {
+                clearTimeout(timer);
+                resolve({ worker, service, errors });
+              };
+              const timer = setTimeout(() => settle(null), timeout);
+
+              shared.addEventListener('error', event => {
+                errors.push((event as ErrorEvent).message ?? event.type);
+                settle(null);
+              });
+              // A raw comlink GET, which only a port the service was exposed
+              // on answers, here with the class name of that service.
+              shared.port.onmessage = ({ data }) => settle(data?.value);
+              shared.port.postMessage({
+                id: worker,
+                type: 'GET',
+                path: ['constructor', 'name'],
+              });
+            });
+          })
         );
       },
       { workers: WORKERS, timeout: START_TIMEOUT }
