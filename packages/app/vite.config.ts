@@ -6,14 +6,15 @@ import { defineConfig, loadEnv, type Plugin } from 'vite-plus';
 
 import { BROWSER_TARGET, BROWSER_TARGET_QUERY } from '../../build-target';
 import { createAuthDevMiddleware } from './src/server/auth/nodeAdapter';
+import { gtagSnippet } from './src/utils/gtagSnippet';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const GTAG_ID = 'G-3VBWD4V1JX';
 
 /**
- * Injects the analytics snippet in production only. Added from script, never
- * on /gdrive or on a sign-in popup a deploy answered with the app, in any case
- * or percent-encoding the router matches, it keeps Google user data out.
+ * Adds the analytics script of src/utils/gtagSnippet.ts in production only. It
+ * loads nothing on /gdrive or a sign-in popup a deploy answered with the app,
+ * and on /embed gives the path alone as the page's address.
  */
 function gtag(isProduction: boolean): Plugin {
   return {
@@ -24,25 +25,7 @@ function gtag(isProduction: boolean): Plugin {
         isProduction
           ? html.replace(
               '</body>',
-              `  <script>
-      var gtagPath = location.pathname;
-      try {
-        gtagPath = decodeURI(gtagPath);
-      } catch (error) {}
-      gtagPath = gtagPath.toLowerCase();
-      if (!gtagPath.startsWith('/gdrive') && !gtagPath.startsWith('/api/auth')) {
-        window.dataLayer = window.dataLayer || [];
-        window.gtag = function () {
-          dataLayer.push(arguments);
-        };
-        gtag('js', new Date());
-        gtag('config', '${GTAG_ID}');
-        var gtagScript = document.createElement('script');
-        gtagScript.async = true;
-        gtagScript.src = 'https://www.googletagmanager.com/gtag/js?id=${GTAG_ID}';
-        document.head.appendChild(gtagScript);
-      }
-    </script>
+              `  <script>${gtagSnippet(GTAG_ID)}</script>
   </body>`
             )
           : html,

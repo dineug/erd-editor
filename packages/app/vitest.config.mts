@@ -15,8 +15,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
-      // The collaboration transport, the schema service, the Drive relay and
-      // client, the display language, the embed URL rules and the pure
+      // The collaboration transport, schema service, Drive relay and client,
+      // display language, embed URL rules, analytics snippet and the pure
       // utilities they build on; the React shell and worker plumbing are not.
       include: [
         'src/i18n/**/*.ts',
@@ -33,6 +33,7 @@ export default defineConfig({
         'src/utils/embedOptions.ts',
         'src/utils/embedPath.ts',
         'src/utils/githubRawUrl.ts',
+        'src/utils/gtagSnippet.ts',
         'src/utils/importFile.ts',
         'src/utils/locale.ts',
         'src/utils/reportError.ts',
