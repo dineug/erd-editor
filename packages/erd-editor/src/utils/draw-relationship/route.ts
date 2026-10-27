@@ -501,6 +501,8 @@ export function routeWithReach(
     l,
     lDirection,
     obstacles,
+    skipA,
+    skipB,
     ROUTE_CLEARANCE,
     BEND_COST
   );

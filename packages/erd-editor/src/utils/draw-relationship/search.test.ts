@@ -34,7 +34,7 @@ const search = (
   l: Point,
   lDirection: number,
   boxes: Obstacles
-) => searchRoute(m, mDirection, l, lDirection, boxes, 16, 36);
+) => searchRoute(m, mDirection, l, lDirection, boxes, 'a', 'b', 16, 36);
 
 function isOrthogonal(points: Point[]) {
   return points.every((point, index) => {
@@ -161,6 +161,27 @@ describe('searchRoute', () => {
       { x: 0, y: 0 },
       { x: 600, y: 0.25 },
     ]);
+  });
+
+  it('arrives from the side without crossing the end stub', () => {
+    // C closes the way down to l, so the route comes up to it from below. The
+    // lane a clearance off B ran down across l's stub, 14px from its anchor.
+    const boxes: Box[] = [
+      ['a', 420, 425, 560, 480],
+      ['b', 213, 388, 379, 418],
+      ['c', 120, 300, 190, 395],
+    ];
+    const { points } = search(
+      { x: 497, y: 391 },
+      Direction.top,
+      { x: 179, y: 403 },
+      Direction.left,
+      obstacles(boxes)
+    );
+
+    expect(isOrthogonal(points!)).toBe(true);
+    expect(entersBox(points!, ['stub', 180, 403, 211, 403])).toBe(false);
+    expect(boxes.some(box => entersBox(points!, box))).toBe(false);
   });
 
   it('picks the same route whatever order the tables come in', () => {

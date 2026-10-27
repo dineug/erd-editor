@@ -143,9 +143,9 @@ export type SearchResult = {
 };
 
 /**
- * The cheapest orthogonal route from m to l through no table, the two it joins
- * included, turning on lanes a clearance from the tables within SEARCH_MARGIN
- * of the box the two turning points span, or null if there is none.
+ * The cheapest orthogonal route from m to l through no table and across neither
+ * stub, turning on lanes a clearance from the tables within SEARCH_MARGIN of the
+ * box the two turning points span, or null if there is none.
  */
 export function searchRoute(
   m: Point,
@@ -153,6 +153,8 @@ export function searchRoute(
   l: Point,
   lDirection: number,
   obstacles: Obstacles,
+  startTableId: string,
+  endTableId: string,
   clearance: number,
   bendCost: number
 ): SearchResult {
@@ -251,11 +253,44 @@ export function searchRoute(
 
   // Each end's coordinates are on the grid, or merged into the other end's
   // within half a pixel of them, the first past half a pixel short of them.
-  const start =
-    upperBound(rows, m.y - 0.5) * width + upperBound(columns, m.x - 0.5);
-  const goal =
-    upperBound(rows, l.y - 0.5) * width + upperBound(columns, l.x - 0.5);
+  const rowOf = (y: number) => upperBound(rows, y - 0.5);
+  const columnOf = (x: number) => upperBound(columns, x - 0.5);
+  const start = rowOf(m.y) * width + columnOf(m.x);
+  const goal = rowOf(l.y) * width + columnOf(l.x);
   if (point[start] || point[goal]) return { points: null, region };
+
+  // A run across an end's stub draws over its markers or loops the route over
+  // itself, so the grid points between the end's table and its turning point
+  // are closed, where the other end does not sit.
+  const close = (at: number) => {
+    if (at !== start && at !== goal) point[at] = 1;
+  };
+  const closeStub = (end: Point, direction: number, tableId: string) => {
+    const index = obstacles.ids.indexOf(tableId);
+    if (index < 0) return;
+    const sign = outwardSign(direction);
+    if (isHorizontal(direction)) {
+      const edge = sign > 0 ? obstacles.right[index] : obstacles.left[index];
+      const row = rowOf(end.y);
+      for (let column = 0; column < width; column++) {
+        const x = columns[column];
+        if ((x - edge) * sign > 0 && (end.x - x) * sign > 0.5) {
+          close(row * width + column);
+        }
+      }
+    } else {
+      const edge = sign > 0 ? obstacles.bottom[index] : obstacles.top[index];
+      const column = columnOf(end.x);
+      for (let row = 0; row < height; row++) {
+        const y = rows[row];
+        if ((y - edge) * sign > 0 && (end.y - y) * sign > 0.5) {
+          close(row * width + column);
+        }
+      }
+    }
+  };
+  closeStub(m, mDirection, startTableId);
+  closeStub(l, lDirection, endTableId);
 
   const startHeading = headingOf(mDirection);
   const away = headingOf(lDirection);
