@@ -8,6 +8,7 @@ export {
   ErdViewerElement,
 } from '@/components/erd-viewer/ErdViewer';
 export type { LocaleCode, LocaleOption } from '@/i18n/locales';
+export { toImage, type ToImageOptions } from '@/services/export-png/toImage';
 export { setExportFileCallback } from '@/utils/file/exportFile';
 export { setImportFileCallback } from '@/utils/file/importFile';
 export {

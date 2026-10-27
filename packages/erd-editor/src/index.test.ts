@@ -14,6 +14,7 @@ import type {
   LocaleCode,
   LocaleOption,
   SchemaSQLOptions,
+  ToImageOptions,
 } from '@/index';
 import * as index from '@/index';
 import { exportJSON } from '@/utils/file/exportFile';
@@ -35,6 +36,7 @@ describe('@dineug/erd-editor entry point', () => {
       'dictionaryRowChords',
       'setExportFileCallback',
       'setImportFileCallback',
+      'toImage',
     ]);
   });
 
@@ -126,6 +128,24 @@ describe('@dineug/erd-editor entry point', () => {
       statements?: 'create' | 'ifNotExists' | 'recreate';
       header?: 'none' | 'use' | 'createAndUse';
       logicalNameAsComment?: boolean;
+    }>();
+  });
+
+  it('types toImage by its format: a Blob for a png, the text for an svg', () => {
+    expectTypeOf((value: string) =>
+      index.toImage(value, { format: 'png', scale: 3 })
+    ).returns.toEqualTypeOf<Promise<Blob>>();
+    expectTypeOf((value: string) =>
+      index.toImage(value, { format: 'svg', darkMode: true })
+    ).returns.toEqualTypeOf<Promise<string>>();
+    expectTypeOf((value: string, options: ToImageOptions) =>
+      index.toImage(value, options)
+    ).returns.toEqualTypeOf<Promise<Blob | string>>();
+    expectTypeOf<ToImageOptions>().toEqualTypeOf<{
+      format: 'png' | 'svg';
+      background?: boolean;
+      darkMode?: boolean;
+      scale?: 1 | 2 | 3;
     }>();
   });
 

@@ -1,5 +1,5 @@
 <!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-27 -->
 
 # services
 
@@ -29,6 +29,7 @@
 | `export-png/ExportScene.tsx` | The scene an export draws: the whole document on one layer, the groups behind it, no culling, no check marked |
 | `export-png/exportBox.ts` | `EXPORT_ZOOM_LEVEL`, `getExportRect`, `getExportScale`, `getExportSize`, `getStageSize` |
 | `export-png/pixelRatio.ts` | The canvas ceilings `CANVAS_AREA_MAX` and `CANVAS_SIDE_MAX`, `fitPixelRatio` |
+| `export-png/toImage.ts` | `toImage` and `ToImageOptions`, which the package root exports: a document's png or svg with the Export image dialog's options |
 | `export-png/exportPngService.ts`, `exportPng.shared-worker.ts` | `ExportPngService`, which draws off the thread that asked, and the worker's entry |
 | `export-png/renderPng.ts`, `renderSvg.ts`, `sceneSvg.ts` | The png and the svg; the svg's rules are in `src/components/export-image/AGENTS.md` |
 | `export-png/textWidth.ts` | `createOffscreenToWidth` and the font probe strings both realms measure |
@@ -85,6 +86,13 @@
 - **The scale is cut to the canvas ceilings.** `getExportScale` and `pixelRatio.ts` cut it. `src/components/export-image/exportImageActions.ts` surfaces reductions and failures.
 - The Export image dialog, its options, preview, toasts and the svg writer: `src/components/export-image/AGENTS.md`.
 - Scene code counting twice in `pnpm size`, since this worker builds its own app context: the package file (Testing Requirements).
+
+### The Export from Outside
+
+- **`toImage` takes the dialog's options and no other.** It is the package root's export, a png `Blob` or an svg string drawn from a document's text, with `format`, `background`, `darkMode` and `scale`, the Export image dialog's three controls, an owner decision (2026-10-27). It opens as the dialog does, background on and 2x, but light, so a document draws alike on every machine. It names no palette, language or name view, so it draws the preset of the element's own slate and indigo, its own words in English and the name view the document holds.
+- **It draws through `createDocumentPng` and `createDocumentSvg`.** So it takes the worker first, at 100%, as every export does, and measures text with `createText()`, as the editor does. An svg is handed no scale.
+- **It refuses before it draws.** It rejects a realm with no `document`, since it runs in a browser alone (an owner decision of 2026-10-27), a value that is not text, a value of the four options the dialog does not offer, a `TypeError` naming the option, and text `parser` cannot read. It reads no other key, as the element's setters read none. Empty text draws an empty document, as `<erd-viewer>` loads one, and so does JSON with none of a document's fields, which `parser` fills with defaults.
+- `export-png/toImage.test.ts` pins the options and the refusals, `toImage.browser.test.ts` the files Chromium draws, and `src/index.test.ts` the type its format picks.
 
 ### The Export's Language
 

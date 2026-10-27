@@ -1,11 +1,11 @@
 <!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
+<!-- Generated: 2026-10-11 | Updated: 2026-10-27 -->
 
 # export-image
 
 ## Purpose
 
-`src/components/export-image/` holds the Export image dialog, the one place every image export starts: `ExportImage.tsx`, and in `exportImageActions.ts` the actions behind its PNG, SVG and Copy to clipboard buttons. The files are drawn by the export worker in `src/services/export-png/`; the scene it draws and the language it draws in are ruled in `src/services/AGENTS.md`. The dialog is built on the shared modal in `src/components/primitives/dialog/`, which Map Columns (`src/components/map-columns/AGENTS.md`) also uses. A change here keeps the option set, the toast rule and the 100% drawing of every export, which are owner decisions.
+`src/components/export-image/` holds the Export image dialog, the one place every image export the editor offers starts: `ExportImage.tsx`, and in `exportImageActions.ts` the actions behind its PNG, SVG and Copy to clipboard buttons. The files are drawn by the export worker in `src/services/export-png/`; the scene it draws and the language it draws in are ruled in `src/services/AGENTS.md`. The dialog is built on the shared modal in `src/components/primitives/dialog/`, which Map Columns (`src/components/map-columns/AGENTS.md`) also uses. A change here keeps the option set, the toast rule and the 100% drawing of every export, which are owner decisions.
 
 ## Making a Change
 
@@ -33,10 +33,11 @@
 
 ## Rules
 
-### One dialog for every image export
+### One dialog for the editor's image exports
 
-- **Every image export goes through one dialog.** `ExportImage.tsx` is that dialog (owner decisions of 2026-10-04). Export ▸ Image in the canvas menu and in the palette emit `openExportImage`. `ErdEditor` mounts it beside the theme builder under `Open.exportImage`, reader-only like every `openMap` key.
+- **Every image export the editor offers goes through one dialog.** `ExportImage.tsx` is that dialog (owner decisions of 2026-10-04). Export ▸ Image in the canvas menu and in the palette emit `openExportImage`. `ErdEditor` mounts it beside the theme builder under `Open.exportImage`, reader-only like every `openMap` key.
 - Reader-only state and the `openMap` keys: `src/engine/AGENTS.md`.
+- **`toImage` takes the dialog's options from outside.** The package root's `toImage` writes the same files with Background, Dark mode and Scale and no other option, so a control added here or taken away changes what it takes too (`src/services/AGENTS.md`, The Export from Outside).
 - **The dialog holds a fixed set of controls.** It holds a preview, a close button, Background, Dark mode, Scale (1x, 2x, 3x), PNG, SVG and Copy to clipboard, and nothing else (owner decisions of 2026-10-04). `ExportImage.test.ts` checks that set.
 - **No export embeds the diagram or writes PDF.** No export embeds the diagram in the image so it can be reopened, which the owner left for later work together with image import, and PDF export was declined (owner decisions of 2026-10-05).
 - **The options last for the element's life.** They are never kept in storage. They open on Background on, Dark mode seeded once from `hasDarkMode()`, and 2x.
@@ -108,6 +109,6 @@
 - `sceneSvg.attributes.test.ts` reads every attribute that a scene tag the export reaches can set. It fails on one the writer neither writes nor names in `SVG_SKIPPED_ATTRIBUTES`. So a new attribute on a scene component is written into the svg or skipped on purpose.
 - `renderSvg.browser.test.ts` holds the attributes konva really keeps to the same lists.
 - `renderSvg.browser.test.ts` and `sceneSvg.browser.test.ts` hold the svg's pixels, text included, to the canvas konva paints, shadows aside. They compare pixels because every text spec that reads attributes repeats the writer's baseline arithmetic.
-- `exportImageActions.test.ts` pins the toast rule (Rules, One dialog for every image export).
+- `exportImageActions.test.ts` pins the toast rule (Rules, One dialog for the editor's image exports).
 
 <!-- MANUAL: notes added below this line are preserved on regeneration -->
