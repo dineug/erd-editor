@@ -4,6 +4,30 @@
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-28
+
+### Changed
+
+- A read-only diagram, such as a file you cannot write, opens as a reader: its tabs and the
+  Explorer stay, and every control that would edit the diagram is gone. A jump from the Explorer
+  or the command palette outlines what it reaches, and the view settings you change stay in that
+  editor.
+- Relationship lines go round the tables in their way where they can, instead of through them,
+  and the same diagram draws the same lines in every window. Dropping a moved table redraws each
+  line it reroutes.
+- The Settings tab's Recalculation table width row is removed.
+- A coding agent edits a large diagram faster with `@dineug/erd-editor-mcp` updated to this
+  release.
+
+### Fixed
+
+- A new column focuses the first cell of its row, so with the Name View on Both it starts at the
+  logical name.
+- A Settings column order saved by a later release keeps its order here instead of resetting to
+  the default.
+- In a short editor pane, the command palette's list fits and keeps the selected row in view.
+- A line between two facing tables under 40px apart no longer shows as broken bars.
+
 ## [1.2.0] - 2026-10-23
 
 ### Added
