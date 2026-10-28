@@ -1,4 +1,8 @@
-import type { BrowserOptions, ErrorEvent } from '@sentry/react';
+import type {
+  BrowserOptions,
+  browserTracingIntegration,
+  ErrorEvent,
+} from '@sentry/react';
 import { describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -14,6 +18,11 @@ type TransactionEvent = Parameters<
   NonNullable<BrowserOptions['beforeSendTransaction']>
 >[0];
 type SpanJson = Parameters<NonNullable<BrowserOptions['beforeSendSpan']>>[0];
+type TracingOptions = NonNullable<
+  Parameters<typeof browserTracingIntegration>[0]
+>;
+
+const EMBED_SRC = '?src=https%3A%2F%2Fx.test%2Fa.erd.json';
 
 /** The INP span Sentry sends alone, named after the element as htmlTreeAsString writes it. */
 function interactionSpan(transaction: string): SpanJson {
@@ -81,14 +90,29 @@ describe('scrubUrl', () => {
       'https://accounts.google.com/o/oauth2/v2/auth?login_hint=123',
       'https://accounts.google.com/o/oauth2/v2/auth',
     ],
+    ['/live/#room,secret', '/live/'],
+    ['/live?x=1#k', '/live'],
+    ['https://erd-editor.io/live/#room,secret', 'https://erd-editor.io/live/'],
+    ['/embed?src=https%3A%2F%2Fx%2Fa.erd.json#y', '/embed'],
+    [`https://erd-editor.io/embed${EMBED_SRC}`, 'https://erd-editor.io/embed'],
+    [
+      `https://erd-editor.io/embed/${EMBED_SRC}`,
+      'https://erd-editor.io/embed/',
+    ],
+    [`/Embed${EMBED_SRC}`, '/Embed'],
+    [`/%65mbed${EMBED_SRC}`, '/%65mbed'],
+    ['/%65mbed?src=a%ZZ', '/%65mbed'],
+    ['/embed/%ZZ?src=x', '/embed/%ZZ'],
+    ['/%67drive?state=a%ZZ', '/%67drive'],
   ])('scrubs %s', (url, expected) => {
     expect(scrubUrl(url)).toBe(expected);
   });
 
   it.each([
     'https://erd-editor.io/?schema=local-id',
-    '/live/#room,secret',
     'https://erd-editor.io/gdrivers?x=1',
+    'https://erd-editor.io/embedded?x=1',
+    '/lives?x=1',
     'https://example.com/files/abc?x=1',
     'https://notgoogleapis.com.evil.test/files/abc?x=1',
   ])('leaves %s as it is', url => {
@@ -97,15 +121,40 @@ describe('scrubUrl', () => {
 });
 
 describe('shouldCreateSpanForRequest', () => {
-  it.each([
+  const requests: [string, boolean][] = [
     ['https://www.googleapis.com/drive/v3/files', false],
     ['https://accounts.google.com/gsi/client', false],
     ['/api/auth/token', false],
     ['http://localhost:5175/api/auth/logout', false],
     ['/static/js/bundle.1234abcd.js', true],
     ['https://sentry.io/api/1/envelope/', true],
-  ])('%s → %s', (url, expected) => {
-    expect(shouldCreateSpanForRequest(url)).toBe(expected);
+    ['https://raw.githubusercontent.com/o/r/main/a.erd.json', true],
+  ];
+
+  it.each(['/', '/live/', '/embedded'])(
+    'on %s, traces every request but those to Google and the relay',
+    pathname => {
+      for (const [url, expected] of requests) {
+        expect(shouldCreateSpanForRequest(url, pathname)).toBe(expected);
+      }
+    }
+  );
+
+  it.each(['/embed', '/Embed', '/%65mbed', '/embed/'])(
+    'on %s, traces no request',
+    pathname => {
+      for (const [url] of requests) {
+        expect(shouldCreateSpanForRequest(url, pathname)).toBe(false);
+      }
+    }
+  );
+
+  it('cannot be handed to Sentry without the path', () => {
+    const options: TracingOptions = {
+      // @ts-expect-error Sentry calls it with the URL alone
+      shouldCreateSpanForRequest,
+    };
+    expect(options.shouldCreateSpanForRequest).toBe(shouldCreateSpanForRequest);
   });
 });
 
@@ -261,6 +310,85 @@ describe('scrubEvent', () => {
     });
   });
 
+  it('scrubs the files of exception frames on a private page and keeps the bundle files', () => {
+    const embed = `https://erd-editor.io/embed${EMBED_SRC}#k`;
+    const live = 'https://erd-editor.io/live/#room,secret';
+    const bundle = 'https://erd-editor.io/static/js/x.1234abcd.js';
+    const event: ErrorEvent = {
+      type: undefined,
+      exception: {
+        values: [
+          {
+            type: 'Error',
+            stacktrace: {
+              frames: [
+                { filename: embed, abs_path: embed, lineno: 1 },
+                { filename: live, abs_path: live },
+                { filename: '/gdrive?file=x' },
+                { filename: bundle, abs_path: bundle, lineno: 2 },
+                { function: '?' },
+              ],
+            },
+          },
+          { type: 'TypeError', value: 'boom' },
+        ],
+      },
+    };
+
+    expect(scrubEvent(event).exception?.values).toEqual([
+      {
+        type: 'Error',
+        stacktrace: {
+          frames: [
+            {
+              filename: 'https://erd-editor.io/embed',
+              abs_path: 'https://erd-editor.io/embed',
+              lineno: 1,
+            },
+            {
+              filename: 'https://erd-editor.io/live/',
+              abs_path: 'https://erd-editor.io/live/',
+            },
+            { filename: '/gdrive' },
+            { filename: bundle, abs_path: bundle, lineno: 2 },
+            { function: '?' },
+          ],
+        },
+      },
+      { type: 'TypeError', value: 'boom' },
+    ]);
+  });
+
+  it('scrubs the request and the root span of an /embed or /live page', () => {
+    const embed = scrubEvent(
+      pageload(`https://erd-editor.io/embed${EMBED_SRC}#k`, '/embed')
+    );
+    expect(embed.contexts?.trace?.data?.['url.full']).toBe(
+      'https://erd-editor.io/embed'
+    );
+
+    const event: ErrorEvent = {
+      type: undefined,
+      request: {
+        url: 'https://erd-editor.io/live/#room,secret',
+        headers: { Referer: `https://erd-editor.io/embed${EMBED_SRC}` },
+      },
+      breadcrumbs: [
+        {
+          category: 'navigation',
+          data: { from: '/live/#room,secret', to: '/' },
+        },
+      ],
+    };
+    expect(scrubEvent(event)).toMatchObject({
+      request: {
+        url: 'https://erd-editor.io/live/',
+        headers: { Referer: 'https://erd-editor.io/embed' },
+      },
+      breadcrumbs: [{ data: { from: '/live/', to: '/' } }],
+    });
+  });
+
   it('takes an event without a request, spans or breadcrumbs', () => {
     const event: ErrorEvent = { type: undefined, message: 'boom' };
     expect(scrubEvent(event)).toEqual({ type: undefined, message: 'boom' });
@@ -308,6 +436,29 @@ describe('filterBreadcrumb', () => {
       }
     }
   );
+
+  it.each(['fetch', 'xhr'])('drops every %s breadcrumb on /embed', category => {
+    for (const pathname of ['/embed', '/Embed', '/%65mbed', '/embed/']) {
+      for (const data of [
+        { url: 'https://raw.githubusercontent.com/o/r/main/a.erd.json' },
+        { url: '/static/js/x.1234abcd.js' },
+        { method: 'GET' },
+      ]) {
+        expect(filterBreadcrumb({ category, data }, pathname)).toBeNull();
+      }
+    }
+  });
+
+  it('keeps the other breadcrumbs on /embed', () => {
+    const click = { category: 'ui.click', message: 'button' };
+    expect(filterBreadcrumb(click, '/embed')).toBe(click);
+    expect(
+      filterBreadcrumb(
+        { category: 'navigation', data: { from: `/embed${EMBED_SRC}` } },
+        '/embed'
+      )
+    ).toEqual({ category: 'navigation', data: { from: '/embed' } });
+  });
 
   it('keeps and scrubs other fetch breadcrumbs', () => {
     expect(
@@ -410,30 +561,30 @@ describe('sentryPrivacyOptions', () => {
     let pathname = '/';
     const options = sentryPrivacyOptions(() => pathname);
 
-    expect(options.beforeSendSpan(interactionSpan('/')).description).toMatch(
-      /^div\.row/
-    );
-    expect(options.beforeSendSpan(interactionSpan('/gdrive')).description).toBe(
-      '[Filtered]'
-    );
+    expect(
+      options.init.beforeSendSpan(interactionSpan('/')).description
+    ).toMatch(/^div\.row/);
+    expect(
+      options.init.beforeSendSpan(interactionSpan('/gdrive')).description
+    ).toBe('[Filtered]');
 
     // Back left /gdrive before the tab was hidden and the span went.
     const later = sentryPrivacyOptions(() => pathname);
     pathname = '/gdrive';
-    later.beforeBreadcrumb({ category: 'fetch', data: { url: '/x' } });
+    later.init.beforeBreadcrumb({ category: 'fetch', data: { url: '/x' } });
     pathname = '/';
-    expect(later.beforeSendSpan(interactionSpan('/')).description).toBe(
+    expect(later.init.beforeSendSpan(interactionSpan('/')).description).toBe(
       '[Filtered]'
     );
   });
 
   it('marks the page from a /gdrive transaction too', () => {
     const options = sentryPrivacyOptions(() => '/');
-    options.beforeSendTransaction(
+    options.init.beforeSendTransaction(
       pageload('https://erd-editor.io/gdrive', '/gdrive')
     );
-    expect(options.beforeSend({ type: undefined }).type).toBeUndefined();
-    expect(options.beforeSendSpan(interactionSpan('/')).description).toBe(
+    expect(options.init.beforeSend({ type: undefined }).type).toBeUndefined();
+    expect(options.init.beforeSendSpan(interactionSpan('/')).description).toBe(
       '[Filtered]'
     );
   });
@@ -443,21 +594,79 @@ describe('sentryPrivacyOptions', () => {
     const options = sentryPrivacyOptions(() => pathname);
     const click = { category: 'ui.click', message: 'x' };
 
-    expect(options.beforeBreadcrumb(click)).toBe(click);
+    expect(options.init.beforeBreadcrumb(click)).toBe(click);
     pathname = '/gdrive';
-    expect(options.beforeBreadcrumb(click)).toBeNull();
+    expect(options.init.beforeBreadcrumb(click)).toBeNull();
 
     expect(
-      options.beforeSend({
+      options.init.beforeSend({
         type: undefined,
         request: { url: '/gdrive?file=a' },
       }).request?.url
     ).toBe('/gdrive');
     expect(
-      options.beforeSendTransaction({
+      options.init.beforeSendTransaction({
         type: 'transaction',
         transaction: '/gdrive?state=x',
       }).transaction
     ).toBe('/gdrive');
+  });
+
+  it('reads the path for each request in its tracing option, as Sentry takes it', () => {
+    let pathname = '/';
+    const { tracing } = sentryPrivacyOptions(() => pathname);
+    const accepted: TracingOptions = tracing;
+    const url = 'https://raw.githubusercontent.com/o/r/main/a.erd.json';
+
+    expect(accepted).toBe(tracing);
+    expect(tracing.shouldCreateSpanForRequest(url)).toBe(true);
+    pathname = '/embed';
+    expect(tracing.shouldCreateSpanForRequest(url)).toBe(false);
+    pathname = '/live/';
+    expect(tracing.shouldCreateSpanForRequest(url)).toBe(true);
+  });
+
+  it.each(['fetch', 'xhr'])(
+    'drops the %s breadcrumb of a request started on /embed that ends after the page left',
+    category => {
+      let pathname = '/embed';
+      const options = sentryPrivacyOptions(() => pathname);
+      const url = 'https://raw.githubusercontent.com/o/r/main/a.erd.json';
+
+      // Sentry asks as the request starts and records it as it ends.
+      expect(options.tracing.shouldCreateSpanForRequest(url)).toBe(false);
+      pathname = '/';
+      expect(options.tracing.shouldCreateSpanForRequest(url)).toBe(true);
+      expect(
+        options.init.beforeBreadcrumb({
+          category,
+          level: 'error',
+          data: { url, method: 'GET' },
+        })
+      ).toBeNull();
+    }
+  );
+
+  it('keeps the breadcrumb of a request started elsewhere', () => {
+    let pathname = '/embed';
+    const options = sentryPrivacyOptions(() => pathname);
+    const embedUrl = 'https://raw.githubusercontent.com/o/r/main/a.erd.json';
+    const url = 'https://raw.githubusercontent.com/o/r/main/b.erd.json';
+
+    options.tracing.shouldCreateSpanForRequest(embedUrl);
+    pathname = '/';
+    options.tracing.shouldCreateSpanForRequest(url);
+    expect(
+      options.init.beforeBreadcrumb({
+        category: 'fetch',
+        data: { url, method: 'GET' },
+      })
+    ).toEqual({ category: 'fetch', data: { url, method: 'GET' } });
+    expect(
+      options.init.beforeBreadcrumb({
+        category: 'fetch',
+        data: { url: '/live/?x=1', method: 'GET' },
+      })
+    ).toEqual({ category: 'fetch', data: { url: '/live/', method: 'GET' } });
   });
 });

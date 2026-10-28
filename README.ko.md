@@ -140,7 +140,22 @@ document.body.appendChild(editor);
 두세요. 스타일로 정한 상자 안에서 다이어그램을 이동하고 확대하고 검색할 수 있습니다. 패키지 루트를
 가져오는 것만으로는 어느 엘리먼트도 정의되지 않습니다.
 
-어떤 프레임워크에서도, 프레임워크 없이도 동작합니다. 속성과 엘리먼트 API는
+스크립트를 불러올 수 없는 페이지(위키나 사이트 빌더 등)에서는 대신 호스팅된 뷰어를 iframe으로 넣을
+수 있습니다.
+
+```html
+<iframe src="https://erd-editor.io/embed?src=https%3A%2F%2Fexample.com%2Fdiagram.erd.json" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>
+```
+
+[erd-editor.io/embed](https://erd-editor.io/embed)의 빌더가 파일의 URL과 뷰어 옵션으로 이 한 줄을
+만들어 주며, 파일이 있는 서버는 erd-editor.io의 교차 출처 요청(CORS)을 허용해야 합니다. GitHub의
+파일이나 gist는 그 페이지에 보이는 주소(예:
+`https://github.com/you/repo/blob/main/schema.erd.json`)를 그대로 줄 수 있으며, 빌더가 여느 주소에
+하듯 인코딩해 `src`에 넣습니다. 호스팅된 뷰어는 이 파일을 GitHub의 raw 호스트에서 가져오므로 공개
+저장소와 공개 gist에서만 동작하며, raw 호스트는 각 파일을 5분 동안 캐시합니다. gist는 첫 번째 파일을
+보여 줍니다.
+
+두 엘리먼트는 어떤 프레임워크에서도, 프레임워크 없이도 동작합니다. 속성과 엘리먼트 API는
 [`packages/erd-editor`](./packages/erd-editor)를 보세요.
 
 ## 문서

@@ -6,12 +6,20 @@
     <base href="/" />
     <script>
       // Pre-paint: the markup is dark for no-JS. The stored preference, else
-      // system, is applied here, before first paint, with the rules of
-      // parseThemeState and resolveAppearance in src/utils/theme.ts.
+      // system, applies before first paint (parseThemeState, resolveAppearance);
+      // an embedded viewer's URL (isEmbedViewerUrl) gives it instead, never storage.
       (function () {
         var appearance;
+        var embedded = false;
         try {
-          appearance = JSON.parse(localStorage.getItem('@theme')).appearance;
+          embedded =
+            /^\/embed\/*$/i.test(decodeURI(location.pathname)) &&
+            !!new URLSearchParams(location.search).get('src');
+        } catch (error) {}
+        try {
+          appearance = embedded
+            ? new URLSearchParams(location.search).get('theme')
+            : JSON.parse(localStorage.getItem('@theme')).appearance;
         } catch (error) {}
         try {
           if (appearance !== 'dark' && appearance !== 'light') {

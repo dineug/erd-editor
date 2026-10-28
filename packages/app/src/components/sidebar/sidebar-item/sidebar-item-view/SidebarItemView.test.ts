@@ -1,7 +1,12 @@
 import { act, createElement, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { flushTimers, pressKey, render } from '@/__test-utils__/render';
+import {
+  flushTimers,
+  pressKey,
+  render,
+  typeText,
+} from '@/__test-utils__/render';
 import SidebarItemView from '@/components/sidebar/sidebar-item/sidebar-item-view/SidebarItemView';
 
 const NAMES = ['Orders', 'Users', 'Payments'];
@@ -102,17 +107,6 @@ function menuItem(label: string) {
   return found;
 }
 
-function type(input: HTMLInputElement, value: string) {
-  const setValue = Object.getOwnPropertyDescriptor(
-    HTMLInputElement.prototype,
-    'value'
-  )?.set;
-  act(() => {
-    setValue?.call(input, value);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-}
-
 describe('SidebarItemView', () => {
   it('moves focus with the arrows, Home and End, across the list', () => {
     mount();
@@ -144,7 +138,7 @@ describe('SidebarItemView', () => {
     expect(input).not.toBeNull();
     expect(document.activeElement).toBe(input);
 
-    type(input!, '  Members  ');
+    typeText(input!, '  Members  ');
     pressKey(input!, 'Enter');
     expect(onRename).toHaveBeenCalledExactlyOnceWith('Members');
     expect(nameField()).toBeNull();
@@ -156,12 +150,12 @@ describe('SidebarItemView', () => {
     mount({ onRename });
 
     pressKey(row('Users'), 'F2');
-    type(nameField()!, 'Members');
+    typeText(nameField()!, 'Members');
     pressKey(nameField()!, 'Escape');
     expect(nameField()).toBeNull();
 
     pressKey(row('Users'), 'F2');
-    type(nameField()!, '   ');
+    typeText(nameField()!, '   ');
     pressKey(nameField()!, 'Enter');
     expect(onRename).not.toHaveBeenCalled();
   });

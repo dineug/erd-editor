@@ -118,7 +118,15 @@ document.body.appendChild(editor);
 
 若只想展示图而不编辑，导入 `@dineug/erd-editor/erd-viewer.js` 并放置 `<erd-viewer src="diagram.erd.json" style="display: block; height: 480px"></erd-viewer>`，即可在样式给定的区域内平移、缩放和搜索这张图。只导入包的根入口不会定义任何元素。
 
-在任何框架中或不用框架都能工作。属性和元素 API 见 [`packages/erd-editor`](./packages/erd-editor)。
+无法加载脚本的页面（例如 wiki 或建站工具）可以改用 iframe 嵌入托管的查看器：
+
+```html
+<iframe src="https://erd-editor.io/embed?src=https%3A%2F%2Fexample.com%2Fdiagram.erd.json" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>
+```
+
+[erd-editor.io/embed](https://erd-editor.io/embed) 上的生成器会根据文件的 URL 和查看器的选项写出这一行，存放文件的服务器必须允许来自 erd-editor.io 的跨源请求（CORS）。GitHub 上的文件或 gist 可以直接使用其页面显示的地址，例如 `https://github.com/you/repo/blob/main/schema.erd.json`，并像生成器对任何地址所做的那样编码后放入 `src`。托管的查看器从 GitHub 的 raw 主机获取它，该主机会将每个文件缓存五分钟，仅适用于公开仓库和公开 gist；对于 gist，它显示第一个文件。
+
+这两个元素在任何框架中或不用框架都能工作。属性和元素 API 见 [`packages/erd-editor`](./packages/erd-editor)。
 
 ## 文档
 

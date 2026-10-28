@@ -143,7 +143,21 @@ To show a diagram without editing it, import `@dineug/erd-editor/erd-viewer.js` 
 pans, zooms and searches it within the box its style gives it. Importing the package root defines
 neither element.
 
-It works from any framework or from none. Attributes and the element API:
+A page that cannot load scripts, such as a wiki or a site builder, can frame the hosted viewer
+instead:
+
+```html
+<iframe src="https://erd-editor.io/embed?src=https%3A%2F%2Fexample.com%2Fdiagram.erd.json" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>
+```
+
+The builder at [erd-editor.io/embed](https://erd-editor.io/embed) writes that line from a file's URL
+and the viewer's options, and the server holding the file has to allow erd-editor.io's cross-origin
+requests (CORS). A file or gist on GitHub can be given by the address its page shows, such as
+`https://github.com/you/repo/blob/main/schema.erd.json`, encoded into `src` as the builder encodes
+any address. The hosted viewer fetches it from GitHub's raw host, which caches each file for five
+minutes and works for public repositories and public gists only; of a gist it shows the first file.
+
+Both elements work from any framework or from none. Attributes and the element API:
 [`packages/erd-editor`](./packages/erd-editor).
 
 ## Documentation

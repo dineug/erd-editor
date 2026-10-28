@@ -4,8 +4,8 @@ import { WebSocketServer } from 'ws';
 
 /**
  * A minimal in-memory nostr relay, just enough of NIP-01 for trystero to
- * complete a WebRTC handshake. Pointing the suite here rather than at the public
- * pool is what makes a collaboration test deterministic and offline.
+ * complete a WebRTC handshake, so a collaboration test is deterministic and
+ * offline; its HTTP side also answers the /embed specs' framer and document.
  */
 
 const port = Number(process.argv[2] ?? 5176);
@@ -17,10 +17,49 @@ const debug = process.env.E2E_RELAY_DEBUG
 /** @type {Map<import('ws').WebSocket, Map<string, {kinds: Set<number>, topics: Set<string>}>>} */
 const subscriptions = new Map();
 
+/**
+ * The /embed specs' document with no CORS header, which no routed answer can
+ * be, since Playwright adds one. One table, so a fetch that got through shows.
+ */
+const NO_CORS_DOCUMENT = JSON.stringify({
+  version: '3.0.0',
+  doc: { tableIds: ['leaked'] },
+  collections: { tableEntities: { leaked: { id: 'leaked', name: 'leaked' } } },
+});
+
+/** Escapes a value for a double-quoted attribute, and nothing more: it stays the URL it was. */
+const escapeAttribute = value =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
 const server = createServer((request, response) => {
-  if (request.url === '/health') {
+  const url = new URL(request.url ?? '/', 'http://localhost');
+
+  if (url.pathname === '/health') {
     response.writeHead(200, { 'content-type': 'text/plain' });
     response.end('ok');
+    return;
+  }
+
+  // A page on another origin framing the URL its src names, as an embed does; a
+  // routed origin cannot frame localhost in Chrome, so the relay's own origin,
+  // the same site as the app's, does.
+  if (url.pathname === '/__framer') {
+    const src = escapeAttribute(url.searchParams.get('src') ?? '');
+    response.writeHead(200, { 'content-type': 'text/html' });
+    response.end(
+      `<!doctype html><title>Framer</title><body style="margin: 0">` +
+        `<iframe src="${src}" width="100%" height="480" style="border: 0" title="ERD Editor"></iframe>`
+    );
+    return;
+  }
+
+  if (url.pathname === '/__docs/no-cors.erd.json') {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(NO_CORS_DOCUMENT);
     return;
   }
 
