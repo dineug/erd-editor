@@ -327,14 +327,14 @@ describe('the embed builder', () => {
     vi.mocked(copyToClipboard).mockReturnValueOnce(copying);
     const { unmount } = mount();
     apply(DOC);
-    const timers = vi.spyOn(window, 'setTimeout');
 
     act(() => copyOf('Embed code').click());
     unmount();
+    const timers = vi.spyOn(window, 'setTimeout');
     finish();
     await copying;
 
-    expect(timers.mock.calls.filter(([, delay]) => delay === 2000)).toEqual([]);
+    expect(timers).not.toHaveBeenCalled();
   });
 
   it('keeps one viewer for the whole visit', () => {
