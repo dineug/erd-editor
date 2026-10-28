@@ -266,8 +266,8 @@ import '@dineug/erd-editor/erd-viewer.js';
 
 A page that cannot load the element can frame the hosted viewer,
 `https://erd-editor.io/embed?src=…`, instead; the hosted viewer also takes a file or gist on GitHub
-by the address its page shows, from public repositories and from gists but not from private
-repositories, fetched from GitHub's raw host with its five-minute cache.
+by the address its page shows, from public repositories and public gists only, fetched from
+GitHub's raw host with its five-minute cache.
 
 ### Viewer attributes and properties
 

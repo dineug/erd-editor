@@ -22,7 +22,7 @@ function gistUrlOf(pathname: string): string | null {
 }
 
 /**
- * The raw host address of a gist page or a public repository's file page,
+ * The raw host address of a public repository's file page or a public gist,
  * which a fetch from another site can read where the page's own address cannot.
  * Any other value comes back as it came, so a second call changes nothing.
  */

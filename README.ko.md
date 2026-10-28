@@ -152,8 +152,8 @@ document.body.appendChild(editor);
 파일이나 gist는 그 페이지에 보이는 주소(예:
 `https://github.com/you/repo/blob/main/schema.erd.json`)를 그대로 줄 수 있으며, 빌더가 여느 주소에
 하듯 인코딩해 `src`에 넣습니다. 호스팅된 뷰어는 이 파일을 GitHub의 raw 호스트에서 가져오므로 공개
-저장소와 gist에서는 동작하지만 비공개 저장소에서는 동작하지 않으며, raw 호스트는 각 파일을 5분 동안
-캐시합니다. gist는 첫 번째 파일을 보여 줍니다.
+저장소와 공개 gist에서만 동작하며, raw 호스트는 각 파일을 5분 동안 캐시합니다. gist는 첫 번째 파일을
+보여 줍니다.
 
 두 엘리먼트는 어떤 프레임워크에서도, 프레임워크 없이도 동작합니다. 속성과 엘리먼트 API는
 [`packages/erd-editor`](./packages/erd-editor)를 보세요.

@@ -124,7 +124,7 @@ document.body.appendChild(editor);
 <iframe src="https://erd-editor.io/embed?src=https%3A%2F%2Fexample.com%2Fdiagram.erd.json" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>
 ```
 
-[erd-editor.io/embed](https://erd-editor.io/embed) 上的生成器会根据文件的 URL 和查看器的选项写出这一行，存放文件的服务器必须允许来自 erd-editor.io 的跨源请求（CORS）。GitHub 上的文件或 gist 可以直接使用其页面显示的地址，例如 `https://github.com/you/repo/blob/main/schema.erd.json`，并像生成器对任何地址所做的那样编码后放入 `src`。托管的查看器从 GitHub 的 raw 主机获取它，该主机会将每个文件缓存五分钟，适用于公开仓库和 gist，但不适用于私有仓库；对于 gist，它显示第一个文件。
+[erd-editor.io/embed](https://erd-editor.io/embed) 上的生成器会根据文件的 URL 和查看器的选项写出这一行，存放文件的服务器必须允许来自 erd-editor.io 的跨源请求（CORS）。GitHub 上的文件或 gist 可以直接使用其页面显示的地址，例如 `https://github.com/you/repo/blob/main/schema.erd.json`，并像生成器对任何地址所做的那样编码后放入 `src`。托管的查看器从 GitHub 的 raw 主机获取它，该主机会将每个文件缓存五分钟，仅适用于公开仓库和公开 gist；对于 gist，它显示第一个文件。
 
 这两个元素在任何框架中或不用框架都能工作。属性和元素 API 见 [`packages/erd-editor`](./packages/erd-editor)。
 

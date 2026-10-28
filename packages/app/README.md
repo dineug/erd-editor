@@ -79,8 +79,8 @@ features are in the [root README](../../README.md#features):
   the viewer, and copies the embed URL and its iframe line. The file's server has to allow
   cross-origin requests (CORS). A file or gist on GitHub can be given by the address its page shows;
   the viewer fetches it from GitHub's raw host, whose address the builder shows under the URL. That
-  host caches each file for five minutes and works for public repositories and for gists, but not
-  for private repositories; of a gist the viewer shows the first file.
+  host caches each file for five minutes and works for public repositories and public gists only;
+  of a gist the viewer shows the first file.
 - **Google Drive editor** — `/gdrive`, listed on the
   [Google Workspace Marketplace](https://workspace.google.com/marketplace/app/erd_editor/428467403360):
   it opens diagrams from Drive's Open with and New menus, or from its own searchable list of the

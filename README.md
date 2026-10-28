@@ -155,8 +155,7 @@ and the viewer's options, and the server holding the file has to allow erd-edito
 requests (CORS). A file or gist on GitHub can be given by the address its page shows, such as
 `https://github.com/you/repo/blob/main/schema.erd.json`, encoded into `src` as the builder encodes
 any address. The hosted viewer fetches it from GitHub's raw host, which caches each file for five
-minutes and works for public repositories and for gists, but not for private repositories; of a gist
-it shows the first file.
+minutes and works for public repositories and public gists only; of a gist it shows the first file.
 
 Both elements work from any framework or from none. Attributes and the element API:
 [`packages/erd-editor`](./packages/erd-editor).
