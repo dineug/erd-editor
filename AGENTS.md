@@ -70,7 +70,7 @@ A change to Markdown alone needs no check, except in three files a build reads: 
 | Directory | Purpose |
 | --- | --- |
 | `packages/` | The 20 workspace packages, each with its own `AGENTS.md` |
-| `data/` | Import fixtures for hand-testing (SQL, GraphQL SDL, DBML, AML v1/v2, `test.json`); `schema-sql-parser`'s tests read `sakila.sql` |
+| `data/` | Import fixtures for hand-testing (SQL, GraphQL SDL, DBML, AML v1/v2, `test.json`); `schema-sql-parser`'s tests read `sakila.sql`. `embed-small.erd.json` and `bookstore.erd.json` are the documents docs.erd-editor.io embeds through erd-editor.io/embed by their GitHub address on `main`, so keep their paths: `bookstore.dbml` imported, its columns shown as name and type, the small one its four catalog tables placed to show columns in a 480 px frame |
 | `docker/` | A `docker-compose.yml` per SQL vendor to run generated DDL; Databricks and Snowflake are cloud-only and have none |
 | `functions/` | Cloudflare Pages Functions for erd-editor.io: `api/auth/[[route]].ts` only re-exports `packages/app/src/server/auth/pages.ts` (`packages/app/AGENTS.md`) |
 | `json-schema/` | `schema.json` for `.erd` / `.vuerd` documents (see Contracts Outside This Repo). Written by hand: `erd-editor-schema`'s `src/jsonSchema.test.ts` imports it and validates the storage form against it, so an edit here runs that package's `test` task |

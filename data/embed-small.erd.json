@@ -1,0 +1,382 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dineug/erd-editor/main/json-schema/schema.json",
+  "version": "3.0.0",
+  "settings": {
+    "originX": 0,
+    "originY": 0,
+    "zoomLevel": 1,
+    "show": 260,
+    "database": 4,
+    "databaseName": "",
+    "canvasType": "ERD",
+    "language": 1,
+    "tableNameCase": 4,
+    "columnNameCase": 2,
+    "bracketType": 1,
+    "relationshipDataTypeSync": true,
+    "columnOrder": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64
+    ],
+    "maxWidthComment": -1,
+    "lockSettings": 63
+  },
+  "doc": {
+    "tableIds": [
+      "03h4pcf5hxxuphgpa2wbnzl3t",
+      "03h4pcf5hxxuphgpa37io8aki",
+      "03h4pcf5hxxuphgpa3g9e9one",
+      "03h4pcf5hxxuphgpa40xniuk8"
+    ],
+    "relationshipIds": [
+      "03h4pcf5i3gqo0zw09zcqvx8o",
+      "03h4pcf5i3gqo0zw0a0ft1vsu",
+      "03h4pcf5i3gqo0zw0a39lc5fy"
+    ],
+    "indexIds": [
+      "03h4pcf5i3gqo0zw0a4gk02qt",
+      "03h4pcf5i3gqo0zw0a9ihb2wi",
+      "03h4pcf5i3gqo0zw0aflzfo4u"
+    ]
+  },
+  "collections": {
+    "tableEntities": {
+      "03h4pcf5hxxuphgpa2wbnzl3t": {
+        "id": "03h4pcf5hxxuphgpa2wbnzl3t",
+        "name": "authors",
+        "comment": "People who wrote something we sell",
+        "columnIds": [
+          "03h4pcf5hxxuphgpa2yu1nk9n",
+          "03h4pcf5hxxuphgpa30329738",
+          "03h4pcf5hxxuphgpa32dsao85",
+          "03h4pcf5hxxuphgpa342arrim",
+          "03h4pcf5hxxuphgpa36jbxeln"
+        ],
+        "ui": {
+          "x": 250,
+          "y": 150
+        }
+      },
+      "03h4pcf5hxxuphgpa37io8aki": {
+        "id": "03h4pcf5hxxuphgpa37io8aki",
+        "name": "publishers",
+        "columnIds": [
+          "03h4pcf5hxxuphgpa3b1j4a01",
+          "03h4pcf5hxxuphgpa3bidif0k",
+          "03h4pcf5hxxuphgpa3eqt4bkl"
+        ],
+        "ui": {
+          "x": 0,
+          "y": 320
+        }
+      },
+      "03h4pcf5hxxuphgpa3g9e9one": {
+        "id": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "books",
+        "comment": "One row per edition.\nA reprint with a new ISBN is a new row.",
+        "columnIds": [
+          "03h4pcf5hxxuphgpa3h32xv4b",
+          "03h4pcf5hxxuphgpa3k497yef",
+          "03h4pcf5hxxuphgpa3l6t61wq",
+          "03h4pcf5hxxuphgpa3o4onpw6",
+          "03h4pcf5hxxuphgpa3p0xd5ph",
+          "03h4pcf5hxxuphgpa3r8xr6xg",
+          "03h4pcf5hxxuphgpa3tj9wl8v",
+          "03h4pcf5hxxuphgpa3vw70ext",
+          "03h4pcf5hxxuphgpa3xmnhzrt",
+          "03h4pcf5hxxuphgpa3yu3y6kk"
+        ],
+        "ui": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      "03h4pcf5hxxuphgpa40xniuk8": {
+        "id": "03h4pcf5hxxuphgpa40xniuk8",
+        "name": "book_authors",
+        "columnIds": [
+          "03h4pcf5hxxuphgpa42sgvlf5",
+          "03h4pcf5i3gqo0zw09vuujete",
+          "03h4pcf5i3gqo0zw09xsp15ps"
+        ],
+        "ui": {
+          "x": 250,
+          "y": 0
+        }
+      }
+    },
+    "tableColumnEntities": {
+      "03h4pcf5hxxuphgpa2yu1nk9n": {
+        "id": "03h4pcf5hxxuphgpa2yu1nk9n",
+        "tableId": "03h4pcf5hxxuphgpa2wbnzl3t",
+        "name": "id",
+        "dataType": "int",
+        "options": 3
+      },
+      "03h4pcf5hxxuphgpa30329738": {
+        "id": "03h4pcf5hxxuphgpa30329738",
+        "tableId": "03h4pcf5hxxuphgpa2wbnzl3t",
+        "name": "name",
+        "dataType": "varchar(120)",
+        "options": 8
+      },
+      "03h4pcf5hxxuphgpa32dsao85": {
+        "id": "03h4pcf5hxxuphgpa32dsao85",
+        "tableId": "03h4pcf5hxxuphgpa2wbnzl3t",
+        "name": "born",
+        "dataType": "date",
+        "options": 0
+      },
+      "03h4pcf5hxxuphgpa342arrim": {
+        "id": "03h4pcf5hxxuphgpa342arrim",
+        "tableId": "03h4pcf5hxxuphgpa2wbnzl3t",
+        "name": "homepage",
+        "dataType": "varchar(255)",
+        "options": 0
+      },
+      "03h4pcf5hxxuphgpa36jbxeln": {
+        "id": "03h4pcf5hxxuphgpa36jbxeln",
+        "tableId": "03h4pcf5hxxuphgpa2wbnzl3t",
+        "name": "bio",
+        "comment": "Free-form, shown on the author page",
+        "dataType": "text",
+        "options": 0
+      },
+      "03h4pcf5hxxuphgpa3b1j4a01": {
+        "id": "03h4pcf5hxxuphgpa3b1j4a01",
+        "tableId": "03h4pcf5hxxuphgpa37io8aki",
+        "name": "id",
+        "dataType": "int",
+        "options": 3
+      },
+      "03h4pcf5hxxuphgpa3bidif0k": {
+        "id": "03h4pcf5hxxuphgpa3bidif0k",
+        "tableId": "03h4pcf5hxxuphgpa37io8aki",
+        "name": "name",
+        "dataType": "varchar(120)",
+        "options": 12
+      },
+      "03h4pcf5hxxuphgpa3eqt4bkl": {
+        "id": "03h4pcf5hxxuphgpa3eqt4bkl",
+        "tableId": "03h4pcf5hxxuphgpa37io8aki",
+        "name": "country_code",
+        "dataType": "char(2)",
+        "default": "'KR'",
+        "options": 8
+      },
+      "03h4pcf5hxxuphgpa3h32xv4b": {
+        "id": "03h4pcf5hxxuphgpa3h32xv4b",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "id",
+        "dataType": "int",
+        "options": 3
+      },
+      "03h4pcf5hxxuphgpa3k497yef": {
+        "id": "03h4pcf5hxxuphgpa3k497yef",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "publisher_id",
+        "dataType": "int",
+        "options": 8
+      },
+      "03h4pcf5hxxuphgpa3l6t61wq": {
+        "id": "03h4pcf5hxxuphgpa3l6t61wq",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "isbn",
+        "comment": "ISBN-13, no dashes",
+        "dataType": "char(13)",
+        "options": 12
+      },
+      "03h4pcf5hxxuphgpa3o4onpw6": {
+        "id": "03h4pcf5hxxuphgpa3o4onpw6",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "title",
+        "dataType": "varchar(255)",
+        "options": 8
+      },
+      "03h4pcf5hxxuphgpa3p0xd5ph": {
+        "id": "03h4pcf5hxxuphgpa3p0xd5ph",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "subtitle",
+        "dataType": "varchar(255)",
+        "options": 0
+      },
+      "03h4pcf5hxxuphgpa3r8xr6xg": {
+        "id": "03h4pcf5hxxuphgpa3r8xr6xg",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "price",
+        "dataType": "decimal(10,2)",
+        "default": "0",
+        "options": 8
+      },
+      "03h4pcf5hxxuphgpa3tj9wl8v": {
+        "id": "03h4pcf5hxxuphgpa3tj9wl8v",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "published_on",
+        "dataType": "date",
+        "options": 0
+      },
+      "03h4pcf5hxxuphgpa3vw70ext": {
+        "id": "03h4pcf5hxxuphgpa3vw70ext",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "page_count",
+        "dataType": "smallint",
+        "options": 0
+      },
+      "03h4pcf5hxxuphgpa3xmnhzrt": {
+        "id": "03h4pcf5hxxuphgpa3xmnhzrt",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "in_print",
+        "dataType": "boolean",
+        "default": "true",
+        "options": 8
+      },
+      "03h4pcf5hxxuphgpa3yu3y6kk": {
+        "id": "03h4pcf5hxxuphgpa3yu3y6kk",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "name": "created_at",
+        "dataType": "timestamp",
+        "default": "now()",
+        "options": 8
+      },
+      "03h4pcf5hxxuphgpa42sgvlf5": {
+        "id": "03h4pcf5hxxuphgpa42sgvlf5",
+        "tableId": "03h4pcf5hxxuphgpa40xniuk8",
+        "name": "book_id",
+        "dataType": "int",
+        "options": 2
+      },
+      "03h4pcf5i3gqo0zw09vuujete": {
+        "id": "03h4pcf5i3gqo0zw09vuujete",
+        "tableId": "03h4pcf5hxxuphgpa40xniuk8",
+        "name": "author_id",
+        "dataType": "int",
+        "options": 2
+      },
+      "03h4pcf5i3gqo0zw09xsp15ps": {
+        "id": "03h4pcf5i3gqo0zw09xsp15ps",
+        "tableId": "03h4pcf5hxxuphgpa40xniuk8",
+        "name": "position",
+        "comment": "Order on the cover",
+        "dataType": "smallint",
+        "default": "1",
+        "options": 8
+      }
+    },
+    "relationshipEntities": {
+      "03h4pcf5i3gqo0zw09zcqvx8o": {
+        "id": "03h4pcf5i3gqo0zw09zcqvx8o",
+        "relationshipType": 16,
+        "onDelete": 1,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h4pcf5hxxuphgpa37io8aki",
+          "columnIds": [
+            "03h4pcf5hxxuphgpa3b1j4a01"
+          ]
+        },
+        "end": {
+          "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+          "columnIds": [
+            "03h4pcf5hxxuphgpa3k497yef"
+          ]
+        }
+      },
+      "03h4pcf5i3gqo0zw0a0ft1vsu": {
+        "id": "03h4pcf5i3gqo0zw0a0ft1vsu",
+        "relationshipType": 4,
+        "onDelete": 1,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+          "columnIds": [
+            "03h4pcf5hxxuphgpa3h32xv4b"
+          ]
+        },
+        "end": {
+          "tableId": "03h4pcf5hxxuphgpa40xniuk8",
+          "columnIds": [
+            "03h4pcf5hxxuphgpa42sgvlf5"
+          ]
+        }
+      },
+      "03h4pcf5i3gqo0zw0a39lc5fy": {
+        "id": "03h4pcf5i3gqo0zw0a39lc5fy",
+        "relationshipType": 4,
+        "onDelete": 1,
+        "onUpdate": 1,
+        "start": {
+          "tableId": "03h4pcf5hxxuphgpa2wbnzl3t",
+          "columnIds": [
+            "03h4pcf5hxxuphgpa2yu1nk9n"
+          ]
+        },
+        "end": {
+          "tableId": "03h4pcf5hxxuphgpa40xniuk8",
+          "columnIds": [
+            "03h4pcf5i3gqo0zw09vuujete"
+          ]
+        }
+      }
+    },
+    "indexEntities": {
+      "03h4pcf5i3gqo0zw0a4gk02qt": {
+        "id": "03h4pcf5i3gqo0zw0a4gk02qt",
+        "name": "idx_authors_name",
+        "tableId": "03h4pcf5hxxuphgpa2wbnzl3t",
+        "indexColumnIds": [
+          "03h4pcf5i3gqo0zw0a7u9xs8f"
+        ],
+        "unique": false
+      },
+      "03h4pcf5i3gqo0zw0a9ihb2wi": {
+        "id": "03h4pcf5i3gqo0zw0a9ihb2wi",
+        "name": "idx_books_publisher_published",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "indexColumnIds": [
+          "03h4pcf5i3gqo0zw0abiegkjx",
+          "03h4pcf5i3gqo0zw0ac8r2vqg"
+        ],
+        "unique": false
+      },
+      "03h4pcf5i3gqo0zw0aflzfo4u": {
+        "id": "03h4pcf5i3gqo0zw0aflzfo4u",
+        "tableId": "03h4pcf5hxxuphgpa3g9e9one",
+        "indexColumnIds": [
+          "03h4pcf5i3gqo0zw0agq3afxo"
+        ],
+        "unique": false
+      }
+    },
+    "indexColumnEntities": {
+      "03h4pcf5i3gqo0zw0a7u9xs8f": {
+        "id": "03h4pcf5i3gqo0zw0a7u9xs8f",
+        "indexId": "03h4pcf5i3gqo0zw0a4gk02qt",
+        "columnId": "03h4pcf5hxxuphgpa30329738",
+        "orderType": 1
+      },
+      "03h4pcf5i3gqo0zw0abiegkjx": {
+        "id": "03h4pcf5i3gqo0zw0abiegkjx",
+        "indexId": "03h4pcf5i3gqo0zw0a9ihb2wi",
+        "columnId": "03h4pcf5hxxuphgpa3k497yef",
+        "orderType": 1
+      },
+      "03h4pcf5i3gqo0zw0ac8r2vqg": {
+        "id": "03h4pcf5i3gqo0zw0ac8r2vqg",
+        "indexId": "03h4pcf5i3gqo0zw0a9ihb2wi",
+        "columnId": "03h4pcf5hxxuphgpa3tj9wl8v",
+        "orderType": 1
+      },
+      "03h4pcf5i3gqo0zw0agq3afxo": {
+        "id": "03h4pcf5i3gqo0zw0agq3afxo",
+        "indexId": "03h4pcf5i3gqo0zw0aflzfo4u",
+        "columnId": "03h4pcf5hxxuphgpa3o4onpw6",
+        "orderType": 1
+      }
+    }
+  }
+}
