@@ -10,7 +10,6 @@ import {
 import { render } from '@/__test-utils__/render';
 import EmbedViewer from '@/components/embed/embed-viewer/EmbedViewer';
 import { parseEmbedParams } from '@/utils/embedOptions';
-import { toGithubRawUrl } from '@/utils/githubRawUrl';
 import { reportError } from '@/utils/reportError';
 
 // The real viewer needs a browser, where e2e runs it; this pins the calls.
@@ -96,27 +95,37 @@ describe('the embedded viewer', () => {
     'diagram.erd.json',
     'data:application/json,{}',
     ' https://docs.test/a b.erd.json',
+    'HTTPS://Docs.test/a.erd.json',
     'https://github.com/o/r/tree/main/docs',
-    'https://github.com/o/r/blob/main/a.erd.json',
-    'https://gist.github.com/u/abc123',
-  ])('hands the viewer %j as the GitHub mapping leaves it', src => {
+    'https://github.com/o/r/tree/main/my docs',
+  ])('hands the viewer %j exactly as the query gives it', src => {
     const { viewer, unmount } = mount(`?src=${encodeURIComponent(src)}`);
-    const given = new URLSearchParams(`?src=${encodeURIComponent(src)}`).get(
-      'src'
-    );
 
-    expect(viewer.valuesOf('src')).toEqual([toGithubRawUrl(given ?? '')]);
+    expect(viewer.valuesOf('src')).toEqual([src]);
     unmount();
   });
 
-  it('fetches a GitHub file page from its raw host', () => {
-    const { viewer, unmount } = mount(
-      `?src=${encodeURIComponent('https://github.com/o/r/blob/main/a.erd.json')}`
-    );
+  it('hands the viewer a value with spaces as the query decodes it', () => {
+    const { viewer, unmount } = mount('?src=https://docs.test/a+b.erd.json');
 
-    expect(viewer.props.src).toBe(
-      'https://raw.githubusercontent.com/o/r/main/a.erd.json'
-    );
+    expect(viewer.valuesOf('src')).toEqual(['https://docs.test/a b.erd.json']);
+    unmount();
+  });
+
+  it.each([
+    [
+      'https://github.com/o/r/blob/main/a.erd.json',
+      'https://raw.githubusercontent.com/o/r/main/a.erd.json',
+    ],
+    [
+      'https://gist.github.com/u/abc123',
+      'https://gist.githubusercontent.com/u/abc123/raw',
+    ],
+  ])('fetches the GitHub page %j from its raw host', (src, raw) => {
+    const { viewer, unmount } = mount(`?src=${encodeURIComponent(src)}`);
+
+    expect(viewer.valuesOf('src')).toEqual([raw]);
+    expect(viewer.props.src).toBe(raw);
     unmount();
   });
 
