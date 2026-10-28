@@ -144,16 +144,15 @@ document.body.appendChild(editor);
 수 있습니다.
 
 ```html
-<iframe src="https://erd-editor.io/embed?src=https%3A%2F%2Fexample.com%2Fdiagram.erd.json" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>
+<iframe src="https://erd-editor.io/embed?src=https%3A%2F%2Fgithub.com%2Fdineug%2Ferd-editor%2Fblob%2Fmain%2Fdata%2Fembed-small.erd.json" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>
 ```
 
-[erd-editor.io/embed](https://erd-editor.io/embed)의 빌더가 파일의 URL과 뷰어 옵션으로 이 한 줄을
-만들어 주며, 파일이 있는 서버는 erd-editor.io의 교차 출처 요청(CORS)을 허용해야 합니다. GitHub의
-파일이나 gist는 그 페이지에 보이는 주소(예:
-`https://github.com/you/repo/blob/main/schema.erd.json`)를 그대로 줄 수 있으며, 빌더가 여느 주소에
-하듯 인코딩해 `src`에 넣습니다. 호스팅된 뷰어는 이 파일을 GitHub의 raw 호스트에서 가져오므로 공개
-저장소와 공개 gist에서만 동작하며, raw 호스트는 각 파일을 5분 동안 캐시합니다. gist는 첫 번째 파일을
-보여 줍니다.
+이 한 줄은 이 저장소의 [`data/embed-small.erd.json`](./data/embed-small.erd.json)을 보여 줍니다.
+[erd-editor.io/embed](https://erd-editor.io/embed)의 빌더가 파일의 URL과 뷰어 옵션으로 이 줄을 만들어
+줍니다. GitHub의 파일이나 gist는 여기서처럼 그 페이지에 보이는 주소를 그대로 줄 수 있습니다. 호스팅된
+뷰어는 이 파일을 GitHub의 raw 호스트에서 가져오므로 공개 저장소와 공개 gist에서만 동작하며, raw
+호스트는 각 파일을 5분 동안 캐시합니다. gist는 첫 번째 파일을 보여 줍니다. 그 밖의 서버에 둔 파일은
+그 서버가 erd-editor.io의 교차 출처 요청(CORS)을 허용해야 합니다.
 
 두 엘리먼트는 어떤 프레임워크에서도, 프레임워크 없이도 동작합니다. 속성과 엘리먼트 API는
 [`packages/erd-editor`](./packages/erd-editor)를 보세요.

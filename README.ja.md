@@ -121,10 +121,10 @@ document.body.appendChild(editor);
 スクリプトを読み込めないページ（Wiki やサイトビルダーなど）では、代わりにホストされたビューアーを iframe で埋め込めます。
 
 ```html
-<iframe src="https://erd-editor.io/embed?src=https%3A%2F%2Fexample.com%2Fdiagram.erd.json" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>
+<iframe src="https://erd-editor.io/embed?src=https%3A%2F%2Fgithub.com%2Fdineug%2Ferd-editor%2Fblob%2Fmain%2Fdata%2Fembed-small.erd.json" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>
 ```
 
-[erd-editor.io/embed](https://erd-editor.io/embed) のビルダーが、ファイルの URL とビューアーのオプションからこの 1 行を作ります。ファイルを置くサーバーは、erd-editor.io からのクロスオリジンリクエスト（CORS）を許可する必要があります。GitHub 上のファイルや gist は、そのページに表示されるアドレス（例：`https://github.com/you/repo/blob/main/schema.erd.json`）をそのまま渡せます。このアドレスも、ビルダーがほかのアドレスと同じようにエンコードして `src` に入れます。ホストされたビューアーはそれを GitHub の raw ホストから取得するため、公開リポジトリと公開 gist でのみ動作します。各ファイルは 5 分間キャッシュされます。gist では最初のファイルを表示します。
+この 1 行は、このリポジトリの [`data/embed-small.erd.json`](./data/embed-small.erd.json) を表示します。[erd-editor.io/embed](https://erd-editor.io/embed) のビルダーが、ファイルの URL とビューアーのオプションからこの行を作ります。GitHub 上のファイルや gist は、ここでのようにそのページに表示されるアドレスをそのまま渡せます。ホストされたビューアーはそれを GitHub の raw ホストから取得するため、公開リポジトリと公開 gist でのみ動作します。各ファイルは 5 分間キャッシュされます。gist では最初のファイルを表示します。ほかのサーバーに置いたファイルは、そのサーバーが erd-editor.io からのクロスオリジンリクエスト（CORS）を許可する必要があります。
 
 どちらの要素も、どのフレームワークからでも、フレームワークなしでも使えます。属性と要素の API は [`packages/erd-editor`](./packages/erd-editor) を参照してください。
 
