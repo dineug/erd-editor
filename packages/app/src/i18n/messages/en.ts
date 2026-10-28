@@ -131,7 +131,7 @@ export const en = {
   'embed.documentUrl': 'Document URL',
   'embed.fetchUrl': 'Loads from',
   'embed.nameView': 'Name View',
-  'embed.nameAsSaved': 'As saved',
+  'embed.nameAsSaved': 'As Saved',
   'embed.physicalNames': 'Physical Names',
   'embed.logicalNames': 'Logical Names',
   'embed.bothNames': 'Both Names',
