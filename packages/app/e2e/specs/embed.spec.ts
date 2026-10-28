@@ -98,7 +98,7 @@ test.describe('an embedded viewer', () => {
     expect(overlapArea(box, controls)).toBe(0);
   });
 
-  test("draws the document in another site's frame", async ({
+  test('draws the document in a frame on another origin', async ({
     page,
     baseURL,
   }) => {

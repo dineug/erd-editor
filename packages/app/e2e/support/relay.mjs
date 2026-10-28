@@ -44,8 +44,9 @@ const server = createServer((request, response) => {
     return;
   }
 
-  // Another site framing the URL its src names, as an embed does; a routed
-  // origin cannot frame localhost in Chrome, so the relay's own origin does.
+  // A page on another origin framing the URL its src names, as an embed does; a
+  // routed origin cannot frame localhost in Chrome, so the relay's own origin,
+  // the same site as the app's, does.
   if (url.pathname === '/__framer') {
     const src = escapeAttribute(url.searchParams.get('src') ?? '');
     response.writeHead(200, { 'content-type': 'text/html' });
