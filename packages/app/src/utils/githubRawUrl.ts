@@ -22,9 +22,9 @@ function gistUrlOf(pathname: string): string | null {
 }
 
 /**
- * The raw host address of a public GitHub file or gist page, which a fetch from
- * another site can read where the page's own address cannot. Any other value
- * comes back as it came, so a second call changes nothing.
+ * The raw host address of a gist page or a public repository's file page,
+ * which a fetch from another site can read where the page's own address cannot.
+ * Any other value comes back as it came, so a second call changes nothing.
  */
 export function toGithubRawUrl(src: string): string {
   let url: URL;

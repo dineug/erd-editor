@@ -118,7 +118,15 @@ document.body.appendChild(editor);
 
 編集せずに図を表示するだけなら、`@dineug/erd-editor/erd-viewer.js` をインポートして `<erd-viewer src="diagram.erd.json" style="display: block; height: 480px"></erd-viewer>` を置きます。スタイルで決めた枠の中で、図のパン、ズーム、検索ができます。パッケージのルートをインポートするだけでは、どちらの要素も定義されません。
 
-どのフレームワークからでも、フレームワークなしでも使えます。属性と要素の API は [`packages/erd-editor`](./packages/erd-editor) を参照してください。
+スクリプトを読み込めないページ（Wiki やサイトビルダーなど）では、代わりにホストされたビューアーを iframe で埋め込めます。
+
+```html
+<iframe src="https://erd-editor.io/embed?src=https%3A%2F%2Fexample.com%2Fdiagram.erd.json" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>
+```
+
+[erd-editor.io/embed](https://erd-editor.io/embed) のビルダーが、ファイルの URL とビューアーのオプションからこの 1 行を作ります。ファイルを置くサーバーは、erd-editor.io からのクロスオリジンリクエスト（CORS）を許可する必要があります。GitHub 上のファイルや gist は、そのページに表示されるアドレス（例：`https://github.com/you/repo/blob/main/schema.erd.json`）をそのまま渡せます。このアドレスも、ビルダーがほかのアドレスと同じようにエンコードして `src` に入れます。ホストされたビューアーはそれを GitHub の raw ホストから取得するため、公開リポジトリと gist では動作しますが、非公開リポジトリでは動作しません。各ファイルは 5 分間キャッシュされます。gist では最初のファイルを表示します。
+
+どちらの要素も、どのフレームワークからでも、フレームワークなしでも使えます。属性と要素の API は [`packages/erd-editor`](./packages/erd-editor) を参照してください。
 
 ## ドキュメント
 
