@@ -129,7 +129,7 @@ export const deDE = {
 
   'embed.title': 'Diagramm einbetten',
   'embed.documentUrl': 'Dokument-URL',
-  'embed.fetchUrl': 'Lädt von',
+  'embed.fetchUrl': 'Wird geladen von',
   'embed.nameView': 'Namensansicht',
   'embed.nameAsSaved': 'Wie gespeichert',
   'embed.physicalNames': 'Physische Namen',

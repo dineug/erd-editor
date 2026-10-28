@@ -129,7 +129,7 @@ export const nlNL = {
 
   'embed.title': 'Een diagram insluiten',
   'embed.documentUrl': 'Document-URL',
-  'embed.fetchUrl': 'Laadt van',
+  'embed.fetchUrl': 'Wordt geladen van',
   'embed.nameView': 'Naamweergave',
   'embed.nameAsSaved': 'Zoals opgeslagen',
   'embed.physicalNames': 'Fysieke namen',
