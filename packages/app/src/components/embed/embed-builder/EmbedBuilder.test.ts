@@ -168,7 +168,7 @@ describe('the embed builder', () => {
     unmount();
   });
 
-  it('applies the URL without the spaces around it, and spaces alone as nothing', () => {
+  it('shows nothing for spaces alone, and the document for a URL with spaces around it', () => {
     const { viewer, unmount } = mount();
     const input = field('Document URL');
 

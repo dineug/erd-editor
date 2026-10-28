@@ -145,6 +145,14 @@ export function parseEmbedHeight(input: string): number {
 }
 
 /**
+ * A document URL as typed, without the white space around it: a url field
+ * strips only the ASCII kind, and a pasted address can end in another.
+ */
+export function parseDocumentUrl(input: string): string {
+  return input.trim();
+}
+
+/**
  * The iframe a page pastes. The URL goes in unescaped: its query is encoded,
  * so it holds no quote or angle bracket, and every ampersand precedes a name.
  */

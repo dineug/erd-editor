@@ -34,6 +34,7 @@ import {
   type EmbedGrayColor,
   type EmbedLocale,
   type EmbedNameView,
+  parseDocumentUrl,
   parseEmbedHeight,
   toEmbedUrl,
   toIframeSnippet,
@@ -285,7 +286,7 @@ const EmbedBuilder: React.FC = () => {
     value: EmbedDisplayOptions[K]
   ) => setDisplay(prev => ({ ...prev, [key]: value }));
 
-  const commit = () => setCommittedUrl(draftUrl.trim());
+  const commit = () => setCommittedUrl(parseDocumentUrl(draftUrl));
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.nativeEvent.isComposing) commit();

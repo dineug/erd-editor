@@ -10,6 +10,7 @@ import {
   embedAppearance,
   type EmbedOptions,
   type EmbedViewerTarget,
+  parseDocumentUrl,
   parseEmbedHeight,
   parseEmbedParams,
   toEmbedUrl,
@@ -337,6 +338,20 @@ describe('parseEmbedHeight', () => {
     '9007199254740992',
   ])('reads %j as the default', input => {
     expect(parseEmbedHeight(input)).toBe(DEFAULT_EMBED_HEIGHT);
+  });
+});
+
+describe('parseDocumentUrl', () => {
+  it.each([
+    [DOC, DOC],
+    [`  ${DOC}\n`, DOC],
+    [`\u00a0${DOC}\u3000`, DOC],
+    [`\t${DOC}\ufeff`, DOC],
+    ['https://example.com/a b.erd.json ', 'https://example.com/a b.erd.json'],
+    [' \u00a0 ', ''],
+    ['', ''],
+  ])('reads %j as %j', (input, url) => {
+    expect(parseDocumentUrl(input)).toBe(url);
   });
 });
 
