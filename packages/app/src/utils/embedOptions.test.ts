@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import {
   applyEmbedOptions,
+  applyPreviewOptions,
   DEFAULT_EMBED_HEIGHT,
   EMBED_DEFAULTS,
+  EMBED_GRAY_COLORS,
   embedAppearance,
   type EmbedOptions,
   type EmbedViewerTarget,
@@ -61,6 +63,13 @@ describe('EMBED_DEFAULTS', () => {
       grayColor: 'slate',
     });
     expect(DEFAULT_EMBED_HEIGHT).toBe(480);
+  });
+
+  it("offers Radix's gray colors but auto, in its order", () => {
+    expect(EMBED_GRAY_COLORS).toEqual(
+      grayColors.filter(color => color !== 'auto')
+    );
+    expect(EMBED_GRAY_COLORS).toHaveLength(6);
   });
 });
 
@@ -483,4 +492,55 @@ describe('applyEmbedOptions', () => {
       [...named.calls, ...unknown.calls].map(([name]) => name)
     ).not.toContain('setSystemLocale');
   });
+});
+
+describe('applyPreviewOptions', () => {
+  it('hands over every option, the system language before the language', () => {
+    const { viewer, calls } = recordingViewer();
+
+    applyPreviewOptions(
+      viewer,
+      parseEmbedParams(
+        '?src=x&theme=dark&locale=ko-KR&name-view=both&minimap=false' +
+          '&controls=false&accent-color=crimson&gray-color=sand'
+      ),
+      'fr-FR'
+    );
+
+    expect(calls).toEqual([
+      [
+        'setPresetTheme',
+        { appearance: 'dark', accentColor: 'crimson', grayColor: 'sand' },
+      ],
+      ['setSystemLocale', 'fr-FR'],
+      ['setLocale', 'ko-KR'],
+      ['nameView', 'both'],
+      ['minimap', false],
+      ['controls', false],
+    ]);
+  });
+
+  it.each([
+    ['a URL naming none', parseEmbedParams('?src=x')],
+    ['the defaults written out', { ...EMBED_DEFAULTS, src: 'x' }],
+  ])(
+    "spells out the viewer's own defaults for %s, the document's name view as null",
+    (_, given) => {
+      const { viewer, calls } = recordingViewer();
+
+      applyPreviewOptions(viewer, given, 'en');
+
+      expect(calls).toEqual([
+        [
+          'setPresetTheme',
+          { appearance: 'system', accentColor: 'indigo', grayColor: 'slate' },
+        ],
+        ['setSystemLocale', 'en'],
+        ['setLocale', 'system'],
+        ['nameView', null],
+        ['minimap', true],
+        ['controls', true],
+      ]);
+    }
+  );
 });

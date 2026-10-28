@@ -18,8 +18,8 @@ The package has no `src/index.ts`; its entry and output:
   starts Sentry and registers the service worker.
 - `src/routes/routes.tsx` — the route table: `/` (the schema list and the editor), `/live` (a
   collaboration guest), `/gdrive` (the Google Drive editor) and `/embed` (the document its `?src=`
-  names, in a viewer filling the page another site frames), the last three loaded lazily; any other
-  path redirects to `/`.
+  names, in a viewer filling the page another site frames, or without one the builder of that URL
+  and its iframe), the last three loaded lazily; any other path redirects to `/`.
 - `src/sw.ts` — the Workbox service worker, which precaches the build.
 - `public/privacy.html`, `terms.html`, `support.html` — static pages served at `/privacy`,
   `/terms` and `/support`, outside the React app.

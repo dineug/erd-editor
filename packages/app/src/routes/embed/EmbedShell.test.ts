@@ -11,6 +11,10 @@ import {
   type AppUpdateStatus,
   appUpdateStatusAtom,
 } from '@/atoms/modules/app-update';
+import { i18nAtom } from '@/atoms/modules/locale';
+import { themeAtom } from '@/atoms/modules/theme';
+import { koKR } from '@/i18n/messages/ko-KR';
+import { createI18n } from '@/i18n/translate';
 import { routes } from '@/routes/routes';
 
 // The real viewer needs a browser, and the schema list its database; the
@@ -36,6 +40,7 @@ afterEach(() => {
   resetViewers();
   document.documentElement.className = '';
   document.documentElement.removeAttribute('style');
+  window.localStorage.clear();
 });
 
 describe('the /embed shell', () => {
@@ -76,6 +81,45 @@ describe('the /embed shell', () => {
         PROMPT
       );
       expect(container.querySelector('erd-viewer')).toBeNull();
+      unmount();
+    }
+  );
+
+  it.each([
+    ['available', '/embed'],
+    ['outdated', '/embed'],
+    ['available', '/embed?src='],
+    ['outdated', '/embed?theme=light&src=&src=x'],
+  ] as const)(
+    "shows the builder under Root, in the app's theme and language, with the %s prompt at %s",
+    async (status, entry) => {
+      const store = storeWith(status);
+      store.set(themeAtom, {
+        appearance: 'light',
+        accentColor: 'crimson',
+        grayColor: 'sand',
+      });
+      store.set(i18nAtom, createI18n('ko-KR', koKR));
+
+      const { container, unmount } = await renderRoutes(routes, entry, store);
+      const theme = container.querySelector('.radix-themes');
+
+      expect(theme?.classList.contains('light')).toBe(true);
+      expect(theme?.getAttribute('data-accent-color')).toBe('crimson');
+      expect(theme?.getAttribute('data-gray-color')).toBe('sand');
+      expect(container.querySelector('h1')?.textContent).toBe(
+        koKR['embed.title']
+      );
+      // The builder's copy statuses come first, empty until a copy.
+      const statuses = Array.from(
+        container.querySelectorAll('[role="status"]'),
+        status => status.textContent
+      );
+      expect(statuses).toContainEqual(
+        expect.stringContaining(koKR['update.available'])
+      );
+      expect(container.querySelectorAll('erd-viewer')).toHaveLength(1);
+      expect(lastViewer().indexOf('src')).toBe(-1);
       unmount();
     }
   );

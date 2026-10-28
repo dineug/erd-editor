@@ -38,6 +38,9 @@ export type EmbedOptions = {
   grayColor: EmbedGrayColor | null;
 };
 
+/** Every option but the document, which the builder applies apart from them. */
+export type EmbedDisplayOptions = Omit<EmbedOptions, 'src'>;
+
 /**
  * What the viewer shows for an option the URL leaves out, copied from it: its
  * indigo and slate, not the app's own colors. A null name view is the document's.
@@ -50,7 +53,7 @@ export const EMBED_DEFAULTS = {
   controls: true,
   accentColor: 'indigo',
   grayColor: 'slate',
-} as const satisfies Omit<EmbedOptions, 'src'>;
+} as const satisfies EmbedDisplayOptions;
 
 export const DEFAULT_EMBED_HEIGHT = 480;
 
@@ -60,7 +63,8 @@ const NAME_VIEWS: ReadonlyArray<EmbedNameView> = [
   'logical',
   'both',
 ];
-const GRAY_COLORS = grayColors.filter(
+/** The gray colors the viewer takes, in Radix's order, which the builder offers. */
+export const EMBED_GRAY_COLORS = grayColors.filter(
   (color): color is EmbedGrayColor => color !== 'auto'
 );
 
@@ -94,7 +98,7 @@ export function parseEmbedParams(
     minimap: params.get('minimap') !== 'false',
     controls: params.get('controls') !== 'false',
     accentColor: pick(accentColors, params.get('accent-color')),
-    grayColor: pick(GRAY_COLORS, params.get('gray-color')),
+    grayColor: pick(EMBED_GRAY_COLORS, params.get('gray-color')),
   };
 }
 
@@ -180,6 +184,28 @@ export function applyEmbedOptions(
   if (preset) viewer.setPresetTheme(preset);
   if (options.locale !== null) viewer.setLocale(options.locale);
   if (options.nameView !== null) viewer.nameView = options.nameView;
+  viewer.minimap = options.minimap;
+  viewer.controls = options.controls;
+}
+
+/**
+ * Hands the builder's preview every option, each default as the viewer's own,
+ * so a pick put back undoes itself, and the browser's language as the system
+ * one, which the app's language on the page's lang would otherwise stand for.
+ */
+export function applyPreviewOptions(
+  viewer: EmbedViewerTarget,
+  options: EmbedOptions,
+  systemLocale: string
+) {
+  viewer.setPresetTheme({
+    appearance: options.theme ?? EMBED_DEFAULTS.theme,
+    accentColor: options.accentColor ?? EMBED_DEFAULTS.accentColor,
+    grayColor: options.grayColor ?? EMBED_DEFAULTS.grayColor,
+  });
+  viewer.setSystemLocale(systemLocale);
+  viewer.setLocale(options.locale ?? EMBED_DEFAULTS.locale);
+  viewer.nameView = options.nameView;
   viewer.minimap = options.minimap;
   viewer.controls = options.controls;
 }

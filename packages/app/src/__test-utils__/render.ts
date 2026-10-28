@@ -15,10 +15,14 @@ export function render(element: ReactElement) {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
+  const show = (next: ReactElement) =>
+    act(() => root.render(createElement(Theme, null, next)));
 
-  act(() => root.render(createElement(Theme, null, element)));
+  show(element);
 
   return {
+    /** Renders another element in the same root, as a parent's new props would. */
+    rerender: show,
     unmount: () => {
       act(() => root.unmount());
       container.remove();
@@ -81,5 +85,17 @@ export function pressKey(target: Element, key: string) {
     target.dispatchEvent(
       new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
     );
+  });
+}
+
+/** Types into a field the way a browser does, through the native setter React watches. */
+export function typeText(input: HTMLInputElement, value: string) {
+  const setValue = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    'value'
+  )?.set;
+  act(() => {
+    setValue?.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   });
 }
