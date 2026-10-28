@@ -383,7 +383,7 @@ test.describe('the embed builder', () => {
     await expect(theme).toBeFocused();
   });
 
-  test('writes each option at once into the preview, the URL and the iframe', async ({
+  test('writes each option at once into the preview, the URL and the iframe, and the height into the preview box and the iframe', async ({
     page,
     baseURL,
   }) => {
@@ -393,16 +393,21 @@ test.describe('the embed builder', () => {
     await expect.poll(() => viewerTableCount(page)).toBe(SHOP_TABLES);
     await expect(viewer.locator('.minimap')).toHaveCount(1);
     expect(await canvasLuminance(viewer)).toBeLessThan(0.5);
+    expect((await viewer.boundingBox())?.height).toBe(480);
 
     await page.getByRole('switch', { name: 'Minimap' }).click();
     await page.getByRole('combobox', { name: 'Theme' }).click();
     await page.getByRole('option', { name: 'Light' }).click();
+    await page.getByRole('spinbutton', { name: 'Height' }).fill('720');
 
     const url = `${baseURL}/embed?src=https%3A%2F%2Fdocs.e2e.test%2Fshop.erd.json&theme=light&minimap=false`;
     await expect(result(page, 'Embed URL').field).toHaveValue(url);
     await expect(result(page, 'Embed code').field).toHaveValue(
-      `<iframe src="${url}" width="100%" height="480" style="border: 0" loading="lazy" title="ERD Editor"></iframe>`
+      `<iframe src="${url}" width="100%" height="720" style="border: 0" loading="lazy" title="ERD Editor"></iframe>`
     );
+    await expect
+      .poll(async () => (await viewer.boundingBox())?.height)
+      .toBe(720);
     await expect(viewer.locator('.minimap')).toHaveCount(0);
     await expect.poll(() => canvasLuminance(viewer)).toBeGreaterThan(0.5);
   });

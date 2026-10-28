@@ -101,6 +101,26 @@ function fetchLines() {
   );
 }
 
+/** Opens a select's list from its label and picks the option its text names. */
+function pick(label: string, option: string) {
+  act(() => labelOf(label).click());
+  const found = Array.from(
+    document.querySelectorAll('[role="listbox"] [role="option"]')
+  ).find(each => each.textContent === option);
+  if (!(found instanceof HTMLElement)) throw new Error(`no option ${option}`);
+  act(() => found.click());
+}
+
+/** The box the preview draws in: the child of its group holding the viewer. */
+function previewBox() {
+  let box = document.querySelector('erd-viewer')?.parentElement ?? null;
+  while (box && box.parentElement?.getAttribute('role') !== 'group') {
+    box = box.parentElement;
+  }
+  if (!box) throw new Error('no preview box');
+  return box;
+}
+
 /** Presses a target with a mouse's main button, the press a select's trigger opens on. */
 function pressWithMouse(target: Element) {
   act(() => {
@@ -266,6 +286,62 @@ describe('the embed builder', () => {
     expect(minimap.getAttribute('aria-checked')).toBe('false');
     expect(field('Embed URL').value).toContain('minimap=false');
     expect(field('Height').value).toBe('480');
+    unmount();
+  });
+
+  it('writes a typed height into the iframe and the preview box at once, and 480 for one that is no positive whole number', () => {
+    const { unmount } = mount();
+    apply(DOC);
+    const url = field('Embed URL').value;
+    expect(previewBox().style.height).toBe('480px');
+
+    typeText(field('Height'), '720');
+
+    expect(field('Embed code').value).toBe(toIframeSnippet(url, 720));
+    expect(previewBox().style.height).toBe('720px');
+    expect(field('Embed URL').value).toBe(url);
+    for (const typed of ['0', '2.5', '']) {
+      typeText(field('Height'), '720');
+      typeText(field('Height'), typed);
+      expect(field('Embed code').value).toBe(toIframeSnippet(url, 480));
+      expect(previewBox().style.height).toBe('480px');
+    }
+    unmount();
+  });
+
+  it('writes each pick into the preview, the URL and the iframe at once, and drops the name view once As Saved is picked again', () => {
+    const { viewer, unmount } = mount();
+    apply(DOC);
+    const params = () => new URL(field('Embed URL').value).searchParams;
+
+    pick('Display Language', '한국어');
+    pick('Name View', 'Logical Names');
+    pick('Accent color', 'teal');
+    pick('Gray color', 'mauve');
+    act(() => control('Controls').click());
+
+    expect(params().get('locale')).toBe('ko-KR');
+    expect(params().get('name-view')).toBe('logical');
+    expect(params().get('accent-color')).toBe('teal');
+    expect(params().get('gray-color')).toBe('mauve');
+    expect(params().get('controls')).toBe('false');
+    expect(field('Embed code').value).toBe(
+      toIframeSnippet(field('Embed URL').value, 480)
+    );
+    expect(viewer.valuesOf('setLocale').at(-1)).toBe('ko-KR');
+    expect(viewer.valuesOf('nameView').at(-1)).toBe('logical');
+    expect(viewer.valuesOf('setPresetTheme').at(-1)).toEqual({
+      appearance: 'system',
+      accentColor: 'teal',
+      grayColor: 'mauve',
+    });
+    expect(viewer.valuesOf('controls').at(-1)).toBe(false);
+
+    pick('Name View', 'As Saved');
+
+    expect(params().has('name-view')).toBe(false);
+    expect(params().get('locale')).toBe('ko-KR');
+    expect(viewer.valuesOf('nameView').at(-1)).toBeNull();
     unmount();
   });
 
