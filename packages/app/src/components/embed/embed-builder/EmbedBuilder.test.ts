@@ -403,9 +403,12 @@ describe('the embed builder', () => {
     vi.mocked(copyToClipboard).mockReturnValueOnce(copying);
     const { unmount } = mount();
     apply(DOC);
+    const code = field('Embed code').value;
 
     act(() => copyOf('Embed code').click());
     unmount();
+    expect(copyToClipboard).toHaveBeenLastCalledWith(code);
+    expect(vi.mocked(copyToClipboard).mock.results.at(-1)?.value).toBe(copying);
     const timers = vi.spyOn(window, 'setTimeout');
     finish();
     await copying;
