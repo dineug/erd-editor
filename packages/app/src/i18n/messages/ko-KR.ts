@@ -108,7 +108,7 @@ export const koKR = {
 
   'embed.title': '다이어그램 임베드',
   'embed.documentUrl': '문서 URL',
-  'embed.fetchUrl': '가져오는 주소',
+  'embed.fetchUrl': '불러오는 주소',
   'embed.nameView': '이름 표시',
   'embed.nameAsSaved': '저장된 대로',
   'embed.physicalNames': '물리명',

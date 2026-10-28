@@ -143,7 +143,7 @@ export const plPL = {
 
   'embed.title': 'Osadź diagram',
   'embed.documentUrl': 'Adres URL dokumentu',
-  'embed.fetchUrl': 'Wczytywane z',
+  'embed.fetchUrl': 'Ładowane z',
   'embed.nameView': 'Widok nazw',
   'embed.nameAsSaved': 'Jak zapisano',
   'embed.physicalNames': 'Nazwy fizyczne',
