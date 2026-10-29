@@ -1,7 +1,11 @@
 // @vitest-environment node
 
 import { isSettingLocked, query, toJson } from '@dineug/erd-editor-schema';
-import type { AnyAction } from '@dineug/r-html';
+import {
+  type AnyAction,
+  type CompositionActions,
+  compositionActionsFlat,
+} from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
 import {
   afterEach,
@@ -35,6 +39,7 @@ import {
   type Session,
   settle,
 } from '@/__test-utils__/peerSeed';
+import { counterOf, versionOf } from '@/__test-utils__/version';
 import { mapColumnsAction$ } from '@/components/map-columns/mapColumnsAction';
 import {
   ColumnOption,
@@ -44,6 +49,7 @@ import {
   RelationshipType,
   StartRelationshipType,
 } from '@/constants/schema';
+import { slotOf } from '@/engine/clock';
 import { createEngineContext } from '@/engine/context';
 import {
   addDictionaryAction,
@@ -356,7 +362,7 @@ describe('a layout converges although the two sides measure text apart', () => {
 });
 
 /** A version above every clock here, so two peers can write at one on purpose. */
-const VERSION = 10_000;
+const VERSION = versionOf(10_000, 0);
 
 /** A column the seed's orders table lacks, for a third mapping to point at. */
 const ORDER_BUYER = 'orders_buyer_id';
@@ -386,6 +392,25 @@ const link = (id: string, endColumnId: string) =>
 /** Every action of a batch stamped with one version, as a dispatch stamps it. */
 const atVersion = (actions: AnyAction[], version: number) =>
   actions.map(action => ({ ...action, version }));
+
+/**
+ * What a dispatch makes on the peer's state, every action at the version given,
+ * as two editors built before the slot whose clocks stand level stamp it, or
+ * two editors of one slot.
+ */
+const flatAtVersion = (
+  { state }: HasState,
+  actions: CompositionActions,
+  version: number
+) =>
+  atVersion(
+    compositionActionsFlat(
+      state,
+      createEngineContext({ toWidth: defaultToWidth, routes: false }),
+      actions
+    ),
+    version
+  );
 
 /** Hands out the ids given, one per call, where a generator mints its own. */
 const idsOf = (...ids: string[]) => {
@@ -428,6 +453,8 @@ const withEmptyColumn = () =>
   ]);
 
 type HasState = { state: RootState };
+
+type HasRuntimeValue = { runtimeValue: string };
 
 const relationshipOf = ({ state }: HasState, id: string = SEED.relationship) =>
   state.collections.relationshipEntities[id];
@@ -510,6 +537,12 @@ function permutations<T>(items: T[]): T[][] {
 
 /** The last batch a peer sent, which is the one its last dispatch made. */
 const lastBatch = (sent: AnyAction[][]) => sent[sent.length - 1];
+
+/** Every store holds the same document, removed entities included. */
+const expectSameDocuments = (stores: HasRuntimeValue[]) => {
+  const [first, ...rest] = stores.map(store => JSON.parse(store.runtimeValue));
+  rest.forEach(document => expect(document).toEqual(first));
+};
 
 describe('the Schema SQL scripts converge', () => {
   const scriptsOf = ({ state }: HasState) => state.settings.ddlScripts;
@@ -603,7 +636,7 @@ describe('the name view converges on every peer and its replica', () => {
     return JSON.stringify(json);
   };
 
-  const isNameViewLocked = (peer: PeerStore) =>
+  const isNameViewLocked = (peer: HasState) =>
     isSettingLocked(peer.state.settings.lockSettings, unlockNameViewMode);
 
   /** Every peer holds the same runtime bytes, and every replica the same file. */
@@ -1032,13 +1065,6 @@ describe('relationship.changeColumns converges', () => {
 
     return observer;
   }
-
-  const expectSameDocuments = (stores: PeerStore[]) => {
-    const [first, ...rest] = stores.map(store =>
-      JSON.parse(store.runtimeValue)
-    );
-    rest.forEach(document => expect(document).toEqual(first));
-  };
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -1547,14 +1573,19 @@ describe('relationship.changeColumns converges', () => {
         { onRefuse }
       );
 
-    /** The two writers, then a peer hearing each order of them. */
-    async function race(change: AnyAction[] | ReturnType<typeof mapOntoNote>) {
+    /** The two writers, at one version when one is given, then a peer hearing each order of them. */
+    async function race(
+      change: AnyAction[] | ReturnType<typeof mapOntoNote>,
+      version?: number
+    ) {
       const mesh = await open(4);
       const [mapper, changer] = mesh.peers;
       const onRefuse = vi.fn();
+      const stamped = (peer: HasState, actions: CompositionActions) =>
+        version === undefined ? actions : flatAtVersion(peer, actions, version);
 
-      mapper.dispatch([mapOntoNote(onRefuse)]);
-      changer.dispatch([change].flat());
+      mapper.dispatch(stamped(mapper, [mapOntoNote(onRefuse)]));
+      changer.dispatch(stamped(changer, [change].flat()));
       await mesh.deliver(2, [0, 1]);
       await mesh.deliver(3, [1, 0]);
       await mesh.deliverAll();
@@ -1596,7 +1627,8 @@ describe('relationship.changeColumns converges', () => {
           tableId: SEED.orders,
           id: SEED.orderNote,
           value: 'VARCHAR(10)',
-        })
+        }),
+        VERSION
       );
 
       for (const { peer, mapped } of sides) {
@@ -1631,12 +1663,13 @@ describe('relationship.changeColumns converges', () => {
       await settleHooks();
       undoer.undo();
       await settleHooks();
-      // One edit of its own brings the mapper's clock level with the undo's,
-      // so its mapping writes the child's type at the version the undo did.
-      mapper.dispatch([
-        changeTableNameAction({ id: SEED.empty, value: 'void' }),
-      ]);
-      mapper.dispatch([mapOntoNote(onRefuse)]);
+      // The mapping writes the child's type at the version the undo did, as
+      // two editors built before the slot whose clocks stand level, or two
+      // editors of one slot, write it.
+      const [{ version }] = lastBatch(mesh.sent[0]).filter(
+        ({ type }) => type === 'column.changeDataType'
+      );
+      mapper.dispatch(flatAtVersion(mapper, [mapOntoNote(onRefuse)], version!));
       await settleHooks();
       const typeVersions = mesh.sent.map(sent =>
         lastBatch(sent)
@@ -1717,7 +1750,7 @@ describe('relationship.changeColumns converges', () => {
     };
 
     /** Each peer's document with the orders column lists put in one order. */
-    const withSortedOrders = (peer: PeerStore) => {
+    const withSortedOrders = (peer: HasRuntimeValue) => {
       const document = JSON.parse(peer.runtimeValue);
       const orders = document.collections.tableEntities[SEED.orders];
       orders.columnIds.sort();
@@ -1810,6 +1843,186 @@ describe('relationship.changeColumns converges', () => {
         expect(endOf(peer, 'users_orders_mapped')).toEqual(['orders_mapped']);
       }
       expect(withSortedOrders(mapper)).toEqual(withSortedOrders(adder));
+    });
+  });
+});
+
+describe('writes at one counter converge on the greater slot', () => {
+  const meshes: Mesh[] = [];
+
+  /** Lets every hook a batch woke run: the 5 ms windows and the microtasks. */
+  const settleHooks = async () => {
+    await vi.advanceTimersByTimeAsync(20);
+  };
+
+  /** Peers on the seed, each with a replica, past the opening handshake. */
+  async function open(peers: MeshOptions['peers'] = [{}, {}, {}, {}]) {
+    const mesh = createMesh(peers.length, {
+      settle: settleHooks,
+      replicas: true,
+      peers,
+    });
+    meshes.push(mesh);
+    await settleHooks();
+    await mesh.deliverAll();
+    return mesh;
+  }
+
+  /**
+   * The two writers' batches to the third peer in their order and to the fourth
+   * in the other, then everything to everyone, so each order of them is met.
+   */
+  async function deliverBothOrders(mesh: Mesh) {
+    await mesh.deliver(2, [0, 1]);
+    await mesh.deliver(3, [1, 0]);
+    await mesh.deliverAll();
+  }
+
+  /** The version of the last action of the type given that the peer sent. */
+  const sentVersion = (mesh: Mesh, index: number, type: string) =>
+    lastBatch(mesh.sent[index])
+      .filter(action => action.type === type)
+      .pop()!.version!;
+
+  const nameOf = ({ state }: HasState) =>
+    state.collections.tableEntities[SEED.users].name;
+
+  const renameUsers = (value: string) =>
+    changeTableNameAction({ id: SEED.users, value });
+
+  /** Every replica saves the file its peer holds. */
+  const expectReplicasWithPeers = ({ peers, replicas }: Mesh) => {
+    expect(replicas).toHaveLength(peers.length);
+    replicas.forEach((replica, index) =>
+      expect(JSON.parse(replica.value)).toEqual(JSON.parse(peers[index].value))
+    );
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    meshes.splice(0).forEach(mesh => mesh.destroy());
+    vi.useRealTimers();
+  });
+
+  it('ends two renames of one table from one clock on the greater version, in every order and on every replica (AC-T2)', async () => {
+    const mesh = await open();
+    const [a, b] = mesh.peers;
+
+    a.dispatch([renameUsers('products_A')]);
+    b.dispatch([renameUsers('products_B')]);
+    const versionA = sentVersion(mesh, 0, 'table.changeName');
+    const versionB = sentVersion(mesh, 1, 'table.changeName');
+    await deliverBothOrders(mesh);
+
+    expect(counterOf(versionA)).toBe(counterOf(versionB));
+    expect(versionA).not.toBe(versionB);
+    const winner = versionA > versionB ? 'products_A' : 'products_B';
+    for (const peer of mesh.peers) {
+      expect(nameOf(peer)).toBe(winner);
+      expect(peer.state.lww[SEED.users][3].name).toBe(
+        Math.max(versionA, versionB)
+      );
+    }
+    expectSameDocuments(mesh.peers);
+    expectReplicasWithPeers(mesh);
+  });
+
+  it.each([
+    ['the add', true],
+    ['the remove', false],
+  ])(
+    'ends an add and a remove of one table at one counter on the greater of the two, %s, in every order and on every replica (AC-T2)',
+    async (_greater, addWins) => {
+      const mesh = await open();
+      // Of one counter the greater slot writes the greater version, so the
+      // writers take their parts by slot and each side wins on every run.
+      const [lower, upper] = [0, 1].sort(
+        (a, b) =>
+          slotOf(mesh.peers[a].editorId) - slotOf(mesh.peers[b].editorId)
+      );
+      const [adderIndex, removerIndex] = addWins
+        ? [upper, lower]
+        : [lower, upper];
+      const adder = mesh.peers[adderIndex];
+      const remover = mesh.peers[removerIndex];
+
+      // The adder takes the table out and back, the remover renames another
+      // first, so the add and the remove both stand at the second counter.
+      adder.dispatch([removeTableAction$(SEED.empty)]);
+      adder.undo();
+      remover.dispatch([
+        changeTableNameAction({ id: SEED.orders, value: 'purchases' }),
+      ]);
+      remover.dispatch([removeTableAction$(SEED.empty)]);
+      const added = sentVersion(mesh, adderIndex, 'table.add');
+      const removed = sentVersion(mesh, removerIndex, 'table.remove');
+      await deliverBothOrders(mesh);
+
+      expect(counterOf(added)).toBe(counterOf(removed));
+      expect(added > removed).toBe(addWins);
+      for (const peer of mesh.peers) {
+        expect(peer.state.doc.tableIds.includes(SEED.empty)).toBe(addWins);
+      }
+      expectSameDocuments(mesh.peers);
+      expectReplicasWithPeers(mesh);
+    }
+  );
+
+  describe('in a session with editors built before the slot (AC-T3)', () => {
+    const mixed = [
+      {},
+      {},
+      { legacy: true as const },
+      { legacy: true as const },
+    ];
+
+    it('ends a race of two peer stores on the greater version on the editors built before the slot too, whichever order they hear it in', async () => {
+      const mesh = await open(mixed);
+      const [a, b, older] = mesh.peers;
+
+      a.dispatch([renameUsers('products_A')]);
+      b.dispatch([renameUsers('products_B')]);
+      const versionA = sentVersion(mesh, 0, 'table.changeName');
+      const versionB = sentVersion(mesh, 1, 'table.changeName');
+      await deliverBothOrders(mesh);
+      older.dispatch([
+        changeTableNameAction({ id: SEED.orders, value: 'purchases' }),
+      ]);
+      await mesh.deliverAll();
+
+      const winner = versionA > versionB ? 'products_A' : 'products_B';
+      for (const peer of mesh.peers) {
+        expect(nameOf(peer)).toBe(winner);
+        expect(peer.state.collections.tableEntities[SEED.orders].name).toBe(
+          'purchases'
+        );
+        expect(peer.state.lww[SEED.users]).toEqual(a.state.lww[SEED.users]);
+        expect(peer.state.lww[SEED.orders]).toEqual(a.state.lww[SEED.orders]);
+      }
+    });
+
+    it('lets a peer store’s write win over one an editor built before the slot made at once, on every peer and replica', async () => {
+      const mesh = await open(mixed);
+      const [a, , older] = mesh.peers;
+
+      a.dispatch([renameUsers('products_A')]);
+      older.dispatch([renameUsers('products_old')]);
+      await mesh.deliverAll();
+
+      expect(sentVersion(mesh, 0, 'table.changeName')).toBeGreaterThan(
+        sentVersion(mesh, 2, 'table.changeName')
+      );
+      for (const peer of mesh.peers) {
+        expect(nameOf(peer)).toBe('products_A');
+      }
+      for (const replica of mesh.replicas) {
+        expect(
+          JSON.parse(replica.value).collections.tableEntities[SEED.users].name
+        ).toBe('products_A');
+      }
     });
   });
 });

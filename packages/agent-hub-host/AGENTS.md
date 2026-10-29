@@ -192,7 +192,7 @@
   - the `documentRules.ts` texts and the `joinWindow.ts` tables;
   - the pipe paths, and `resolveRealPath` / `authorizePath` over a memory machine per vector.
 - **Two suites read the corpus.** `conformance.test.ts` drives `serveConnection` over `createMemorySocketPair` with `createHubHandler`, and the rest over the memory layers. It loads the file with `import.meta.glob` (`?raw`), as `imports.test.ts` reads the sources. This package is the oracle, so a vector it fails is a wrong vector. The Gradle tests of `packages/intellij-plugin` read it through the system property `erd.hub.hostCorpus`.
-- **Give each vector one home.** A table moved into the corpus left the spec that held it. The spec keeps what the corpus normalizes away (the params object a handler gets, a log's detail) and what needs timing, a failing write, a second connection or a thrown defect.
+- **Give each vector one home.** A table moved into the corpus left the spec that held it. The spec keeps what the corpus normalizes away (the params object a handler gets, a log's detail) and what needs timing, a failing write, a second connection or a thrown defect. `joinWindow.test.ts` also keeps NaN, which JSON cannot hold, and the versions past 2^31 an editor's slot makes, which pin no rule the hubs do not share, only this hub's arithmetic on them.
 - **Add a new non-change type to `joinWindow.nonChangeTypes`.** That list is checked one way only, each type in it changing nothing, since `joinWindow.ts` keeps its set unexported. A type added to the set goes into the list too; otherwise the Kotlin hub waits out the join cap on it for a save that never comes.
 
 ## Common Patterns

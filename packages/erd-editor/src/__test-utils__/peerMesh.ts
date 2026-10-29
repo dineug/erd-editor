@@ -1,8 +1,13 @@
-import type { AnyAction } from '@dineug/r-html';
+import type { AnyAction, CompositionActions } from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
 
+import { createLegacyPeer } from '@/__test-utils__/legacyPeer';
 import { createSeedValue } from '@/__test-utils__/peerSeed';
-import { createPeerStore, type PeerStore } from '@/engine/peer-store';
+import {
+  createPeerStore,
+  type DispatchReport,
+  type PeerStore,
+} from '@/engine/peer-store';
 import {
   createReplicationStore,
   type ReplicationStore,
@@ -16,10 +21,32 @@ export type MeshPeerOptions = {
    * reducer for.
    */
   unknownTypes?: ReadonlyArray<string>;
+  /**
+   * Opens a peer of an editor built before the slot in place of a peer store:
+   * its clock and its outbound pipe, over this tree's reducers (createLegacyPeer).
+   */
+  legacy?: true;
+};
+
+/** What the mesh and its specs drive a peer through, a peer store or a legacy peer. */
+export type MeshPeer = Pick<
+  PeerStore,
+  | 'editorId'
+  | 'value'
+  | 'runtimeValue'
+  | 'state'
+  | 'setInitialValue'
+  | 'mergeClock'
+  | 'receive'
+  | 'undo'
+  | 'subscribe'
+  | 'destroy'
+> & {
+  dispatch: (actions: CompositionActions) => DispatchReport;
 };
 
 export type Mesh = {
-  peers: PeerStore[];
+  peers: MeshPeer[];
   /** Every batch each peer sent, presence off, copied as it left. */
   sent: AnyAction[][][];
   /** Each peer's replica by index, none unless the mesh was built with them. */
@@ -63,7 +90,7 @@ export function createMesh(
     replicas: withReplicas = false,
   }: MeshOptions
 ): Mesh {
-  const peers: PeerStore[] = [];
+  const peers: MeshPeer[] = [];
   const sent: AnyAction[][][] = [];
   const replicas: ReplicationStore[] = [];
   const unknown: Array<ReadonlySet<string>> = [];
@@ -73,10 +100,10 @@ export function createMesh(
 
   const join = (initialValue: string, peerOptions: MeshPeerOptions = {}) => {
     const index = peers.length;
-    const peer = createPeerStore({
-      nickname: `peer${index}`,
-      presence: false,
-    });
+    const nickname = `peer${index}`;
+    const peer = peerOptions.legacy
+      ? createLegacyPeer({ nickname })
+      : createPeerStore({ nickname, presence: false });
     peer.setInitialValue(initialValue);
     if (withReplicas) {
       const replica = createReplicationStore({ toWidth: defaultToWidth });

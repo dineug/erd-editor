@@ -2,6 +2,7 @@ import { toDocumentJson, toJson } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { versionOf } from '@/__test-utils__/version';
 import { Open } from '@/constants/open';
 import {
   BracketType,
@@ -15,7 +16,7 @@ import {
   RelationshipType,
   Show,
 } from '@/constants/schema';
-import { Clock } from '@/engine/clock';
+import { Clock, slotOf } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { documentJsonOf, runtimeJsonOf } from '@/engine/documentJson';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
@@ -44,7 +45,10 @@ import {
   editTableGroupEndAction,
   focusColumnAction,
   focusTableAction,
+  getLWWAction,
   loadJsonAction,
+  mergeLWWAction,
+  sharedMouseTrackerAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -110,6 +114,7 @@ import {
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
+import { clearSharedTrackers } from '@/engine/presence';
 import { createRxStore, HISTORY_LIMIT, RxStore } from '@/engine/rx-store';
 import {
   attachActionsTag,
@@ -205,18 +210,19 @@ describe('createRxStore', () => {
     const context = createContext();
     let seen: HistoryOptions | null = null;
 
-    make(context, {
+    const store = make(context, {
       getHistory: options => {
         seen = options;
         return createHistory(options);
       },
     });
+    const slot = slotOf(store.state.editor.id);
 
-    expect(seen!.getNextVersion()).toBe(1);
+    expect(seen!.getNextVersion()).toBe(versionOf(1, slot));
 
-    context.clock.merge(7);
+    context.clock.merge(versionOf(7, 0));
 
-    expect(seen!.getNextVersion()).toBe(8);
+    expect(seen!.getNextVersion()).toBe(versionOf(8, slot));
   });
 
   it('dispatchSync applies the reducer and stamps the next clock version', () => {
@@ -226,7 +232,9 @@ describe('createRxStore', () => {
     store.dispatchSync(addTable('t1'));
 
     expect(store.state.doc.tableIds).toEqual(['t1']);
-    expect(context.clock.getVersion()).toBe(1);
+    expect(context.clock.getVersion()).toBe(
+      versionOf(1, slotOf(store.state.editor.id))
+    );
   });
 
   it('keeps a version that the action already carries', () => {
@@ -2219,7 +2227,9 @@ describe('createRxStore', () => {
     expect(store.history.size).toBe(0);
     store.dispatchSync(addTable('t2'));
     expect(store.state.doc.tableIds).toEqual(['t1']);
-    expect(context.clock.getVersion()).toBe(1);
+    expect(context.clock.getVersion()).toBe(
+      versionOf(1, slotOf(store.state.editor.id))
+    );
   });
 
   it('tags helper produces bit flags the pipeline understands', () => {
@@ -2569,5 +2579,148 @@ describe('createRxStore stream flushing', () => {
     expect(() => plain.flushStreamBuffers()).not.toThrow();
     expect(() => manual.flushStreamBuffers()).not.toThrow();
     expect(manual.history.size).toBe(0);
+  });
+});
+
+describe('createRxStore and its clock', () => {
+  const remote = { editorId: 'remote', nickname: 'remote' };
+
+  /** The store, the slot its editor stamps, and every batch its reducers took. */
+  function makeCounted() {
+    const context = createContext();
+    const store = make(context);
+    const batches: AnyAction[][] = [];
+    store.subscribe(actions => batches.push(actions));
+    return { context, store, slot: slotOf(store.state.editor.id), batches };
+  }
+
+  const versionsOf = (batch: AnyAction[]) =>
+    batch.map(({ version }) => version);
+
+  it('stamps each batch with its editor’s slot under the next counter (AC-T5)', () => {
+    const { store, slot, batches } = makeCounted();
+
+    store.dispatchSync(addTable('t1'));
+    store.dispatchSync(addTable('t2'));
+
+    expect(batches.map(versionsOf)).toEqual([
+      [versionOf(1, slot)],
+      [versionOf(2, slot)],
+    ]);
+  });
+
+  it('spends no counter on a batch of the reader’s own state, which takes the version the clock holds', () => {
+    const { context, store, slot, batches } = makeCounted();
+    store.dispatchSync(addTable('t1'));
+
+    store.dispatchSync(
+      focusTableAction({ tableId: 't1', focusType: FocusType.tableName }),
+      unselectAllAction()
+    );
+
+    expect(context.clock.getVersion()).toBe(versionOf(1, slot));
+    expect(versionsOf(batches[1])).toEqual([
+      versionOf(1, slot),
+      versionOf(1, slot),
+    ]);
+
+    store.dispatchSync(addTable('t2'));
+
+    expect(context.clock.getVersion()).toBe(versionOf(2, slot));
+  });
+
+  it('spends one counter on a batch that holds a change beside the reader’s state', () => {
+    const { context, store, slot, batches } = makeCounted();
+
+    store.dispatchSync(addTable('t1'), unselectAllAction());
+
+    expect(versionsOf(batches[0])).toEqual([
+      versionOf(1, slot),
+      versionOf(1, slot),
+    ]);
+    expect(context.clock.getVersion()).toBe(versionOf(1, slot));
+  });
+
+  it('stamps a pan a view redirects as the change it came as, and leaves the clock where it was', () => {
+    const { context, store, slot, batches } = makeCounted();
+    store.dispatchSync(addTable('t1'));
+    store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.visualization }),
+      changeVisualizationModeAction({ value: VisualizationMode.flow })
+    );
+    store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+
+    expect(context.clock.getVersion()).toBe(versionOf(2, slot));
+
+    store.dispatchSync(scrollToAction({ originX: 50, originY: 50 }));
+    const pan = batches[batches.length - 1];
+
+    expect(pan.map(({ type }) => type)).toEqual(['editor.viewScrollTo']);
+    expect(versionsOf(pan)).toEqual([versionOf(3, slot)]);
+    expect(context.clock.getVersion()).toBe(versionOf(2, slot));
+  });
+
+  it('passes over the version of a peer’s presence, which an editor built before the slot stamps one past its own clock', () => {
+    const { context, store, slot } = makeCounted();
+
+    store.dispatchSync({
+      ...sharedMouseTrackerAction({ x: 1, y: 2 }),
+      version: versionOf(50, 3),
+      tags: Tag.shared,
+      meta: remote,
+    });
+    clearSharedTrackers(store.state.editor);
+
+    expect(context.clock.getVersion()).toBe(0);
+
+    store.dispatchSync(addTable('t1'));
+
+    expect(context.clock.getVersion()).toBe(versionOf(1, slot));
+  });
+
+  it('takes the version of a peer’s change and of the register handshake', () => {
+    const { context, store } = makeCounted();
+
+    store.dispatchSync({
+      ...getLWWAction(),
+      version: versionOf(4, 1),
+      tags: Tag.shared,
+      meta: remote,
+    });
+    expect(context.clock.getVersion()).toBe(versionOf(4, 1));
+
+    store.dispatchSync({
+      ...mergeLWWAction({ lww: {} }),
+      version: versionOf(6, 1),
+      tags: Tag.shared,
+      meta: remote,
+    });
+    expect(context.clock.getVersion()).toBe(versionOf(6, 1));
+
+    store.dispatchSync({
+      ...addTable('t1'),
+      version: versionOf(9, 2),
+      tags: Tag.shared,
+      meta: remote,
+    });
+    expect(context.clock.getVersion()).toBe(versionOf(9, 2));
+  });
+
+  it('takes the version of a type it makes no action of, which a newer editor’s change may be', () => {
+    const { context, store, slot } = makeCounted();
+
+    store.dispatchSync({
+      type: 'table.changeShape',
+      payload: { id: 't1' },
+      version: versionOf(3, 8),
+      tags: Tag.shared,
+      meta: remote,
+    });
+
+    expect(context.clock.getVersion()).toBe(versionOf(3, 8));
+
+    store.dispatchSync(addTable('t1'));
+
+    expect(context.clock.getVersion()).toBe(versionOf(4, slot));
   });
 });

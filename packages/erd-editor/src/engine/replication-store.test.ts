@@ -8,6 +8,7 @@ import {
   SEED,
   type SeededStore,
 } from '@/__test-utils__/peerSeed';
+import { versionOf } from '@/__test-utils__/version';
 import {
   CanvasType,
   ColumnUIKey,
@@ -17,12 +18,13 @@ import {
   NameViewMode,
   StartRelationshipType,
 } from '@/constants/schema';
-import { Clock } from '@/engine/clock';
+import { Clock, slotOf } from '@/engine/clock';
 import {
   getLWWAction,
   loadJsonAction,
   mergeLWWAction,
   selectAction,
+  sharedMouseTrackerAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
@@ -70,6 +72,19 @@ const addTable = (id: string) =>
 const stores: ReplicationStore[] = [];
 /** The element stores and subscriptions a spec leaves open, closed after it. */
 const closers: Array<() => void> = [];
+
+// slotOf as it is, its answers recorded, since the replica reads its own slot
+// back through no surface of its own.
+vi.mock('@/engine/clock', async importOriginal => {
+  const clock = await importOriginal<typeof import('@/engine/clock')>();
+  return { ...clock, slotOf: vi.fn(clock.slotOf) };
+});
+
+/** The slot the last store made took for its clock. */
+function lastSlot(): number {
+  const { results } = vi.mocked(slotOf).mock;
+  return results[results.length - 1].value;
+}
 
 function make(toWidth = (text: string) => text.length * 10): ReplicationStore {
   const store = createReplicationStore({ toWidth });
@@ -1531,5 +1546,61 @@ describe('createReplicationStore', () => {
 
     expect(change).not.toHaveBeenCalled();
     expect(parse(store).doc.tableIds ?? []).toEqual([]);
+  });
+});
+
+describe('the replica’s clock (AC-T6)', () => {
+  const colour = (color: string, version?: number): AnyAction => ({
+    ...changeTableColorAction({ id: SEED.users, color, prevColor: '' }),
+    ...(version === undefined ? {} : { version }),
+    tags: Tag.shared,
+  });
+
+  const colourOf = (store: ReplicationStore) =>
+    parse(store).collections.tableEntities[SEED.users].ui.color;
+
+  /** A replica on the seed and the slot its clock took. */
+  function makeSeeded() {
+    const store = make();
+    const slot = lastSlot();
+    store.setInitialValue(createSeedValue());
+    return { store, slot };
+  }
+
+  it('stamps a colour sent with no version at its own slot, one counter past the last version it took', () => {
+    const { store, slot } = makeSeeded();
+
+    store.dispatchSync(colour('#111111', versionOf(7, 5)));
+    store.dispatchSync(colour('#222222'));
+
+    expect(colourOf(store)).toBe('#222222');
+
+    store.dispatchSync(colour('#333333', versionOf(8, slot) - 1));
+
+    expect(colourOf(store)).toBe('#222222');
+
+    store.dispatchSync(colour('#444444', versionOf(8, slot)));
+
+    expect(colourOf(store)).toBe('#444444');
+  });
+
+  it('spends no counter on a batch without a change, nor on a tracker it never applies', () => {
+    const { store, slot } = makeSeeded();
+
+    store.dispatchSync({
+      ...sharedMouseTrackerAction({ x: 1, y: 1 }),
+      version: versionOf(50, 0),
+      tags: Tag.shared,
+      meta: { editorId: 'remote' },
+    });
+    store.dispatchSync({
+      type: 'settings.changeIgnoreSaveSettings',
+      payload: { saveSettingType: 3, value: true },
+      tags: Tag.shared,
+    });
+    store.dispatchSync(colour('#222222'));
+    store.dispatchSync(colour('#333333', versionOf(1, slot)));
+
+    expect(colourOf(store)).toBe('#333333');
   });
 });

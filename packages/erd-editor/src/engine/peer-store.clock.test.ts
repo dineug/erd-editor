@@ -10,8 +10,12 @@ import {
   SEED,
   type SeededStore,
 } from '@/__test-utils__/peerSeed';
+import { counterOf, versionOf } from '@/__test-utils__/version';
+import { slotOf } from '@/engine/clock';
+import { sharedMouseTrackerAction } from '@/engine/modules/editor/atom.actions';
 import { changeTableNameAction } from '@/engine/modules/table/atom.actions';
 import { createPeerStore, type PeerStore } from '@/engine/peer-store';
+import { Tag } from '@/engine/tag';
 
 const cleanups: Array<() => void> = [];
 
@@ -61,7 +65,7 @@ describe('a late peer edits past the versions it never saw (AC-E6)', () => {
 
     rename(peer);
 
-    expect(version).toBeGreaterThan(3);
+    expect(counterOf(version)).toBeGreaterThan(3);
     expect(nameOf(user)).toBe('users_v5');
   });
 
@@ -143,5 +147,36 @@ describe('a peer seeded again', () => {
     peer.subscribe(actions => sent.push(...actions.map(({ type }) => type)));
 
     expect(sent).toEqual(['editor.getLWW']);
+  });
+});
+
+describe('a peer’s clock (AC-T5)', () => {
+  const versionsOf = ({ actions }: ReturnType<typeof rename>) =>
+    new Set(actions.map(({ version }) => version));
+
+  it('takes the greater of the versions mergeClock hands it, and stamps the next counter at its own slot', () => {
+    const peer = latePeer(createSeedValue());
+
+    peer.mergeClock(versionOf(5, 123));
+    peer.mergeClock(versionOf(2, 999));
+
+    expect(versionsOf(rename(peer))).toEqual(
+      new Set([versionOf(6, slotOf(peer.editorId))])
+    );
+  });
+
+  it('spends no counter on a tracker it receives, whatever version an editor built before the slot stamped it with', () => {
+    const peer = latePeer(createSeedValue());
+
+    peer.receive({
+      ...sharedMouseTrackerAction({ x: 1, y: 1 }),
+      version: versionOf(40, 7),
+      tags: Tag.shared,
+      meta: { editorId: 'remote', nickname: 'remote' },
+    });
+
+    expect(versionsOf(rename(peer))).toEqual(
+      new Set([versionOf(1, slotOf(peer.editorId))])
+    );
   });
 });

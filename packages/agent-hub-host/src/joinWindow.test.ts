@@ -5,7 +5,9 @@ import {
   actionVersion,
   createQuietState,
   dropRecipient,
+  filterJoinQueue,
   JOIN_QUIET_CAP_MS,
+  maxVersion,
   noteChange,
   noteSave,
   REPLICA_DEBOUNCE_MS,
@@ -25,10 +27,78 @@ afterEach(() => {
 });
 
 // The action, filter and drain tables are vectors of __fixtures__/conformance.json;
-// NaN, which JSON cannot hold, stays here.
+// NaN, which JSON cannot hold, stays here, and so do the versions past 2^31
+// below, which pin no rule the hubs do not share, only this one's arithmetic.
 describe('action fields', () => {
   it('reads NaN as no version', () => {
     expect(actionVersion({ version: Number.NaN })).toBeUndefined();
+  });
+});
+
+// An editor stamps its counter times 2^22 plus a slot of its own, so a version
+// outgrows a 32-bit integer after 512 counters; the rules compare it as any
+// other number, up to the last safe integer.
+describe('versions past 2^31', () => {
+  const SLOT_BASE = 2 ** 22;
+  const at = (counter: number, slot: number) => counter * SLOT_BASE + slot;
+  const snapshotVersion = at(600, 17);
+
+  it('keeps what was stamped after the snapshot and drops what it holds', () => {
+    const queue = [
+      {
+        source: 'webview' as const,
+        actions: [
+          { type: 'table.add', payload: {}, version: snapshotVersion },
+          { type: 'table.add', payload: {}, version: at(600, 16) },
+          { type: 'table.add', payload: {}, version: at(601, 5) },
+        ],
+      },
+      {
+        source: 'peer' as const,
+        actions: [
+          { type: 'memo.add', payload: {}, version: at(600, 18) },
+          {
+            type: 'memo.add',
+            payload: {},
+            version: at(2 ** 31 - 1, SLOT_BASE - 1),
+          },
+        ],
+      },
+    ];
+
+    expect(snapshotVersion).toBeGreaterThan(2 ** 31);
+    expect(at(2 ** 31 - 1, SLOT_BASE - 1)).toBe(Number.MAX_SAFE_INTEGER);
+    expect(filterJoinQueue(queue, snapshotVersion)).toEqual({
+      batches: [
+        {
+          source: 'webview',
+          actions: [{ type: 'table.add', payload: {}, version: at(601, 5) }],
+        },
+        {
+          source: 'peer',
+          actions: [
+            { type: 'memo.add', payload: {}, version: at(600, 18) },
+            {
+              type: 'memo.add',
+              payload: {},
+              version: Number.MAX_SAFE_INTEGER,
+            },
+          ],
+        },
+      ],
+      dropped: { webview: { 'table.add': 2 } },
+      droppedCount: 2,
+    });
+  });
+
+  it('reads and takes the highest of such versions as a snapshot would', () => {
+    const actions = [
+      { type: 'table.add', version: at(601, 5) },
+      { type: 'memo.add', version: at(900, 0) },
+    ];
+
+    expect(actionVersion(actions[1])).toBe(at(900, 0));
+    expect(maxVersion(snapshotVersion, actions)).toBe(at(900, 0));
   });
 });
 

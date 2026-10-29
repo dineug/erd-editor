@@ -6,34 +6,64 @@ import {
   pushStreamHistoryMap,
   pushUndoHistoryMap,
 } from '@/engine/history.actions';
-import { ActionMap as DictionaryActionMap } from '@/engine/modules/dictionary/actions';
+import {
+  ActionMap as DictionaryActionMap,
+  ActionType as DictionaryActionType,
+} from '@/engine/modules/dictionary/actions';
 import { actions as dictionaryActions } from '@/engine/modules/dictionary/atom.actions';
 import { actions$ as dictionaryActions$ } from '@/engine/modules/dictionary/generator.actions';
-import { ActionMap as EditorActionMap } from '@/engine/modules/editor/actions';
+import {
+  ActionMap as EditorActionMap,
+  ActionType as EditorActionType,
+} from '@/engine/modules/editor/actions';
 import { actions as editorActions } from '@/engine/modules/editor/atom.actions';
 import { actions$ as editorActions$ } from '@/engine/modules/editor/generator.actions';
-import { ActionMap as IndexActionMap } from '@/engine/modules/index/actions';
+import {
+  ActionMap as IndexActionMap,
+  ActionType as IndexActionType,
+} from '@/engine/modules/index/actions';
 import { actions as indexActions } from '@/engine/modules/index/atom.actions';
 import { actions$ as indexActions$ } from '@/engine/modules/index/generator.actions';
-import { ActionMap as IndexColumnActionMap } from '@/engine/modules/index-column/actions';
+import {
+  ActionMap as IndexColumnActionMap,
+  ActionType as IndexColumnActionType,
+} from '@/engine/modules/index-column/actions';
 import { actions as indexColumnActions } from '@/engine/modules/index-column/atom.actions';
 import { actions$ as indexColumnActions$ } from '@/engine/modules/index-column/generator.actions';
-import { ActionMap as MemoActionMap } from '@/engine/modules/memo/actions';
+import {
+  ActionMap as MemoActionMap,
+  ActionType as MemoActionType,
+} from '@/engine/modules/memo/actions';
 import { actions as memoActions } from '@/engine/modules/memo/atom.actions';
 import { actions$ as memoActions$ } from '@/engine/modules/memo/generator.actions';
-import { ActionMap as RelationshipActionMap } from '@/engine/modules/relationship/actions';
+import {
+  ActionMap as RelationshipActionMap,
+  ActionType as RelationshipActionType,
+} from '@/engine/modules/relationship/actions';
 import { actions as relationshipActions } from '@/engine/modules/relationship/atom.actions';
 import { actions$ as relationshipActions$ } from '@/engine/modules/relationship/generator.actions';
-import { ActionMap as SettingsActionMap } from '@/engine/modules/settings/actions';
+import {
+  ActionMap as SettingsActionMap,
+  ActionType as SettingsActionType,
+} from '@/engine/modules/settings/actions';
 import { actions as settingsActions } from '@/engine/modules/settings/atom.actions';
 import { actions$ as settingsActions$ } from '@/engine/modules/settings/generator.actions';
-import { ActionMap as TableActionMap } from '@/engine/modules/table/actions';
+import {
+  ActionMap as TableActionMap,
+  ActionType as TableActionType,
+} from '@/engine/modules/table/actions';
 import { actions as tableActions } from '@/engine/modules/table/atom.actions';
 import { actions$ as tableActions$ } from '@/engine/modules/table/generator.actions';
-import { ActionMap as TableColumnActionMap } from '@/engine/modules/table-column/actions';
+import {
+  ActionMap as TableColumnActionMap,
+  ActionType as TableColumnActionType,
+} from '@/engine/modules/table-column/actions';
 import { actions as tableColumnActions } from '@/engine/modules/table-column/atom.actions';
 import { actions$ as tableColumnActions$ } from '@/engine/modules/table-column/generator.actions';
-import { ActionMap as TableGroupActionMap } from '@/engine/modules/table-group/actions';
+import {
+  ActionMap as TableGroupActionMap,
+  ActionType as TableGroupActionType,
+} from '@/engine/modules/table-group/actions';
 import { actions as tableGroupActions } from '@/engine/modules/table-group/atom.actions';
 import { actions$ as tableGroupActions$ } from '@/engine/modules/table-group/generator.actions';
 import { arrayHas } from '@/utils/arrayHas';
@@ -381,6 +411,42 @@ export const SharedActionTypes: ReadonlyArray<ActionType> = [
   'editor.getLWW',
   'editor.mergeLWW',
 ];
+
+/**
+ * What moves the clock's counter: every change, whose version a register or
+ * a clock that hears it takes, and the register handshake, which carries the
+ * highest version its sender holds. Presence and the reader's own state do not.
+ */
+export const ClockActionTypes: ReadonlyArray<ActionType> = [
+  ...ChangeActionTypes,
+  'editor.getLWW',
+  'editor.mergeLWW',
+];
+
+const isClockActionType = arrayHas<string>(ClockActionTypes);
+
+const isOwnActionType = arrayHas<string>(
+  [
+    EditorActionType,
+    TableActionType,
+    TableColumnActionType,
+    MemoActionType,
+    RelationshipActionType,
+    SettingsActionType,
+    IndexActionType,
+    IndexColumnActionType,
+    TableGroupActionType,
+    DictionaryActionType,
+  ].flatMap(types => Object.values<string>(types))
+);
+
+/**
+ * Whether an action's version moves the clock: a clock type's does, and so
+ * does one of a type no module here declares, which a newer editor's change
+ * may be. A batch holding none takes the version the clock holds.
+ */
+export const movesClock = (type: string): boolean =>
+  isClockActionType(type) || !isOwnActionType(type);
 
 export const SharedFollowingActionTypes: ReadonlyArray<ActionType> = [
   'settings.changeZoomLevel',

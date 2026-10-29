@@ -2,6 +2,7 @@ import { query } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
+import { versionOf } from '@/__test-utils__/version';
 import { Clock } from '@/engine/clock';
 import { createHistory, History } from '@/engine/history';
 import {
@@ -210,12 +211,12 @@ describe('pushHistory', () => {
     expect(dispatched[0][0]).toMatchObject({
       type: removeTableAction.type,
       payload: { id: 't1' },
-      version: 1,
+      version: versionOf(1, 0),
     });
     expect(dispatched[1][0]).toMatchObject({
       type: addTableAction.type,
       payload: { id: 't1', ui: { x: 1, y: 2, zIndex: 3 } },
-      version: 1,
+      version: versionOf(1, 0),
     });
     expect(dispatched[1][0]).not.toBe(action);
   });

@@ -3,7 +3,12 @@ import { AnyAction } from '@dineug/r-html';
 import { omit } from 'es-toolkit';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
-import { ReplicaActionTypes, ReplicaChangeActionTypes } from '@/engine/actions';
+import {
+  movesClock,
+  ReplicaActionTypes,
+  ReplicaChangeActionTypes,
+} from '@/engine/actions';
+import { slotOf } from '@/engine/clock';
 import {
   createEngineContext,
   type InjectEngineContext,
@@ -66,6 +71,7 @@ export function createReplicationStore(
   const engineContext = createEngineContext({ ...context, routes: false });
   const { clock } = engineContext;
   const store = createStore(engineContext, false);
+  clock.setSlot(slotOf(store.state.editor.id));
   // A replica has no screen, and the default editor size the store starts with
   // would pull every replicated load against a frame nobody looks through, so
   // the viewport is reported empty before anything can be reduced against it.
@@ -145,10 +151,14 @@ export function createReplicationStore(
         // Versions as the element's store gives them: what a stream regroup sent
         // without one takes the next, and each moves the clock past the registers
         // a join brought in, which would otherwise refuse every later stroke.
-        const version = clock.getNextVersion();
+        const version = actions.some(({ type }) => movesClock(type))
+          ? clock.getNextVersion()
+          : clock.getVersion();
         actions.forEach(action => (action.version ??= version));
         store.dispatchSync(actions);
-        actions.forEach(action => clock.merge(action.version));
+        actions.forEach(action => {
+          if (movesClock(action.type)) clock.merge(action.version);
+        });
       })
   );
 

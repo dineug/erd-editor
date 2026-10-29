@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vite-plus/test';
 
 import { Open } from '@/constants/open';
@@ -6,10 +9,12 @@ import {
   actions,
   type ActionType,
   ChangeActionTypes,
+  ClockActionTypes,
   EDIT_OPEN_KEYS,
   EditStateOpenActionTypes,
   HistoryActionTypes,
   LockSettingActionTypes,
+  movesClock,
   ReadonlyIgnoreActionTypes,
   ReplicaActionTypes,
   ReplicaChangeActionTypes,
@@ -29,15 +34,25 @@ import {
   pushUndoHistoryMap,
 } from '@/engine/history.actions';
 import { ActionType as DictionaryActionType } from '@/engine/modules/dictionary/actions';
+import { dictionaryReducers } from '@/engine/modules/dictionary/atom.actions';
 import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
+import { editorReducers } from '@/engine/modules/editor/atom.actions';
 import { ActionType as IndexActionType } from '@/engine/modules/index/actions';
+import { indexReducers } from '@/engine/modules/index/atom.actions';
 import { ActionType as IndexColumnActionType } from '@/engine/modules/index-column/actions';
+import { indexColumnReducers } from '@/engine/modules/index-column/atom.actions';
 import { ActionType as MemoActionType } from '@/engine/modules/memo/actions';
+import { memoReducers } from '@/engine/modules/memo/atom.actions';
 import { ActionType as RelationshipActionType } from '@/engine/modules/relationship/actions';
+import { relationshipReducers } from '@/engine/modules/relationship/atom.actions';
 import { ActionType as SettingsActionType } from '@/engine/modules/settings/actions';
+import { settingsReducers } from '@/engine/modules/settings/atom.actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
+import { tableReducers } from '@/engine/modules/table/atom.actions';
 import { ActionType as TableColumnActionType } from '@/engine/modules/table-column/actions';
+import { tableColumnReducers } from '@/engine/modules/table-column/atom.actions';
 import { ActionType as TableGroupActionType } from '@/engine/modules/table-group/actions';
+import { tableGroupReducers } from '@/engine/modules/table-group/atom.actions';
 import { createStore } from '@/engine/store';
 
 const allActionTypes = new Set<string>([
@@ -678,6 +693,140 @@ describe('shared action types', () => {
       'settings.changeCanvasType',
       'settings.changeNameViewMode',
     ]);
+  });
+});
+
+/** Every reducer the store runs, by the type it takes. */
+const reducers = Object.entries({
+  ...editorReducers,
+  ...tableReducers,
+  ...tableColumnReducers,
+  ...memoReducers,
+  ...relationshipReducers,
+  ...settingsReducers,
+  ...indexReducers,
+  ...indexColumnReducers,
+  ...tableGroupReducers,
+  ...dictionaryReducers,
+}) as Array<[string, (...args: never[]) => void]>;
+
+const MODULES_ROOT = join(process.cwd(), 'src/engine/modules');
+
+function moduleSources(directory = MODULES_ROOT, found: string[] = []) {
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      moduleSources(path, found);
+    } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts')) {
+      found.push(readFileSync(path, 'utf8'));
+    }
+  }
+  return found;
+}
+
+/** Each top-level declaration of the modules by name: its text up to the next one. */
+function moduleDeclarations(): Map<string, string> {
+  const found = new Map<string, string>();
+  for (const source of moduleSources()) {
+    const starts = [
+      ...source.matchAll(/^(?:export )?(?:const|function) (\w+)/gm),
+    ];
+    starts.forEach((start, index) => {
+      const end = starts[index + 1]?.index ?? source.length;
+      const text = source.slice(start.index, end);
+      found.set(start[1], (found.get(start[1]) ?? '') + text);
+    });
+  }
+  return found;
+}
+
+/**
+ * The declarations that write a register: each one calling an LWW operator,
+ * then each one calling such a declaration, until no more join, so a reducer
+ * that writes through a helper of another module counts.
+ */
+function registerWriters(declarations: Map<string, string>): Set<string> {
+  const writers = new Set<string>();
+  const writes = (text: string) =>
+    /\b(?:add|remove|replace)Operator\(/.test(text) ||
+    [...writers].some(writer => new RegExp(`\\b${writer}\\(`).test(text));
+
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const [name, text] of declarations) {
+      if (!writers.has(name) && writes(text)) {
+        writers.add(name);
+        grew = true;
+      }
+    }
+  }
+  return writers;
+}
+
+describe('ClockActionTypes', () => {
+  it('is every change and the register handshake', () => {
+    expect(ClockActionTypes).toEqual([
+      ...ChangeActionTypes,
+      'editor.getLWW',
+      'editor.mergeLWW',
+    ]);
+  });
+
+  it('holds every type whose reducer writes a register, read off the modules', () => {
+    const declarations = moduleDeclarations();
+    const writers = registerWriters(declarations);
+    // A reducer the scan cannot name would pass unread, so each must be one.
+    const unread = reducers
+      .map(([, reducer]) => reducer.name)
+      .filter(name => name !== 'noop' && !declarations.has(name));
+    const writing = reducers
+      .filter(([, reducer]) => writers.has(reducer.name))
+      .map(([type]) => type);
+
+    expect(unread).toEqual([]);
+    expect(writing).toContain('editor.mergeLWW');
+    expect(writing).toContain('editor.loadJson');
+    expect(writing).toContain('settings.changeLanguage');
+    expect(writing).not.toContain('editor.initialLoadJson');
+    expect(
+      writing.filter(type => !ClockActionTypes.includes(type as ActionType))
+    ).toEqual([]);
+  });
+
+  it('decides each shared type outside the changes: the handshake moves the clock, presence does not', () => {
+    const outsideChanges = SharedActionTypes.filter(
+      type => !ChangeActionTypes.includes(type)
+    );
+
+    expect(
+      outsideChanges.filter(type => ClockActionTypes.includes(type))
+    ).toEqual(['editor.getLWW', 'editor.mergeLWW']);
+    expect(
+      outsideChanges.filter(type => !ClockActionTypes.includes(type))
+    ).toEqual(SharedStreamActionTypes);
+  });
+});
+
+describe('movesClock', () => {
+  it('is true for each clock type and false for every other type a reducer takes', () => {
+    for (const [type] of reducers) {
+      expect(movesClock(type)).toBe(
+        ClockActionTypes.includes(type as ActionType)
+      );
+    }
+    for (const type of allActionTypes) {
+      expect(movesClock(type)).toBe(
+        ClockActionTypes.includes(type as ActionType)
+      );
+    }
+    expect(movesClock('editor.sharedMouseTracker')).toBe(false);
+    expect(movesClock('memo.changeZIndex')).toBe(false);
+    expect(movesClock('settings.changeIgnoreSaveSettings')).toBe(false);
+  });
+
+  it('is true for a type no module declares, as a newer editor’s change may be', () => {
+    expect(movesClock('table.changeShape')).toBe(true);
   });
 });
 
