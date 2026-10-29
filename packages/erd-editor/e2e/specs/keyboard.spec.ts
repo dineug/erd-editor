@@ -1206,3 +1206,46 @@ test.describe('an IME composition owns the keyboard', () => {
     await expect(erd.editInput()).toBeFocused();
   });
 });
+
+/**
+ * The one case standing on the shadow root production declares closed. Whether
+ * a press landed on the canvas is read from an event crossing that boundary, so
+ * the reopened root of every other case cannot answer for a double click.
+ */
+test.describe('a real double click through the closed shadow root', () => {
+  /** What the cell editor holds, or null while none is open. */
+  const editValue = (erd: ErdEditorPage) =>
+    erd.page.evaluate(() => {
+      const root = Reflect.get(window, '__erdShadowRoot') as
+        | ShadowRoot
+        | undefined;
+      return (
+        root?.querySelector<HTMLInputElement>('.edit-overlay input.edit-input')
+          ?.value ?? null
+      );
+    });
+
+  const dblclickCell = async (erd: ErdEditorPage, path: string[]) => {
+    const box = await erd.sceneBox(path);
+    await erd.page.mouse.dblclick(
+      box.x + box.width / 2,
+      box.y + box.height / 2
+    );
+  };
+
+  test('opens the cell editor on a column name and on a table name', async ({
+    erd,
+  }) => {
+    await erd.gotoClosedShadow();
+    await erd.seed(oneTable());
+
+    await dblclickCell(erd, ['#column-users_name', '.columnName']);
+    await expect.poll(() => editValue(erd)).toBe('name');
+
+    await erd.page.keyboard.press('Escape');
+    await expect.poll(() => editValue(erd)).toBeNull();
+
+    await dblclickCell(erd, ['#table-users', '.tableName']);
+    await expect.poll(() => editValue(erd)).toBe('users');
+  });
+});

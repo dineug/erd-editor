@@ -42,9 +42,14 @@ afterEach(async () => {
 const stageRegistry = (): Record<string, Stage> =>
   Reflect.get(globalThis, '__erdStages') ?? {};
 
-/** The shell alone, or with what a host hands it: a grab move, an overlay, layers. */
+/**
+ * The shell alone, or with what a host hands it: a grab move, an overlay,
+ * layers, and the node it mounts in, the page's body by default.
+ */
 async function mountCanvas(
-  options: Pick<CanvasProps, 'grabMove' | 'overlay' | 'layers'> = {}
+  options: Pick<CanvasProps, 'grabMove' | 'overlay' | 'layers'> & {
+    parent?: ParentNode;
+  } = {}
 ): Promise<Mounted> {
   const $root = document.createElement('div');
   document.body.append($root);
@@ -59,7 +64,8 @@ async function mountCanvas(
       overlay={options.overlay}
       layers={options.layers}
     />,
-    app
+    app,
+    options.parent
   );
   // useProvider takes a bare element at runtime and types only a component
   // context, hence the cast; it is r-html's own, not a React hook.
@@ -215,8 +221,8 @@ describe('the canvas shell', () => {
 });
 
 /** Two tables on an 800 by 600 screen, the second of them selected. */
-async function mountScene() {
-  const mounted = await mountCanvas();
+async function mountScene(parent?: ParentNode) {
+  const mounted = await mountCanvas({ parent });
   mounted.app.store.dispatchSync(
     changeViewportAction({ width: 800, height: 600 }),
     addTableAction({ id: 't1', ui: { x: 100, y: 100, zIndex: 2 } }),
@@ -261,6 +267,14 @@ function fire(
   });
   stage.content.querySelector('canvas')!.dispatchEvent(event);
   return event;
+}
+
+/** A closed shadow root to mount in, as the element's own root is. */
+function closedShadowRoot(): ShadowRoot {
+  const $host = document.createElement('div');
+  document.body.append($host);
+  teardowns.push(() => $host.remove());
+  return $host.attachShadow({ mode: 'closed' });
 }
 
 /** Anchors the move stream far from the scene, as a press the window heard last would. */
@@ -435,5 +449,49 @@ describe('a main click on the scene', () => {
     fire(stage, 'mouseup', at, MAIN);
 
     expect(heard).toEqual(['click', 'click', 'click', 'dblclick']);
+  });
+
+  it('reads as a double click inside a closed shadow root, whose stage no window listener sees', async () => {
+    const { stage } = await mountScene(closedShadowRoot());
+    const at = pointOf(stage, '#table-t1');
+    const heard: string[] = [];
+    stage.findOne('#table-t1')!.on('click dblclick', event => {
+      heard.push(event.type);
+    });
+
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+
+    expect(heard).toEqual(['click', 'click', 'dblclick']);
+  });
+
+  it('reads as no double click inside a closed shadow root after a click on another stage', async () => {
+    const { stage } = await mountScene(closedShadowRoot());
+    const at = pointOf(stage, '#table-t1');
+    const heard: string[] = [];
+    stage.findOne('#table-t1')!.on('click dblclick', event => {
+      heard.push(event.type);
+    });
+    const $other = document.createElement('div');
+    document.body.append($other);
+    const other = new Stage({ container: $other, width: 100, height: 100 });
+    other.add(new Layer());
+    teardowns.push(() => {
+      other.destroy();
+      $other.remove();
+    });
+    const { left, top } = other.content.getBoundingClientRect();
+    const corner = { clientX: left + 10, clientY: top + 10 };
+
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+    fire(other, 'mousedown', corner, MAIN);
+    fire(other, 'mouseup', corner, MAIN);
+    fire(stage, 'mousedown', at, MAIN);
+    fire(stage, 'mouseup', at, MAIN);
+
+    expect(heard).toEqual(['click', 'click']);
   });
 });
