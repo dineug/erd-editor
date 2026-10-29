@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-10-29
+
+### Fixed
+
+- Double-clicking a table or column cell edits it again, and double-clicking a table group's
+  title renames the group again.
+
 ## [1.2.1] - 2026-10-28
 
 ### Changed
