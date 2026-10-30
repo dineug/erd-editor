@@ -137,14 +137,15 @@ document.body.appendChild(editor);
 
 ## パッケージ
 
-pnpm ワークスペースです。[`@dineug/erd-editor`](./packages/erd-editor) と [`@dineug/erd-editor-mcp`](./packages/mcp-server) は npm に公開され、3 つのプラグインはそれぞれのストアで配布され、`app` は erd-editor.io で、残りはそれらのビルドが取り込む非公開のライブラリーです。
+pnpm ワークスペースです。[`@dineug/erd-editor`](./packages/erd-editor)、[`@dineug/erd-editor-mcp`](./packages/mcp-server)、[`@dineug/erd-editor-yjs`](./packages/erd-editor-yjs) は npm に公開され、3 つのプラグインはそれぞれのストアで配布され、`app` は erd-editor.io で、残りはそれらのビルドが取り込む非公開のライブラリーです。
 
 <details>
-<summary>全 20 パッケージ</summary>
+<summary>全 21 パッケージ</summary>
 
 | フォルダー | npm 名 | 説明 |
 | --- | --- | --- |
 | [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | エディターのコア: `<erd-editor>` カスタム要素、読み取り専用の `<erd-viewer>`、ヘッドレスの `engine.js`、`peer.js` エントリー |
+| [`erd-editor-yjs`](./packages/erd-editor-yjs) | `@dineug/erd-editor-yjs` | 公開中の Yjs バインディング。`<erd-editor>` やヘッドレスの peer store を `Y.Doc` を通じて同期させる |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | `@dineug/erd-editor-schema` | v2/v3 ドキュメントスキーマ、パース、シリアライザー、クエリ、LWW 演算子 |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | `@dineug/schema-sql-parser` | SQL インポートに使う寛容な DDL パーサー |
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7 と Uuid25 エンコーディング。エディターが発行する id |

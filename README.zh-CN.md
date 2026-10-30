@@ -137,14 +137,15 @@ document.body.appendChild(editor);
 
 ## 包
 
-这是一个 pnpm 工作区。[`@dineug/erd-editor`](./packages/erd-editor) 和 [`@dineug/erd-editor-mcp`](./packages/mcp-server) 发布在 npm 上，三个插件通过各自的商店分发，`app` 即 erd-editor.io，其余是这些构建所引入的私有库。
+这是一个 pnpm 工作区。[`@dineug/erd-editor`](./packages/erd-editor)、[`@dineug/erd-editor-mcp`](./packages/mcp-server) 和 [`@dineug/erd-editor-yjs`](./packages/erd-editor-yjs) 发布在 npm 上，三个插件通过各自的商店分发，`app` 即 erd-editor.io，其余是这些构建所引入的私有库。
 
 <details>
-<summary>全部 20 个包</summary>
+<summary>全部 21 个包</summary>
 
 | 文件夹 | npm 名称 | 说明 |
 | --- | --- | --- |
 | [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | 编辑器核心：`<erd-editor>` 自定义元素、只读的 `<erd-viewer>` 以及无头的 `engine.js` 和 `peer.js` 入口 |
+| [`erd-editor-yjs`](./packages/erd-editor-yjs) | `@dineug/erd-editor-yjs` | 已发布的 Yjs 绑定，通过 `Y.Doc` 让 `<erd-editor>` 或无头 peer store 保持同步 |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | `@dineug/erd-editor-schema` | v2/v3 文档架构、解析、序列化器、查询和 LWW 运算符 |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | `@dineug/schema-sql-parser` | SQL 导入所用的宽松 DDL 解析器 |
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7 和 Uuid25 编码，编辑器生成的 id |
