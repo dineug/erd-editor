@@ -1011,7 +1011,7 @@
     ]
   },
   "joinWindow": {
-    "$comment": "A null version is none. filterJoinQueue and drainJoinQueue answer batches; dropped counts by source, then by action type; warning is the text and counts drainJoinQueue logs, or null.",
+    "$comment": "A null version is none. An editor stamps its counter times 2^22 plus a slot of its own, so from counter 512 on a version outgrows a 32-bit integer; every hub reads and compares one as a double, exact up to 2^53 - 1. filterJoinQueue and drainJoinQueue answer batches; dropped counts by source, then by action type; warning is the text and counts drainJoinQueue logs, or null.",
     "replicaDebounceMs": 200,
     "joinQuietCapMs": 500,
     "nonChangeTypes": [
@@ -1027,6 +1027,9 @@
       {"action": {"type": "table.add", "version": 4.5}, "version": 4.5},
       {"action": {"version": -1}, "version": -1},
       {"action": {"version": 0}, "version": 0},
+      {"action": {"version": 2147483648}, "version": 2147483648},
+      {"action": {"type": "memo.add", "version": 3774873600}, "version": 3774873600},
+      {"action": {"version": 9007199254740991}, "version": 9007199254740991},
       {"action": {"version": "4"}, "version": null},
       {"action": {"version": true}, "version": null},
       {"action": {"version": null}, "version": null},
@@ -1061,18 +1064,21 @@
       {"current": 0, "actions": [], "result": 0},
       {"current": 0, "actions": [{"type": "table.add", "payload": {}, "version": -2}], "result": 0},
       {"current": 2, "actions": [{"type": "table.add", "payload": {}, "version": 2.5}, {"version": "9"}, null], "result": 2.5},
-      {"current": 1, "actions": [{"version": 1e400}], "result": 1}
+      {"current": 1, "actions": [{"version": 1e400}], "result": 1},
+      {"current": 2516582417, "actions": [{"type": "table.add", "version": 2520776709}, {"type": "memo.add", "version": 3774873600}], "result": 3774873600}
     ],
     "filterJoinQueue": [
       {"queue": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 3}, {"type": "table.add", "payload": {}, "version": 5}, {"type": "table.add", "payload": {}, "version": 6}]}, {"source": "peer", "actions": [{"type": "table.move", "payload": {}}, {"type": "memo.add", "payload": {}, "version": 2}]}, {"source": "webview", "actions": [{"type": "table.move", "payload": {}}]}, {"source": "peer", "actions": [{"type": "memo.add", "payload": {}, "version": 9}]}], "snapshotVersion": 5, "batches": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 6}]}, {"source": "peer", "actions": [{"type": "memo.add", "payload": {}, "version": 9}]}], "dropped": {"webview": {"table.add": 2, "table.move": 1}, "peer": {"table.move": 1, "memo.add": 1}}, "droppedCount": 5},
       {"queue": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 1}]}], "snapshotVersion": 0, "batches": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 1}]}], "dropped": {}, "droppedCount": 0},
       {"queue": [{"source": "webview", "actions": [null, {"type": 3, "version": 1}]}], "snapshotVersion": 0, "batches": [{"source": "webview", "actions": [{"type": 3, "version": 1}]}], "dropped": {"webview": {"unknown": 1}}, "droppedCount": 1},
+      {"queue": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 2516582417}, {"type": "table.add", "payload": {}, "version": 2516582416}, {"type": "table.add", "payload": {}, "version": 2520776709}]}, {"source": "peer", "actions": [{"type": "memo.add", "payload": {}, "version": 2516582418}, {"type": "memo.add", "payload": {}, "version": 9007199254740991}]}], "snapshotVersion": 2516582417, "batches": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 2520776709}]}, {"source": "peer", "actions": [{"type": "memo.add", "payload": {}, "version": 2516582418}, {"type": "memo.add", "payload": {}, "version": 9007199254740991}]}], "dropped": {"webview": {"table.add": 2}}, "droppedCount": 2},
       {"queue": [], "snapshotVersion": 5, "batches": [], "dropped": {}, "droppedCount": 0}
     ],
     "drainJoinQueue": [
       {"queue": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 4}, {"type": "table.add", "payload": {}, "version": 6}]}, {"source": "peer", "actions": [{"type": "table.move", "payload": {}}]}, {"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 1}]}], "captured": 2, "snapshotVersion": 5, "path": "/ws/a.erd", "batches": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 6}]}, {"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 1}]}], "warning": {"text": "dropped 2 queued actions joining /ws/a.erd: versioned at most 5, or unversioned", "dropped": {"webview": {"table.add": 1}, "peer": {"table.move": 1}}}},
       {"queue": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 8}]}], "captured": 1, "snapshotVersion": 5, "path": "/ws/a.erd", "batches": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 8}]}], "warning": null},
-      {"queue": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 2}]}, {"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 3}]}], "captured": 1, "snapshotVersion": 5, "path": "/ws/b.erd", "batches": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 3}]}], "warning": {"text": "dropped 1 queued actions joining /ws/b.erd: versioned at most 5, or unversioned", "dropped": {"peer": {"table.add": 1}}}}
+      {"queue": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 2}]}, {"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 3}]}], "captured": 1, "snapshotVersion": 5, "path": "/ws/b.erd", "batches": [{"source": "webview", "actions": [{"type": "table.add", "payload": {}, "version": 3}]}], "warning": {"text": "dropped 1 queued actions joining /ws/b.erd: versioned at most 5, or unversioned", "dropped": {"peer": {"table.add": 1}}}},
+      {"queue": [{"source": "peer", "actions": [{"type": "table.add", "payload": {}, "version": 2516582416}, {"type": "memo.add", "payload": {}, "version": 2516582418}]}], "captured": 1, "snapshotVersion": 2516582417, "path": "/ws/a.erd", "batches": [{"source": "peer", "actions": [{"type": "memo.add", "payload": {}, "version": 2516582418}]}], "warning": {"text": "dropped 1 queued actions joining /ws/a.erd: versioned at most 2516582417, or unversioned", "dropped": {"peer": {"table.add": 1}}}}
     ]
   },
   "pipePath": {
