@@ -2,6 +2,7 @@ import type { AnyAction } from '@dineug/r-html';
 
 import { Open } from '@/constants/open';
 import { LockSettingType } from '@/constants/schema';
+import type { Clock } from '@/engine/clock';
 import {
   pushStreamHistoryMap,
   pushUndoHistoryMap,
@@ -45,6 +46,7 @@ import { actions$ as relationshipActions$ } from '@/engine/modules/relationship/
 import {
   ActionMap as SettingsActionMap,
   ActionType as SettingsActionType,
+  CodeSettingLocks,
 } from '@/engine/modules/settings/actions';
 import { actions as settingsActions } from '@/engine/modules/settings/atom.actions';
 import { actions$ as settingsActions$ } from '@/engine/modules/settings/generator.actions';
@@ -380,6 +382,20 @@ export const ViewIgnoreActionTypes: ReadonlyArray<ActionType> = [
 ];
 
 /**
+ * The code setters under the lock of the setting each sets: while it holds, a
+ * change is the screen of the store that made it, which sends it to no peer,
+ * and a store that receives one not marked shared drops it.
+ */
+export const CodeSettingLockActionTypes: Readonly<
+  Partial<Record<ActionType, number>>
+> = {
+  'settings.changeLanguage': CodeSettingLocks.language,
+  'settings.changeTableNameCase': CodeSettingLocks.tableNameCase,
+  'settings.changeColumnNameCase': CodeSettingLocks.columnNameCase,
+  'settings.changeBracketType': CodeSettingLocks.bracketType,
+};
+
+/**
  * The lock that holds each setting action out of the element's change event:
  * while it is on, the action changes the screen and never the file.
  */
@@ -391,25 +407,8 @@ export const LockSettingActionTypes: Readonly<
   'settings.scrollTo': LockSettingType.viewport,
   'settings.streamScrollTo': LockSettingType.viewport,
   'settings.changeCanvasType': LockSettingType.canvasType,
-  'settings.changeLanguage': LockSettingType.language,
-  'settings.changeTableNameCase': LockSettingType.tableNameCase,
-  'settings.changeColumnNameCase': LockSettingType.columnNameCase,
-  'settings.changeBracketType': LockSettingType.bracketType,
+  ...CodeSettingLockActionTypes,
   'settings.changeNameViewMode': LockSettingType.unlockNameViewMode,
-};
-
-/**
- * The code setters of that map: while one's lock holds, a change is the screen
- * of the store that made it, which sends it to no peer, and a store that
- * receives one not marked shared drops it.
- */
-export const CodeSettingLockActionTypes: Readonly<
-  Partial<Record<ActionType, number>>
-> = {
-  'settings.changeLanguage': LockSettingType.language,
-  'settings.changeTableNameCase': LockSettingType.tableNameCase,
-  'settings.changeColumnNameCase': LockSettingType.columnNameCase,
-  'settings.changeBracketType': LockSettingType.bracketType,
 };
 
 export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [
@@ -461,6 +460,28 @@ const isOwnActionType = arrayHas<string>(
  */
 export const movesClock = (type: string): boolean =>
   isClockActionType(type) || !isOwnActionType(type);
+
+/**
+ * The version a batch stamps on each action without one: the next when some
+ * action of it moves the clock, else the version the clock holds.
+ */
+export const batchVersion = (
+  clock: Clock,
+  actions: ReadonlyArray<AnyAction>
+): number =>
+  actions.some(({ type }) => movesClock(type))
+    ? clock.getNextVersion()
+    : clock.getVersion();
+
+/** Merges into the clock the version of each action of a batch that moves it. */
+export function mergeBatchVersions(
+  clock: Clock,
+  actions: ReadonlyArray<AnyAction>
+): void {
+  actions.forEach(({ type, version }) => {
+    if (movesClock(type)) clock.merge(version);
+  });
+}
 
 export const SharedFollowingActionTypes: ReadonlyArray<ActionType> = [
   'settings.changeZoomLevel',

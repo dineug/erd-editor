@@ -4,7 +4,8 @@ import { omit } from 'es-toolkit';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
 import {
-  movesClock,
+  batchVersion,
+  mergeBatchVersions,
   ReplicaActionTypes,
   ReplicaChangeActionTypes,
 } from '@/engine/actions';
@@ -156,14 +157,10 @@ export function createReplicationStore(
         // Versions as the element's store gives them: what a stream regroup sent
         // without one takes the next, and each moves the clock past the registers
         // a join brought in, which would otherwise refuse every later stroke.
-        const version = actions.some(({ type }) => movesClock(type))
-          ? clock.getNextVersion()
-          : clock.getVersion();
+        const version = batchVersion(clock, actions);
         actions.forEach(action => (action.version ??= version));
         store.dispatchSync(actions);
-        actions.forEach(action => {
-          if (movesClock(action.type)) clock.merge(action.version);
-        });
+        mergeBatchVersions(clock, actions);
       })
   );
 

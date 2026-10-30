@@ -1,6 +1,11 @@
 import { Reducer } from '@dineug/r-html';
 
-import { DDLScriptPosition, NameViewMode } from '@/constants/schema';
+import {
+  DDLScriptPosition,
+  LockSettingType,
+  LockSettingTypeList,
+  NameViewMode,
+} from '@/constants/schema';
 import { EngineContext } from '@/engine/context';
 import { RootState } from '@/engine/state';
 import { ValuesType } from '@/internal-types';
@@ -36,6 +41,22 @@ export type CodeSettingPayload = {
    * every peer writes it through the register whatever its own lock says.
    */
   shared?: boolean;
+};
+
+export type CodeSetting =
+  | 'language'
+  | 'tableNameCase'
+  | 'columnNameCase'
+  | 'bracketType';
+
+/** The lock of each code setting, under which each store shows its own value of it. */
+export const CodeSettingLocks: Readonly<
+  Record<CodeSetting, (typeof LockSettingTypeList)[number]>
+> = {
+  language: LockSettingType.language,
+  tableNameCase: LockSettingType.tableNameCase,
+  columnNameCase: LockSettingType.columnNameCase,
+  bracketType: LockSettingType.bracketType,
 };
 
 export type ActionMap = {

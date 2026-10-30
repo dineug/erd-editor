@@ -55,6 +55,8 @@ import {
 import {
   ActionMap,
   ActionType,
+  CodeSetting,
+  CodeSettingLocks,
   CodeSettingPayload,
   ReducerType,
 } from './actions';
@@ -475,12 +477,6 @@ const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
   if (value !== CanvasType.ERD) state.editor.drawTableGroup = false;
 };
 
-export type CodeSetting =
-  | 'language'
-  | 'tableNameCase'
-  | 'columnNameCase'
-  | 'bracketType';
-
 /**
  * Writes a code setting through its register, so the latest setter or unlock
  * of it wins on every peer, whatever order they arrive in. A screen turn
@@ -508,16 +504,6 @@ function replaceCodeSetting(
     write
   );
 }
-
-/** The lock of each code setting, under which each store shows its own value of it. */
-export const CodeSettingLocks: Readonly<
-  Record<CodeSetting, (typeof LockSettingTypeList)[number]>
-> = {
-  language: LockSettingType.language,
-  tableNameCase: LockSettingType.tableNameCase,
-  columnNameCase: LockSettingType.columnNameCase,
-  bracketType: LockSettingType.bracketType,
-};
 
 /**
  * A code setter: through its register when shared or while its lock is off,
@@ -666,11 +652,10 @@ const isLockedValue: Record<keyof LockedValues, (value: any) => boolean> = {
  * The code settings' locks: while one holds, each store shows its own value of
  * the setting, so an unlock of one carries the unlocker's onto every peer.
  */
-export const CodeLockSettings =
-  LockSettingType.language |
-  LockSettingType.tableNameCase |
-  LockSettingType.columnNameCase |
-  LockSettingType.bracketType;
+export const CodeLockSettings = Object.values(CodeSettingLocks).reduce(
+  (acc, bit) => acc | bit,
+  0
+);
 
 /**
  * The locks whose unlock carries the unlocker's value onto every peer: the

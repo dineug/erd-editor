@@ -22,11 +22,13 @@ import {
   unselectAllAction$,
 } from '@/engine/modules/editor/generator.actions';
 import {
+  type CodeSetting,
+  CodeSettingLocks,
+} from '@/engine/modules/settings/actions';
+import {
   changeCanvasTypeAction,
   changeNameViewModeAction,
   changeZoomLevelAction,
-  type CodeSetting,
-  CodeSettingLocks,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { screenSettingRestores } from '@/engine/modules/settings/generator.actions';

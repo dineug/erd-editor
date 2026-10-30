@@ -11,6 +11,8 @@ import { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
 
+import { CodeSettingLocks } from './actions';
+
 type Settings = RootState['settings'];
 
 /** A unit that holds one setting alone, every unit but the viewport. */
@@ -116,10 +118,7 @@ const UNIT_LOCKS: Partial<
 > = {
   canvasType: LockSettingType.canvasType,
   nameViewMode: LockSettingType.unlockNameViewMode,
-  language: LockSettingType.language,
-  tableNameCase: LockSettingType.tableNameCase,
-  columnNameCase: LockSettingType.columnNameCase,
-  bracketType: LockSettingType.bracketType,
+  ...CodeSettingLocks,
 };
 
 const LOAD_HELD_UNITS: ReadonlyArray<ScreenSettingUnit> = [

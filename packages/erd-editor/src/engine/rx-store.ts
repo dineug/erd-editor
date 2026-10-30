@@ -15,10 +15,11 @@ import {
 } from 'rxjs';
 
 import {
+  batchVersion,
   ChangeActionTypes,
   EditStateOpenActionTypes,
   HistoryActionTypes,
-  movesClock,
+  mergeBatchVersions,
   opensEditDialog,
   StreamActionTypes,
   StreamRegroupColorActionTypes,
@@ -236,9 +237,7 @@ export function createRxStore(
       store.context,
       compositionActions
     );
-    const version = actions.some(({ type }) => movesClock(type))
-      ? context.clock.getNextVersion()
-      : context.clock.getVersion();
+    const version = batchVersion(context.clock, actions);
     return actions.map(action => {
       if (isNil(action.version)) {
         action.version = version;
@@ -308,9 +307,7 @@ export function createRxStore(
   // what moves no clock are passed over.
   const mergeClock = () => {
     return store.subscribe(actions => {
-      actions.forEach(({ type, version }) => {
-        if (movesClock(type)) context.clock.merge(version);
-      });
+      mergeBatchVersions(context.clock, actions);
     });
   };
 
