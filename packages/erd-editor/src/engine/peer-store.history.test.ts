@@ -302,6 +302,28 @@ describe('a reseed starts the history over', () => {
     });
     expect(tableName(peer, SEED.users)).toBe('users');
   });
+
+  it('forgets them on a reseed too, which takes the registers and version beside the value', async () => {
+    const author = seededPeer();
+    renameUsers(author, 'accounts');
+    const peer = seededPeer();
+    renameUsers(peer, 'members');
+    play(peer, addColumn(SEED.empty));
+    peer.undo();
+    await settle();
+    expect(peer.state.editor).toMatchObject({ hasUndo: true, hasRedo: true });
+
+    peer.reseed(author.runtimeValue, {
+      lww: author.getLWW(),
+      version: author.getVersion(),
+    });
+    await settle();
+
+    expect(peer.state.editor).toMatchObject({ hasUndo: false, hasRedo: false });
+    expect(peer.undo()).toEqual({ label: null, entries: 0, skipped: [] });
+    expect(peer.redo()).toEqual({ label: null, entries: 0, skipped: [] });
+    expect(tableName(peer, SEED.users)).toBe('accounts');
+  });
 });
 
 describe('the labels keep to what the history holds', () => {
@@ -415,7 +437,7 @@ describe('a group of dispatches is one undo unit', () => {
     expect(tableName(peer, SEED.users)).toBe('users');
   });
 
-  it('refuses undo, redo and a reseed inside a group, and keeps the group whole', () => {
+  it('refuses undo, redo and both reseeds inside a group, and keeps the group whole', () => {
     const peer = seededPeer();
 
     peer.group('batch', () => {
@@ -425,6 +447,12 @@ describe('a group of dispatches is one undo unit', () => {
       expect(() => peer.setInitialValue(createSeedValue())).toThrow(
         'setInitialValue cannot run inside a group'
       );
+      expect(() =>
+        peer.reseed(createSeedValue(), {
+          lww: peer.getLWW(),
+          version: peer.getVersion(),
+        })
+      ).toThrow('reseed cannot run inside a group');
     });
 
     expect(peer.undo()).toEqual({ label: 'batch', entries: 1, skipped: [] });

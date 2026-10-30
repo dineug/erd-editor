@@ -170,17 +170,19 @@ Both elements work from any framework or from none. Attributes and the element A
 
 ## Packages
 
-A pnpm workspace. [`@dineug/erd-editor`](./packages/erd-editor) and
-[`@dineug/erd-editor-mcp`](./packages/mcp-server) are published to npm, the three plugins ship
+A pnpm workspace. [`@dineug/erd-editor`](./packages/erd-editor),
+[`@dineug/erd-editor-mcp`](./packages/mcp-server) and
+[`@dineug/erd-editor-yjs`](./packages/erd-editor-yjs) are published to npm, the three plugins ship
 through their stores, `app` is erd-editor.io, and the rest are private libraries those builds take
 in.
 
 <details>
-<summary>All 20 packages</summary>
+<summary>All 21 packages</summary>
 
 | Folder | npm name | Description |
 | --- | --- | --- |
 | [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | The editor core: the `<erd-editor>` custom element, the read-only `<erd-viewer>` and the headless `engine.js` and `peer.js` entries |
+| [`erd-editor-yjs`](./packages/erd-editor-yjs) | `@dineug/erd-editor-yjs` | The published Yjs binding, which keeps an `<erd-editor>` or a headless peer store in step through a `Y.Doc` |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | `@dineug/erd-editor-schema` | The v2/v3 document schema, parsing, serializers, queries and LWW operators |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | `@dineug/schema-sql-parser` | Permissive DDL parser used for SQL import |
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7 and the Uuid25 encoding, the ids the editor mints |

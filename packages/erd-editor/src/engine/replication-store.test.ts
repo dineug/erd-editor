@@ -1,5 +1,6 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { type AnyAction, compositionActionsFlat } from '@dineug/r-html';
+import { pick } from 'es-toolkit';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
@@ -8,6 +9,7 @@ import {
   SEED,
   type SeededStore,
 } from '@/__test-utils__/peerSeed';
+import { versionOf } from '@/__test-utils__/version';
 import {
   CanvasType,
   ColumnUIKey,
@@ -17,12 +19,13 @@ import {
   NameViewMode,
   StartRelationshipType,
 } from '@/constants/schema';
-import { Clock } from '@/engine/clock';
+import { Clock, slotOf } from '@/engine/clock';
 import {
   getLWWAction,
   loadJsonAction,
   mergeLWWAction,
   selectAction,
+  sharedMouseTrackerAction,
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
@@ -48,6 +51,7 @@ import {
   changeTableColorAction,
   changeTableNameAction,
   changeZIndexAction,
+  moveTableAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { createPeerStore } from '@/engine/peer-store';
@@ -70,6 +74,19 @@ const addTable = (id: string) =>
 const stores: ReplicationStore[] = [];
 /** The element stores and subscriptions a spec leaves open, closed after it. */
 const closers: Array<() => void> = [];
+
+// slotOf as it is, its answers recorded, since the replica reads its own slot
+// back through no surface of its own.
+vi.mock('@/engine/clock', async importOriginal => {
+  const clock = await importOriginal<typeof import('@/engine/clock')>();
+  return { ...clock, slotOf: vi.fn(clock.slotOf) };
+});
+
+/** The slot the last store made took for its clock. */
+function lastSlot(): number {
+  const { results } = vi.mocked(slotOf).mock;
+  return results[results.length - 1].value;
+}
 
 function make(toWidth = (text: string) => text.length * 10): ReplicationStore {
   const store = createReplicationStore({ toWidth });
@@ -474,6 +491,66 @@ describe('createReplicationStore', () => {
         expect(parse(store).settings.originX).toBe(-40_500);
         expect(parse(store).settings.originY).toBe(250.5);
       }
+    });
+  });
+
+  describe('a window’s sends that arrive twice', () => {
+    /** A window on the seed, its viewport unlocked, each of whose sends its replica takes twice. */
+    function openTwiceFed() {
+      vi.useFakeTimers();
+      const { user, replica } = openWindow(createSeedValue());
+      closers.push(
+        user.sharedStore.subscribe(actions => {
+          replica.dispatchSync(copy(actions));
+          replica.dispatchSync(copy(actions));
+        })
+      );
+      user.rxStore.dispatchSync(unlock(viewport));
+      return { user, replica };
+    }
+
+    it('save the origin and the zoom the window panned and zoomed to, pushed by neither (AC-M1)', () => {
+      const { user, replica } = openTwiceFed();
+      const before = pick(user.rxStore.state.settings, ['originX', 'originY']);
+
+      user.rxStore.dispatchSync(
+        streamScrollToAction({ movementX: 40, movementY: -25 })
+      );
+      user.rxStore.dispatchSync(
+        streamScrollToAction({ movementX: 40, movementY: -25 }),
+        streamZoomLevelAction({ value: -0.25 })
+      );
+      vi.advanceTimersByTime(400);
+
+      const { originX, originY, zoomLevel } = user.rxStore.state.settings;
+      expect([originX, originY, zoomLevel]).toEqual([
+        before.originX + 80,
+        before.originY - 50,
+        0.75,
+      ]);
+      expect(parse(replica).settings).toMatchObject({
+        originX,
+        originY,
+        zoomLevel,
+      });
+    });
+
+    it('save the table where the window dragged it', () => {
+      const { user, replica } = openTwiceFed();
+      const { x, y } =
+        user.rxStore.state.collections.tableEntities[SEED.users].ui;
+
+      user.rxStore.dispatchSync(
+        moveTableAction({ ids: [SEED.users], movementX: 60, movementY: 30 })
+      );
+      vi.advanceTimersByTime(400);
+
+      expect(
+        parse(replica).collections.tableEntities[SEED.users].ui
+      ).toMatchObject({
+        x: x + 60,
+        y: y + 30,
+      });
     });
   });
 
@@ -1531,5 +1608,61 @@ describe('createReplicationStore', () => {
 
     expect(change).not.toHaveBeenCalled();
     expect(parse(store).doc.tableIds ?? []).toEqual([]);
+  });
+});
+
+describe('the replica’s clock (AC-T6)', () => {
+  const colour = (color: string, version?: number): AnyAction => ({
+    ...changeTableColorAction({ id: SEED.users, color, prevColor: '' }),
+    ...(version === undefined ? {} : { version }),
+    tags: Tag.shared,
+  });
+
+  const colourOf = (store: ReplicationStore) =>
+    parse(store).collections.tableEntities[SEED.users].ui.color;
+
+  /** A replica on the seed and the slot its clock took. */
+  function makeSeeded() {
+    const store = make();
+    const slot = lastSlot();
+    store.setInitialValue(createSeedValue());
+    return { store, slot };
+  }
+
+  it('stamps a colour sent with no version at its own slot, one counter past the last version it took', () => {
+    const { store, slot } = makeSeeded();
+
+    store.dispatchSync(colour('#111111', versionOf(7, 5)));
+    store.dispatchSync(colour('#222222'));
+
+    expect(colourOf(store)).toBe('#222222');
+
+    store.dispatchSync(colour('#333333', versionOf(8, slot) - 1));
+
+    expect(colourOf(store)).toBe('#222222');
+
+    store.dispatchSync(colour('#444444', versionOf(8, slot)));
+
+    expect(colourOf(store)).toBe('#444444');
+  });
+
+  it('spends no counter on a batch without a change, nor on a tracker it never applies', () => {
+    const { store, slot } = makeSeeded();
+
+    store.dispatchSync({
+      ...sharedMouseTrackerAction({ x: 1, y: 1 }),
+      version: versionOf(50, 0),
+      tags: Tag.shared,
+      meta: { editorId: 'remote' },
+    });
+    store.dispatchSync({
+      type: 'settings.changeIgnoreSaveSettings',
+      payload: { saveSettingType: 3, value: true },
+      tags: Tag.shared,
+    });
+    store.dispatchSync(colour('#222222'));
+    store.dispatchSync(colour('#333333', versionOf(1, slot)));
+
+    expect(colourOf(store)).toBe('#333333');
   });
 });

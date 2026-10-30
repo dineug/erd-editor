@@ -3,10 +3,17 @@ import { AnyAction } from '@dineug/r-html';
 import { omit } from 'es-toolkit';
 import { debounceTime, map, Observable, Subject, Subscription } from 'rxjs';
 
-import { ReplicaActionTypes, ReplicaChangeActionTypes } from '@/engine/actions';
+import {
+  batchVersion,
+  mergeBatchVersions,
+  ReplicaActionTypes,
+  ReplicaChangeActionTypes,
+} from '@/engine/actions';
+import { slotOf } from '@/engine/clock';
 import {
   createEngineContext,
   type InjectEngineContext,
+  type ReplicaEngineContext,
 } from '@/engine/context';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
@@ -63,9 +70,14 @@ export function createReplicationStore(
   context: InjectEngineContext
 ): ReplicationStore {
   const subscriptionSet = new Set<Subscription>();
-  const engineContext = createEngineContext({ ...context, routes: false });
+  // Every step of a drag or a pan a replica takes is another store's.
+  const engineContext: ReplicaEngineContext = {
+    ...createEngineContext({ ...context, routes: false }),
+    remote: true,
+  };
   const { clock } = engineContext;
   const store = createStore(engineContext, false);
+  clock.setSlot(slotOf(store.state.editor.id));
   // A replica has no screen, and the default editor size the store starts with
   // would pull every replicated load against a frame nobody looks through, so
   // the viewport is reported empty before anything can be reduced against it.
@@ -145,10 +157,10 @@ export function createReplicationStore(
         // Versions as the element's store gives them: what a stream regroup sent
         // without one takes the next, and each moves the clock past the registers
         // a join brought in, which would otherwise refuse every later stroke.
-        const version = clock.getNextVersion();
+        const version = batchVersion(clock, actions);
         actions.forEach(action => (action.version ??= version));
         store.dispatchSync(actions);
-        actions.forEach(action => clock.merge(action.version));
+        mergeBatchVersions(clock, actions);
       })
   );
 

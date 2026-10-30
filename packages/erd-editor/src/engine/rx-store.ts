@@ -15,15 +15,18 @@ import {
 } from 'rxjs';
 
 import {
+  batchVersion,
   ChangeActionTypes,
   EditStateOpenActionTypes,
   HistoryActionTypes,
+  mergeBatchVersions,
   opensEditDialog,
   StreamActionTypes,
   StreamRegroupColorActionTypes,
   StreamRegroupMoveActionTypes,
   StreamRegroupScrollActionTypes,
 } from '@/engine/actions';
+import { slotOf } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
 import { createHistory, History, HistoryOptions } from '@/engine/history';
 import {
@@ -127,6 +130,9 @@ export function createRxStore(
 ): RxStore {
   const subscriptionSet = new Set<Subscription | Unsubscribe>();
   const store = createStore(context, observable);
+  // Before the first version is stamped, so every one this store writes holds
+  // its editor's slot.
+  context.clock.setSlot(slotOf(store.state.editor.id));
   const hooks = createHooks(store);
   // A replay passes no operator, so an undo of a pan once writable again is led
   // by the screen's placement here, or the replica takes it from the old one.
@@ -220,15 +226,19 @@ export function createRxStore(
     debounceTime(200)
   );
 
+  // Only a batch holding a change or the handshake takes the next version, so
+  // presence or a selection takes the version the clock holds. A pan a view
+  // redirects takes the next too, but mergeClock passes the view's type over.
   const toActions = (
     ...compositionActions: CompositionActions
   ): AnyAction[] => {
-    const version = context.clock.getNextVersion();
-    return compositionActionsFlat(
+    const actions = compositionActionsFlat(
       store.state,
       store.context,
       compositionActions
-    ).map(action => {
+    );
+    const version = batchVersion(context.clock, actions);
+    return actions.map(action => {
       if (isNil(action.version)) {
         action.version = version;
       }
@@ -292,9 +302,12 @@ export function createRxStore(
     if (manualStreamFlush) flush$.next();
   };
 
+  // An editor built before the slot stamps its presence one past its own clock,
+  // and a pan a view redirects was stamped as a change, so the versions of
+  // what moves no clock are passed over.
   const mergeClock = () => {
     return store.subscribe(actions => {
-      actions.forEach(action => context.clock.merge(action.version));
+      mergeBatchVersions(context.clock, actions);
     });
   };
 

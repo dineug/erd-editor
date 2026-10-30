@@ -167,16 +167,18 @@ document.body.appendChild(editor);
 
 ## 패키지
 
-pnpm 워크스페이스입니다. [`@dineug/erd-editor`](./packages/erd-editor)와
-[`@dineug/erd-editor-mcp`](./packages/mcp-server)는 npm에 게시되고, 플러그인 셋은 각자의 스토어로
+pnpm 워크스페이스입니다. [`@dineug/erd-editor`](./packages/erd-editor),
+[`@dineug/erd-editor-mcp`](./packages/mcp-server),
+[`@dineug/erd-editor-yjs`](./packages/erd-editor-yjs)는 npm에 게시되고, 플러그인 셋은 각자의 스토어로
 배포되며, `app`은 erd-editor.io이고, 나머지는 이 빌드들이 가져다 쓰는 비공개 라이브러리입니다.
 
 <details>
-<summary>20개 패키지 전체</summary>
+<summary>21개 패키지 전체</summary>
 
 | 폴더 | npm 이름 | 설명 |
 | --- | --- | --- |
 | [`erd-editor`](./packages/erd-editor) | `@dineug/erd-editor` | 편집기 코어: `<erd-editor>` 커스텀 엘리먼트, 읽기 전용 `<erd-viewer>`, 헤드리스 `engine.js`·`peer.js` 진입점 |
+| [`erd-editor-yjs`](./packages/erd-editor-yjs) | `@dineug/erd-editor-yjs` | 게시된 Yjs 바인딩. `<erd-editor>`나 헤드리스 피어 스토어를 `Y.Doc`으로 맞춰 둠 |
 | [`erd-editor-schema`](./packages/erd-editor-schema) | `@dineug/erd-editor-schema` | v2/v3 문서 스키마, 파싱, 직렬화, 조회, LWW 연산자 |
 | [`schema-sql-parser`](./packages/schema-sql-parser) | `@dineug/schema-sql-parser` | SQL 가져오기에 쓰는 관대한 DDL 파서 |
 | [`uuid`](./packages/uuid) | `@dineug/uuid` | UUIDv7과 Uuid25 인코딩, 편집기가 만드는 id |

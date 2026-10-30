@@ -1,6 +1,7 @@
 // The logical name editor in a real Chromium: real keys, and a Korean IME's
 // own composition over CDP, which hands the input each step of a syllable.
 
+import { toJson } from '@dineug/erd-editor-schema';
 import { addCSSHost, FC, html } from '@dineug/r-html';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cdp, userEvent } from 'vite-plus/test/browser/context';
@@ -17,6 +18,10 @@ import * as styles from '@/components/table-view/column/column-logical-name/Colu
 import { INPUT_HEIGHT } from '@/constants/layout';
 import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import { TERM_COMPLETION_LIMIT } from '@/engine/modules/dictionary/termIndex';
+import {
+  initialLoadJsonAction$,
+  loadJsonAction$,
+} from '@/engine/modules/editor/generator.actions';
 import {
   addTableAction,
   changeTableLogicalNameAction,
@@ -457,6 +462,54 @@ describe('the name a logical name editor derives as it closes', () => {
 
     expect(fixture.batches).toEqual([]);
     expect(columnOf(fixture).name).toBe('member');
+  });
+
+  it('derives nothing on a logical name a load wrote over the document the editor opened over', async () => {
+    const fixture = await setup({ terms: TERMS });
+    const { store } = fixture.app;
+    const loaded = JSON.parse(toJson(store.state));
+    loaded.collections.tableColumnEntities[COLUMN].logicalName = 'Member no';
+    store.dispatchSync(initialLoadJsonAction$(JSON.stringify(loaded)));
+    await flush();
+    expect(columnOf(fixture).logicalName).toBe('Member no');
+    fixture.batches.length = 0;
+
+    await close(fixture);
+
+    expect(fixture.batches).toEqual([]);
+    expect(columnOf(fixture).name).toBe('');
+  });
+
+  it('derives once on the logical name the reader typed, which a load that opens a document kept', async () => {
+    const fixture = await setup({ terms: TERMS });
+    const { store } = fixture.app;
+    await type('Member no');
+    store.dispatchSync(initialLoadJsonAction$(toJson(store.state)));
+    await flush();
+    fixture.batches.length = 0;
+
+    await close(fixture);
+
+    expect(fixture.batches).toEqual([
+      ['column.changeName', 'column.changeNameDerived'],
+    ]);
+    expect(columnOf(fixture).name).toBe('mbr_no');
+  });
+
+  it('derives once on the logical name the reader typed after a load replaced the document, the editor left open', async () => {
+    const fixture = await setup({ terms: TERMS });
+    const { store } = fixture.app;
+    store.dispatchSync(loadJsonAction$(toJson(store.state)));
+    await flush();
+    await type('Member no');
+    fixture.batches.length = 0;
+
+    await close(fixture);
+
+    expect(fixture.batches).toEqual([
+      ['column.changeName', 'column.changeNameDerived'],
+    ]);
+    expect(columnOf(fixture).name).toBe('mbr_no');
   });
 
   it('derives nothing for a column gone from its table, or once the editor is destroyed', async () => {

@@ -1,17 +1,39 @@
+import { isSettingLocked, type LWW } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
+import { pick } from 'es-toolkit';
 import { isEmpty } from 'es-toolkit/compat';
 import { filter, map, merge, Observable, Subject, Subscription } from 'rxjs';
 
+import { CanvasType, LockSettingType } from '@/constants/schema';
 import {
   ChangeActionTypes,
+  CodeSettingLockActionTypes,
   SharedActionTypes,
   SharedFollowingActionTypes,
 } from '@/engine/actions';
 import {
+  endScreenSettingsAction,
   getLWWAction,
   initialLoadJsonAction,
   mergeLWWAction,
 } from '@/engine/modules/editor/atom.actions';
+import {
+  initialLoadJsonAction$,
+  unselectAllAction$,
+} from '@/engine/modules/editor/generator.actions';
+import {
+  type CodeSetting,
+  CodeSettingLocks,
+} from '@/engine/modules/settings/actions';
+import {
+  changeCanvasTypeAction,
+  changeNameViewModeAction,
+  changeZoomLevelAction,
+  scrollToAction,
+} from '@/engine/modules/settings/atom.actions';
+import { screenSettingRestores } from '@/engine/modules/settings/generator.actions';
+import type { ScreenSettingUnit } from '@/engine/modules/settings/screenBaseline';
+import { clearSharedTrackers } from '@/engine/presence';
 import {
   actionsFilter,
   bufferCircuitBreaker,
@@ -24,9 +46,34 @@ import {
 } from '@/engine/rx-operators/flushOnNotifier';
 import { readonlyIgnoreFilter } from '@/engine/rx-operators/readonlyIgnoreFilter';
 import { RxStore } from '@/engine/rx-store';
+import type { RootState } from '@/engine/state';
 import { attachActionsTag, attachActionTag, Tag } from '@/engine/tag';
 import { Unsubscribe } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
+import { toLoadValue } from '@/utils/loadValue';
+
+declare const registersBrand: unique symbol;
+
+/**
+ * A store's registers as JSON, handed to another store's mergeLWW or reseed as
+ * they are. Their shape is the engine's own, so no caller reads a field of them.
+ */
+export type SharedRegisters = Record<string, unknown> & {
+  readonly [registersBrand]: true;
+};
+
+export type ReseedOptions = {
+  /** The registers held beside the value, as the store that wrote it gave them. */
+  lww: SharedRegisters;
+  /** The highest version merged beside the value, which the clock takes. */
+  version: number;
+  /**
+   * Keeps the reader's screen on its screen alone, as a peer's load does: the
+   * tab, the viewport once a measure showed it, a locked name view or code
+   * setting, what a readonly reader turned. value and runtimeValue keep the loaded.
+   */
+  keepScreen?: boolean;
+};
 
 export type SharedStore = {
   connection: () => void;
@@ -39,6 +86,23 @@ export type SharedStore = {
    * after their quiet period: what a host calls before it lets a store go.
    */
   flushStreamBuffers: () => void;
+  /** A copy of the registers the store holds, as JSON. */
+  getLWW: () => SharedRegisters;
+  /**
+   * Takes registers another store gave into this one's, and the version beside
+   * them into its clock, sending nothing and answering nothing.
+   */
+  mergeLWW: (lww: SharedRegisters, version: number) => void;
+  /** The highest version the store's clock has merged. */
+  getVersion: () => number;
+  /** Drops the cursor, focus, selection and marquee one other editor sent, with their expiry. */
+  forgetPeer: (editorId: string) => void;
+  /**
+   * Opens a document again as a rejoin does: no undo entry, selection, focus or
+   * edit left, no change event or change sent, the reader's screen kept when
+   * asked. Streams still held go out after it, so flush them into the value first.
+   */
+  reseed: (value: string, options: ReseedOptions) => void;
   destroy: () => void;
 };
 
@@ -61,6 +125,140 @@ const hasSharedFollowingActionTypes = arrayHas<string>(
   SharedFollowingActionTypes
 );
 
+type ReaderScreen = ReturnType<typeof readScreen>;
+
+const CODE_SETTINGS = Object.keys(CodeSettingLocks) as CodeSetting[];
+
+/**
+ * Sends each code setter made while its lock is off as shared, which every peer
+ * writes through the register whatever its own lock says as it arrives, and
+ * none made under the lock, which an editor built before that rule would apply.
+ */
+const shareCodeSettings =
+  (getLockSettings: () => number) => (source$: Observable<Array<AnyAction>>) =>
+    source$.pipe(
+      map(actions => {
+        const lockSettings = getLockSettings();
+        return actions.flatMap(action => {
+          const lock = Reflect.get(CodeSettingLockActionTypes, action.type);
+          if (!lock) return [action];
+          if (
+            action.payload?.shared !== true &&
+            isSettingLocked(lockSettings, lock)
+          ) {
+            return [];
+          }
+          return [{ ...action, payload: { ...action.payload, shared: true } }];
+        });
+      }),
+      filter(actions => actions.length > 0)
+    );
+
+/**
+ * The reader's screen as a rejoin keeping it reads it before the load: the
+ * origin and the zoom once a measure showed them, the tab, the name view, the
+ * code settings, and each other setting a readonly reader's turn holds.
+ */
+function readScreen({ settings, editor }: RootState) {
+  const held = Object.keys(editor.screenBaseline ?? {}).filter(
+    (unit): unit is ScreenSettingUnit => unit !== 'viewport'
+  );
+  return {
+    viewport: editor.originShown
+      ? pick(settings, ['originX', 'originY', 'zoomLevel'])
+      : null,
+    canvasType: settings.canvasType,
+    lastCanvasType: editor.lastCanvasType,
+    nameViewMode: settings.nameViewMode,
+    code: pick(settings, CODE_SETTINGS),
+    held: pick(settings, held),
+    lockSettings: settings.lockSettings,
+    lockedValues: { ...settings.lockedValues },
+  };
+}
+
+type LockedField = keyof RootState['settings']['lockedValues'];
+
+/**
+ * True when a lock held before the load and after it at the value it held, so
+ * the reader's value was its own pick and no unlock, change and relock of the
+ * field it missed moved the locked one.
+ */
+const heldThrough = (
+  screen: ReaderScreen,
+  { settings }: RootState,
+  lock: Parameters<typeof isSettingLocked>[1],
+  field: LockedField
+) =>
+  isSettingLocked(screen.lockSettings, lock) &&
+  isSettingLocked(settings.lockSettings, lock) &&
+  screen.lockedValues[field] === settings.lockedValues[field];
+
+/**
+ * The turns that lay that screen back over the value loaded, as a peer's load
+ * keeps it. An origin no measure showed opens where the load's pull puts it, as
+ * a late joiner's does, and a name view no lock held through the load is shared.
+ */
+function screenTurnsOf(screen: ReaderScreen, state: RootState): AnyAction[] {
+  const { settings, editor } = state;
+  const turns: AnyAction[] = [];
+  if (screen.viewport) {
+    const { originX, originY, zoomLevel } = screen.viewport;
+    turns.push(
+      scrollToAction({ originX, originY }),
+      changeZoomLevelAction({ value: zoomLevel })
+    );
+  }
+  // The tab goes back only where the load moved it, so a later load still moves
+  // one the value opens on. On Settings the tab it came from goes first, which
+  // a tab lock taken there names.
+  if (screen.canvasType !== settings.canvasType) {
+    if (screen.canvasType === CanvasType.settings) {
+      turns.push(changeCanvasTypeAction({ value: screen.lastCanvasType }));
+    }
+    turns.push(changeCanvasTypeAction({ value: screen.canvasType }));
+  }
+  if (
+    heldThrough(
+      screen,
+      state,
+      LockSettingType.unlockNameViewMode,
+      'nameViewMode'
+    ) &&
+    screen.nameViewMode !== settings.nameViewMode
+  ) {
+    turns.push(
+      changeNameViewModeAction({
+        value: screen.nameViewMode,
+        shared: false,
+        editorId: editor.id,
+      })
+    );
+  }
+  turns.push(...screenSettingRestores(screen.held, settings));
+  return turns;
+}
+
+/**
+ * The code settings the reader showed of its own under their locks, which the
+ * load wrote over: each goes back as its own change, outside the register and
+ * every peer, then ends the baseline a readonly store's screen tag would keep.
+ */
+function ownCodeSettingsOf(
+  screen: ReaderScreen,
+  state: RootState
+): AnyAction[] {
+  const own = CODE_SETTINGS.filter(
+    field =>
+      !Reflect.has(screen.held, field) &&
+      heldThrough(screen, state, CodeSettingLocks[field], field)
+  );
+  const setters = screenSettingRestores(pick(screen.code, own), state.settings);
+  return setters.length
+    ? [...setters, endScreenSettingsAction({ units: own })]
+    : [];
+}
+
 export function createSharedStore(
   store: RxStore,
   config?: SharedStoreConfig,
@@ -77,7 +275,8 @@ export function createSharedStore(
   const closingNotifier$ = new Subject<void>();
   const flush$ = new Subject<void>();
   const compressor = createSharedStreamActionsCompressor(
-    manualStreamFlush ? flushOnNotifier(flush$) : quietPeriodOrNotifier(flush$)
+    manualStreamFlush ? flushOnNotifier(flush$) : quietPeriodOrNotifier(flush$),
+    () => store.state
   );
   const getReadonly = store.readonlyEditState ? store.getReadonly : () => false;
 
@@ -94,6 +293,7 @@ export function createSharedStore(
       .pipe(
         actionsFilter(SharedActionTypes),
         ignoreTagFilter([Tag.shared, Tag.screen]),
+        shareCodeSettings(() => store.state.settings.lockSettings),
         // A readonly editor sends no change, while presence and the registers
         // pass. Ahead of the compressors, so a drag they hold from before the
         // switch still leaves.
@@ -157,6 +357,17 @@ export function createSharedStore(
     }
   };
 
+  const flushStreamBuffers = () => {
+    for (let tick = 0; tick < FLUSH_TICKS; tick++) {
+      flush$.next();
+    }
+  };
+
+  /**
+   * Answers a join with the registers, after the drag held here has left: the
+   * answer carries its steps' versions, which a store that never sent the drag
+   * would leave on every peer with no point behind them.
+   */
   const toMergeLWWAction = (actions: Array<AnyAction> | AnyAction) => {
     const safeActions = Array.isArray(actions) ? actions : [actions];
     const isGetLWWAction = safeActions.some(
@@ -165,6 +376,7 @@ export function createSharedStore(
     const lww = store.state.lww;
 
     if (isGetLWWAction && !isEmpty(lww)) {
+      flushStreamBuffers();
       internal$.next([
         {
           ...mergeLWWAction({ lww }),
@@ -172,6 +384,60 @@ export function createSharedStore(
         },
       ]);
     }
+  };
+
+  const getLWW = (): SharedRegisters =>
+    JSON.parse(JSON.stringify(store.state.lww));
+
+  // Tagged as a peer's, so the outbound pipe sends it on to nobody.
+  const mergeLWW = (lww: SharedRegisters, version: number) => {
+    store.dispatchSync({
+      ...mergeLWWAction({ lww: lww as unknown as LWW }),
+      version,
+      tags: Tag.shared,
+    });
+    store.context.clock.merge(version);
+  };
+
+  const forgetPeer = (peerEditorId: string) => {
+    clearSharedTrackers(store.state.editor, peerEditorId);
+  };
+
+  /**
+   * Loads the value as it is, then lays the screen read before the load back
+   * over it in a dispatch of its own: the load closes a view, and the seams
+   * classify a batch by the state it enters with.
+   */
+  const reseed = (
+    value: string,
+    { lww, version, keepScreen = false }: ReseedOptions
+  ) => {
+    const screen = keepScreen ? readScreen(store.state) : null;
+
+    // The selection and the focus may name what the value no longer holds, so
+    // a rejoin drops them with the undo history.
+    store.dispatchSync(
+      unselectAllAction$(),
+      initialLoadJsonAction$(toLoadValue(value))
+    );
+    mergeLWW(lww, version);
+    store.resetHistory();
+    if (!screen) return;
+
+    const turns = screenTurnsOf(screen, store.state);
+    const own = ownCodeSettingsOf(screen, store.state);
+    if (turns.length === 0 && own.length === 0) return;
+
+    // Neither writes a register, so both take the version the clock holds.
+    const screenVersion = store.context.clock.getVersion();
+    store.dispatchSync([
+      ...turns.map(action => ({
+        ...action,
+        version: screenVersion,
+        tags: Tag.screen,
+      })),
+      ...own.map(action => ({ ...action, version: screenVersion })),
+    ]);
   };
 
   const subscribe = (fn: (value: AnyAction[]) => void) => {
@@ -211,12 +477,6 @@ export function createSharedStore(
     toMergeLWWAction(actions);
   };
 
-  const flushStreamBuffers = () => {
-    for (let tick = 0; tick < FLUSH_TICKS; tick++) {
-      flush$.next();
-    }
-  };
-
   const destroy = () => {
     Array.from(subscriptionSet).forEach(sub => sub.unsubscribe());
     Array.from(observerSubscriptionSet).forEach(sub => sub.unsubscribe());
@@ -235,6 +495,11 @@ export function createSharedStore(
     dispatchSync,
     subscribe,
     flushStreamBuffers,
+    getLWW,
+    mergeLWW,
+    getVersion: () => store.context.clock.getVersion(),
+    forgetPeer,
+    reseed,
     destroy,
   });
 }

@@ -159,6 +159,8 @@ const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
 
   if (state.editor.scrollPullPending) {
     pullScrollIntoRange(state);
+  } else if (hasViewport(state.editor.viewport)) {
+    state.editor.originShown = true;
   }
 };
 
@@ -195,6 +197,9 @@ const clear: ReducerType<typeof ActionType.clear> = (state, { payload }) => {
   state.collections = collections;
   state.editor.scrollPullPending = false;
   clearViews(state.editor);
+  // A draw from the document held before would add a relationship from its
+  // tombstone; the editors stay open for whoever types in them.
+  state.editor.drawRelationship = null;
 };
 
 /**
@@ -207,6 +212,7 @@ function pullScrollIntoRange(state: RootState) {
 
   if (!hasViewport(editor.viewport)) {
     editor.scrollPullPending = true;
+    editor.originShown = false;
     return;
   }
 
@@ -215,6 +221,7 @@ function pullScrollIntoRange(state: RootState) {
   settings.originX = round(origin.x, 4);
   settings.originY = round(origin.y, 4);
   editor.scrollPullPending = false;
+  editor.originShown = true;
 }
 
 export const loadJsonAction = createAction<
@@ -261,12 +268,30 @@ export const initialClearAction = createAction<
   ActionMap[typeof ActionType.initialClear]
 >(ActionType.initialClear);
 
+/**
+ * Ends the relationship draw and closes the memo, group name and cell editors
+ * open over the document held before, whose targets the next one may lack or
+ * keep only as a tombstone, which a draw would still start a relationship from.
+ */
+function closeEdits(editor: RootState['editor']) {
+  editor.drawRelationship = null;
+  editor.editMemoId = null;
+  editor.editTableGroupId = null;
+  if (editor.focusTable) editor.focusTable.edit = false;
+}
+
+/**
+ * Empties the store ahead of the document a reseed or an initial value opens,
+ * so no view or edit of the one before outlives the load, even of a text that
+ * the load after it cannot read.
+ */
 const initialClear: ReducerType<typeof ActionType.initialClear> = state => {
   const { doc, collections } = schemaV3Parser({});
   state.doc = doc;
   state.collections = collections;
   state.editor.scrollPullPending = false;
   clearViews(state.editor);
+  closeEdits(state.editor);
 };
 
 export const initialLoadJsonAction = createAction<

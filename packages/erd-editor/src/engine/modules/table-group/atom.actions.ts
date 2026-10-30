@@ -3,6 +3,12 @@ import { createAction } from '@dineug/r-html';
 import { isString } from 'es-toolkit';
 import { round } from 'es-toolkit/compat';
 
+import {
+  isOwnStep,
+  POSITION_REGISTER,
+  SIZE_REGISTER,
+} from '@/engine/geometryRegisters';
+import { TableGroup } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
 import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 
@@ -33,18 +39,30 @@ export const moveTableGroupAction = createAction<
 >(ActionType.moveTableGroup);
 
 const moveTableGroup: ReducerType<typeof ActionType.moveTableGroup> = (
-  { collections },
-  { payload: { ids, movementX, movementY } }
+  { collections, lww },
+  { payload: { ids, movementX, movementY }, version, tags },
+  context
 ) => {
   const collection = query(collections).collection('tableGroupEntities');
   for (const id of ids) {
     collection.getOrCreate(id, id => createTableGroup({ id }));
   }
 
-  collection.updateMany(ids, group => {
+  const step = (group: TableGroup) => {
     group.ui.x = round(group.ui.x + movementX, 4);
     group.ui.y = round(group.ui.y + movementY, 4);
-  });
+  };
+  if (!isOwnStep(context, tags)) {
+    collection.updateMany(ids, step);
+    return;
+  }
+
+  const safeVersion = version ?? context.clock.getVersion();
+  for (const id of ids) {
+    collection.replaceOperator(lww, safeVersion, id, POSITION_REGISTER, () => {
+      collection.updateOne(id, step);
+    });
+  }
 };
 
 export const moveToTableGroupAction = createAction<
@@ -52,15 +70,19 @@ export const moveToTableGroupAction = createAction<
 >(ActionType.moveToTableGroup);
 
 const moveToTableGroup: ReducerType<typeof ActionType.moveToTableGroup> = (
-  { collections },
-  { payload: { id, x, y } }
+  { collections, lww },
+  { payload: { id, x, y }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableGroupEntities');
   collection.getOrCreate(id, id => createTableGroup({ id }));
 
-  collection.updateOne(id, group => {
-    group.ui.x = x;
-    group.ui.y = y;
+  collection.replaceOperator(lww, safeVersion, id, POSITION_REGISTER, () => {
+    collection.updateOne(id, group => {
+      group.ui.x = x;
+      group.ui.y = y;
+    });
   });
 };
 
@@ -88,19 +110,29 @@ export const resizeTableGroupAction = createAction<
   ActionMap[typeof ActionType.resizeTableGroup]
 >(ActionType.resizeTableGroup);
 
+/** Writes both registers, its rect's corner and its size, each at its version. */
 const resizeTableGroup: ReducerType<typeof ActionType.resizeTableGroup> = (
-  { collections },
-  { payload: { id, x, y, width, height } }
+  { collections, lww },
+  { payload: { id, x, y, width, height }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableGroupEntities');
   collection.getOrCreate(id, id => createTableGroup({ id }));
 
-  collection.updateOne(id, group => {
-    group.ui.x = x;
-    group.ui.y = y;
-    group.ui.width = width;
-    group.ui.height = height;
-  });
+  collection
+    .replaceOperator(lww, safeVersion, id, POSITION_REGISTER, () => {
+      collection.updateOne(id, group => {
+        group.ui.x = x;
+        group.ui.y = y;
+      });
+    })
+    .replaceOperator(lww, safeVersion, id, SIZE_REGISTER, () => {
+      collection.updateOne(id, group => {
+        group.ui.width = width;
+        group.ui.height = height;
+      });
+    });
 };
 
 export const changeTableGroupNameAction = createAction<

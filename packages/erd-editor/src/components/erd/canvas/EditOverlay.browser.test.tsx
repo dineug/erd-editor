@@ -1,3 +1,4 @@
+import { toJson } from '@dineug/erd-editor-schema';
 import { addCSSHost, createRef, render, useProvider } from '@dineug/r-html';
 import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -56,6 +57,7 @@ import {
 import { Database, NameViewMode, Show } from '@/constants/schema';
 import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
+  clearAction,
   editMemoAction,
   editMemoEndAction,
   editTableAction,
@@ -63,6 +65,7 @@ import {
   editTableGroupAction,
   focusColumnAction,
   focusTableAction,
+  loadJsonAction,
   scrollMemoAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, ViewKind } from '@/engine/modules/editor/state';
@@ -307,6 +310,21 @@ async function typeDataType(fixture: Fixture, value: string) {
   await flush();
 }
 
+/** How many times the editors asked for the keyboard back while run went. */
+async function focusAsksDuring(run: () => Promise<void>) {
+  let asked = 0;
+  const listen = () => {
+    asked += 1;
+  };
+  document.body.addEventListener(focusEvent.type, listen, true);
+  try {
+    await run();
+  } finally {
+    document.body.removeEventListener(focusEvent.type, listen, true);
+  }
+  return asked;
+}
+
 describe('the editing overlay', () => {
   it('takes no pointer event of its own while nothing is being edited', async () => {
     const { mounted } = await setup();
@@ -327,6 +345,26 @@ describe('the editing overlay', () => {
     expect(input.placeholder).toBe('table');
     expect(document.activeElement).toBe(input);
   });
+
+  it.each([
+    ['table name', editTableName],
+    ['column name', editColumnName],
+    ['data type', editColumnDataType],
+  ])(
+    'hands the keyboard back once the store ends the %s cell edit, as Enter does',
+    async (_label, edit) => {
+      const fixture = await setup();
+      await edit(fixture);
+
+      const asked = await focusAsksDuring(async () => {
+        fixture.app.store.dispatchSync(editTableEndAction());
+        await flush();
+      });
+
+      expect(inputOf(fixture.mounted)).toBeNull();
+      expect(asked).toBe(1);
+    }
+  );
 
   it('shows the placeholder in the language the element shows, following a switch', async () => {
     const i18n = createTestI18n('en');
@@ -865,6 +903,20 @@ describe('the cell editor in the name views', () => {
       types => types[0].startsWith('table.') || types[0].startsWith('column.')
     );
   }
+
+  it('hands the keyboard back once the store ends the edit of a logical name cell', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    await edit(fixture, FocusType.columnLogicalName);
+    expect(inputOf(fixture.mounted)).toBeTruthy();
+
+    const asked = await focusAsksDuring(async () => {
+      fixture.app.store.dispatchSync(editTableEndAction());
+      await flush();
+    });
+
+    expect(inputOf(fixture.mounted)).toBeNull();
+    expect(asked).toBe(1);
+  });
 
   it('writes the logical name alone from the name cells of the logical view, on every key', async () => {
     const fixture = await setupView(NameViewMode.logical);
@@ -2194,6 +2246,22 @@ describe('the table group name editor', () => {
     expect(groupInputOf(fixture.mounted)).toBeNull();
   });
 
+  it('hands the keyboard back once Enter writes the name', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture);
+    const input = groupInputOf(fixture.mounted)!;
+    input.value = 'Billing';
+
+    const asked = await focusAsksDuring(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      await flush();
+    });
+
+    expect(nameOf(fixture)).toBe('Billing');
+    expect(groupInputOf(fixture.mounted)).toBeNull();
+    expect(asked).toBe(1);
+  });
+
   it('keeps what is typed when a peer renames the group under it', async () => {
     const fixture = await setup();
     await editGroupName(fixture, 'Billing');
@@ -2222,6 +2290,77 @@ describe('the table group name editor', () => {
     input.dispatchEvent(new FocusEvent('blur'));
     await flush();
     expect(nameOf(fixture)).toBe('Billing');
+    expect(fixture.app.store.state.editor.editTableGroupId).toBeNull();
+  });
+
+  it('writes the name typed on the blur once hiding the groups closed it, and hands the keyboard back', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture, 'Billing');
+    const input = groupInputOf(fixture.mounted)!;
+    input.value = 'Invoices';
+    const batches: string[][] = [];
+    teardowns.push(
+      fixture.app.store.subscribe(actions => {
+        batches.push(actions.map(({ type }) => type));
+      })
+    );
+
+    const asked = await focusAsksDuring(async () => {
+      fixture.app.store.dispatchSync(
+        changeShowAction({ show: Show.hideTableGroup, value: true })
+      );
+      await flush();
+      expect(groupInputOf(fixture.mounted)).toBeNull();
+      input.dispatchEvent(new FocusEvent('blur'));
+      await flush();
+    });
+
+    expect(nameOf(fixture)).toBe('Invoices');
+    expect(batches).toContainEqual(['tableGroup.changeName']);
+    expect(fixture.app.store.state.editor.editTableGroupId).toBeNull();
+    expect(asked).toBe(1);
+  });
+
+  it('writes nothing once hiding the groups closed it over the name it opened with', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture, 'Billing');
+    const input = groupInputOf(fixture.mounted)!;
+    fixture.app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+    await flush();
+    const batches: string[][] = [];
+    teardowns.push(
+      fixture.app.store.subscribe(actions => {
+        batches.push(actions.map(({ type }) => type));
+      })
+    );
+
+    input.dispatchEvent(new FocusEvent('blur'));
+    await flush();
+
+    expect(nameOf(fixture)).toBe('Billing');
+    expect(batches).toEqual([]);
+  });
+
+  it('writes the name typed on the blur once a replacing load of a value that hides the groups closed it', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture, 'Billing');
+    const input = groupInputOf(fixture.mounted)!;
+    input.value = 'Invoices';
+    const value = JSON.parse(toJson(fixture.app.store.state));
+    value.settings.show |= Show.hideTableGroup;
+
+    fixture.app.store.dispatchSync(
+      clearAction(),
+      loadJsonAction({ value: JSON.stringify(value) })
+    );
+    await flush();
+    expect(groupInputOf(fixture.mounted)).toBeNull();
+    input.dispatchEvent(new FocusEvent('blur'));
+    await flush();
+
+    expect(nameOf(fixture)).toBe('Invoices');
     expect(fixture.app.store.state.editor.editTableGroupId).toBeNull();
   });
 

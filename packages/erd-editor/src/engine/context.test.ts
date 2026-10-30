@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vite-plus/test';
+import { describe, expect, expectTypeOf, it } from 'vite-plus/test';
 
 import { Clock } from '@/engine/clock';
-import { createEngineContext } from '@/engine/context';
+import {
+  createEngineContext,
+  type EngineContext,
+  type InjectEngineContext,
+} from '@/engine/context';
+import { createReplicationStore } from '@/engine/replication-store';
 
 describe('createEngineContext', () => {
   it('keeps the injected members and adds a fresh clock', () => {
@@ -48,5 +53,32 @@ describe('createEngineContext', () => {
 
     expect(ctx.clock).not.toBe(smuggled);
     expect(ctx.clock.getVersion()).toBe(0);
+  });
+
+  it('drops a remote flag smuggled in through the injected context', () => {
+    const ctx = createEngineContext({
+      toWidth: (text: string) => text.length,
+      remote: true,
+    } as any);
+
+    expect(ctx).not.toHaveProperty('remote');
+  });
+
+  it('takes no remote flag, which a replica sets on its own context alone', () => {
+    expectTypeOf<keyof EngineContext>().toEqualTypeOf<
+      'toWidth' | 'routes' | 'clock'
+    >();
+    expectTypeOf<keyof InjectEngineContext>().toEqualTypeOf<
+      'toWidth' | 'routes'
+    >();
+    expectTypeOf(createEngineContext)
+      .parameter(0)
+      .toEqualTypeOf<InjectEngineContext>();
+    expectTypeOf(createReplicationStore)
+      .parameter(0)
+      .toEqualTypeOf<InjectEngineContext>();
+    expect(
+      createEngineContext({ toWidth: text => text.length })
+    ).not.toHaveProperty('remote');
   });
 });

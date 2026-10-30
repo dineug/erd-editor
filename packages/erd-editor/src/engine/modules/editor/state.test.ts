@@ -102,6 +102,7 @@ describe('editor/state', () => {
         height: DEFAULT_HEIGHT,
       });
       expect(editor.scrollPullPending).toBe(false);
+      expect(editor.originShown).toBe(false);
       expect(editor.focusTable).toBeNull();
       expect(editor.editMemoId).toBeNull();
       expect(editor.memoScrollTopMap).toEqual({});

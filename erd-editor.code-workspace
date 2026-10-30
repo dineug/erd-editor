@@ -81,6 +81,10 @@
       "path": "packages/mcp-server",
     },
     {
+      "name": "erd-editor-yjs",
+      "path": "packages/erd-editor-yjs",
+    },
+    {
       "name": "monorepo",
       "path": ".",
     },

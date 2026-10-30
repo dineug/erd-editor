@@ -2,6 +2,12 @@ import { query } from '@dineug/erd-editor-schema';
 import { createAction } from '@dineug/r-html';
 import { round } from 'es-toolkit/compat';
 
+import {
+  isOwnStep,
+  POSITION_REGISTER,
+  SIZE_REGISTER,
+} from '@/engine/geometryRegisters';
+import { Memo } from '@/internal-types';
 import { arrayHas } from '@/utils/arrayHas';
 import { createMemo } from '@/utils/collection/memo.entity';
 
@@ -32,18 +38,30 @@ export const moveMemoAction = createAction<
 >(ActionType.moveMemo);
 
 const moveMemo: ReducerType<typeof ActionType.moveMemo> = (
-  { collections },
-  { payload: { ids, movementX, movementY } }
+  { collections, lww },
+  { payload: { ids, movementX, movementY }, version, tags },
+  context
 ) => {
   const collection = query(collections).collection('memoEntities');
   for (const id of ids) {
     collection.getOrCreate(id, id => createMemo({ id }));
   }
 
-  collection.updateMany(ids, memo => {
+  const step = (memo: Memo) => {
     memo.ui.x = round(memo.ui.x + movementX, 4);
     memo.ui.y = round(memo.ui.y + movementY, 4);
-  });
+  };
+  if (!isOwnStep(context, tags)) {
+    collection.updateMany(ids, step);
+    return;
+  }
+
+  const safeVersion = version ?? context.clock.getVersion();
+  for (const id of ids) {
+    collection.replaceOperator(lww, safeVersion, id, POSITION_REGISTER, () => {
+      collection.updateOne(id, step);
+    });
+  }
 };
 
 export const moveToMemoAction = createAction<
@@ -51,15 +69,19 @@ export const moveToMemoAction = createAction<
 >(ActionType.moveToMemo);
 
 const moveToMemo: ReducerType<typeof ActionType.moveToMemo> = (
-  { collections },
-  { payload: { id, x, y } }
+  { collections, lww },
+  { payload: { id, x, y }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('memoEntities');
   collection.getOrCreate(id, id => createMemo({ id }));
 
-  collection.updateOne(id, memo => {
-    memo.ui.x = x;
-    memo.ui.y = y;
+  collection.replaceOperator(lww, safeVersion, id, POSITION_REGISTER, () => {
+    collection.updateOne(id, memo => {
+      memo.ui.x = x;
+      memo.ui.y = y;
+    });
   });
 };
 
@@ -127,19 +149,29 @@ export const resizeMemoAction = createAction<
   ActionMap[typeof ActionType.resizeMemo]
 >(ActionType.resizeMemo);
 
+/** Writes both registers, its rect's corner and its size, each at its version. */
 const resizeMemo: ReducerType<typeof ActionType.resizeMemo> = (
-  { collections },
-  { payload: { id, x, y, width, height } }
+  { collections, lww },
+  { payload: { id, x, y, width, height }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('memoEntities');
   collection.getOrCreate(id, id => createMemo({ id }));
 
-  collection.updateOne(id, memo => {
-    memo.ui.x = x;
-    memo.ui.y = y;
-    memo.ui.width = width;
-    memo.ui.height = height;
-  });
+  collection
+    .replaceOperator(lww, safeVersion, id, POSITION_REGISTER, () => {
+      collection.updateOne(id, memo => {
+        memo.ui.x = x;
+        memo.ui.y = y;
+      });
+    })
+    .replaceOperator(lww, safeVersion, id, SIZE_REGISTER, () => {
+      collection.updateOne(id, memo => {
+        memo.ui.width = width;
+        memo.ui.height = height;
+      });
+    });
 };
 
 export const changeZIndexAction = createAction<

@@ -1,8 +1,13 @@
-import type { AnyAction } from '@dineug/r-html';
+import type { AnyAction, CompositionActions } from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
 
+import { createLegacyPeer } from '@/__test-utils__/legacyPeer';
 import { createSeedValue } from '@/__test-utils__/peerSeed';
-import { createPeerStore, type PeerStore } from '@/engine/peer-store';
+import {
+  createPeerStore,
+  type DispatchReport,
+  type PeerStore,
+} from '@/engine/peer-store';
 import {
   createReplicationStore,
   type ReplicationStore,
@@ -16,19 +21,57 @@ export type MeshPeerOptions = {
    * reducer for.
    */
   unknownTypes?: ReadonlyArray<string>;
+  /**
+   * Opens a peer of an editor built before the slot in place of a peer store:
+   * its clock and its outbound pipe, over this tree's reducers (createLegacyPeer).
+   */
+  legacy?: true;
+};
+
+/** What the mesh and its specs drive a peer through, a peer store or a legacy peer. */
+export type MeshPeer = Pick<
+  PeerStore,
+  | 'editorId'
+  | 'value'
+  | 'runtimeValue'
+  | 'state'
+  | 'setInitialValue'
+  | 'mergeClock'
+  | 'receive'
+  | 'undo'
+  | 'subscribe'
+  | 'destroy'
+> & {
+  dispatch: (actions: CompositionActions) => DispatchReport;
+};
+
+/** How deliver hands a peer its batches, each as a transport might. */
+export type DeliverOptions = {
+  /** Hands each batch over twice in a row, as a transport that sends one again does. */
+  duplicate?: true;
+  /**
+   * Interleaves the senders' batches in an order the seed picks, each sender's
+   * own still in the order it sent them, as one channel per sender keeps them.
+   */
+  shuffle?: number;
 };
 
 export type Mesh = {
-  peers: PeerStore[];
+  peers: MeshPeer[];
   /** Every batch each peer sent, presence off, copied as it left. */
   sent: AnyAction[][][];
   /** Each peer's replica by index, none unless the mesh was built with them. */
   replicas: ReplicationStore[];
   /**
    * Hands the peer every batch the senders sent since it last heard from them,
-   * sender after sender in the order given, the hooks run after each batch.
+   * sender after sender in the order given unless shuffled, the hooks run after
+   * each batch.
    */
-  deliver: (to: number, from?: number[]) => Promise<void>;
+  deliver: (
+    to: number,
+    from?: number[],
+    options?: DeliverOptions
+  ) => Promise<void>;
   /** Delivers until every peer has heard every batch, peer by peer in order. */
   deliverAll: () => Promise<void>;
   /** Opens one more peer on the value, as one that joins the session later. */
@@ -49,6 +92,18 @@ export type MeshOptions = {
   replicas?: boolean;
 };
 
+/** A seeded generator of numbers from 0 up to 1, so an order a spec shuffles is the same on every run. */
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /**
  * Peer stores on one value whose batches wait for the spec to deliver them, so
  * concurrent edits are made before anyone has heard the others and each peer
@@ -63,7 +118,7 @@ export function createMesh(
     replicas: withReplicas = false,
   }: MeshOptions
 ): Mesh {
-  const peers: PeerStore[] = [];
+  const peers: MeshPeer[] = [];
   const sent: AnyAction[][][] = [];
   const replicas: ReplicationStore[] = [];
   const unknown: Array<ReadonlySet<string>> = [];
@@ -73,10 +128,10 @@ export function createMesh(
 
   const join = (initialValue: string, peerOptions: MeshPeerOptions = {}) => {
     const index = peers.length;
-    const peer = createPeerStore({
-      nickname: `peer${index}`,
-      presence: false,
-    });
+    const nickname = `peer${index}`;
+    const peer = peerOptions.legacy
+      ? createLegacyPeer({ nickname })
+      : createPeerStore({ nickname, presence: false });
     peer.setInitialValue(initialValue);
     if (withReplicas) {
       const replica = createReplicationStore({ toWidth: defaultToWidth });
@@ -113,17 +168,54 @@ export function createMesh(
     }
   };
 
+  /** The senders of the pending batches, one entry per batch, in an order the seed picks. */
+  const shuffledTurns = (to: number, from: number[], seed: number) => {
+    const turns = from.flatMap(sender =>
+      sender === to
+        ? []
+        : Array.from(
+            { length: sent[sender].length - heard[to][sender] },
+            () => sender
+          )
+    );
+    const random = seededRandom(seed);
+    for (let index = turns.length - 1; index > 0; index--) {
+      const other = Math.floor(random() * (index + 1));
+      [turns[index], turns[other]] = [turns[other], turns[index]];
+    }
+    return turns;
+  };
+
   const deliver = async (
     to: number,
-    from: number[] = peers.map((_, index) => index)
+    from: number[] = peers.map((_, index) => index),
+    { duplicate, shuffle }: DeliverOptions = {}
   ) => {
-    for (const sender of from) {
-      if (sender === to) continue;
-
-      while (heard[to][sender] < sent[sender].length) {
-        receive(to, sent[sender][heard[to][sender]++]);
+    const handOver = async (sender: number) => {
+      const batch = sent[sender][heard[to][sender]++];
+      receive(to, batch);
+      await settle();
+      if (duplicate) {
+        receive(to, batch);
         await settle();
       }
+    };
+
+    if (shuffle === undefined) {
+      for (const sender of from) {
+        if (sender === to) continue;
+
+        while (heard[to][sender] < sent[sender].length) {
+          await handOver(sender);
+        }
+      }
+      return;
+    }
+
+    let turns = shuffledTurns(to, from, shuffle);
+    while (turns.length) {
+      for (const sender of turns) await handOver(sender);
+      turns = shuffledTurns(to, from, shuffle);
     }
   };
 

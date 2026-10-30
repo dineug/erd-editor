@@ -96,6 +96,44 @@ describe('peer store remote trackers', () => {
     ]);
   });
 
+  it('forgets one editor’s cursor, focus, selection and marquee with their timers, and no other editor’s', async () => {
+    const peer = await livePeer();
+    peer.receive(remoteBatch('vscode-user'));
+    peer.receive(remoteBatch('intellij-user'));
+    const gone = trackerTimers(peer, 'vscode-user');
+    const kept = trackerTimers(peer, 'intellij-user');
+    const clear = vi.spyOn(globalThis, 'clearTimeout');
+    const baseline = vi.getTimerCount();
+
+    peer.forgetPeer('vscode-user');
+
+    expect(trackerMaps(peer).map(trackers => Object.keys(trackers))).toEqual([
+      ['intellij-user'],
+      ['intellij-user'],
+      ['intellij-user'],
+      ['intellij-user'],
+    ]);
+    for (const timer of gone) {
+      expect(clear).toHaveBeenCalledWith(timer);
+    }
+    for (const timer of kept) {
+      expect(clear).not.toHaveBeenCalledWith(timer);
+    }
+    expect(vi.getTimerCount()).toBe(baseline - 4);
+    expect(trackerTimers(peer, 'intellij-user')).toEqual(kept);
+  });
+
+  it('forgets nothing for an editor it holds no tracker of', async () => {
+    const peer = await livePeer();
+    peer.receive(remoteBatch('intellij-user'));
+    const baseline = vi.getTimerCount();
+
+    peer.forgetPeer('vscode-user');
+
+    expect(trackerTimers(peer, 'intellij-user')).not.toContain(undefined);
+    expect(vi.getTimerCount()).toBe(baseline);
+  });
+
   it('sets no timer for a batch that arrives after destroy, and a second destroy is harmless', async () => {
     const peer = await livePeer();
     peer.destroy();

@@ -34,6 +34,8 @@ export type ColumnLogicalNameProps = {
   onInput?: (event: InputEvent) => void;
   onBlur?: (event: FocusEvent) => void;
   onEditEnd?: () => void;
+  /** Whether the input's blur hands the keyboard back to the editor root (EditInput). */
+  handsFocusBack?: () => boolean;
 };
 
 /** The logical name a table or column the document still lists holds, null once it is gone. */
@@ -68,6 +70,10 @@ const ColumnLogicalName: FC<ColumnLogicalNameProps> = (props, ctx) => {
   const state = observable({ rows: [] as Term[], index: -1 });
   const list = useHintList(props, state);
   const opened = props.value;
+  const openedOver = app.value.store.state.doc;
+  // What the reader's last key wrote, which a peer's write or a load may since
+  // have replaced; null until a key writes one.
+  let typed: string | null = null;
 
   const setRows = (value: string) => {
     const { store } = app.value;
@@ -92,7 +98,10 @@ const ColumnLogicalName: FC<ColumnLogicalNameProps> = (props, ctx) => {
 
   const handleInput = (event: InputEvent) => {
     const input = event.target as HTMLInputElement | null;
-    input && setRows(input.value);
+    if (input) {
+      typed = input.value;
+      setRows(input.value);
+    }
     props.onInput?.(event);
   };
 
@@ -125,9 +134,9 @@ const ColumnLogicalName: FC<ColumnLogicalNameProps> = (props, ctx) => {
   };
 
   /**
-   * Derives the name from the logical name once as the editor closes on one
-   * other than it opened with, whatever closed it. A term picked derived it
-   * already, so this finds every value held and sends nothing.
+   * Derives the name once as the editor closes on a logical name other than it
+   * opened with: the one the reader typed, whatever loaded since, or any held
+   * while no load replaced the document, since a load's is no edit of theirs.
    */
   onUnmounted(() => {
     const { store, lifecycle } = app.value;
@@ -136,6 +145,7 @@ const ColumnLogicalName: FC<ColumnLogicalNameProps> = (props, ctx) => {
     const { tableId, columnId } = props;
     const held = heldLogicalName(store.state, tableId, columnId);
     if (held === null || held === opened) return;
+    if (held !== typed && store.state.doc !== openedOver) return;
 
     store.dispatch(
       columnId === null
@@ -168,6 +178,7 @@ const ColumnLogicalName: FC<ColumnLogicalNameProps> = (props, ctx) => {
           autofocus={true}
           onInput={handleInput}
           onKeydown={handleKeydown}
+          handsFocusBack={props.handsFocusBack}
         />
         {state.rows.length ? (
           <div

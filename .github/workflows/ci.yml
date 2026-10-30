@@ -123,6 +123,29 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  # The dev page loads erd-editor's dist/, the compactor that and this
+  # package's, and the e2e typecheck reads erd-editor's .d.ts, so the build
+  # comes first. Its relay and dev page take 5182 and 5181, which no other
+  # suite here binds.
+  yjs-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-workspace
+      - name: Install Playwright browsers
+        run: pnpm --filter @dineug/erd-editor-yjs exec playwright install --with-deps chromium
+      - run: pnpm exec vp run --fail-if-no-match --filter @dineug/erd-editor-yjs build
+      - run: pnpm --filter @dineug/erd-editor-yjs e2e:typecheck
+      - run: pnpm --filter @dineug/erd-editor-yjs e2e
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: yjs-playwright-report
+          path: packages/erd-editor-yjs/e2e/.report
+          # Dot-prefixed, so the action would skip the whole report without this.
+          include-hidden-files: true
+          retention-days: 7
+
   # Its own runner, since its local relay takes the port r-html's suite also
   # binds. The e2e script builds erd-editor first, which the dev server resolves
   # to its dist/; the check job already typechecks these specs.

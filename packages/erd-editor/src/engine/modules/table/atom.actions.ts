@@ -7,6 +7,7 @@ import {
   TABLE_SORT_MARGIN,
   TABLE_SORT_START,
 } from '@/constants/layout';
+import { isOwnStep, POSITION_REGISTER } from '@/engine/geometryRegisters';
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
 import { type Rect, unionRect } from '@/konva/scene/metrics';
@@ -42,19 +43,36 @@ export const moveTableAction = createAction<
   ActionMap[typeof ActionType.moveTable]
 >(ActionType.moveTable);
 
+/**
+ * A step of a drag. The store's own adds through each table's position
+ * register at its version, so the absolute move it sends next stands on every
+ * peer at that version; a peer's step or a replica's adds outside it.
+ */
 const moveTable: ReducerType<typeof ActionType.moveTable> = (
-  { collections },
-  { payload: { ids, movementX, movementY } }
+  { collections, lww },
+  { payload: { ids, movementX, movementY }, version, tags },
+  context
 ) => {
   const collection = query(collections).collection('tableEntities');
   for (const id of ids) {
     collection.getOrCreate(id, id => createTable({ id }));
   }
 
-  collection.updateMany(ids, table => {
+  const step = (table: Table) => {
     table.ui.x = round(table.ui.x + movementX, 4);
     table.ui.y = round(table.ui.y + movementY, 4);
-  });
+  };
+  if (!isOwnStep(context, tags)) {
+    collection.updateMany(ids, step);
+    return;
+  }
+
+  const safeVersion = version ?? context.clock.getVersion();
+  for (const id of ids) {
+    collection.replaceOperator(lww, safeVersion, id, POSITION_REGISTER, () => {
+      collection.updateOne(id, step);
+    });
+  }
 };
 
 export const moveToTableAction = createAction<
@@ -62,15 +80,19 @@ export const moveToTableAction = createAction<
 >(ActionType.moveToTable);
 
 const moveToTable: ReducerType<typeof ActionType.moveToTable> = (
-  { collections },
-  { payload: { id, x, y } }
+  { collections, lww },
+  { payload: { id, x, y }, version },
+  { clock }
 ) => {
+  const safeVersion = version ?? clock.getVersion();
   const collection = query(collections).collection('tableEntities');
   collection.getOrCreate(id, id => createTable({ id }));
 
-  collection.updateOne(id, table => {
-    table.ui.x = x;
-    table.ui.y = y;
+  collection.replaceOperator(lww, safeVersion, id, POSITION_REGISTER, () => {
+    collection.updateOne(id, table => {
+      table.ui.x = x;
+      table.ui.y = y;
+    });
   });
 };
 

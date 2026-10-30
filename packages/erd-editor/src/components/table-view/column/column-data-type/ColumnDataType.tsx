@@ -33,6 +33,8 @@ export type ColumnDataTypeProps = {
   onInput?: (event: InputEvent) => void;
   onBlur?: (event: FocusEvent) => void;
   onEditEnd?: () => void;
+  /** Whether the input's blur hands the keyboard back to the editor root (EditInput). */
+  handsFocusBack?: () => boolean;
 };
 
 const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
@@ -184,6 +186,7 @@ const ColumnDataType: FC<ColumnDataTypeProps> = (props, ctx) => {
         autofocus={true}
         onInput={handleInput}
         onKeydown={handleKeydown}
+        handsFocusBack={props.handsFocusBack}
       />
       {props.edit ? (
         <div

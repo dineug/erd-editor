@@ -656,6 +656,38 @@ describe('editor.loadJson / initialLoadJson', () => {
     store.dispatchSync(changeViewportAction(VIEWPORT));
     expect(store.state.settings.originX).toBe(40_000);
   });
+
+  it('counts the origin shown once a measured screen held it, through a hide and a clear, until a load finds no screen', () => {
+    const shown = () => store.state.editor.originShown;
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    expect(shown()).toBe(false);
+
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    expect(shown()).toBe(true);
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    store.dispatchSync(clearAction());
+    expect(shown()).toBe(true);
+
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 40_000, 0, [['t1', 0, 0]]) })
+    );
+    expect(shown()).toBe(false);
+    store.dispatchSync(clearAction());
+    expect(shown()).toBe(false);
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    expect(shown()).toBe(true);
+
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 40_000, 0, [['t1', 0, 0]]) })
+    );
+    store.dispatchSync({
+      ...scrollToAction({ originX: 40_000, originY: 0 }),
+      tags: Tag.screen,
+    });
+    expect(shown()).toBe(true);
+    expect(store.state.editor.scrollPullPending).toBe(false);
+  });
 });
 
 describe('editor.clear / initialClear', () => {
@@ -681,6 +713,26 @@ describe('editor.clear / initialClear', () => {
     expect(store.state.settings.databaseName).toBe('keep-me');
   });
 
+  it('ends a relationship draw on clear and leaves the memo and group name editors open', () => {
+    addTable(store, 't1');
+    addMemo(store, 'm1');
+    addTableGroup(store, 'g1');
+    store.dispatchSync(
+      editMemoAction({ id: 'm1' }),
+      editTableGroupAction({ id: 'g1' }),
+      drawStartRelationshipAction({ relationshipType: 8 }),
+      drawStartAddRelationshipAction({ tableId: 't1' })
+    );
+    expect(store.state.editor.drawRelationship?.start?.tableId).toBe('t1');
+
+    store.dispatchSync(clearAction());
+
+    const { editor } = store.state;
+    expect(editor.drawRelationship).toBeNull();
+    expect(editor.editMemoId).toBe('m1');
+    expect(editor.editTableGroupId).toBe('g1');
+  });
+
   it('resets doc and collections on initialClear', () => {
     seedTableWithColumns(store);
 
@@ -688,6 +740,30 @@ describe('editor.clear / initialClear', () => {
 
     expect(store.state.doc.tableIds).toEqual([]);
     expect(store.state.collections.tableEntities).toEqual({});
+  });
+
+  it('ends a relationship draw and closes the memo, group name and cell editors on initialClear', () => {
+    addTable(store, 't1');
+    addMemo(store, 'm1');
+    addTableGroup(store, 'g1');
+    store.dispatchSync(
+      focusTableAction({ tableId: 't1' }),
+      editTableAction(),
+      editMemoAction({ id: 'm1' }),
+      editTableGroupAction({ id: 'g1' }),
+      drawStartRelationshipAction({ relationshipType: 8 }),
+      drawStartAddRelationshipAction({ tableId: 't1' })
+    );
+    expect(store.state.editor.focusTable?.edit).toBe(true);
+    expect(store.state.editor.drawRelationship?.start?.tableId).toBe('t1');
+
+    store.dispatchSync(initialClearAction());
+
+    const { editor } = store.state;
+    expect(editor.drawRelationship).toBeNull();
+    expect(editor.editMemoId).toBeNull();
+    expect(editor.editTableGroupId).toBeNull();
+    expect(isEditingText(editor)).toBe(false);
   });
 });
 

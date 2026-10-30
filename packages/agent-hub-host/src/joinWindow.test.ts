@@ -24,7 +24,8 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-// The action, filter and drain tables are vectors of __fixtures__/conformance.json;
+// The action, filter and drain tables are vectors of __fixtures__/conformance.json,
+// the versions past 2^31 an editor's slot makes among them, which both hubs run;
 // NaN, which JSON cannot hold, stays here.
 describe('action fields', () => {
   it('reads NaN as no version', () => {

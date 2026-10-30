@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// One port above every other Playwright config here, so the bench can run
-// beside any of them; E2E_PORT moves it.
+// A port no other Playwright config here uses, so the bench can run beside
+// any of them; E2E_PORT moves it.
 const PORT = Number(process.env.E2E_PORT ?? 5179);
 const TIMEOUT_MS = Number(process.env.E2E_BENCH_TIMEOUT) || 180_000;
 // Vite's dev server binds to localhost only; 127.0.0.1 is refused.

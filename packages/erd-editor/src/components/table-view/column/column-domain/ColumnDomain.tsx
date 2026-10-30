@@ -24,6 +24,8 @@ export type ColumnDomainProps = {
   placeholder: string;
   onBlur?: (event: FocusEvent) => void;
   onEditEnd?: () => void;
+  /** Whether the input's blur hands the keyboard back to the editor root (EditInput). */
+  handsFocusBack?: () => boolean;
 };
 
 /**
@@ -118,6 +120,7 @@ const ColumnDomain: FC<ColumnDomainProps> = (props, ctx) => {
           autofocus={true}
           onInput={handleInput}
           onKeydown={handleKeydown}
+          handsFocusBack={props.handsFocusBack}
         />
         {state.rows.length ? (
           <div

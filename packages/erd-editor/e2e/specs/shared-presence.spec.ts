@@ -172,6 +172,8 @@ const localCursor = (page: Page): Promise<DrawnCursor | null> =>
 
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 
+const pointOf = ({ x, y }: Point): Point => ({ x, y });
+
 test.describe('shared presence', () => {
   test('a peer focus outlines the table and underlines the cell', async ({
     erd,
@@ -429,6 +431,43 @@ test.describe('shared presence', () => {
           : Infinity;
       })
       .toBeLessThan(0.1);
+  });
+});
+
+/** Where the peer holds a table, read off its runtime value. */
+const peerTablePoint = (page: Page, id: string) =>
+  page.evaluate(id => {
+    const { ui } = JSON.parse(
+      document.querySelector<any>('#peer erd-editor').runtimeValue
+    ).collections.tableEntities[id];
+    return { x: ui.x, y: ui.y };
+  }, id);
+
+test.describe('shared geometry', () => {
+  test('a table dragged here stands at the same point on the peer, and again once the drag is undone', async ({
+    erd,
+    page,
+  }) => {
+    await erd.seed(twoTables());
+    // The header is read before the peer mounts, whose stage would answer the
+    // scene lookup from then on.
+    const from = await erd.tableHeaderPoint('users');
+    const before = pointOf((await erd.table('users')).ui);
+    await attachPeer(page);
+
+    await erd.drag(from, { x: from.x + 140, y: from.y + 70 });
+    const moved = pointOf((await erd.table('users')).ui);
+    expect(moved).not.toEqual(before);
+    await expect.poll(() => peerTablePoint(page, 'users')).toEqual(moved);
+
+    // The page object's Undo would name both editors' toolbars.
+    const undo = page.locator(LOCAL).locator('.toolbar [title^="Undo"]');
+    await expect(undo).toHaveClass(/\bactive\b/);
+    await undo.click();
+    await expect
+      .poll(async () => pointOf((await erd.table('users')).ui))
+      .toEqual(before);
+    await expect.poll(() => peerTablePoint(page, 'users')).toEqual(before);
   });
 });
 

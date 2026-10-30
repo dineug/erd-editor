@@ -1,4 +1,5 @@
 import { AnyAction } from '@dineug/r-html';
+import { pick } from 'es-toolkit';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import {
@@ -7,6 +8,8 @@ import {
   TABLE_SORT_MARGIN,
 } from '@/constants/layout';
 import { Clock } from '@/engine/clock';
+import type { ReplicaEngineContext } from '@/engine/context';
+import { POSITION_REGISTER } from '@/engine/geometryRegisters';
 import {
   addTableAction,
   changeTableColorAction,
@@ -23,6 +26,7 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createStore, Store } from '@/engine/store';
+import { Tag } from '@/engine/tag';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 
 const P = TABLE_GROUP_PADDING;
@@ -145,7 +149,12 @@ describe('table/atom.actions moveTable', () => {
     expect(table('ghost').ui.x).toBe(210);
     expect(table('ghost').ui.y).toBe(120);
     expect(store.state.doc.tableIds).toEqual([]);
-    expect(store.state.lww.ghost).toBeUndefined();
+    expect(store.state.lww.ghost).toEqual([
+      'tableEntities',
+      -1,
+      -1,
+      { [POSITION_REGISTER]: 0 },
+    ]);
   });
 
   it('accumulates repeated movements', () => {
@@ -188,6 +197,101 @@ describe('table/atom.actions moveToTable', () => {
 
     expect(table('ghost').ui).toMatchObject({ x: 1, y: 2 });
     expect(store.state.doc.tableIds).toEqual([]);
+  });
+});
+
+describe('table/atom.actions position register', () => {
+  const position = () => pick(table(TABLE_A).ui, ['x', 'y']);
+  const register = () => store.state.lww[TABLE_A]?.[3][POSITION_REGISTER];
+  const shared = (action: AnyAction, version: number): AnyAction => ({
+    ...versioned(action, version),
+    tags: Tag.shared,
+  });
+
+  beforeEach(() => addTable(TABLE_A, 1));
+
+  it('lands the same absolute move twice as once (AC-M1)', () => {
+    const moveTo = versioned(
+      moveToTableAction({ id: TABLE_A, x: 40, y: 60 }),
+      5
+    );
+
+    store.dispatchSync(moveTo);
+    store.dispatchSync(moveTo);
+
+    expect(position()).toEqual({ x: 40, y: 60 });
+    expect(register()).toBe(5);
+  });
+
+  it('ignores an absolute move older than the register', () => {
+    store.dispatchSync(
+      versioned(moveToTableAction({ id: TABLE_A, x: 40, y: 60 }), 5)
+    );
+    store.dispatchSync(
+      versioned(moveToTableAction({ id: TABLE_A, x: -1, y: -1 }), 3)
+    );
+
+    expect(position()).toEqual({ x: 40, y: 60 });
+    expect(register()).toBe(5);
+  });
+
+  it('raises the register with the store’s own step, so an older absolute move is refused after it', () => {
+    store.dispatchSync(
+      versioned(
+        moveTableAction({ ids: [TABLE_A], movementX: 30, movementY: 0 }),
+        7
+      )
+    );
+    store.dispatchSync(
+      versioned(moveToTableAction({ id: TABLE_A, x: 0, y: 0 }), 6)
+    );
+
+    expect(position()).toEqual({ x: 230, y: 100 });
+    expect(register()).toBe(7);
+  });
+
+  it('adds a peer’s step outside the register, whatever its version (AC-M3)', () => {
+    store.dispatchSync(
+      versioned(moveToTableAction({ id: TABLE_A, x: 40, y: 60 }), 5)
+    );
+    store.dispatchSync(
+      shared(
+        moveTableAction({ ids: [TABLE_A], movementX: 10, movementY: 0 }),
+        9
+      )
+    );
+    store.dispatchSync(
+      shared(
+        moveTableAction({ ids: [TABLE_A], movementX: 0, movementY: 10 }),
+        2
+      )
+    );
+
+    expect(position()).toEqual({ x: 50, y: 70 });
+    expect(register()).toBe(5);
+  });
+
+  it('adds every step a replica’s context takes outside the register', () => {
+    const replicaContext: ReplicaEngineContext = {
+      toWidth: text => text.length * 10,
+      clock,
+      remote: true,
+    };
+    store = createStore(replicaContext);
+    addTable(TABLE_A, 1);
+
+    store.dispatchSync(
+      versioned(
+        moveTableAction({ ids: [TABLE_A], movementX: 10, movementY: 5 }),
+        9
+      )
+    );
+    store.dispatchSync(
+      versioned(moveToTableAction({ id: TABLE_A, x: 0, y: 0 }), 4)
+    );
+
+    expect(position()).toEqual({ x: 0, y: 0 });
+    expect(register()).toBe(4);
   });
 });
 

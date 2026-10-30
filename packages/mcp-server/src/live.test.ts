@@ -39,6 +39,9 @@ vi.mock('@/tools/batch', async importOriginal => {
   return { ...actual, runBatch: vi.fn(actual.runBatch) };
 });
 
+/** One step of the editor clock's counter, above the slot bits a version keeps. */
+const COUNTER_STEP = 2 ** 22;
+
 const DOCUMENT = '/work/live.erd.json';
 
 let io: MemoryHost;
@@ -107,7 +110,9 @@ describe('a live session beyond the transition table', () => {
       });
     }
     await settle();
-    expect(hub.documents.get(DOCUMENT)!.observedVersion).toBeGreaterThan(30);
+    expect(
+      Math.floor(hub.documents.get(DOCUMENT)!.observedVersion / COUNTER_STEP)
+    ).toBeGreaterThanOrEqual(30);
 
     await call('erd_change_table_name', {
       tableId: users.id,
@@ -334,11 +339,13 @@ describe('a live session beyond the transition table', () => {
       const { run } = await call('erd_add_table');
       const [tableId] = run.createdIds;
       await settle();
-      // A user's rename, stamped well above the clock this agent has seen, as a webview relays it.
+      // A user's rename, stamped twenty counters above the clock this agent has seen, as a webview relays it.
       // Its getLWW stays out: the webview would answer it, telling this agent the clock first.
       const user = createPeerStore({ nickname: 'user', presence: false });
       user.setInitialValue(hub.webview(DOCUMENT).value);
-      user.mergeClock(hub.documents.get(DOCUMENT)!.observedVersion + 20);
+      user.mergeClock(
+        hub.documents.get(DOCUMENT)!.observedVersion + 20 * COUNTER_STEP
+      );
       const actions: Array<{ type: string }> = [];
       user.subscribe(batch =>
         actions.push(...batch.filter(({ type }) => type === 'table.changeName'))

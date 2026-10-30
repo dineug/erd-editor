@@ -1,0 +1,80 @@
+{
+  "name": "@dineug/erd-editor-yjs",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Yjs binding for ERD Editor: the element and the headless peer store kept in step through a Y.Doc",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/dineug/erd-editor#readme",
+  "bugs": {
+    "url": "https://github.com/dineug/erd-editor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dineug/erd-editor.git",
+    "directory": "packages/erd-editor-yjs"
+  },
+  "license": "MIT",
+  "keywords": [
+    "erd",
+    "erd-editor",
+    "yjs",
+    "crdt",
+    "collaboration",
+    "database",
+    "diagram"
+  ],
+  "scripts": {
+    "dev": "vp dev",
+    "test:dev": "vp test dev",
+    "test:coverage": "vp test run --coverage",
+    "bench": "vp test bench --run --reporter=verbose --project 'unit (bench)'",
+    "e2e": "vp run --fail-if-no-match --filter @dineug/erd-editor-yjs build && playwright test -c e2e/playwright.config.ts",
+    "e2e:typecheck": "tsc -p e2e/tsconfig.json",
+    "e2e:dev": "playwright test -c e2e/playwright.config.ts --ui",
+    "e2e:report": "playwright show-report e2e/.report"
+  },
+  "peerDependencies": {
+    "@dineug/erd-editor": "workspace:^",
+    "y-protocols": "^1.0",
+    "yjs": "^13.6"
+  },
+  "devDependencies": {
+    "@dineug/erd-editor": "workspace:*",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript/typescript6": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "happy-dom": "catalog:",
+    "lib0": "^0.2.119",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:",
+    "ws": "catalog:",
+    "y-protocols": "^1.0.7",
+    "y-websocket": "^3.1.0",
+    "yjs": "^13.6.33"
+  }
+}

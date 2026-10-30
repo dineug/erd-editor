@@ -200,7 +200,7 @@ An attribute is on when present with no value or `"true"`.
 
 | Method | Description |
 | --- | --- |
-| `setInitialValue(value)` | Load a document with no undo entry; `''` starts a new one. |
+| `setInitialValue(value)` | Load a document with no undo entry, ending a relationship draw and closing a memo, group name or cell editor left open, where a logical name cell the reader typed in derives its name as any close does; `''` starts a new one. |
 | `getSchemaSQL(vendor?, options?)` | DDL for one of the eight databases, by default the one this editor shows (the document's, unless a readonly reader picked another), always in the bracket it shows. `options`: `statements` (`create`, `ifNotExists`, `recreate`), `header` (`none`, `use`, `createAndUse`), `logicalNameAsComment` (`true` writes a table's or column's logical name where its comment is empty). |
 | `setSchemaSQL(value, options?)`, `setSchemaGraphQL`, `setSchemaDBML`, `setSchemaAML` | Replace the document with parsed DDL, GraphQL SDL, DBML or AML, or append it ([Importing a schema](#importing-a-schema)). |
 | `setSchemaJSON(value, options?)` | Load an `.erd.json` document as `value` does, or append it. |
@@ -356,7 +356,22 @@ remote.subscribe(actions => local.dispatch(actions));
 An editor never forwards what it received, so with three or more, send each one's batches to every
 other. Call `flushStreamBuffers()` before destroying a store, or the last drags and resizes never
 reach the peers. `getSharedStore({ getNickname, mouseTracker, focusTracker })` also shares cursors
-and focus.
+and focus. To share a diagram through a Yjs document and any of its providers instead,
+[`@dineug/erd-editor-yjs`](https://github.com/dineug/erd-editor/tree/main/packages/erd-editor-yjs#readme)
+binds the element and the headless peer store to a `Y.Doc`.
+
+| Method | Description |
+| --- | --- |
+| `subscribe(fn)` | Take this editor's batches to send to the peers. The first subscriber also asks them for their registers. |
+| `dispatch(actions)`, `dispatchSync(actions)` | Apply a peer's batch, in a microtask or at once. |
+| `connection()`, `disconnect()` | Resume or hold sending; what this editor does meanwhile waits. |
+| `flushStreamBuffers()` | Send the drags, pans, resizes and color strokes still held back. |
+| `getLWW()` | A JSON copy of the editor's registers, to hand over beside `runtimeValue` as it is. |
+| `mergeLWW(lww, version)` | Take another store's registers and version, sending nothing. |
+| `getVersion()` | The highest version the editor's clock has merged. |
+| `forgetPeer(editorId)` | Drop the cursor, focus, selection and marquee a peer that left had sent. |
+| `reseed(value, { lww, version, keepScreen })` | Open a session's document again, as a rejoin does: no undo entry, no `change` event and nothing sent but the request for registers and, with `focusTracker`, the selection and focus it clears, save the name a logical name cell the reader typed in derives as it closes, as any close does. The undo history, the selection, the focus, an open Flow view and a relationship draw or an editor left open go. `keepScreen` keeps what the reader sees while `value` reports the document's: the scroll and zoom, the tab, the name view and the code settings while the document locked them before the reseed and still does at the locked value the reader last saw, and the settings a readonly reader changed on their own screen. An editor never shown, or not shown since its last load, opens where the value puts it. Drags and color strokes still held back go out after a reseed, so call `flushStreamBuffers()` first and reseed with a value that holds what it sent, and never reseed while `disconnect()` holds batches. |
+| `destroy()` | Release the store. |
 
 ## Key bindings
 
@@ -448,7 +463,8 @@ store.dispatch(actions);
 `changed` is false when `value` matches what the store last reported or loaded.
 
 `peer.js` runs a collaboration peer with no DOM: `createPeerStore({ nickname })` dispatches actions,
-receives a peer's batches and undoes its own. The
+receives a peer's batches and undoes its own. It has the shared store's `getLWW`, `mergeLWW`,
+`getVersion`, `forgetPeer` and `reseed` too, where `keepScreen` changes nothing. The
 [ERD Editor MCP server](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme)
 is built on it.
 

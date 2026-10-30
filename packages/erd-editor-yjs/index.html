@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>@dineug/erd-editor-yjs</title>
+  </head>
+  <!--
+    With no query, two editors share one room through a direct link the
+    toolbar cuts and restores. With ?room= and ?ws=, one editor joins that room
+    through a websocket server; ?e2e=1 hands the page to the Playwright suite.
+  -->
+  <body style="margin: 0; height: 100vh; display: flex; flex-direction: column">
+    <div
+      id="toolbar"
+      style="display: flex; gap: 12px; align-items: center; padding: 6px 12px; font: 13px system-ui, sans-serif"
+    ></div>
+    <div id="app" style="flex: 1; display: flex; min-height: 0"></div>
+    <script type="module" src="/src/index.dev.ts"></script>
+  </body>
+</html>

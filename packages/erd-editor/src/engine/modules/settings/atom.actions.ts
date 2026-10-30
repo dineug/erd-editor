@@ -16,6 +16,12 @@ import {
   NameViewMode,
   Show,
 } from '@/constants/schema';
+import type { EngineContext } from '@/engine/context';
+import {
+  isOwnStep,
+  VIEWPORT_REGISTER,
+  ViewportRegister,
+} from '@/engine/geometryRegisters';
 import { Viewport } from '@/engine/modules/editor/state';
 import { keepFocusShown } from '@/engine/modules/editor/utils/nameView';
 import {
@@ -46,7 +52,14 @@ import {
   zoomLevelInRange,
 } from '@/utils/validation';
 
-import { ActionMap, ActionType, ReducerType } from './actions';
+import {
+  ActionMap,
+  ActionType,
+  CodeSetting,
+  CodeSettingLocks,
+  CodeSettingPayload,
+  ReducerType,
+} from './actions';
 import {
   endScreenBaseline,
   isScreenWrite,
@@ -85,35 +98,103 @@ const changeDatabaseName: ReducerType<typeof ActionType.changeDatabaseName> = (
   );
 };
 
+/**
+ * Writes the origin or the zoom through its register, so the latest absolute
+ * write of each wins on every replica in any order. A screen turn writes the
+ * screen alone, outside the register.
+ */
+function replaceViewport(
+  state: RootState,
+  version: number,
+  path: ValuesType<typeof ViewportRegister>,
+  tags: number | undefined,
+  write: () => void
+): void {
+  if (isScreenWrite(tags)) return write();
+
+  replaceOperator(
+    state.lww,
+    version,
+    VIEWPORT_REGISTER,
+    'settings',
+    path,
+    write
+  );
+}
+
+/**
+ * A step of a pan or a zoom: the store's own adds through the register, and
+ * every other, each step a replica takes among them, outside it (isOwnStep).
+ */
+function stepViewport(
+  state: RootState,
+  context: EngineContext,
+  version: number | undefined,
+  path: ValuesType<typeof ViewportRegister>,
+  tags: number | undefined,
+  write: () => void
+): void {
+  if (!isOwnStep(context, tags)) return write();
+
+  replaceViewport(
+    state,
+    version ?? context.clock.getVersion(),
+    path,
+    tags,
+    write
+  );
+}
+
 export const changeZoomLevelAction = createAction<
   ActionMap[typeof ActionType.changeZoomLevel]
 >(ActionType.changeZoomLevel);
 
 const changeZoomLevel: ReducerType<typeof ActionType.changeZoomLevel> = (
   state,
-  { payload: { value }, tags }
-) => {
-  if (!isNil(tags) && bHas(tags, Tag.following)) {
-    return;
-  }
-
-  viewportWriteTarget(state, tags).zoomLevel = zoomLevelInRange(value);
-};
-
-export const streamZoomLevelAction = createAction<
-  ActionMap[typeof ActionType.streamZoomLevel]
->(ActionType.streamZoomLevel);
-
-const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
-  state,
-  { payload: { value }, tags }
+  { payload: { value }, version, tags },
+  { clock }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
   const target = viewportWriteTarget(state, tags);
-  target.zoomLevel = zoomLevelInRange(target.zoomLevel + value);
+  replaceViewport(
+    state,
+    version ?? clock.getVersion(),
+    ViewportRegister.zoomLevel,
+    tags,
+    () => {
+      target.zoomLevel = zoomLevelInRange(value);
+    }
+  );
+};
+
+export const streamZoomLevelAction = createAction<
+  ActionMap[typeof ActionType.streamZoomLevel]
+>(ActionType.streamZoomLevel);
+
+/** A step of a zoom, added to the zoom it finds, as streamScrollTo adds to the origin. */
+const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
+  state,
+  { payload: { value }, version, tags },
+  context
+) => {
+  if (!isNil(tags) && bHas(tags, Tag.following)) {
+    return;
+  }
+
+  const target = viewportWriteTarget(state, tags);
+  stepViewport(
+    state,
+    context,
+    version,
+    ViewportRegister.zoomLevel,
+    tags,
+    () => {
+      target.zoomLevel = zoomLevelInRange(target.zoomLevel + value);
+    }
+  );
 };
 
 export type ScrollRanges = {
@@ -255,15 +336,31 @@ export const scrollToAction = createAction<
  */
 const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
   state,
-  { payload: { originX, originY }, tags }
+  { payload: { originX, originY }, version, tags },
+  { clock }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
+  // A screen turn names where the screen stands, so a load's pull still waiting
+  // for the first measure gives way to it and the origin counts as shown, as a
+  // rejoin keeping the screen needs.
+  if (isScreenWrite(tags)) {
+    state.editor.scrollPullPending = false;
+    state.editor.originShown = true;
+  }
 
   const target = viewportWriteTarget(state, tags);
-  target.originX = round(originX, 4);
-  target.originY = round(originY, 4);
+  replaceViewport(
+    state,
+    version ?? clock.getVersion(),
+    ViewportRegister.origin,
+    tags,
+    () => {
+      target.originX = round(originX, 4);
+      target.originY = round(originY, 4);
+    }
+  );
 };
 
 export const streamScrollToAction = createAction<
@@ -277,15 +374,18 @@ export const streamScrollToAction = createAction<
  */
 const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
   state,
-  { payload: { movementX, movementY }, tags }
+  { payload: { movementX, movementY }, version, tags },
+  context
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
   const target = viewportWriteTarget(state, tags);
-  target.originX = round(target.originX + movementX, 4);
-  target.originY = round(target.originY + movementY, 4);
+  stepViewport(state, context, version, ViewportRegister.origin, tags, () => {
+    target.originX = round(target.originX + movementX, 4);
+    target.originY = round(target.originY + movementY, 4);
+  });
 };
 
 /**
@@ -377,12 +477,6 @@ const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
   if (value !== CanvasType.ERD) state.editor.drawTableGroup = false;
 };
 
-type CodeSetting =
-  | 'language'
-  | 'tableNameCase'
-  | 'columnNameCase'
-  | 'bracketType';
-
 /**
  * Writes a code setting through its register, so the latest setter or unlock
  * of it wins on every peer, whatever order they arrive in. A screen turn
@@ -411,18 +505,46 @@ function replaceCodeSetting(
   );
 }
 
+/**
+ * A code setter: through its register when shared or while its lock is off,
+ * and a readonly reader's screen turn as ever. Any other under the lock shows
+ * on the store that made it alone, outside the register; the rest drop it.
+ */
+function setCodeSetting(
+  state: RootState,
+  context: EngineContext,
+  field: CodeSetting,
+  { value, shared }: CodeSettingPayload,
+  version: number | undefined,
+  tags: number | undefined
+): void {
+  if (
+    shared === true ||
+    isScreenWrite(tags) ||
+    !isSettingLocked(state.settings.lockSettings, CodeSettingLocks[field])
+  ) {
+    const safeVersion = version ?? context.clock.getVersion();
+    replaceCodeSetting(state, safeVersion, field, value, tags);
+    return;
+  }
+  // A peer's, as an editor built before this rule still sends, and each one a
+  // replica takes, since it strips the tags and has no screen of its own.
+  if (!isOwnStep(context, tags)) return;
+
+  settingWriteTarget(state, tags, field)[field] = value;
+}
+
 export const changeLanguageAction = createAction<
   ActionMap[typeof ActionType.changeLanguage]
 >(ActionType.changeLanguage);
 
 const changeLanguage: ReducerType<typeof ActionType.changeLanguage> = (
   state,
-  { payload: { value }, version, tags },
-  { clock }
+  { payload, version, tags },
+  context
 ) => {
-  const safeVersion = version ?? clock.getVersion();
-  if (hasLanguage(value)) {
-    replaceCodeSetting(state, safeVersion, 'language', value, tags);
+  if (hasLanguage(payload.value)) {
+    setCodeSetting(state, context, 'language', payload, version, tags);
   }
 };
 
@@ -432,10 +554,9 @@ export const changeTableNameCaseAction = createAction<
 
 const changeTableNameCase: ReducerType<
   typeof ActionType.changeTableNameCase
-> = (state, { payload: { value }, version, tags }, { clock }) => {
-  const safeVersion = version ?? clock.getVersion();
-  if (hasNameCase(value)) {
-    replaceCodeSetting(state, safeVersion, 'tableNameCase', value, tags);
+> = (state, { payload, version, tags }, context) => {
+  if (hasNameCase(payload.value)) {
+    setCodeSetting(state, context, 'tableNameCase', payload, version, tags);
   }
 };
 
@@ -445,10 +566,9 @@ export const changeColumnNameCaseAction = createAction<
 
 const changeColumnNameCase: ReducerType<
   typeof ActionType.changeColumnNameCase
-> = (state, { payload: { value }, version, tags }, { clock }) => {
-  const safeVersion = version ?? clock.getVersion();
-  if (hasNameCase(value)) {
-    replaceCodeSetting(state, safeVersion, 'columnNameCase', value, tags);
+> = (state, { payload, version, tags }, context) => {
+  if (hasNameCase(payload.value)) {
+    setCodeSetting(state, context, 'columnNameCase', payload, version, tags);
   }
 };
 
@@ -458,12 +578,11 @@ export const changeBracketTypeAction = createAction<
 
 const changeBracketType: ReducerType<typeof ActionType.changeBracketType> = (
   state,
-  { payload: { value }, version, tags },
-  { clock }
+  { payload, version, tags },
+  context
 ) => {
-  const safeVersion = version ?? clock.getVersion();
-  if (hasBracketType(value)) {
-    replaceCodeSetting(state, safeVersion, 'bracketType', value, tags);
+  if (hasBracketType(payload.value)) {
+    setCodeSetting(state, context, 'bracketType', payload, version, tags);
   }
 };
 
@@ -530,14 +649,13 @@ const isLockedValue: Record<keyof LockedValues, (value: any) => boolean> = {
 };
 
 /**
- * The locks of the settings every peer shows one screen of, their setters
- * never following-tagged, so an unlock of one carries the unlocker's value.
+ * The code settings' locks: while one holds, each store shows its own value of
+ * the setting, so an unlock of one carries the unlocker's onto every peer.
  */
-export const CodeLockSettings =
-  LockSettingType.language |
-  LockSettingType.tableNameCase |
-  LockSettingType.columnNameCase |
-  LockSettingType.bracketType;
+export const CodeLockSettings = Object.values(CodeSettingLocks).reduce(
+  (acc, bit) => acc | bit,
+  0
+);
 
 /**
  * The locks whose unlock carries the unlocker's value onto every peer: the

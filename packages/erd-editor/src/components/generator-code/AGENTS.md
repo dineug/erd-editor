@@ -49,7 +49,7 @@ These are owner decisions of 2026-10-09, except where a rule names the owner's c
 - **Under right-to-left, end each name in U+200E.** Under a right-to-left language each name ends in U+200E (`LEFT_TO_RIGHT_MARK`), so `C#` never reads `#C`. The mark goes after the name, since an isolate or a mark before it would keep a typed letter from finding it. `dir="ltr"` on an option is not used, since it aligns the picked value left.
 - **Write the vendors as they are.** The Database list writes them as they are, as the Schema SQL panel does.
 - **The panel shows no Settings lock** (the owner's call on 2026-10-10). No glyph, title or description marks a locked row.
-  - In a writable editor its list still changes the setting on every screen while the file keeps the locked value, as the context menu and the palette do. In a readonly one it turns the reader's screen alone (`src/engine/AGENTS.md` § Screen-only settings).
+  - In a writable editor its list changes a locked setting on this screen alone, sent to no peer, while the file keeps the locked value, and an unlocked one on every screen, as the context menu and the palette do. In a readonly one it turns the reader's screen alone (`src/engine/AGENTS.md` § Locks and § Screen-only settings).
   - The Settings tab alone shows the locks. `GeneratorCodeOptions.test.ts` holds a new document, every code setting locked, to a panel with no lock.
 - What a locked setting saves, and how a change to it travels: `src/engine/AGENTS.md` § Locks.
 
