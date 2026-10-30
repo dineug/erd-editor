@@ -28,6 +28,16 @@ export const ActionType = {
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
+/** What a code setter carries: its value, and whether every peer takes it. */
+export type CodeSettingPayload = {
+  value: number;
+  /**
+   * Set by the shared store on what it sends, made while the lock was off, so
+   * every peer writes it through the register whatever its own lock says.
+   */
+  shared?: boolean;
+};
+
 export type ActionMap = {
   [ActionType.changeDatabaseName]: {
     value: string;
@@ -56,18 +66,10 @@ export type ActionMap = {
   [ActionType.changeCanvasType]: {
     value: string;
   };
-  [ActionType.changeLanguage]: {
-    value: number;
-  };
-  [ActionType.changeTableNameCase]: {
-    value: number;
-  };
-  [ActionType.changeColumnNameCase]: {
-    value: number;
-  };
-  [ActionType.changeBracketType]: {
-    value: number;
-  };
+  [ActionType.changeLanguage]: CodeSettingPayload;
+  [ActionType.changeTableNameCase]: CodeSettingPayload;
+  [ActionType.changeColumnNameCase]: CodeSettingPayload;
+  [ActionType.changeBracketType]: CodeSettingPayload;
   [ActionType.changeRelationshipDataTypeSync]: {
     value: boolean;
   };

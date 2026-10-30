@@ -306,8 +306,12 @@ describe.each([
     });
     expectSameDocument(session);
     expectSameOnceWritable(session);
+    // Under their locks the peer's code setters are its own screen, sent to no one.
+    expect(session.peer.state.settings.language).toBe(Language.TypeScript);
     expect(session.screen.rxStore.state.settings).toMatchObject({
-      language: Language.TypeScript,
+      language: locked
+        ? JSON.parse(value).settings.language
+        : Language.TypeScript,
       database: Database.SQLite,
       canvasType: CanvasType.schemaSQL,
       nameViewMode: NameViewMode.logical,

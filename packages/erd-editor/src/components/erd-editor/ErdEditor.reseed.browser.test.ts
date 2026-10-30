@@ -1,10 +1,11 @@
 // A real element rejoining a session through the shared store a host holds:
-// the reader's screen stays where it stood, hidden and shown again included,
-// one never shown opens as a late joiner does, and the value is the snapshot's.
+// its screen stays, hidden and shown again included, one never shown opens as
+// a late joiner does, and a rejoin or an initial value closes an open edit.
 
 import type { AnyAction } from '@dineug/r-html';
 import { cloneDeep } from 'es-toolkit';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { userEvent } from 'vite-plus/test/browser/context';
 
 import { flush } from '@/__test-utils__/index';
 import { SEED } from '@/__test-utils__/peerSeed';
@@ -14,19 +15,34 @@ import {
   openLockOffEditor,
 } from '@/__test-utils__/readonlyEditor';
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
-import { CanvasType } from '@/constants/schema';
+import { CanvasType, NameViewMode, RelationshipType } from '@/constants/schema';
 import {
+  drawStartAddRelationshipAction,
+  drawStartRelationshipAction,
+  editMemoAction,
+  editTableAction,
+  editTableGroupAction,
+  focusColumnAction,
   focusTableAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import {
   changeCanvasTypeAction,
+  changeNameViewModeAction,
   changeZoomLevelAction,
   scrollToAction,
   streamScrollToAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeTableNameAction } from '@/engine/modules/table/atom.actions';
+import {
+  changeTableNameAction,
+  removeTableAction,
+} from '@/engine/modules/table/atom.actions';
+import {
+  changeColumnLogicalNameAction,
+  changeColumnNameAction,
+} from '@/engine/modules/table-column/atom.actions';
+import { changeTableGroupNameAction } from '@/engine/modules/table-group/atom.actions';
 import { createPeerStore, type PeerStore } from '@/engine/peer-store';
 
 const teardowns: Array<() => void> = [];
@@ -233,3 +249,264 @@ describe('<erd-editor> reseeded through its shared store', () => {
     expect(await panOnce(bound, 30)).toEqual(await panOnce(joinerBound, 30));
   });
 });
+
+type Bound = ReturnType<typeof bind>;
+
+/** The two loads that open a document over the one open: a rejoin's and a host's. */
+const LOADS: Array<
+  [string, (el: ErdEditorElement, bound: Bound, peer: PeerStore) => void]
+> = [
+  [
+    'a reseed',
+    (_el, { sharedStore }, peer) =>
+      sharedStore.reseed(peer.runtimeValue, snapshotOf(peer)),
+  ],
+  [
+    'setInitialValue',
+    (el, _bound, peer) => el.setInitialValue(peer.runtimeValue),
+  ],
+];
+
+/** The cell editor's input, a logical name's among them. */
+const CELL_INPUT = '.edit-overlay input.edit-input';
+
+/**
+ * The two editors that write as they are typed in, each with how it opens,
+ * where it shows and the loads that close it here: a reseed ends the focus,
+ * which closed a cell before any load did, so the cell's case is setInitialValue's.
+ */
+const TYPED_EDITORS = [
+  {
+    name: 'the memo body editor',
+    selector: '.memo-textarea',
+    open: () => [editMemoAction({ id: SEED.memo })],
+    loads: ['a reseed', 'setInitialValue'],
+  },
+  {
+    name: 'the cell editor',
+    selector: CELL_INPUT,
+    open: () => [
+      focusTableAction({
+        tableId: SEED.orders,
+        focusType: FocusType.tableName,
+      }),
+      editTableAction(),
+    ],
+    loads: ['setInitialValue'],
+  },
+];
+
+const sentTypesOf = ({ sent }: Bound) => sent.flat().map(({ type }) => type);
+
+/**
+ * The three editors that hold the keyboard, each opened over what it selects,
+ * which a Delete or a Backspace would remove from the root the keyboard went
+ * back to, and where the file lists that entity.
+ */
+const KEYBOARD_EDITORS = [
+  {
+    name: 'the memo body editor',
+    selector: '.memo-textarea',
+    open: () => [
+      selectAction({ [SEED.memo]: SelectType.memo }),
+      editMemoAction({ id: SEED.memo }),
+    ],
+    listed: (value: string): string[] => JSON.parse(value).doc.memoIds ?? [],
+    id: SEED.memo,
+  },
+  {
+    name: 'the cell editor',
+    selector: CELL_INPUT,
+    open: () => [
+      selectAction({ [SEED.orders]: SelectType.table }),
+      focusTableAction({
+        tableId: SEED.orders,
+        focusType: FocusType.tableName,
+      }),
+      editTableAction(),
+    ],
+    listed: (value: string): string[] => JSON.parse(value).doc.tableIds ?? [],
+    id: SEED.orders,
+  },
+  {
+    name: 'the group name editor',
+    selector: '.table-group-name-input',
+    open: () => [
+      selectAction({ [SEED.group]: SelectType.tableGroup }),
+      editTableGroupAction({ id: SEED.group }),
+    ],
+    listed: (value: string): string[] =>
+      JSON.parse(value).doc.tableGroupIds ?? [],
+    id: SEED.group,
+  },
+];
+
+/** Whether some node of the element shows a relationship draw's cursor. */
+const drawCursorShown = (shadow: ShadowRoot) =>
+  Array.from(shadow.querySelectorAll<HTMLElement>('*')).some(node =>
+    node.style?.cursor.startsWith('url(')
+  );
+
+describe.each(LOADS)(
+  '<erd-editor> closing the edits open at %s',
+  (label, load) => {
+    it.each(TYPED_EDITORS.filter(({ loads }) => loads.includes(label)))(
+      'closes $name, sending nothing of it',
+      async ({ selector, open }) => {
+        const el = await openLockOffEditor({ readonly: false });
+        const bound = bind(el);
+        const peer = peerOf(el);
+        const shadow = el.shadowRoot as ShadowRoot;
+        bound.sharedStore.dispatchSync(open());
+        await drawn();
+        expect(shadow.querySelector(selector)).not.toBeNull();
+        bound.sent.splice(0);
+
+        load(el, bound, peer);
+        await drawn();
+
+        expect(shadow.querySelector(selector)).toBeNull();
+        expect(sentTypesOf(bound)).toEqual(['editor.getLWW']);
+      }
+    );
+
+    it.each(KEYBOARD_EDITORS)(
+      'hands the keyboard to nothing as it closes $name, so the next Backspace removes nothing',
+      async ({ selector, open, listed, id }) => {
+        const el = await openLockOffEditor({ readonly: false });
+        const bound = bind(el);
+        const peer = peerOf(el);
+        const shadow = el.shadowRoot as ShadowRoot;
+        bound.sharedStore.dispatchSync(open());
+        await drawn();
+        expect(shadow.activeElement).toBe(shadow.querySelector(selector));
+        bound.sent.splice(0);
+
+        load(el, bound, peer);
+        await drawn();
+        expect(shadow.querySelector(selector)).toBeNull();
+        expect(document.activeElement).not.toBe(el);
+        await userEvent.keyboard('{Backspace}');
+        await drawn();
+
+        expect(listed(el.value)).toContain(id);
+        expect(sentTypesOf(bound)).toEqual(['editor.getLWW']);
+      }
+    );
+
+    it.each([
+      ['a name typed into it', 'typed', null],
+      [
+        'the name it opened with, over a rename a peer made since',
+        null,
+        'renamed by the peer',
+      ],
+    ])(
+      'closes the group name editor, writing nothing of %s',
+      async (_case, typed, renamed) => {
+        const el = await openLockOffEditor({ readonly: false });
+        const bound = bind(el);
+        const shadow = el.shadowRoot as ShadowRoot;
+        bound.sharedStore.dispatchSync(
+          editTableGroupAction({ id: SEED.group })
+        );
+        await drawn();
+        const input = shadow.querySelector<HTMLInputElement>(
+          '.table-group-name-input'
+        );
+        expect(input?.value).toBe('accounts');
+        if (typed !== null) input!.value = typed;
+        const peer = peerOf(el);
+        if (renamed !== null) {
+          peer.dispatch([
+            changeTableGroupNameAction({ id: SEED.group, value: renamed }),
+          ]);
+        }
+        bound.sent.splice(0);
+
+        load(el, bound, peer);
+        await drawn();
+
+        expect(shadow.querySelector('.table-group-name-input')).toBeNull();
+        expect(
+          JSON.parse(el.value).collections.tableGroupEntities[SEED.group].name
+        ).toBe(renamed ?? 'accounts');
+        expect(sentTypesOf(bound)).toEqual(['editor.getLWW']);
+      }
+    );
+
+    it('closes a logical name cell over a logical name a peer changed, deriving no name from it', async () => {
+      const el = await openLockOffEditor({ readonly: false });
+      const bound = bind(el);
+      const shadow = el.shadowRoot as ShadowRoot;
+      bound.sharedStore.dispatchSync([
+        changeNameViewModeAction({
+          value: NameViewMode.both,
+          shared: true,
+          editorId: '',
+        }),
+        focusTableAction({ tableId: SEED.orders }),
+        focusColumnAction({
+          tableId: SEED.orders,
+          columnId: SEED.orderNote,
+          focusType: FocusType.columnLogicalName,
+          $mod: false,
+          shiftKey: false,
+        }),
+        editTableAction(),
+      ]);
+      await drawn();
+      expect(shadow.querySelector(CELL_INPUT)).not.toBeNull();
+      // The peer empties the name, which a derive would then write, and sets a term's logical name.
+      const peer = peerOf(el);
+      peer.dispatch([
+        changeColumnNameAction({
+          tableId: SEED.orders,
+          id: SEED.orderNote,
+          value: '',
+        }),
+        changeColumnLogicalNameAction({
+          tableId: SEED.orders,
+          id: SEED.orderNote,
+          value: 'Member Name',
+        }),
+      ]);
+      bound.sent.splice(0);
+
+      load(el, bound, peer);
+      await drawn();
+
+      expect(shadow.querySelector(CELL_INPUT)).toBeNull();
+      const column = JSON.parse(el.value).collections.tableColumnEntities[
+        SEED.orderNote
+      ];
+      expect(column.logicalName).toBe('Member Name');
+      // The file form leaves an empty name out.
+      expect(column.name ?? '').toBe('');
+      expect(sentTypesOf(bound)).toEqual(['editor.getLWW']);
+    });
+
+    it('ends the relationship draw from a table a peer removed, its cursor with it', async () => {
+      const el = await openLockOffEditor({ readonly: false });
+      const bound = bind(el);
+      const peer = peerOf(el);
+      const shadow = el.shadowRoot as ShadowRoot;
+      bound.sharedStore.dispatchSync([
+        drawStartRelationshipAction({
+          relationshipType: RelationshipType.OneN,
+        }),
+        drawStartAddRelationshipAction({ tableId: SEED.users }),
+      ]);
+      peer.dispatch([removeTableAction({ id: SEED.users })]);
+      await drawn();
+      expect(drawCursorShown(shadow)).toBe(true);
+      bound.sent.splice(0);
+
+      load(el, bound, peer);
+      await drawn();
+
+      expect(drawCursorShown(shadow)).toBe(false);
+      expect(sentTypesOf(bound)).toEqual(['editor.getLWW']);
+    });
+  }
+);

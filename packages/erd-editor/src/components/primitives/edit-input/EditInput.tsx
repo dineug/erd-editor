@@ -26,6 +26,11 @@ export type EditInputProps = {
   onInput?: (event: InputEvent) => void;
   onBlur?: (event: FocusEvent) => void;
   onKeydown?: (event: KeyboardEvent) => void;
+  /**
+   * Whether its blur hands the keyboard back to the editor root, read as it
+   * blurs; it does when this is not given.
+   */
+  handsFocusBack?: () => boolean;
 };
 
 const EditInput: FC<EditInputProps> = (props, ctx) => {
@@ -43,7 +48,9 @@ const EditInput: FC<EditInputProps> = (props, ctx) => {
 
   const handleBlur = (event: FocusEvent) => {
     props.onBlur?.(event);
-    ctx.host.dispatchEvent(focusEvent());
+    if (props.handsFocusBack?.() ?? true) {
+      ctx.host.dispatchEvent(focusEvent());
+    }
   };
 
   onBeforeMount(() => {

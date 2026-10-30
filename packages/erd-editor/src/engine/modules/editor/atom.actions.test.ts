@@ -721,6 +721,30 @@ describe('editor.clear / initialClear', () => {
     expect(store.state.doc.tableIds).toEqual([]);
     expect(store.state.collections.tableEntities).toEqual({});
   });
+
+  it('ends a relationship draw and closes the memo, group name and cell editors on initialClear', () => {
+    addTable(store, 't1');
+    addMemo(store, 'm1');
+    addTableGroup(store, 'g1');
+    store.dispatchSync(
+      focusTableAction({ tableId: 't1' }),
+      editTableAction(),
+      editMemoAction({ id: 'm1' }),
+      editTableGroupAction({ id: 'g1' }),
+      drawStartRelationshipAction({ relationshipType: 8 }),
+      drawStartAddRelationshipAction({ tableId: 't1' })
+    );
+    expect(store.state.editor.focusTable?.edit).toBe(true);
+    expect(store.state.editor.drawRelationship?.start?.tableId).toBe('t1');
+
+    store.dispatchSync(initialClearAction());
+
+    const { editor } = store.state;
+    expect(editor.drawRelationship).toBeNull();
+    expect(editor.editMemoId).toBeNull();
+    expect(editor.editTableGroupId).toBeNull();
+    expect(isEditingText(editor)).toBe(false);
+  });
 });
 
 describe('editor.clear / loadJson that keep the dictionaries', () => {

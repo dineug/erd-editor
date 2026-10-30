@@ -398,6 +398,20 @@ export const LockSettingActionTypes: Readonly<
   'settings.changeNameViewMode': LockSettingType.unlockNameViewMode,
 };
 
+/**
+ * The code setters of that map: while one's lock holds, a change is the screen
+ * of the store that made it, which sends it to no peer, and a store that
+ * receives one not marked shared drops it.
+ */
+export const CodeSettingLockActionTypes: Readonly<
+  Partial<Record<ActionType, number>>
+> = {
+  'settings.changeLanguage': LockSettingType.language,
+  'settings.changeTableNameCase': LockSettingType.tableNameCase,
+  'settings.changeColumnNameCase': LockSettingType.columnNameCase,
+  'settings.changeBracketType': LockSettingType.bracketType,
+};
+
 export const SharedStreamActionTypes: ReadonlyArray<ActionType> = [
   'editor.sharedMouseTracker',
   'editor.sharedFocusTracker',

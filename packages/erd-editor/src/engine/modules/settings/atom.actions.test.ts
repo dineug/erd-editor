@@ -1,3 +1,4 @@
+import { toJson } from '@dineug/erd-editor-schema';
 import { AnyAction, watch } from '@dineug/r-html';
 import { pick } from 'es-toolkit';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
@@ -1498,7 +1499,7 @@ describe('settings/atom.actions', () => {
       'lands one language whichever order an unlock meets a setter %s than it in',
       (_, setterVersion, landed) => {
         const peers = inBothOrders(lockLanguage(false, 10, Language.Kotlin), {
-          ...changeLanguageAction({ value: Language.Java }),
+          ...changeLanguageAction({ value: Language.Java, shared: true }),
           version: setterVersion,
         });
 
@@ -1511,32 +1512,43 @@ describe('settings/atom.actions', () => {
   });
 
   describe('the code settings', () => {
-    it.each([
-      ['language', changeLanguageAction, Language.Java, Language.Go] as const,
+    const CODE_SETTINGS = [
+      [
+        'language',
+        changeLanguageAction,
+        LockSettingType.language,
+        Language.Java,
+        Language.Go,
+      ] as const,
       [
         'tableNameCase',
         changeTableNameCaseAction,
+        LockSettingType.tableNameCase,
         NameCase.snakeCase,
         NameCase.camelCase,
       ] as const,
       [
         'columnNameCase',
         changeColumnNameCaseAction,
+        LockSettingType.columnNameCase,
         NameCase.snakeCase,
         NameCase.camelCase,
       ] as const,
       [
         'bracketType',
         changeBracketTypeAction,
+        LockSettingType.bracketType,
         BracketType.backtick,
         BracketType.doubleQuote,
       ] as const,
-    ])(
-      'keeps the latest %s whatever order two setters arrive in',
-      (field, action, newer, older) => {
+    ];
+
+    it.each(CODE_SETTINGS)(
+      'keeps the latest %s whatever order two shared setters arrive in, its lock on',
+      (field, action, _lock, newer, older) => {
         store.dispatchSync(
-          { ...action({ value: newer }), version: 8 },
-          { ...action({ value: older }), version: 6 }
+          { ...action({ value: newer, shared: true }), version: 8 },
+          { ...action({ value: older, shared: true }), version: 6 }
         );
 
         expect(store.state.settings[field]).toBe(newer);
@@ -1546,6 +1558,63 @@ describe('settings/atom.actions', () => {
           -1,
           { [field]: 8 },
         ]);
+      }
+    );
+
+    it.each(CODE_SETTINGS)(
+      'shows the store’s own %s setter under its lock on its screen alone, outside the register and the locked value',
+      (field, action, _lock, newer) => {
+        const lockedValues = { ...store.state.settings.lockedValues };
+        store.state.editor.screenBaseline = { [field]: newer };
+
+        store.dispatchSync({ ...action({ value: newer }), version: 8 });
+
+        expect(store.state.settings[field]).toBe(newer);
+        expect(store.state.lww['settings.code']).toBeUndefined();
+        expect(store.state.settings.lockedValues).toEqual(lockedValues);
+        expect(store.state.editor.screenBaseline).toBeNull();
+        expect(JSON.parse(toJson(store.state)).settings[field]).toBe(
+          lockedValues[field]
+        );
+      }
+    );
+
+    it.each(CODE_SETTINGS)(
+      'drops a peer’s %s setter under its lock, as an editor built before the rule sends one, and every one a replica takes, then writes any through the register once the lock is off',
+      (field, action, lockSettingType, newer, older) => {
+        const shown = store.state.settings[field];
+        const context: ReplicaEngineContext = {
+          toWidth,
+          clock: new Clock(),
+          remote: true,
+        };
+        const replica = createStore(context);
+
+        store.dispatchSync(
+          tag({ ...action({ value: newer }), version: 8 }, Tag.shared)
+        );
+        replica.dispatchSync({ ...action({ value: newer }), version: 8 });
+
+        for (const { state } of [store, replica]) {
+          expect(state.settings[field]).toBe(shown);
+          expect(state.lww['settings.code']).toBeUndefined();
+        }
+        replica.destroy();
+
+        store.dispatchSync(
+          changeLockSettingsAction({
+            lockSettingType,
+            value: false,
+            values: {},
+          })
+        );
+        store.dispatchSync(
+          tag({ ...action({ value: newer }), version: 9 }, Tag.shared),
+          { ...action({ value: older }), version: 7 }
+        );
+
+        expect(store.state.settings[field]).toBe(newer);
+        expect(store.state.lww['settings.code']?.[3]).toEqual({ [field]: 9 });
       }
     );
   });

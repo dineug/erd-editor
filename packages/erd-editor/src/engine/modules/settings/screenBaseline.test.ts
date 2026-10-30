@@ -250,7 +250,8 @@ describe('the reader’s own write once writable', () => {
       language: Language.TypeScript,
       database: Database.SQLite,
     });
-    expect(store.state.lww['settings.code']).toBeDefined();
+    // Its lock keeps the language the reader's own, outside the register.
+    expect(store.state.lww['settings.code']).toBeUndefined();
     expect(Object.keys(store.state.editor.screenBaseline ?? {}).sort()).toEqual(
       ['canvasType', 'nameViewMode', 'viewport']
     );
@@ -324,24 +325,28 @@ describe('the reader’s own write once writable', () => {
 });
 
 describe('a peer’s write under a held screen', () => {
-  it('writes a code setting’s register and its baseline, the screen kept', () => {
+  it('writes a shared code setter’s register and its baseline, the screen kept, and drops one with no flag under the lock', () => {
     const store = make();
     store.dispatchSync(
       screen(changeLanguageAction({ value: Language.Kotlin }))
     );
 
     store.dispatchSync(
-      shared(changeLanguageAction({ value: Language.TypeScript }), 5)
+      shared(
+        changeLanguageAction({ value: Language.TypeScript, shared: true }),
+        5
+      )
     );
     store.dispatchSync(
-      shared(changeLanguageAction({ value: Language.Swift }), 3)
+      shared(changeLanguageAction({ value: Language.Swift, shared: true }), 3)
     );
+    store.dispatchSync(shared(changeLanguageAction({ value: Language.Go }), 7));
 
     expect(store.state.settings.language).toBe(Language.Kotlin);
     expect(store.state.editor.screenBaseline).toEqual({
       language: Language.TypeScript,
     });
-    expect(store.state.lww['settings.code']).toBeDefined();
+    expect(store.state.lww['settings.code']?.[3]).toEqual({ language: 5 });
   });
 
   it('writes the screen while no baseline holds the setting', () => {
@@ -351,7 +356,10 @@ describe('a peer’s write under a held screen', () => {
     );
 
     store.dispatchSync(
-      shared(changeTableNameCaseAction({ value: NameCase.snakeCase }), 5),
+      shared(
+        changeTableNameCaseAction({ value: NameCase.snakeCase, shared: true }),
+        5
+      ),
       shared(changeDatabaseAction({ value: Database.MSSQL }), 5)
     );
 

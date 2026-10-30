@@ -12,16 +12,23 @@ import {
   type SeededStore,
 } from '@/__test-utils__/peerSeed';
 import { counterOf, versionOf } from '@/__test-utils__/version';
+import { RelationshipType } from '@/constants/schema';
 import { slotOf } from '@/engine/clock';
 import {
+  drawStartAddRelationshipAction,
+  drawStartRelationshipAction,
+  editMemoAction,
+  editTableGroupAction,
   selectAction,
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
+import { removeMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   changeTableNameAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import { createPeerStore, type PeerStore } from '@/engine/peer-store';
 import { Tag } from '@/engine/tag';
 
@@ -198,6 +205,59 @@ describe('a peer seeded again', () => {
     expect(peer.state.editor.focusTable).toBeNull();
     expect(peer.state.doc.tableIds).not.toContain(SEED.users);
   });
+
+  it.each([
+    [
+      'reseed',
+      (peer: PeerStore, user: SeededStore) =>
+        peer.reseed(toJson(user.rxStore.state), {
+          lww: user.sharedStore.getLWW(),
+          version: user.sharedStore.getVersion(),
+        }),
+    ],
+    [
+      'setInitialValue',
+      (peer: PeerStore, user: SeededStore) =>
+        peer.setInitialValue(toJson(user.rxStore.state)),
+    ],
+  ])(
+    'ends its relationship draw and closes its memo and group name editors on a %s, on what the window removed among them',
+    (_label, load) => {
+      const { user } = busyUser();
+      const peer = latePeer(createSeedValue());
+      peer.dispatch([
+        editMemoAction({ id: SEED.memo }),
+        editTableGroupAction({ id: SEED.group }),
+        drawStartRelationshipAction({
+          relationshipType: RelationshipType.OneN,
+        }),
+        drawStartAddRelationshipAction({ tableId: SEED.users }),
+      ]);
+      expect(peer.state.editor.drawRelationship?.start?.tableId).toBe(
+        SEED.users
+      );
+      user.rxStore.dispatchSync(
+        removeTableAction({ id: SEED.users }),
+        removeMemoAction({ id: SEED.memo })
+      );
+
+      load(peer, user);
+
+      expect(peer.state.editor.drawRelationship).toBeNull();
+      expect(peer.state.editor.editMemoId).toBeNull();
+      expect(peer.state.editor.editTableGroupId).toBeNull();
+      expect(peer.state.doc.tableGroupIds).toContain(SEED.group);
+      // A draw left armed would start a relationship from the removed table,
+      // which the value keeps as a tombstone, at the next press on a table.
+      const report = peer.dispatch([selectTableAction$(SEED.orders, false)]);
+      expect(report.actions.map(({ type }) => type)).not.toContain(
+        'relationship.add'
+      );
+      expect(peer.state.doc.relationshipIds).toEqual(
+        user.rxStore.state.doc.relationshipIds
+      );
+    }
+  );
 
   it('opens the value alone when asked to keep a screen it does not have', () => {
     const { user, snapshot } = busyUser();

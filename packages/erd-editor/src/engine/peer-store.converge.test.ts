@@ -164,6 +164,14 @@ const expectConverged = (session: Session) => {
   }
 };
 
+/** The scenarios the seed's locks keep on the sender's screen, which send nothing. */
+const SENDER_SCREEN_SCENARIOS = [
+  'setLanguage',
+  'setTableNameCase',
+  'setColumnNameCase',
+  'setBracketType',
+];
+
 describe('a peer store and an element’s store converge (AC-E5, AC-M5)', () => {
   it.each(Object.keys(SEED_SCENARIOS))(
     'after %s both sides serialize the same document',
@@ -174,7 +182,9 @@ describe('a peer store and an element’s store converge (AC-E5, AC-M5)', () => 
       const report = play(session.peer, SEED_SCENARIOS[name]());
       await settle();
 
-      expect(report.batches).toBe(1);
+      expect(report.batches).toBe(
+        SENDER_SCREEN_SCENARIOS.includes(name) ? 0 : 1
+      );
       expectConverged(session);
     }
   );

@@ -21,7 +21,7 @@ import { useI18n } from '@/components/localeContext';
 import { createScopeActions } from '@/components/quick-search/actions';
 import { TOOLBAR_HEIGHT } from '@/constants/layout';
 import { Open } from '@/constants/open';
-import { CanvasType, Language } from '@/constants/schema';
+import { CanvasType, Database, Language } from '@/constants/schema';
 import {
   changeHandToolAction,
   changeOpenMapAction,
@@ -32,6 +32,7 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import {
   changeCanvasTypeAction,
+  changeDatabaseAction,
   changeLanguageAction,
   changeZoomLevelAction,
 } from '@/engine/modules/settings/atom.actions';
@@ -1053,8 +1054,13 @@ describe('<erd-editor>', () => {
 
     el.readonly = false;
     await flush();
-    app.store.dispatchSync(changeLanguageAction({ value: Language.GraphQL }));
-    expect(sent).toContain('settings.changeLanguage');
+    app.store.dispatchSync(
+      changeLanguageAction({ value: Language.GraphQL }),
+      changeDatabaseAction({ value: Database.PostgreSQL })
+    );
+    // A new document locks the language, which stays this reader's own.
+    expect(sent).not.toContain('settings.changeLanguage');
+    expect(sent).toContain('settings.changeDatabase');
     sharedStore.destroy();
   });
 

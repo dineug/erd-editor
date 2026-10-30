@@ -52,7 +52,12 @@ import {
   zoomLevelInRange,
 } from '@/utils/validation';
 
-import { ActionMap, ActionType, ReducerType } from './actions';
+import {
+  ActionMap,
+  ActionType,
+  CodeSettingPayload,
+  ReducerType,
+} from './actions';
 import {
   endScreenBaseline,
   isScreenWrite,
@@ -470,7 +475,7 @@ const changeCanvasType: ReducerType<typeof ActionType.changeCanvasType> = (
   if (value !== CanvasType.ERD) state.editor.drawTableGroup = false;
 };
 
-type CodeSetting =
+export type CodeSetting =
   | 'language'
   | 'tableNameCase'
   | 'columnNameCase'
@@ -504,18 +509,56 @@ function replaceCodeSetting(
   );
 }
 
+/** The lock of each code setting, under which each store shows its own value of it. */
+export const CodeSettingLocks: Readonly<
+  Record<CodeSetting, (typeof LockSettingTypeList)[number]>
+> = {
+  language: LockSettingType.language,
+  tableNameCase: LockSettingType.tableNameCase,
+  columnNameCase: LockSettingType.columnNameCase,
+  bracketType: LockSettingType.bracketType,
+};
+
+/**
+ * A code setter: through its register when shared or while its lock is off,
+ * and a readonly reader's screen turn as ever. Any other under the lock shows
+ * on the store that made it alone, outside the register; the rest drop it.
+ */
+function setCodeSetting(
+  state: RootState,
+  context: EngineContext,
+  field: CodeSetting,
+  { value, shared }: CodeSettingPayload,
+  version: number | undefined,
+  tags: number | undefined
+): void {
+  if (
+    shared === true ||
+    isScreenWrite(tags) ||
+    !isSettingLocked(state.settings.lockSettings, CodeSettingLocks[field])
+  ) {
+    const safeVersion = version ?? context.clock.getVersion();
+    replaceCodeSetting(state, safeVersion, field, value, tags);
+    return;
+  }
+  // A peer's, as an editor built before this rule still sends, and each one a
+  // replica takes, since it strips the tags and has no screen of its own.
+  if (!isOwnStep(context, tags)) return;
+
+  settingWriteTarget(state, tags, field)[field] = value;
+}
+
 export const changeLanguageAction = createAction<
   ActionMap[typeof ActionType.changeLanguage]
 >(ActionType.changeLanguage);
 
 const changeLanguage: ReducerType<typeof ActionType.changeLanguage> = (
   state,
-  { payload: { value }, version, tags },
-  { clock }
+  { payload, version, tags },
+  context
 ) => {
-  const safeVersion = version ?? clock.getVersion();
-  if (hasLanguage(value)) {
-    replaceCodeSetting(state, safeVersion, 'language', value, tags);
+  if (hasLanguage(payload.value)) {
+    setCodeSetting(state, context, 'language', payload, version, tags);
   }
 };
 
@@ -525,10 +568,9 @@ export const changeTableNameCaseAction = createAction<
 
 const changeTableNameCase: ReducerType<
   typeof ActionType.changeTableNameCase
-> = (state, { payload: { value }, version, tags }, { clock }) => {
-  const safeVersion = version ?? clock.getVersion();
-  if (hasNameCase(value)) {
-    replaceCodeSetting(state, safeVersion, 'tableNameCase', value, tags);
+> = (state, { payload, version, tags }, context) => {
+  if (hasNameCase(payload.value)) {
+    setCodeSetting(state, context, 'tableNameCase', payload, version, tags);
   }
 };
 
@@ -538,10 +580,9 @@ export const changeColumnNameCaseAction = createAction<
 
 const changeColumnNameCase: ReducerType<
   typeof ActionType.changeColumnNameCase
-> = (state, { payload: { value }, version, tags }, { clock }) => {
-  const safeVersion = version ?? clock.getVersion();
-  if (hasNameCase(value)) {
-    replaceCodeSetting(state, safeVersion, 'columnNameCase', value, tags);
+> = (state, { payload, version, tags }, context) => {
+  if (hasNameCase(payload.value)) {
+    setCodeSetting(state, context, 'columnNameCase', payload, version, tags);
   }
 };
 
@@ -551,12 +592,11 @@ export const changeBracketTypeAction = createAction<
 
 const changeBracketType: ReducerType<typeof ActionType.changeBracketType> = (
   state,
-  { payload: { value }, version, tags },
-  { clock }
+  { payload, version, tags },
+  context
 ) => {
-  const safeVersion = version ?? clock.getVersion();
-  if (hasBracketType(value)) {
-    replaceCodeSetting(state, safeVersion, 'bracketType', value, tags);
+  if (hasBracketType(payload.value)) {
+    setCodeSetting(state, context, 'bracketType', payload, version, tags);
   }
 };
 
@@ -623,8 +663,8 @@ const isLockedValue: Record<keyof LockedValues, (value: any) => boolean> = {
 };
 
 /**
- * The locks of the settings every peer shows one screen of, their setters
- * never following-tagged, so an unlock of one carries the unlocker's value.
+ * The code settings' locks: while one holds, each store shows its own value of
+ * the setting, so an unlock of one carries the unlocker's onto every peer.
  */
 export const CodeLockSettings =
   LockSettingType.language |

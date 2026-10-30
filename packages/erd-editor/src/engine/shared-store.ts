@@ -7,10 +7,12 @@ import { filter, map, merge, Observable, Subject, Subscription } from 'rxjs';
 import { CanvasType, LockSettingType } from '@/constants/schema';
 import {
   ChangeActionTypes,
+  CodeSettingLockActionTypes,
   SharedActionTypes,
   SharedFollowingActionTypes,
 } from '@/engine/actions';
 import {
+  endScreenSettingsAction,
   getLWWAction,
   initialLoadJsonAction,
   mergeLWWAction,
@@ -23,6 +25,8 @@ import {
   changeCanvasTypeAction,
   changeNameViewModeAction,
   changeZoomLevelAction,
+  type CodeSetting,
+  CodeSettingLocks,
   scrollToAction,
 } from '@/engine/modules/settings/atom.actions';
 import { screenSettingRestores } from '@/engine/modules/settings/generator.actions';
@@ -63,8 +67,8 @@ export type ReseedOptions = {
   version: number;
   /**
    * Keeps the reader's screen on its screen alone, as a peer's load does: the
-   * tab, the origin and the zoom once a measure showed them, a locked name view
-   * and what a readonly reader turned. value and runtimeValue keep the loaded.
+   * tab, the viewport once a measure showed it, a locked name view or code
+   * setting, what a readonly reader turned. value and runtimeValue keep the loaded.
    */
   keepScreen?: boolean;
 };
@@ -92,9 +96,9 @@ export type SharedStore = {
   /** Drops the cursor, focus, selection and marquee one other editor sent, with their expiry. */
   forgetPeer: (editorId: string) => void;
   /**
-   * Opens a document again as a rejoin does: no undo entry, selection or focus
-   * left, no change event or change sent, the reader's screen kept when asked.
-   * Streams still held go out after it, so a host flushes them into the value first.
+   * Opens a document again as a rejoin does: no undo entry, selection, focus or
+   * edit left, no change event or change sent, the reader's screen kept when
+   * asked. Streams still held go out after it, so flush them into the value first.
    */
   reseed: (value: string, options: ReseedOptions) => void;
   destroy: () => void;
@@ -121,10 +125,37 @@ const hasSharedFollowingActionTypes = arrayHas<string>(
 
 type ReaderScreen = ReturnType<typeof readScreen>;
 
+const CODE_SETTINGS = Object.keys(CodeSettingLocks) as CodeSetting[];
+
+/**
+ * Sends each code setter made while its lock is off as shared, which every peer
+ * writes through the register whatever its own lock says as it arrives, and
+ * none made under the lock, which an editor built before that rule would apply.
+ */
+const shareCodeSettings =
+  (getLockSettings: () => number) => (source$: Observable<Array<AnyAction>>) =>
+    source$.pipe(
+      map(actions => {
+        const lockSettings = getLockSettings();
+        return actions.flatMap(action => {
+          const lock = Reflect.get(CodeSettingLockActionTypes, action.type);
+          if (!lock) return [action];
+          if (
+            action.payload?.shared !== true &&
+            isSettingLocked(lockSettings, lock)
+          ) {
+            return [];
+          }
+          return [{ ...action, payload: { ...action.payload, shared: true } }];
+        });
+      }),
+      filter(actions => actions.length > 0)
+    );
+
 /**
  * The reader's screen as a rejoin keeping it reads it before the load: the
- * origin and the zoom once a measure showed them, the tab, the name view, and
- * each other setting a readonly reader's turn holds over the document's.
+ * origin and the zoom once a measure showed them, the tab, the name view, the
+ * code settings, and each other setting a readonly reader's turn holds.
  */
 function readScreen({ settings, editor }: RootState) {
   const held = Object.keys(editor.screenBaseline ?? {}).filter(
@@ -137,19 +168,31 @@ function readScreen({ settings, editor }: RootState) {
     canvasType: settings.canvasType,
     lastCanvasType: editor.lastCanvasType,
     nameViewMode: settings.nameViewMode,
+    code: pick(settings, CODE_SETTINGS),
     held: pick(settings, held),
+    lockSettings: settings.lockSettings,
   };
 }
 
 /**
+ * True when a lock held both before the load and after it, so the value the
+ * reader showed under it was its own rather than the shared one it missed.
+ */
+const heldThrough = (
+  screen: ReaderScreen,
+  { settings }: RootState,
+  lock: Parameters<typeof isSettingLocked>[1]
+) =>
+  isSettingLocked(screen.lockSettings, lock) &&
+  isSettingLocked(settings.lockSettings, lock);
+
+/**
  * The turns that lay that screen back over the value loaded, as a peer's load
  * keeps it. An origin no measure showed opens where the load's pull puts it, as
- * a late joiner's does, and a name view no lock holds after the load is shared.
+ * a late joiner's does, and a name view no lock held through the load is shared.
  */
-function screenTurnsOf(
-  screen: ReaderScreen,
-  { settings, editor }: RootState
-): AnyAction[] {
+function screenTurnsOf(screen: ReaderScreen, state: RootState): AnyAction[] {
+  const { settings, editor } = state;
   const turns: AnyAction[] = [];
   if (screen.viewport) {
     const { originX, originY, zoomLevel } = screen.viewport;
@@ -168,10 +211,7 @@ function screenTurnsOf(
     turns.push(changeCanvasTypeAction({ value: screen.canvasType }));
   }
   if (
-    isSettingLocked(
-      settings.lockSettings,
-      LockSettingType.unlockNameViewMode
-    ) &&
+    heldThrough(screen, state, LockSettingType.unlockNameViewMode) &&
     screen.nameViewMode !== settings.nameViewMode
   ) {
     turns.push(
@@ -184,6 +224,26 @@ function screenTurnsOf(
   }
   turns.push(...screenSettingRestores(screen.held, settings));
   return turns;
+}
+
+/**
+ * The code settings the reader showed of its own under their locks, which the
+ * load wrote over: each goes back as its own change, outside the register and
+ * every peer, then ends the baseline a readonly store's screen tag would keep.
+ */
+function ownCodeSettingsOf(
+  screen: ReaderScreen,
+  state: RootState
+): AnyAction[] {
+  const own = CODE_SETTINGS.filter(
+    field =>
+      !Reflect.has(screen.held, field) &&
+      heldThrough(screen, state, CodeSettingLocks[field])
+  );
+  const setters = screenSettingRestores(pick(screen.code, own), state.settings);
+  return setters.length
+    ? [...setters, endScreenSettingsAction({ units: own })]
+    : [];
 }
 
 export function createSharedStore(
@@ -220,6 +280,7 @@ export function createSharedStore(
       .pipe(
         actionsFilter(SharedActionTypes),
         ignoreTagFilter([Tag.shared, Tag.screen]),
+        shareCodeSettings(() => store.state.settings.lockSettings),
         // A readonly editor sends no change, while presence and the registers
         // pass. Ahead of the compressors, so a drag they hold from before the
         // switch still leaves.
@@ -351,17 +412,19 @@ export function createSharedStore(
     if (!screen) return;
 
     const turns = screenTurnsOf(screen, store.state);
-    if (turns.length === 0) return;
+    const own = ownCodeSettingsOf(screen, store.state);
+    if (turns.length === 0 && own.length === 0) return;
 
-    // A screen turn writes no register, so it takes the version the clock holds.
+    // Neither writes a register, so both take the version the clock holds.
     const screenVersion = store.context.clock.getVersion();
-    store.dispatchSync(
-      turns.map(action => ({
+    store.dispatchSync([
+      ...turns.map(action => ({
         ...action,
         version: screenVersion,
         tags: Tag.screen,
-      }))
-    );
+      })),
+      ...own.map(action => ({ ...action, version: screenVersion })),
+    ]);
   };
 
   const subscribe = (fn: (value: AnyAction[]) => void) => {

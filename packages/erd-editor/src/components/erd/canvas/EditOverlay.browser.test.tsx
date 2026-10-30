@@ -307,6 +307,21 @@ async function typeDataType(fixture: Fixture, value: string) {
   await flush();
 }
 
+/** How many times the editors asked for the keyboard back while run went. */
+async function focusAsksDuring(run: () => Promise<void>) {
+  let asked = 0;
+  const listen = () => {
+    asked += 1;
+  };
+  document.body.addEventListener(focusEvent.type, listen, true);
+  try {
+    await run();
+  } finally {
+    document.body.removeEventListener(focusEvent.type, listen, true);
+  }
+  return asked;
+}
+
 describe('the editing overlay', () => {
   it('takes no pointer event of its own while nothing is being edited', async () => {
     const { mounted } = await setup();
@@ -327,6 +342,26 @@ describe('the editing overlay', () => {
     expect(input.placeholder).toBe('table');
     expect(document.activeElement).toBe(input);
   });
+
+  it.each([
+    ['table name', editTableName],
+    ['column name', editColumnName],
+    ['data type', editColumnDataType],
+  ])(
+    'hands the keyboard back once the store ends the %s cell edit, as Enter does',
+    async (_label, edit) => {
+      const fixture = await setup();
+      await edit(fixture);
+
+      const asked = await focusAsksDuring(async () => {
+        fixture.app.store.dispatchSync(editTableEndAction());
+        await flush();
+      });
+
+      expect(inputOf(fixture.mounted)).toBeNull();
+      expect(asked).toBe(1);
+    }
+  );
 
   it('shows the placeholder in the language the element shows, following a switch', async () => {
     const i18n = createTestI18n('en');
@@ -865,6 +900,20 @@ describe('the cell editor in the name views', () => {
       types => types[0].startsWith('table.') || types[0].startsWith('column.')
     );
   }
+
+  it('hands the keyboard back once the store ends the edit of a logical name cell', async () => {
+    const fixture = await setupView(NameViewMode.logical);
+    await edit(fixture, FocusType.columnLogicalName);
+    expect(inputOf(fixture.mounted)).toBeTruthy();
+
+    const asked = await focusAsksDuring(async () => {
+      fixture.app.store.dispatchSync(editTableEndAction());
+      await flush();
+    });
+
+    expect(inputOf(fixture.mounted)).toBeNull();
+    expect(asked).toBe(1);
+  });
 
   it('writes the logical name alone from the name cells of the logical view, on every key', async () => {
     const fixture = await setupView(NameViewMode.logical);
@@ -2194,6 +2243,22 @@ describe('the table group name editor', () => {
     expect(groupInputOf(fixture.mounted)).toBeNull();
   });
 
+  it('hands the keyboard back once Enter writes the name', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture);
+    const input = groupInputOf(fixture.mounted)!;
+    input.value = 'Billing';
+
+    const asked = await focusAsksDuring(async () => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      await flush();
+    });
+
+    expect(nameOf(fixture)).toBe('Billing');
+    expect(groupInputOf(fixture.mounted)).toBeNull();
+    expect(asked).toBe(1);
+  });
+
   it('keeps what is typed when a peer renames the group under it', async () => {
     const fixture = await setup();
     await editGroupName(fixture, 'Billing');
@@ -2216,6 +2281,24 @@ describe('the table group name editor', () => {
     input.value = 'Invoices';
 
     fixture.app.store.dispatchSync(removeTableGroupAction({ id: 'g1' }));
+    await flush();
+    expect(groupInputOf(fixture.mounted)).toBeNull();
+
+    input.dispatchEvent(new FocusEvent('blur'));
+    await flush();
+    expect(nameOf(fixture)).toBe('Billing');
+    expect(fixture.app.store.state.editor.editTableGroupId).toBeNull();
+  });
+
+  it('writes nothing on the blur once hiding the groups closed it, though a name was typed', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture, 'Billing');
+    const input = groupInputOf(fixture.mounted)!;
+    input.value = 'Invoices';
+
+    fixture.app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
     await flush();
     expect(groupInputOf(fixture.mounted)).toBeNull();
 

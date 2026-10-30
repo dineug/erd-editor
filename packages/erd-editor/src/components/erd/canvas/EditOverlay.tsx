@@ -377,6 +377,8 @@ const resolveEditTarget = (state: RootState): EditTarget | null =>
 
 type MemoEditorProps = {
   target: MemoTarget;
+  /** Whether a close hands the keyboard back to the editor root (EditOverlay). */
+  handsFocusBack: () => boolean;
 };
 
 /**
@@ -401,7 +403,7 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
   const handleBlur = () => {
     const { store } = app.value;
     store.dispatch(editMemoEndAction());
-    ctx.host.dispatchEvent(focusEvent());
+    props.handsFocusBack() && ctx.host.dispatchEvent(focusEvent());
   };
 
   /**
@@ -482,12 +484,14 @@ const MemoEditor: FC<MemoEditorProps> = (props, ctx) => {
 type TableGroupNameEditorProps = {
   target: TableGroupTarget;
   placeholder: string;
+  /** Whether a close hands the keyboard back to the editor root (EditOverlay). */
+  handsFocusBack: () => boolean;
 };
 
 /**
  * The input a group's name is edited in, in the bar's font and text color. It
- * writes once: Enter or a blur commits a changed name as one action, and an
- * Escape, on which the canvas's stop branch closes it, writes nothing.
+ * writes once: Enter or a blur commits a changed name as one action, while an
+ * Escape or a close the store made, a load's or hidden groups', writes nothing.
  */
 const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -500,8 +504,16 @@ const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
     ended = true;
 
     const { store } = app.value;
-    const { doc, collections } = store.state;
+    const { doc, collections, editor } = store.state;
     const { groupId } = props.target;
+    const handBack = () =>
+      props.handsFocusBack() && ctx.host.dispatchEvent(focusEvent());
+    // The store closed it before its input left the page, so what it held is
+    // no name the reader entered, and the group may be another document's.
+    if (editor.editTableGroupId !== groupId) {
+      handBack();
+      return;
+    }
     const value = input.value?.value ?? props.target.value;
     // The document's own list, since a removed group stays in collections as a
     // tombstone and a name written to it would be an edit of nothing.
@@ -514,7 +526,7 @@ const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
       ...(changed ? [changeTableGroupNameAction({ id: groupId, value })] : []),
       editTableGroupEndAction()
     );
-    ctx.host.dispatchEvent(focusEvent());
+    handBack();
   };
 
   // Escape goes on to the stop branch, whose focus change blurs this input,
@@ -583,6 +595,11 @@ const EditOverlay: FC = (_, ctx) => {
   const app = useAppContext(ctx);
   const i18n = useI18n(ctx);
   const sourceRef = useSceneSource(ctx);
+  // The document the last pass that drew an editor stood over. An editor a
+  // load takes away hands the keyboard to nothing, or the root would take the
+  // next key meant for the text as a chord, a removal of what stays selected.
+  let shownOver: RootState['doc'] | null = null;
+  const handsFocusBack = () => app.value.store.state.doc === shownOver;
 
   const handleEditEnd = () => {
     const { store } = app.value;
@@ -623,11 +640,17 @@ const EditOverlay: FC = (_, ctx) => {
     placeholder: string
   ): DOMTemplateLiterals => {
     if (target.kind === 'memo') {
-      return <MemoEditor target={target} />;
+      return <MemoEditor target={target} handsFocusBack={handsFocusBack} />;
     }
 
     if (target.kind === 'tableGroup') {
-      return <TableGroupNameEditor target={target} placeholder={placeholder} />;
+      return (
+        <TableGroupNameEditor
+          target={target}
+          placeholder={placeholder}
+          handsFocusBack={handsFocusBack}
+        />
+      );
     }
 
     const { focusType, tableId, columnId } = target;
@@ -646,6 +669,7 @@ const EditOverlay: FC = (_, ctx) => {
           onBlur={handleEditEnd}
           onEditEnd={handleEditEnd}
           onInput={handleInput}
+          handsFocusBack={handsFocusBack}
         />
       );
     }
@@ -659,6 +683,7 @@ const EditOverlay: FC = (_, ctx) => {
           placeholder={placeholder}
           onBlur={handleEditEnd}
           onEditEnd={handleEditEnd}
+          handsFocusBack={handsFocusBack}
         />
       );
     }
@@ -675,6 +700,7 @@ const EditOverlay: FC = (_, ctx) => {
           onBlur={handleEditEnd}
           onEditEnd={handleEditEnd}
           onInput={handleInput}
+          handsFocusBack={handsFocusBack}
         />
       );
     }
@@ -689,6 +715,7 @@ const EditOverlay: FC = (_, ctx) => {
         autofocus={true}
         onBlur={handleEditEnd}
         onInput={handleInput}
+        handsFocusBack={handsFocusBack}
       />
     );
   };
@@ -701,6 +728,7 @@ const EditOverlay: FC = (_, ctx) => {
     const { store } = app.value;
     const { settings } = store.state;
     const target = resolveEditTarget(store.state);
+    if (target) shownOver = store.state.doc;
     const { zoomLevel } = settings;
     // Read here rather than in the editor, which repeat draws outside this pass.
     const placeholder =

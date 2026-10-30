@@ -29,6 +29,10 @@ import { documentJsonOf, runtimeJsonOf } from '@/engine/documentJson';
 import {
   changeViewportAction,
   clearAction,
+  drawStartAddRelationshipAction,
+  drawStartRelationshipAction,
+  editMemoAction,
+  editTableGroupAction,
   focusTableAction,
   getLWWAction,
   selectAction,
@@ -44,6 +48,7 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import {
   FocusType,
+  isEditingText,
   SelectType,
   ViewKind,
   VisualizationMode,
@@ -57,6 +62,7 @@ import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import {
   addMemoAction,
+  removeMemoAction,
   resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -70,6 +76,7 @@ import {
   changeShowAction,
   changeTableNameCaseAction,
   changeZoomLevelAction,
+  CodeLockSettings,
   scrollToAction,
   streamScrollToAction,
   streamZoomLevelAction,
@@ -83,6 +90,7 @@ import {
   moveTableAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
+import { selectTableAction$ } from '@/engine/modules/table/generator.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { toMoveTableGroupActions } from '@/engine/modules/table-group/generator.actions';
@@ -468,10 +476,10 @@ describe('createSharedStore', () => {
       fixture.setReadonly(true);
 
       fixture.store.dispatchSync(
-        changeLanguageAction({ value: Language.Kotlin })
+        changeDatabaseAction({ value: Database.SQLite })
       );
 
-      expect(fixture.types()).toEqual(['settings.changeLanguage']);
+      expect(fixture.types()).toEqual(['settings.changeDatabase']);
     });
   });
 
@@ -1476,6 +1484,128 @@ describe('createSharedStore registers, clock and reseed', () => {
     });
   });
 
+  it.each([
+    ['a writable reader', false],
+    ['a reader readonly from before the rejoin', true],
+  ])(
+    'keeps the code settings %s changed of its own under their locks, sending none, then shows what a peer’s unlock carries',
+    (_label, readonly) => {
+      vi.useFakeTimers();
+      const value = seedValue(true);
+      const peer = makePeer(value);
+      const reader = makeReader(value);
+      reader.shared.subscribe(actions => reader.seen.push(actions));
+      const code = ({ store }: Fixture) => {
+        const { language, tableNameCase, columnNameCase, bracketType } =
+          store.state.settings;
+        return { language, tableNameCase, columnNameCase, bracketType };
+      };
+      reader.store.dispatchSync(
+        changeLanguageAction({ value: Language.Kotlin }),
+        changeTableNameCaseAction({ value: NameCase.snakeCase }),
+        changeColumnNameCaseAction({ value: NameCase.snakeCase }),
+        changeBracketTypeAction({ value: BracketType.backtick })
+      );
+      const own = code(reader);
+      expect(own).not.toEqual(code(peer));
+      reader.setReadonly(readonly);
+      vi.advanceTimersByTime(400);
+      reader.reset();
+      const snapshot = snapshotOf(peer);
+
+      reader.shared.reseed(snapshot.value, {
+        lww: snapshot.lww,
+        version: snapshot.version,
+        keepScreen: true,
+      });
+      vi.advanceTimersByTime(400);
+
+      expect(code(reader)).toEqual(own);
+      expect(reader.types()).toEqual(['editor.getLWW']);
+      expect(reader.store.history.size).toBe(0);
+      // The screen alone, as before the rejoin: no value of the document
+      // waits under it for a peer's unlock to land in.
+      expect(
+        Object.keys(reader.store.state.editor.screenBaseline ?? {})
+      ).toEqual(['viewport']);
+      expect(documentJsonOf(reader.store)).toBe(documentJsonOf(peer.store));
+      expect(documentJsonOf(reader.store)).toBe(
+        documentJsonOf(lateJoinerOf(snapshot).store)
+      );
+      expect(runtimeJsonOf(reader.store)).toBe(
+        runtimeJsonOf(lateJoinerOf(snapshot).store)
+      );
+
+      reader.shared.dispatchSync({
+        ...changeLockSettingsAction({
+          lockSettingType:
+            LockSettingType.language |
+            LockSettingType.tableNameCase |
+            LockSettingType.columnNameCase |
+            LockSettingType.bracketType,
+          value: false,
+          values: code(peer),
+        }),
+        version: reader.shared.getVersion() + 1,
+        tags: Tag.shared,
+      });
+
+      expect(code(reader)).toEqual(code(peer));
+      reader.setReadonly(false);
+      reader.store.dispatchSync(restoreScreenSettingsAction$());
+      expect(code(reader)).toEqual(code(peer));
+    }
+  );
+
+  it('opens the code settings and the name view a peer changed and then locked while the reader showed them unlocked', () => {
+    vi.useFakeTimers();
+    const value = seedValue(false);
+    const peer = makePeer(value);
+    const reader = makeReader(value);
+    reader.shared.subscribe(actions => reader.seen.push(actions));
+    peer.store.dispatchSync(
+      changeLanguageAction({ value: Language.Kotlin }),
+      changeBracketTypeAction({ value: BracketType.backtick }),
+      toNameViewModeAction(peer.store.state, NameViewMode.logical, false)
+    );
+    const { language, tableNameCase, columnNameCase, bracketType } =
+      peer.store.state.settings;
+    peer.store.dispatchSync(
+      changeLockSettingsAction({
+        lockSettingType: CodeLockSettings | LockSettingType.unlockNameViewMode,
+        value: true,
+        values: {
+          language,
+          tableNameCase,
+          columnNameCase,
+          bracketType,
+          nameViewMode: NameViewMode.logical,
+        },
+      })
+    );
+    vi.advanceTimersByTime(400);
+    reader.reset();
+    const snapshot = snapshotOf(peer);
+
+    reader.shared.reseed(snapshot.value, {
+      lww: snapshot.lww,
+      version: snapshot.version,
+      keepScreen: true,
+    });
+    vi.advanceTimersByTime(400);
+
+    const late = lateJoinerOf(snapshot).store;
+    expect(reader.store.state.settings.language).toBe(Language.Kotlin);
+    expect(reader.store.state.settings.bracketType).toBe(BracketType.backtick);
+    expect(reader.store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+    expect(Object.keys(reader.store.state.editor.screenBaseline ?? {})).toEqual(
+      ['viewport']
+    );
+    expect(reader.types()).toEqual(['editor.getLWW']);
+    expect(documentJsonOf(reader.store)).toBe(documentJsonOf(late));
+    expect(runtimeJsonOf(reader.store)).toBe(runtimeJsonOf(late));
+  });
+
   it('shows the shared name view once the snapshot unlocks it, though the reader held its own under the lock', () => {
     const value = seedValue(true);
     const peer = makePeer(value);
@@ -1647,6 +1777,59 @@ describe('createSharedStore registers, clock and reseed', () => {
       expect(reader.store.state.editor.focusTable).toBeNull();
       expect(reader.store.state.doc.tableIds).not.toContain(SEED.users);
       expect(reader.types()).toEqual(['editor.getLWW']);
+    }
+  );
+
+  it.each([
+    ['keeping the screen', true],
+    ['opening the value’s', false],
+  ])(
+    'ends the relationship draw and closes the memo and group name editors, on what a peer removed among them, %s',
+    (_label, keepScreen) => {
+      vi.useFakeTimers();
+      const value = seedValue(true);
+      const peer = makePeer(value);
+      const reader = makeReader(value);
+      reader.shared.subscribe(actions => reader.seen.push(actions));
+      reader.store.dispatchSync(
+        editMemoAction({ id: SEED.memo }),
+        editTableGroupAction({ id: SEED.group }),
+        drawStartRelationshipAction({
+          relationshipType: RelationshipType.OneN,
+        }),
+        drawStartAddRelationshipAction({ tableId: SEED.users })
+      );
+      expect(reader.store.state.editor.drawRelationship?.start?.tableId).toBe(
+        SEED.users
+      );
+      peer.store.dispatchSync(
+        removeTableAction({ id: SEED.users }),
+        removeMemoAction({ id: SEED.memo })
+      );
+      vi.advanceTimersByTime(400);
+      reader.reset();
+      const snapshot = snapshotOf(peer);
+
+      reader.shared.reseed(snapshot.value, {
+        lww: snapshot.lww,
+        version: snapshot.version,
+        keepScreen,
+      });
+      const { editor } = reader.store.state;
+      expect(editor.drawRelationship).toBeNull();
+      expect(editor.editMemoId).toBeNull();
+      expect(editor.editTableGroupId).toBeNull();
+      expect(isEditingText(editor)).toBe(false);
+      expect(reader.store.state.doc.tableGroupIds).toContain(SEED.group);
+
+      // The value keeps the removed table as a tombstone, which a draw left
+      // armed would start a relationship from at the next press on a table.
+      reader.store.dispatchSync(selectTableAction$(SEED.orders, false));
+      vi.advanceTimersByTime(400);
+      expect(reader.store.state.doc.relationshipIds).toEqual(
+        peer.store.state.doc.relationshipIds
+      );
+      expect(reader.types()).not.toContain('relationship.add');
     }
   );
 
