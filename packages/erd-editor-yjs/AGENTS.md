@@ -41,7 +41,7 @@
 | `src/snapshot.ts` | `erd:snapshot`: `ERD_YJS_FORMAT`, `readSnapshot` and `writeSnapshot` (all eight fields), `needsRejoin`, `checkLineage` |
 | `src/awareness.ts` | `createPresence`: the `erd` Awareness field, the trackers out and in, `forgetPeer` for a client that leaves, the screen (`screenOf`, `nextScreen`) |
 | `src/compact.ts` | `createCompactor` (start conditions, election, grace, scheduling, the hold, the put-back and the fold after it) and `foldLog`, the fold in one transaction; `DEFAULT_ELECTION_GRACE_MS`, `DEFAULT_RETAIN_MS`, `RETAIN_LIMIT` |
-| `src/json.ts`, `src/errors.ts` | `copyJson`, the JSON copy at the `Y.Doc`'s edge; `refusal`, an error naming the package |
+| `src/json.ts`, `src/errors.ts` | `copyJson`, the JSON copy at the `Y.Doc`'s edge, and `isRecord`, the object check of what is read off it and Awareness (`snapshot.ts` keeps its own, which refuses an array); `refusal`, an error naming the package |
 | `src/__test-utils__/` | `fakeProvider.ts` (`createFakeRoom`), `harness.ts`, `scenarios.ts` (`MODULE_SCENARIOS`), `edits.ts`, and `instrumentPeer.ts`, a stand-in for a peer store that records the batches passing and holds outbound streams back as the element does |
 | `bench/compact.bench.ts` | One fold of a 500-table document, timed and weighed, printed and judged by nothing |
 | `index.html`, `src/index.dev.ts` | The dev page (Testing Requirements § The dev page) |

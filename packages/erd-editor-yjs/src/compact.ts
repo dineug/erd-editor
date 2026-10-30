@@ -3,7 +3,7 @@ import type * as Y from 'yjs';
 
 import { AWARENESS_FIELD } from '@/awareness';
 import { refusal } from '@/errors';
-import { copyJson } from '@/json';
+import { copyJson, isRecord } from '@/json';
 import {
   getLog,
   isLogEntry,
@@ -148,9 +148,6 @@ type Timer = ReturnType<typeof setTimeout>;
 
 /** One fold's entries of its lineage, its clock started at the first update from the room after it. */
 type HeldFold = { entries: LogEntry[]; timer: Timer | null };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 const isCandidateState = (state: Record<string, unknown>): boolean => {
   const field = state[AWARENESS_FIELD];

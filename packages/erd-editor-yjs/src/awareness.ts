@@ -1,7 +1,7 @@
 import type { Awareness } from 'y-protocols/awareness';
 
 import { isFollowing, isTracker, TRACKER_TYPES } from '@/classify';
-import { copyJson } from '@/json';
+import { copyJson, isRecord } from '@/json';
 import type { CollaborationPort, PortAction } from '@/port';
 
 export const AWARENESS_FIELD = 'erd';
@@ -49,9 +49,6 @@ const DEFAULT_SCREEN: Screen = {
   zoom: 1,
   canvasType: 'ERD',
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);

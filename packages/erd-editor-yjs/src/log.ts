@@ -1,6 +1,6 @@
 import type * as Y from 'yjs';
 
-import { copyJson } from '@/json';
+import { copyJson, isRecord } from '@/json';
 import type { PortAction } from '@/port';
 
 export const LOG_KEY = 'erd:log';
@@ -21,9 +21,6 @@ export type Watermarks = Record<string, number>;
 
 export const getLog = (doc: Y.Doc): Y.Array<unknown> =>
   doc.getArray<unknown>(LOG_KEY);
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 export function isLogEntry(value: unknown): value is LogEntry {
   return (

@@ -369,13 +369,14 @@ function createBinding(
     if (writer.seq > 0) writer.restart();
 
     const seedId = createId();
+    const runtimeValue = port.runtimeValue();
     doc.transact(() => {
       writeSnapshot(map, {
         format: ERD_YJS_FORMAT,
         generation: 0,
         seedId,
         compactorId: null,
-        runtimeValue: port.runtimeValue(),
+        runtimeValue,
         lww: port.getLWW(),
         version: port.getVersion(),
         covers: {},
@@ -384,7 +385,7 @@ function createBinding(
     lineage = seedId;
     seeded = seedId;
     reader.reset({});
-    presence?.setScreen(screenOf(port.runtimeValue()));
+    presence?.setScreen(screenOf(runtimeValue));
     return true;
   };
 
