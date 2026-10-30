@@ -61,9 +61,9 @@ const POINTS = [
 ];
 
 /**
- * One row of the grid: a document as a released editor saved it, with the
- * canvas box and the legacy scroll pair, and the transform the parser now loads
- * it as. The box and the scroll feed the legacy oracle and nothing else.
+ * One row of the grid: a document as an editor before the origin pair saved
+ * it, with the canvas box and the legacy scroll pair, and the transform the
+ * parser now loads it as. The box and the scroll feed the legacy oracle alone.
  */
 type Grid = {
   legacy: LegacyScrollBox;
@@ -411,9 +411,9 @@ describe('the origin is the document field, not a derivation', () => {
   });
 
   /**
-   * The legacy oracle. A released editor inverted a screen point as the scroll
-   * plus half the shrink of the box about its middle, restated here inline; the
-   * parser's migration has to hand the canon the origin that reads the same.
+   * The legacy oracle, inline. An editor before the origin pair inverted a
+   * screen point as the scroll plus half the shrink of the box about its middle;
+   * the parser's migration has to hand the canon the origin that reads the same.
    */
   it('reads a migrated legacy document the way the old editor did', () => {
     const bad = failures(GRID, ({ legacy, transform }) => {
@@ -440,8 +440,8 @@ describe('the origin is the document field, not a derivation', () => {
 
   /**
    * A document that already carries the origin pair is used as it stands. The
-   * legacy pair beside it may disagree, since a released editor saved a view of
-   * its own there, and nothing here reads it.
+   * legacy pair beside it may disagree, since an editor before the origin pair
+   * may have saved a view of its own there, and nothing here reads it.
    */
   it('uses the origin pair a document carries as it is', () => {
     const bad = failures(GRID, ({ legacy, transform }) => {

@@ -429,7 +429,7 @@ export type MemoEntity = {
 /**
  * The live view, written only when the seed asks for one. A seed that names
  * neither origin is a legacy document on purpose: the parser migrates its
- * scrollLeft/scrollTop into the origin the shipped editor showed for them.
+ * scrollLeft/scrollTop into the origin an editor before the origin pair showed.
  */
 function seededOrigin(seed: SchemaSeed) {
   return seed.originX === undefined && seed.originY === undefined

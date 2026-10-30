@@ -19,8 +19,9 @@ const LEGACY = { scrollLeft: -300, scrollTop: -400 };
 const TABLE = { x: 600, y: 400 };
 
 /**
- * The origin the shipped editor drew a legacy document at: the scroll it stored
- * plus the half of the canvas box the css transform-origin shrank away.
+ * The origin an editor before the origin pair drew a legacy document at: the
+ * scroll it stored plus the half of the canvas box the css transform-origin
+ * shrank away.
  */
 const migrated = (scroll: number) => scroll + (CANVAS_SIZE * (1 - ZOOM)) / 2;
 
@@ -71,8 +72,9 @@ test.describe('the origin pair and the legacy scroll pair', () => {
 
     const placement = await tablePlacement(erd, 'users');
 
-    // The formula the released editor drew with, written out: scale about the
-    // middle of the canvas box, then carry the result by the stored scroll.
+    // The formula an editor before the origin pair drew with, written out:
+    // scale about the middle of the canvas box, then carry the result by the
+    // stored scroll.
     expect(placement.x).toBeCloseTo(
       TABLE.x * ZOOM + LEGACY.scrollLeft + (CANVAS_SIZE * (1 - ZOOM)) / 2,
       1
