@@ -45,6 +45,7 @@ import {
 } from '@/constants/layout';
 import { ColumnType } from '@/constants/schema';
 import { getLiveDomainName } from '@/engine/modules/dictionary/membership';
+import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
 import {
   editMemoEndAction,
   editTableEndAction,
@@ -62,6 +63,7 @@ import { changeTableNameAction$ } from '@/engine/modules/table/generator.actions
 import { changeColumnValueAction$ } from '@/engine/modules/table-column/generator.actions';
 import { changeTableGroupNameAction } from '@/engine/modules/table-group/atom.actions';
 import type { RootState } from '@/engine/state';
+import { useUnmounted } from '@/hooks/useUnmounted';
 import type { PlainMessageKey } from '@/i18n/translate';
 import type { Column, Table } from '@/internal-types';
 import {
@@ -491,13 +493,25 @@ type TableGroupNameEditorProps = {
 /**
  * The input a group's name is edited in, in the bar's font and text color. It
  * writes once: Enter, a blur or hidden groups commit a changed name as one
- * action, while an Escape or a load that closed it writes nothing.
+ * action, while an Escape or a load opening a document over it writes nothing.
  */
 const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
   const app = useAppContext(ctx);
+  const { addUnsubscribe } = useUnmounted();
   const input = createRef<HTMLInputElement>();
   let cancelled = false;
   let ended = false;
+  // Such a load closes it over another document, where the group may be
+  // another's; a replacing one leaves it open, or hides the groups.
+  let closedByLoad = false;
+
+  addUnsubscribe(
+    app.value.store.subscribe(actions => {
+      if (actions.some(({ type }) => type === EditorActionType.initialClear)) {
+        closedByLoad = true;
+      }
+    })
+  );
 
   const end = (commit: boolean) => {
     if (ended) return;
@@ -508,11 +522,10 @@ const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
     const { groupId } = props.target;
     const handBack = () =>
       props.handsFocusBack() && ctx.host.dispatchEvent(focusEvent());
-    // The store closed it before its input left the page. A load did so over
-    // another document, where the group may be another's; hidden groups keep
+    // The store closed it before its input left the page: hidden groups keep
     // the name typed, as the blur would have.
     const closedByStore = editor.editTableGroupId !== groupId;
-    if (closedByStore && !props.handsFocusBack()) return;
+    if (closedByStore && closedByLoad) return;
     const value = input.value?.value ?? props.target.value;
     // The document's own list, since a removed group stays in collections as a
     // tombstone and a name written to it would be an edit of nothing.

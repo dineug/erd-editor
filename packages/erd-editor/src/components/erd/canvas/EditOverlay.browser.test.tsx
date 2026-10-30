@@ -1,3 +1,4 @@
+import { toJson } from '@dineug/erd-editor-schema';
 import { addCSSHost, createRef, render, useProvider } from '@dineug/r-html';
 import { whenDrawn } from '@dineug/r-html-konva';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -56,6 +57,7 @@ import {
 import { Database, NameViewMode, Show } from '@/constants/schema';
 import { addDictionaryAction } from '@/engine/modules/dictionary/atom.actions';
 import {
+  clearAction,
   editMemoAction,
   editMemoEndAction,
   editTableAction,
@@ -63,6 +65,7 @@ import {
   editTableGroupAction,
   focusColumnAction,
   focusTableAction,
+  loadJsonAction,
   scrollMemoAction,
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, ViewKind } from '@/engine/modules/editor/state';
@@ -2338,6 +2341,27 @@ describe('the table group name editor', () => {
 
     expect(nameOf(fixture)).toBe('Billing');
     expect(batches).toEqual([]);
+  });
+
+  it('writes the name typed on the blur once a replacing load of a value that hides the groups closed it', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture, 'Billing');
+    const input = groupInputOf(fixture.mounted)!;
+    input.value = 'Invoices';
+    const value = JSON.parse(toJson(fixture.app.store.state));
+    value.settings.show |= Show.hideTableGroup;
+
+    fixture.app.store.dispatchSync(
+      clearAction(),
+      loadJsonAction({ value: JSON.stringify(value) })
+    );
+    await flush();
+    expect(groupInputOf(fixture.mounted)).toBeNull();
+    input.dispatchEvent(new FocusEvent('blur'));
+    await flush();
+
+    expect(nameOf(fixture)).toBe('Invoices');
+    expect(fixture.app.store.state.editor.editTableGroupId).toBeNull();
   });
 
   it('opens nothing while groups are hidden', async () => {
