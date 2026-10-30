@@ -490,8 +490,8 @@ type TableGroupNameEditorProps = {
 
 /**
  * The input a group's name is edited in, in the bar's font and text color. It
- * writes once: Enter or a blur commits a changed name as one action, while an
- * Escape or a close the store made, a load's or hidden groups', writes nothing.
+ * writes once: Enter, a blur or hidden groups commit a changed name as one
+ * action, while an Escape or a load that closed it writes nothing.
  */
 const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
   const app = useAppContext(ctx);
@@ -508,12 +508,11 @@ const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
     const { groupId } = props.target;
     const handBack = () =>
       props.handsFocusBack() && ctx.host.dispatchEvent(focusEvent());
-    // The store closed it before its input left the page, so what it held is
-    // no name the reader entered, and the group may be another document's.
-    if (editor.editTableGroupId !== groupId) {
-      handBack();
-      return;
-    }
+    // The store closed it before its input left the page. A load did so over
+    // another document, where the group may be another's; hidden groups keep
+    // the name typed, as the blur would have.
+    const closedByStore = editor.editTableGroupId !== groupId;
+    if (closedByStore && !props.handsFocusBack()) return;
     const value = input.value?.value ?? props.target.value;
     // The document's own list, since a removed group stays in collections as a
     // tombstone and a name written to it would be an edit of nothing.
@@ -522,10 +521,11 @@ const TableGroupNameEditor: FC<TableGroupNameEditorProps> = (props, ctx) => {
       : undefined;
     const changed = Boolean(commit && group && group.name !== value);
 
-    store.dispatch(
+    const actions = [
       ...(changed ? [changeTableGroupNameAction({ id: groupId, value })] : []),
-      editTableGroupEndAction()
-    );
+      ...(closedByStore ? [] : [editTableGroupEndAction()]),
+    ];
+    if (actions.length) store.dispatch(...actions);
     handBack();
   };
 

@@ -2290,22 +2290,54 @@ describe('the table group name editor', () => {
     expect(fixture.app.store.state.editor.editTableGroupId).toBeNull();
   });
 
-  it('writes nothing on the blur once hiding the groups closed it, though a name was typed', async () => {
+  it('writes the name typed on the blur once hiding the groups closed it, and hands the keyboard back', async () => {
     const fixture = await setup();
     await editGroupName(fixture, 'Billing');
     const input = groupInputOf(fixture.mounted)!;
     input.value = 'Invoices';
+    const batches: string[][] = [];
+    teardowns.push(
+      fixture.app.store.subscribe(actions => {
+        batches.push(actions.map(({ type }) => type));
+      })
+    );
 
+    const asked = await focusAsksDuring(async () => {
+      fixture.app.store.dispatchSync(
+        changeShowAction({ show: Show.hideTableGroup, value: true })
+      );
+      await flush();
+      expect(groupInputOf(fixture.mounted)).toBeNull();
+      input.dispatchEvent(new FocusEvent('blur'));
+      await flush();
+    });
+
+    expect(nameOf(fixture)).toBe('Invoices');
+    expect(batches).toContainEqual(['tableGroup.changeName']);
+    expect(fixture.app.store.state.editor.editTableGroupId).toBeNull();
+    expect(asked).toBe(1);
+  });
+
+  it('writes nothing once hiding the groups closed it over the name it opened with', async () => {
+    const fixture = await setup();
+    await editGroupName(fixture, 'Billing');
+    const input = groupInputOf(fixture.mounted)!;
     fixture.app.store.dispatchSync(
       changeShowAction({ show: Show.hideTableGroup, value: true })
     );
     await flush();
-    expect(groupInputOf(fixture.mounted)).toBeNull();
+    const batches: string[][] = [];
+    teardowns.push(
+      fixture.app.store.subscribe(actions => {
+        batches.push(actions.map(({ type }) => type));
+      })
+    );
 
     input.dispatchEvent(new FocusEvent('blur'));
     await flush();
+
     expect(nameOf(fixture)).toBe('Billing');
-    expect(fixture.app.store.state.editor.editTableGroupId).toBeNull();
+    expect(batches).toEqual([]);
   });
 
   it('opens nothing while groups are hidden', async () => {
