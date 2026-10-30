@@ -100,6 +100,27 @@ describe('presence', () => {
     expect(editor.sharedDragSelectTrackerMap[a.editorId]).toBeUndefined();
   });
 
+  it('AC-A4 a tracker sent again as it was reaches the others again, so a held selection outlives its expiry', () => {
+    // Installed before the room's Awareness, so its clock is the fake one too.
+    vi.useFakeTimers();
+    cleanups.push(() => vi.useRealTimers());
+    const { a, b, table } = presenceRoom();
+    const select = () =>
+      a.dispatch([
+        {
+          type: 'editor.sharedSelectionTracker',
+          payload: { selectedIds: [table] },
+        },
+      ]);
+
+    select();
+    vi.advanceTimersByTime(60_000);
+    select();
+    vi.advanceTimersByTime(60_000);
+
+    expect(b.state.editor.sharedSelectionTrackerMap[a.editorId]).toBeDefined();
+  });
+
   it('AC-A4 a binding destroyed clears its field, and the others forget its trackers', async () => {
     const { a, b, clientA, clientB, bindingA, table } = presenceRoom();
     focusOn(a, table);
@@ -205,6 +226,7 @@ describe('createPresence', () => {
       editorId: 'local',
       nickname: '',
       trackers: {},
+      beats: {},
       screen,
       compactor: true,
     });
@@ -226,6 +248,7 @@ describe('createPresence', () => {
       editorId: 'local',
       nickname: '',
       trackers: {},
+      beats: {},
       screen,
     });
     compactor.withdraw();
@@ -238,6 +261,28 @@ describe('createPresence', () => {
     plain.withdraw();
     expect(otherWrites).not.toHaveBeenCalled();
     expect(presenceOf(other, other.clientID)).not.toHaveProperty('compactor');
+  });
+
+  it('forgets an editor id only once no other client shows it', () => {
+    const awareness = awarenessOf();
+    const { port, received, forgotten } = fakePort(null);
+    createPresence(awareness, port, { screen: screenOf('{}') });
+    const shown = (x: number) => ({
+      [AWARENESS_FIELD]: {
+        editorId: 'moved',
+        trackers: { 'editor.sharedMouseTracker': mouse('moved', x) },
+      },
+    });
+    // An element bound again to another Y.Doc of the room, whose new client
+    // shows before the old one goes.
+    remoteState(awareness, 7, shown(1));
+    remoteState(awareness, 8, shown(2));
+
+    remoteState(awareness, 7, null);
+    expect(forgotten).toEqual([]);
+    expect(received).toEqual([[mouse('moved', 1)], [mouse('moved', 2)]]);
+    remoteState(awareness, 8, null);
+    expect(forgotten).toEqual(['moved']);
   });
 
   it('applies a tracker once per change and forgets an editor id that changed or went', () => {

@@ -45,6 +45,9 @@ export type CompactOptions = {
 export const DEFAULT_ELECTION_GRACE_MS = 3_000;
 export const DEFAULT_RETAIN_MS = 600_000;
 
+/** The longest delay a timer keeps; Node and browsers fire a longer one at once. */
+const MAX_DELAY_MS = 2 ** 31 - 1;
+
 /** The most entries a compactor holds of its folds, the latest kept. */
 export const RETAIN_LIMIT = 1_000;
 
@@ -164,17 +167,36 @@ export function createCompactor(
   {
     compactAfter,
     synced,
-    electionGraceMs = DEFAULT_ELECTION_GRACE_MS,
-    retainMs = DEFAULT_RETAIN_MS,
+    electionGraceMs: graceOption = DEFAULT_ELECTION_GRACE_MS,
+    retainMs: retainOption = DEFAULT_RETAIN_MS,
   }: CompactOptions
 ): Compactor {
   const { doc, origin, port, awareness } = host;
   const log = getLog(doc);
   const map = getSnapshotMap(doc);
+  const refused: string[] = [];
 
   const validThreshold =
     compactAfter === undefined ||
     (Number.isInteger(compactAfter) && compactAfter > 0);
+  if (!validThreshold) {
+    refused.push(
+      `compactAfter must be a positive integer, not ${String(compactAfter)}, so the binding folds only when asked`
+    );
+  }
+  const delayOf = (name: string, ms: number, fallback: number) => {
+    if (Number.isFinite(ms) && ms >= 0 && ms <= MAX_DELAY_MS) return ms;
+    refused.push(
+      `${name} must be from 0 to ${MAX_DELAY_MS} ms, not ${String(ms)}, so it is ${fallback}`
+    );
+    return fallback;
+  };
+  const electionGraceMs = delayOf(
+    'electionGraceMs',
+    graceOption,
+    DEFAULT_ELECTION_GRACE_MS
+  );
+  const retainMs = delayOf('retainMs', retainOption, DEFAULT_RETAIN_MS);
   const auto =
     compactAfter !== undefined && validThreshold && synced !== undefined;
   const threshold = compactAfter ?? 0;
@@ -364,13 +386,9 @@ export function createCompactor(
     void Promise.resolve().then(run);
   };
 
-  if (!validThreshold) {
+  if (refused.length) {
     void Promise.resolve().then(() =>
-      host.emitError(
-        refusal(
-          `compactAfter must be a positive integer, not ${String(compactAfter)}, so the binding folds only when asked`
-        )
-      )
+      refused.forEach(message => host.emitError(refusal(message)))
     );
   }
 

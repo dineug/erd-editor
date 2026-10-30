@@ -98,6 +98,12 @@ type BindingCore = {
   compact: () => CompactResult;
 };
 
+/** The snapshot a refusal names: of another format, or of this one in fields it cannot read. */
+const unreadable = (format: unknown) =>
+  format === ERD_YJS_FORMAT
+    ? `a snapshot of format ${ERD_YJS_FORMAT} in a shape this release cannot read`
+    : `a snapshot of format ${String(format)}, not ${ERD_YJS_FORMAT}`;
+
 const notBound = (): CompactResult => ({
   compacted: false,
   reason: 'destroyed',
@@ -163,7 +169,7 @@ function createBinding(
     port.destroy();
     return inertBinding(
       refusal(
-        `the room holds a snapshot of format ${String(initial.format)}, not ${ERD_YJS_FORMAT}, so nothing was bound`
+        `the room holds ${unreadable(initial.format)}, so nothing was bound`
       )
     );
   }
@@ -187,6 +193,7 @@ function createBinding(
   let lineage: string | null = null;
   let seeded: string | null = null;
   let stopped = false;
+  let released = false;
   let destroyed = false;
   let presence: Presence | null = null;
   let compactor: Compactor | null = null;
@@ -253,16 +260,28 @@ function createBinding(
     map.unobserve(onSnapshot);
   };
 
+  /** Lets go of what the port made and of the pair, so the store can bind to this Y.Doc again. */
+  const release = () => {
+    if (released) return;
+    released = true;
+    port.destroy();
+    boundDocs.get(target)?.delete(doc);
+  };
+
+  /** Stops as destroy does, the listeners kept to hear why. */
+  const stop = (reason: string) => {
+    detach();
+    release();
+    emitError(refusal(reason));
+  };
+
   /** True when the snapshot took over, by a rejoin or by a format this binding cannot read. */
   const followSnapshot = (): boolean => {
     const read = readSnapshot(map);
     if (read.state === 'none') return false;
     if (read.state === 'unsupported') {
-      detach();
-      emitError(
-        refusal(
-          `the room now holds a snapshot of format ${String(read.format)}, not ${ERD_YJS_FORMAT}, so the binding stopped`
-        )
+      stop(
+        `the room now holds ${unreadable(read.format)}, so the binding stopped`
       );
       return true;
     }
@@ -289,11 +308,8 @@ function createBinding(
   const usable = (): boolean => {
     if (stopped) return false;
     if (!port.closed()) return true;
-    detach();
-    emitError(
-      refusal(
-        'the peer store was destroyed before its binding, so the binding stopped'
-      )
+    stop(
+      'the peer store was destroyed before its binding, so the binding stopped'
     );
     return false;
   };
@@ -378,8 +394,7 @@ function createBinding(
 
     if (!stopped) port.flushStreamBuffers();
     detach();
-    port.destroy();
-    boundDocs.get(target)?.delete(doc);
+    release();
     listeners.rejoin.clear();
     listeners.error.clear();
   };

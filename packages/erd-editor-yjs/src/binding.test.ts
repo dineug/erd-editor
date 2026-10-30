@@ -341,6 +341,42 @@ describe('refusals', () => {
     });
   });
 
+  it('AC-A7 a binding that stopped on another format lets go of its store, which binds to that Y.Doc again', async () => {
+    const { room, peer, bind } = setup();
+    const client = room.join();
+    const a = peer('a');
+    const binding = bind(a, client.doc);
+    expect(binding.seed()).toBe(true);
+    binding.on('error', vi.fn());
+    getSnapshotMap(client.doc).set('format', 2);
+    getSnapshotMap(client.doc).set('format', 1);
+
+    const again = bind(a, client.doc);
+    const errors = vi.fn();
+    again.on('error', errors);
+    await Promise.resolve();
+    expect(errors).not.toHaveBeenCalled();
+    expect(getLog(client.doc).length).toBe(0);
+    addTable(a, 'sent');
+    expect(getLog(client.doc).length).toBeGreaterThan(0);
+  });
+
+  it('AC-A7 a snapshot of this format in another shape is refused as one, not as another format', async () => {
+    const { room, peer, bind } = setup();
+    const client = room.join();
+    getSnapshotMap(client.doc).set('format', 1);
+    const binding = bind(peer('a'), client.doc);
+    const errors = vi.fn();
+    binding.on('error', errors);
+
+    await Promise.resolve();
+    const [[error]] = errors.mock.calls;
+    expect(error.message).toMatch(
+      /format 1 in a shape this release cannot read/
+    );
+    expect(error.message).not.toMatch(/not 1/);
+  });
+
   it('AC-P17 a store without the five port methods raises error and nothing is bound', async () => {
     const { room, peer } = setup();
     const a = peer('a');

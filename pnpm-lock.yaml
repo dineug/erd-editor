@@ -472,9 +472,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.1
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
       '@typescript/typescript6':
         specifier: 'catalog:'
         version: 6.0.2

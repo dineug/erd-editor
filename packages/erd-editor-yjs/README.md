@@ -85,7 +85,7 @@ losing seed first, with `rejoin('snapshot')`.
 | Event | Description |
 | --- | --- |
 | `rejoin` | `(reason) => void`. The binding reopened the editor on the room's snapshot. `'snapshot'`: the snapshot holds edits the binding had not applied, because it was away while a compactor folded them, or a compactor put back, in a fold of its own, what it had folded apart from another (One compactor per room), or it is the first snapshot to reach a binding of an empty room, or another seed's. `'seedLost'`: another client's seed won over this binding's own. |
-| `error` | `(error) => void`. The binding refused: the editor or peer store is already bound to this `Y.Doc`; its `@dineug/erd-editor` was built before this package and lacks the methods a binding needs; the room's diagram was written in a layout this release does not read (`ERD_YJS_FORMAT`), at bind time binding nothing and later stopping the binding; or, for `bindPeerStore`, the peer store was destroyed before the binding (Destroying a binding), `compactAfter` is not a positive integer, or `synced` rejected, which also takes the binding out of the election. An error at bind time reaches a listener added right after the call. |
+| `error` | `(error) => void`. The binding refused: the editor or peer store is already bound to this `Y.Doc`; its `@dineug/erd-editor` was built before this package and lacks the methods a binding needs; the room's diagram was written in a layout this release does not read (`ERD_YJS_FORMAT`), at bind time binding nothing and later stopping the binding; or, for `bindPeerStore`, the peer store was destroyed before the binding (Destroying a binding), `compactAfter` is not a positive integer, `electionGraceMs` or `retainMs` is not from 0 to 2,147,483,647 ms (the default then stands in), or `synced` rejected, which also takes the binding out of the election. An error at bind time reaches a listener added right after the call. |
 
 A rejoin onto a snapshot of the seed the binding joined replays every edit the snapshot does not
 hold, this client's own made while it was away among them, so none of them is lost. A binding that
@@ -107,7 +107,8 @@ from the element; a peer store, the `Y.Doc` and the provider stay yours to destr
 binding. A peer store destroyed first never sends the drags it still held, and its binding stops
 with `error` the next time the room changes or it is asked to seed or compact, rather than open the
 room on a closed store or fold one into the snapshot. Destroy a binding before binding the same
-editor or peer store to the same `Y.Doc` again.
+editor or peer store to the same `Y.Doc` again; a binding that stopped with `error` has already let
+go of both, as `destroy()` does.
 
 ## Compacting a room
 
@@ -164,7 +165,8 @@ process.on('SIGTERM', () => {
 
 `binding.compact()` folds at once, with no election and no grace, and answers
 `{ compacted: true, generation }`, or `{ compacted: false, reason }` with `'destroyed'` once the
-binding or its peer store was destroyed, even before `synced`, `'not-synced'` before `synced`
+binding was destroyed or stopped (its peer store destroyed, or a snapshot it cannot read), even
+before `synced`, `'not-synced'` before `synced`
 resolves, or `'no-snapshot'` in a room no client has seeded.
 
 Every fold rewrites the whole diagram into the snapshot, so each one sends every client an update

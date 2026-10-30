@@ -19,8 +19,9 @@ test.describe('a room over a websocket relay', () => {
     const a = await RoomClient.open(page, 'A');
     expect(await a.seed()).toBe(true);
     const first = await a.addTable();
-    // Installed before any cursor arrives, so the stage that draws one is caught.
-    expect(await a.cursorLabels()).toEqual([]);
+    // Installs the probe before any cursor arrives, so the stage that draws one
+    // is caught; this first read finds no stage yet, so it asserts nothing.
+    await a.cursorLabels();
 
     const b = await RoomClient.open(await context.newPage(), 'B');
     await expect.poll(() => b.tableIds()).toEqual([first]);

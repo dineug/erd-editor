@@ -426,6 +426,44 @@ describe('start conditions', () => {
     }
   );
 
+  it.each([
+    ['electionGraceMs', Number.POSITIVE_INFINITY],
+    ['electionGraceMs', -1],
+    ['retainMs', 2 ** 31],
+    ['retainMs', Number.NaN],
+  ])(
+    '%s %s raises error and the default stands in, as a timer past its range fires at once',
+    async (name, ms) => {
+      const { room, peer, bind } = setup();
+      const a = peer('a');
+      bind(a, room.join().doc).seed();
+      const client = room.join({ clientID: 1 });
+      const replica = bind(peer('server'), client.doc, {
+        compactAfter: 2,
+        synced: Promise.resolve(),
+        awareness: client.awareness,
+        ...{ [name]: ms },
+      });
+      const errors = vi.fn();
+      replica.on('error', errors);
+      await turn();
+
+      expect(errors).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringMatching(
+            new RegExp(`^erd-editor-yjs: ${name} must be`)
+          ),
+        })
+      );
+      addTable(a, 'one');
+      addTable(a, 'two');
+      await vi.advanceTimersByTimeAsync(DEFAULT_ELECTION_GRACE_MS - 1);
+      expect(snapshotOf(room.server).generation).toBe(0);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(snapshotOf(room.server).generation).toBe(1);
+    }
+  );
+
   it('a synced that rejects raises error and no fold follows', async () => {
     const { room, peer, bind } = setup();
     bind(peer('a'), room.join().doc).seed();

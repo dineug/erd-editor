@@ -62,7 +62,6 @@
     "@dineug/erd-editor": "workspace:*",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
-    "@types/ws": "^8.18.1",
     "@typescript/typescript6": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",

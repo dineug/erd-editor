@@ -19,6 +19,11 @@ export type PresenceState = {
   nickname: string;
   /** The last action of each tracker the store sent, as it sent it. */
   trackers: Partial<Record<string, PortAction>>;
+  /**
+   * How many times each tracker went out, so one sent again as it was, the
+   * heartbeat its expiry waits on, still reaches the others.
+   */
+  beats: Partial<Record<string, number>>;
   screen: Screen;
   compactor?: true;
 };
@@ -123,8 +128,8 @@ type RemotePresence = { editorId: string; seen: Record<string, string> };
 
 /**
  * Carries the store's presence through Awareness, never the log: its trackers
- * out, the others' trackers in as they change, and a client that leaves, by
- * the editor id it showed, forgotten at once rather than at its expiry.
+ * out, the others' trackers in each time they are sent, and a client that
+ * leaves, by the editor id it showed, forgotten at once rather than at its expiry.
  */
 export function createPresence(
   awareness: Awareness,
@@ -136,6 +141,7 @@ export function createPresence(
     editorId: port.editorId() ?? '',
     nickname: '',
     trackers: {},
+    beats: {},
     screen: options.screen,
     ...(options.compactor ? { compactor: true as const } : {}),
   };
@@ -146,6 +152,11 @@ export function createPresence(
     const known = remote.get(clientId);
     if (!known) return;
     remote.delete(clientId);
+    // An element bound again to another Y.Doc of the room shows its id from a
+    // new client, which may arrive before the old one goes.
+    for (const other of remote.values()) {
+      if (other.editorId === known.editorId) return;
+    }
     port.forgetPeer(known.editorId);
   };
 
@@ -162,14 +173,15 @@ export function createPresence(
     };
     remote.set(clientId, known);
 
+    const beats = isRecord(value.beats) ? value.beats : {};
     const fresh: PortAction[] = [];
     for (const type of TRACKER_TYPES) {
       const action = value.trackers[type];
       if (!isRecord(action) || action.type !== type) continue;
 
-      const json = JSON.stringify(action);
-      if (known.seen[type] === json) continue;
-      known.seen[type] = json;
+      const sent = JSON.stringify([beats[type], action]);
+      if (known.seen[type] === sent) continue;
+      known.seen[type] = sent;
       fresh.push(action);
     }
     if (fresh.length) port.receive(fresh);
@@ -209,6 +221,10 @@ export function createPresence(
           trackers: {
             ...next.trackers,
             [action.type]: copyJson(action),
+          },
+          beats: {
+            ...next.beats,
+            [action.type]: (next.beats[action.type] ?? 0) + 1,
           },
         };
       } else if (isFollowing(action.type)) {
