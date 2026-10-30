@@ -54,6 +54,9 @@ catalogs:
     vite-plus:
       specifier: 1.0.0
       version: 1.0.0
+    ws:
+      specifier: ^8.18.3
+      version: 8.22.0
 
 overrides:
   typescript: 7.0.2
@@ -294,8 +297,8 @@ importers:
         specifier: ^7.4.1
         version: 7.4.1
       ws:
-        specifier: ^8.18.3
-        version: 8.21.3
+        specifier: 'catalog:'
+        version: 8.22.0
 
   packages/erd-editor:
     dependencies:
@@ -457,6 +460,63 @@ importers:
       vitest:
         specifier: 5.0.1
         version: 5.0.1(@types/node@22.20.1)(@vitest/browser-playwright@5.0.1)(@vitest/browser-preview@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(happy-dom@20.11.2)
+
+  packages/erd-editor-yjs:
+    devDependencies:
+      '@dineug/erd-editor':
+        specifier: workspace:*
+        version: link:../erd-editor
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.62.1
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      '@typescript/typescript6':
+        specifier: 'catalog:'
+        version: 6.0.2
+      '@vitest/browser-playwright':
+        specifier: 'catalog:'
+        version: 5.0.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(playwright@1.62.1)(vitest@5.0.1)
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      happy-dom:
+        specifier: 'catalog:'
+        version: 20.11.2
+      lib0:
+        specifier: ^0.2.119
+        version: 0.2.119
+      typescript:
+        specifier: 7.0.2
+        version: 7.0.2
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@1.0.0
+        version: '@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0)'
+      vite-plugin-dts:
+        specifier: 'catalog:'
+        version: 5.0.3(@microsoft/api-extractor@7.51.1(@types/node@22.20.1))(@rspack/core@2.2.9)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(rolldown@1.2.4)(rollup@4.62.4)(typescript@7.0.2)(webpack@5.91.0)
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.0.0(@types/node@22.20.1)(@vitest/browser-playwright@5.0.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(playwright@1.62.1)(vitest@5.0.1))(@vitest/coverage-v8@5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1))(@vitest/ui@5.0.1(vitest@5.0.1))(happy-dom@20.11.2)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0)
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@types/node@22.20.1)(@vitest/browser-playwright@5.0.1)(@vitest/browser-preview@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(happy-dom@20.11.2)
+      ws:
+        specifier: 'catalog:'
+        version: 8.22.0
+      y-protocols:
+        specifier: ^1.0.7
+        version: 1.0.7(yjs@13.6.33)
+      y-websocket:
+        specifier: ^3.1.0
+        version: 3.1.0(yjs@13.6.33)
+      yjs:
+        specifier: ^13.6.33
+        version: 13.6.33
 
   packages/grid:
     dependencies:
@@ -6606,6 +6666,9 @@ packages:
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
 
+  isomorphic.js@0.2.5:
+    resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==}
+
   istanbul-lib-coverage@3.2.2:
     resolution: {integrity: sha512-O8dpsF+r0WV/8MNRKfnmrtCWhuKjxrq2w+jpzBL5UZKTi2LeVWnWOmWRxFlesJONmc+wLAGvKQZEOanko0LFTg==}
     engines: {node: '>=8'}
@@ -6760,6 +6823,11 @@ packages:
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
+
+  lib0@0.2.119:
+    resolution: {integrity: sha512-vh+TiejVy8Xm+hCdnRfn9BthGNvNUZdEXltNjVZL3TzRIKP3s1lnQh8pWd/Q0wCgY0FPAGVVjFF4ZiHUV3LFgA==}
+    engines: {node: '>=16'}
+    hasBin: true
 
   lie@3.3.0:
     resolution: {integrity: sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==}
@@ -8309,18 +8377,6 @@ packages:
     resolution: {integrity: sha512-G8ura3S+3Z2G+mkgNRq8dqaFZAuxfsxpBB8OCTGRTCtp+l/v9nbFNmCUP1BZMts3G1142MsZfn6eeUKrr4PD1Q==}
     engines: {node: '>=18'}
 
-  ws@8.21.3:
-    resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   ws@8.22.0:
     resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
     engines: {node: '>=10.0.0'}
@@ -8336,6 +8392,18 @@ packages:
   wsl-utils@0.1.0:
     resolution: {integrity: sha512-h3Fbisa2nKGPxCpm89Hk33lBLsnaGBvctQopaBSOW/uIs6FTe1ATyAnKFJrzVs9vpGdsTe73WF3V4lIsk4Gacw==}
     engines: {node: '>=18'}
+
+  y-protocols@1.0.7:
+    resolution: {integrity: sha512-YSVsLoXxO67J6eE/nV4AtFtT3QEotZf5sK5BHxFBXso7VDUT3Tx07IfA6hsu5Q5OmBdMkQVmFZ9QOA7fikWvnw==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+    peerDependencies:
+      yjs: ^13.0.0
+
+  y-websocket@3.1.0:
+    resolution: {integrity: sha512-ZNzwH84Ysxv7zjpFNZHjTJvrBZgcAqMljTe+6zrWciAML9LQ18aVylyPNH9faxCXqEOV8I0JY4TGtrIHFX+Xwg==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+    peerDependencies:
+      yjs: ^13.5.6
 
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
@@ -8375,6 +8443,10 @@ packages:
   yargs@18.1.0:
     resolution: {integrity: sha512-2rAgRKu54VsHkqI0/tYkmluGXHD4KW7yZoycuqDQ15QOTnc2VVfy0nN/1eMhnQLO00A+dwtK20xuCnc1YGeUyg==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=23}
+
+  yjs@13.6.33:
+    resolution: {integrity: sha512-q/UYvr1gOk4XII+Cu1CW2dINjYqJJFifTzogEaIARznrvX7uOlHsdTEXcnOBMuIsrCGEEKdNxi74kyMLZlKVfw==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
@@ -10257,7 +10329,7 @@ snapshots:
   '@jridgewell/gen-mapping@0.3.5':
     dependencies:
       '@jridgewell/set-array': 1.2.1
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
       '@jridgewell/trace-mapping': 0.3.31
 
   '@jridgewell/remapping@2.3.5':
@@ -10281,7 +10353,7 @@ snapshots:
   '@jridgewell/trace-mapping@0.3.31':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.1
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   '@marijn/find-cluster-break@1.0.4': {}
 
@@ -12225,7 +12297,7 @@ snapshots:
       sirv: 3.0.2
       tinyrainbow: 3.1.1
       vitest: 5.0.1(@types/node@22.20.1)(@vitest/browser-playwright@5.0.1)(@vitest/browser-preview@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(@voidzero-dev/vite-plus-core@1.0.0(@types/node@22.20.1)(jiti@2.6.1)(terser@5.26.0)(typescript@7.0.2)(yaml@2.7.0))(happy-dom@20.11.2)
-      ws: 8.21.3
+      ws: 8.22.0
     transitivePeerDependencies:
       - bufferutil
       - msw
@@ -14134,6 +14206,8 @@ snapshots:
 
   isexe@2.0.0: {}
 
+  isomorphic.js@0.2.5: {}
+
   istanbul-lib-coverage@3.2.2: {}
 
   istanbul-lib-report@3.0.1:
@@ -14256,6 +14330,10 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
       type-check: 0.4.0
+
+  lib0@0.2.119:
+    dependencies:
+      isomorphic.js: 0.2.5
 
   lie@3.3.0:
     dependencies:
@@ -14551,7 +14629,7 @@ snapshots:
       socks: 2.8.9
       split2: 4.2.0
       worker-timers: 8.0.34
-      ws: 8.21.3
+      ws: 8.22.0
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -15451,7 +15529,7 @@ snapshots:
       recast: 0.23.6
       semver: 7.8.5
       use-sync-external-store: 1.6.0(react@19.2.8)
-      ws: 8.21.3
+      ws: 8.22.0
     optionalDependencies:
       '@types/react': 19.2.18
       prettier: 3.5.3
@@ -16308,13 +16386,22 @@ snapshots:
       string-width: 7.0.0
       strip-ansi: 7.1.0
 
-  ws@8.21.3: {}
-
   ws@8.22.0: {}
 
   wsl-utils@0.1.0:
     dependencies:
       is-wsl: 3.1.0
+
+  y-protocols@1.0.7(yjs@13.6.33):
+    dependencies:
+      lib0: 0.2.119
+      yjs: 13.6.33
+
+  y-websocket@3.1.0(yjs@13.6.33):
+    dependencies:
+      lib0: 0.2.119
+      y-protocols: 1.0.7(yjs@13.6.33)
+      yjs: 13.6.33
 
   y18n@5.0.8: {}
 
@@ -16357,6 +16444,10 @@ snapshots:
       string-width: 8.2.2
       y18n: 5.0.8
       yargs-parser: 22.0.0
+
+  yjs@13.6.33:
+    dependencies:
+      lib0: 0.2.119
 
   yocto-queue@0.1.0: {}
 

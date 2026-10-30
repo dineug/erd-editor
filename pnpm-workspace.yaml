@@ -23,6 +23,7 @@ catalog:
   '@chenglou/pretext': '^1.0.0'
   core-js: '^3.51.0'
   stylis: '^4.4.0'
+  ws: '^8.18.3'
 overrides:
   # Was `resolutions` in the root package.json, which pnpm reads but does not
   # document; this is the field it actually specifies for the job.

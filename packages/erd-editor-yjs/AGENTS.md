@@ -1,0 +1,173 @@
+<!-- Parent: ../../AGENTS.md -->
+<!-- Generated: 2026-10-30 | Updated: 2026-10-30 -->
+
+# erd-editor-yjs
+
+## Purpose
+
+`@dineug/erd-editor-yjs`, public on npm, is a transport binding: it keeps an `<erd-editor>` element (`bindErdEditor`) or a `peer.js` `PeerStore` (`bindPeerStore`) in step through a `Y.Doc`, holding the editor's state there as a snapshot and a log of the action batches since it. Yjs merges which batches exist and the engine's LWW registers merge what they say, so the binding changes no batch's `version`, `tags` or `meta` and decides no merge. Presence travels through a y-protocols `Awareness`, never the log. The binding reaches a store only through the store port `erd-editor`'s shared store and peer store carry (`packages/erd-editor/src/engine/AGENTS.md`, The store port), and its shipping code imports `@dineug/erd-editor` for types alone. Only `bindPeerStore` folds the log, and only when asked to. Nothing else in the repository binds it yet: its specs, its dev page and its e2e are its only callers. A change here keeps the order rules (Rules § Join, live edits and rejoin), the one-compactor premise stated in both this file and `README.md`, and the shipping sources inside their import rule (Rules § Runtime and imports).
+
+## Making a Change
+
+1. **Read the store's side first** (root step 1). The binding leans on what `packages/erd-editor/src/engine/AGENTS.md` says under The store port, Geometry registers, Clock and versions and Screen-only settings, and its scenarios on `packages/erd-editor/src/peer/AGENTS.md`. A change the binding cannot make without one in `erd-editor` is an `erd-editor` change too, with that package's checks.
+2. **Write the change with its specs** (root step 2), each module's beside it (Testing Requirements). A change to the `Y.Doc` layout that a binding of the current format would misread raises `ERD_YJS_FORMAT` (Rules § The Y.Doc layout). A new shipping module joins the list `src/imports.test.ts` pins. A change to the API, a default or a limit updates `README.md`, the npm page.
+3. **Run the package's `test` task** (root step 3). It builds `erd-editor` first, then runs `tsc --noEmit` over `src/` and `bench/`, then the `unit` and `browser` projects:
+
+   ```
+   pnpm exec vp run --filter @dineug/erd-editor-yjs --fail-if-no-match test
+   ```
+
+   When the `browser` project fails to start, install Chromium with `pnpm --filter @dineug/erd-editor-yjs exec playwright install chromium` and run the task again.
+4. **Run the coverage gate** (root step 4), both projects at 80% per file:
+
+   ```
+   pnpm --filter @dineug/erd-editor-yjs --fail-if-no-match test:coverage
+   ```
+
+5. **Run root step 5**, `pnpm check` then `pnpm build`. `pnpm size` keeps no record of this package, and none of `erd-editor`'s output gates reads it.
+6. **Run the e2e for a change to how a room behaves** (root step 6): `pnpm --filter @dineug/erd-editor-yjs e2e:typecheck`, then `pnpm --filter @dineug/erd-editor-yjs e2e`, which builds first (Testing Requirements § The e2e). Stop by its pid any relay, compactor or `vp dev` started by hand.
+7. **Measure a change to compaction** with `pnpm --filter @dineug/erd-editor-yjs bench`, and put what it prints in Rules § Compaction cost with its date and reason, in place of the figures there.
+8. **Report as root step 7 says.** The version stays as `main` has it, and a CHANGELOG entry waits for the owner.
+
+## Key Files
+
+| File | Description |
+| --- | --- |
+| `src/index.ts` | Public surface: `bindErdEditor`, `bindPeerStore`, `ERD_YJS_FORMAT` and the types `ErdYjsBinding`, `ErdYjsPeerBinding`, `BindOptions`, `PeerBindOptions`, `BindingEvents`, `RejoinReason`, `CompactOptions`, `CompactResult` |
+| `src/binding.ts` | `createBinding`: the double-binding guard, the join, the log and snapshot observers, the rejoin, `seed`, `destroy` and the stop on a peer store destroyed under it; `bindErdEditor`, and `bindPeerStore`, which alone hands it a compactor factory |
+| `src/port.ts` | `CollaborationPort`, all the binding asks of a store; `portOfEditor` (one `getSharedStore()` per binding, its trackers on with Awareness, let go on destroy) and `portOfPeer` (never destroys the peer; `closed()` reads its `isDestroyed`); `PORT_METHODS`, `hasPortMethods` |
+| `src/classify.ts` | The eleven types kept out of the log, `TRACKER_TYPES`, `HANDSHAKE_TYPES` and `FOLLOWING_TYPES`, and `isTracker`, `isHandshake`, `isFollowing`, `isLogged` |
+| `src/log.ts` | `erd:log`: `LogEntry`, `createLogWriter` (the binding id and its seq), `createLogReader` (per-writer watermarks, the entries held past a gap and the binding's own written past one), `insertedOf`, `removeEntries` |
+| `src/snapshot.ts` | `erd:snapshot`: `ERD_YJS_FORMAT`, `readSnapshot` and `writeSnapshot` (all eight fields), `needsRejoin`, `checkLineage` |
+| `src/awareness.ts` | `createPresence`: the `erd` Awareness field, the trackers out and in, `forgetPeer` for a client that leaves, the screen (`screenOf`, `nextScreen`) |
+| `src/compact.ts` | `createCompactor` (start conditions, election, grace, scheduling, the hold and the put-back) and `foldLog`, the fold in one transaction; `DEFAULT_ELECTION_GRACE_MS`, `DEFAULT_RETAIN_MS`, `RETAIN_LIMIT` |
+| `src/json.ts`, `src/errors.ts` | `copyJson`, the JSON copy at the `Y.Doc`'s edge; `refusal`, an error naming the package |
+| `src/__test-utils__/` | `fakeProvider.ts` (`createFakeRoom`), `harness.ts`, `scenarios.ts` (`MODULE_SCENARIOS`), `edits.ts`, and `instrumentPeer.ts`, a stand-in for a peer store that records the batches passing and holds outbound streams back as the element does |
+| `bench/compact.bench.ts` | One fold of a 500-table document, timed and weighed, printed and judged by nothing |
+| `index.html`, `src/index.dev.ts` | The dev page (Testing Requirements § The dev page) |
+| `e2e/` | Playwright: `playwright.config.ts`, `specs/room.spec.ts`, and in `support/` the servers (`servers.mjs`, `ws-server.mjs`, `compactor.mjs`) and the page drivers (`room.ts`, `presence.ts`) (Testing Requirements § The e2e) |
+| `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, minify: false, preserveModules: true, server: { port: 5179 } })` with `resolve.dedupe: ['yjs']` |
+| `vitest.config.ts` | The `unit` (happy-dom) and `browser` (Chromium, `*.browser.test.ts`) projects, the `@/*` alias and the dedupe in both, one coverage block |
+| `tsconfig.json`, `tsconfig.build.json`, `e2e/tsconfig.json` | `@/*` → `src/*`, as in both Vite configs; the build config leaves out the specs, `__test-utils__`, the dev page and `bench/` |
+
+## Rules
+
+### The Y.Doc layout
+
+- **The layout is private, format 1, kept by `ERD_YJS_FORMAT` alone.** `README.md` promises the API and names only the `erd:` prefix and the `erd` Awareness field as taken; the two bindings are the one way to read a room. A change a binding of the current format would misread raises the number, so that binding refuses the room instead.
+- **`erd:log` is a `Y.Array` of entries `{ by, seq, lineage, actions }`.**
+  - `by` is the writing binding's id, drawn per binding and apart from the presence `editorId`: an element bound, destroyed and bound again keeps its `editor.id`, so seqs keyed by it would start again under watermarks a snapshot already holds.
+  - `seq` runs from 1 with no gap, and only an entry the binding writes raises it. A batch the store sends before the room holds a snapshot is written nowhere and counts nothing.
+  - `lineage` is the `seedId` of the snapshot the writer had joined, and `actions` the batch's logged types as the store sent them.
+- **`erd:snapshot` is a `Y.Map` of eight fields**, always written together in one transaction: `format`, `generation` (0 at a seed, one more per fold; the compactor reads it with `compactorId` to tell its latest fold from one written over it, and diagnostics and the e2e's wait read it too), `seedId` (the lineage, drawn at a seed and kept by every fold), `compactorId` (the folding binding's id, null for a seed), `runtimeValue`, `lww`, `version` and `covers` (`bindingId → seq`). Yjs settles a key two clients set at once by client id, the same way for every key, so two snapshots written at once resolve to one of them whole (`snapshot.test.ts`).
+  - The value is the runtime form, which keeps removed entities, as root § Purpose says a joiner's seed must: a peer seeded from the file form brings a removed table back empty when its author undoes the removal.
+  - `readSnapshot` takes only format 1 with every field of its shape. Any other is unsupported: at bind time the binding raises `error` and binds nothing, and later it raises `error` and stops.
+- **The Awareness field `erd`** is `{ editorId, nickname, trackers, screen, compactor? }`: `trackers` the last action of each of the four trackers as the store sent it, `screen` the sender's `{ origin, zoom, canvasType }`, which nothing reads until a follow feature does, and `compactor: true` on a compacting binding's state, for the election.
+- **Ids are 32 hex digits from `crypto.getRandomValues`**, which every realm the binding runs in has.
+
+### Classification
+
+- **Eleven types stay out of the log**, as constants in `classify.ts`. The four trackers ride Awareness. The register handshake, `editor.getLWW` and `editor.mergeLWW`, is dropped: the snapshot carries the registers and the version, and a reseed's `getLWW` re-request answers nothing here. The five following types, `settings.scrollTo`, `streamScrollTo`, `changeZoomLevel`, `streamZoomLevel` and `changeCanvasType`, are each reader's own screen and move only the Awareness `screen`. Every other type an outbound batch holds is logged, `settings.changeNameViewMode` among them, since a shared switch is a document change every peer and replica writes through a register.
+- **Constants, not the engine's lists**: importing a list from `peer.js` would carry the whole peer graph into a browser bundle of the element binding.
+- **How they are pinned.** `classify.test.ts` types the eleven as `ActionType`, so a renamed type fails to compile, holds the five following types to `SharedFollowingActionTypes` less exactly `settings.changeNameViewMode`, puts each of the eleven in one class and every other change in the log, and takes a census of what a `presence: true` peer store sends through the module scenarios, a focus, the viewport, the tab and the handshake: each type in exactly one class, and each logged one in `ChangeActionTypes`. `erd-editor`'s `src/engine/actions.test.ts` pins the tracker and handshake names by exact array. A change to those lists in `erd-editor` updates `classify.ts` and its spec with it.
+
+### Join, live edits and rejoin
+
+- **A binding joins as it is made.** With a snapshot it calls `port.reseed(runtimeValue, { lww, version, keepScreen: false })`, sets its watermarks to `covers` and replays the entries of that lineage. With none, the store stays as it is and the binding writes nothing until a snapshot appears, its own seed or another's; the first one to arrive is a rejoin with reason `snapshot`, opened as a join.
+- **Each writer's entries apply in seq order, live and in a replay.** An entry applies only when its `seq` is one past its writer's watermark. One at or below it is a duplicate, a put-back or a push seen again, and is skipped; one past a gap waits until the gap fills. Without the rule a client would apply a put-back entry a second time, and an `editor.loadJson` or `clear` in it would write an older document over the current one. Entries of another lineage, and values of another shape, are skipped.
+- **The snapshot is judged before the entries.** The log observer checks the snapshot first, then applies what the change inserted (`event.changes.delta`). It rejoins when the snapshot's lineage is not the one it joined, whatever `covers` says, or when `covers` holds a writer past its watermark. The watermark is contiguous, the highest seq up to which every entry was applied, not the highest applied: on a reconnect Yjs can bring a fold's deletions, its snapshot and a writer's later entries in one update, the folded entries in no delta, so a highest-applied mark would see the later entries and miss the rejoin.
+- **A rejoin runs in one order**: `flushStreamBuffers()`, whose batches the outbound listener writes to the log under the lineage they were made in; then `reseed(..., { keepScreen: true })`, false for a binding that had joined no lineage; then the watermarks set to `covers`; then the entries it does not cover replayed, the binding's own among them; then the `rejoin` event. A reseed leaves the outbound pipe as it is (`packages/erd-editor/src/engine/AGENTS.md`, The store port), so a drag still held would leave read off the reseeded state and vanish everywhere, and a colour stroke would reach every client but this one (`binding.test.ts`, "a colour stroke and a drag held as a rejoin arrives reach every client"). What the reseed itself sends, the `getLWW` re-request and, from an element, the presence of the selection and focus it clears, falls to its class: dropped, and Awareness.
+- **The binding never calls `connection()` or `disconnect()`.** Edits made offline wait in the local `Y.Doc`, not in the shared store's circuit breaker, which would send what it held after a reseed.
+- **A move to another lineage draws a new binding id** and starts seq again at 1, since the old lineage's entries count for nothing in the new one's watermarks and the new entries would wait on a gap for good. The reason is `seedLost` when the binding had seeded the lineage it lost, `snapshot` otherwise. What a binding wrote in a losing lineage is lost, a third client's that joined the losing seed included (an owner decision of 2026-10-29).
+- **`seed(value?)`** returns false once a snapshot exists or the binding has stopped. Otherwise it loads `value` when given, flushes the held streams, which no lineage takes and the value holds, starts the writer again under a new id if it wrote before, and writes all eight fields in one transaction from `runtimeValue`, `getLWW()` and `getVersion()`.
+- **A binding skips its own transactions by origin**, a symbol of its own on every write, so no batch, a relative step least of all, applies twice where it was made. An entry it writes goes into its watermarks at once when it comes next. One past a gap, as a rejoin onto a snapshot that lacks the binding's earlier entries leaves, stays apart until the gap fills: the put-back of those entries still applies, and the watermark then moves over it without applying it twice. A watermark raised straight to it would skip the put-back, and the author alone would lose its own edits (`compact.test.ts`, "an author that reopens on the winning snapshot before the loser puts back").
+  - A `seed()`, a `compact()` or a store's batch inside a transaction of the caller's writes under the caller's origin, since Yjs folds a nested `transact` into the open one. The observers then take the binding's own write as any change, which finds nothing to do: its entries are already in its watermarks, and its seed or fold is the snapshot it follows. The compactor alone tells its fold apart, by the transaction it rode, so the fold keeps its hold (`compact.test.ts`, "keeps its hold on a fold called inside the caller's own transaction").
+- **A second binding of one pair refuses.** The guard keys a `WeakMap` by the element or peer store object, not by the port, which each call makes anew, so a second binding of the same store and `Y.Doc` raises `error` and writes nothing; `destroy` frees the pair.
+- **A store without the five port methods**, an `erd-editor` built before them, raises `error` and binds nothing; the element port destroys the shared store it just took. A refusal at bind time is raised in a microtask, so a listener added right after the call hears it.
+- **`destroy` flushes first**, then clears the binding's Awareness field, unsubscribes and unobserves, and the element port destroys its shared store. The `Y.Doc`, the provider and a peer store stay the caller's, to destroy after the binding.
+- **A peer store destroyed under its binding stops it.** The next room change, `seed()` or `compact()`, before `synced` too, finds `port.closed()`, detaches as `destroy` does and raises `error`, and so does `compact()` right after its follow, when a rejoin listener destroyed the store, rather than reseed a closed store, which throws out of the Yjs observer and so out of the provider's message handler, or fold its last value into the room under watermarks it moved without applying (`binding.test.ts`, "a peer store destroyed before its binding"). The drags the store still held are lost, which `binding.destroy()` first would have sent. A peer store already destroyed when bound raises `error` and binds nothing, before the binding observes the `Y.Doc` or makes its compactor.
+- **Values cross the `Y.Doc`'s edge as JSON copies**: the actions as they are written, each entry before `receive`, `lww` before `reseed`. Yjs keeps a reference to a stored object, so a store that kept a payload's object could change the local `Y.Doc`'s content in place, and a later sync would send it.
+
+### Presence
+
+- **The trackers ride Awareness alone.** Each outbound tracker becomes its type's last action in `trackers`, a following type moves `screen`, and the batch's meta gives `editorId` and `nickname`. A remote state's tracker is applied once per change, compared as JSON.
+- **A client that leaves is forgotten at once.** A state removed, set to null or of another shape, or one whose `editorId` changed, calls `port.forgetPeer` with the id it showed, rather than waiting on the trackers' expiry.
+- **The screen** starts from the value's settings (`screenOf`) and is set from the snapshot on a join and from the value on a seed; a rejoin that keeps the screen leaves it.
+
+### Compaction
+
+- **Only a peer store's binding folds.** `bindPeerStore` alone hands `createBinding` a compactor factory, so a bundle of `bindErdEditor` leaves `compact.ts` out, and an element's binding never folds: a room with no compactor keeps its whole log. A peer store's binding folds in any realm, a browser's too.
+- **`compactAfter` has no default** (an owner decision of 2026-10-29). It counts the entries a fold would take: those of another lineage, of another shape, or at or below the binding's watermark, never one past a gap. One that is not a positive integer raises `error` and leaves folding to calls.
+- **Start conditions.** Nothing folds before `synced` resolves (`not-synced`), so a compactor restarted behind the room writes no stale snapshot, nor before the binding has joined a lineage, from a snapshot or its own seed (`no-snapshot`). `compact()` follows the room's snapshot first, a rejoin included, and answers `destroyed` when a `rejoin` listener destroyed the binding meanwhile, or the binding found its peer store destroyed. Without `synced` nothing folds on its own and a call folds at once; with `synced` and no `compactAfter` only a call folds. A `synced` that rejects raises `error`, nothing ever folds, and the binding leaves the election.
+- **The election.** With Awareness and folding on its own, the binding sets `compactor: true`, clearing it again when `synced` rejects, since a candidate that never folds would keep every other from folding, and folds on its own only while its client id is the smallest among the states that set it, and only once `electionGraceMs` (3,000 ms unless given) has passed since `synced`. A candidate that leaves or arrives starts the check again, and one that leaves hands the fold to the next at once. A compactor whose Awareness shows no other client folds nothing on its own, and once others show again it waits `electionGraceMs` before it does: its own socket closing drops every other state at once, and a fold it made cut off would win over the elected one's whenever its client id is the larger, making the compactor that stayed online the loser. Without Awareness it folds on its own once synced, with no election and no grace, and an explicit `compact()` skips both.
+- **A fold on its own runs in a microtask** after the change that called for it, never inside another transaction's observers.
+- **A fold is one transaction** (`foldLog`). It flushes the peer's streams, then writes all eight fields from the replica's own `runtimeValue`, `getLWW()` and `getVersion()`, never another client's word: `covers` the binding's watermarks, `generation` one past the snapshot's, `compactorId` its binding id. It deletes the entries those watermarks hold and every entry of another lineage, leaving each entry past a writer's gap.
+- **The loser puts back what it folded.** Each fold keeps the entries of its lineage it deleted, the latest 1,000 across folds (`RETAIN_LIMIT`), counted in entries, so one with a large load is held whole. When a snapshot written over its latest fold appears, another `compactorId` or `generation`, the binding first inserts the held entries that snapshot's `covers` miss at the log's head (`insert(0)`), so a client opening the winner replays them before a later entry of another writer, and only then decides whether to rejoin. A live client skips them by the order rule, as the same `by` and `seq`.
+- **The hold ends** when another write to the snapshot, in a later transaction than the fold's own, leaves the binding's own fold in place, when a snapshot of another lineage takes over (nothing is put back), or `retainMs` (600,000 ms unless given) after the first update the room sends after the fold, so a compactor cut off holds its fold however long it is away. No moment to let go is safe: a compactor that let its fold go, then reconnects and wins, cannot put it back.
+
+### One compactor per room
+
+- **Exactly one compactor runs in a room, and a new process starts only after the old one has ended.** It is a deployment premise nothing enforces (an owner decision of 2026-10-29), stated in `README.md` too. The election covers compactors that see each other in Awareness, and a compactor that sees no other client folds nothing on its own; the put-back narrows what is left when two fold apart.
+- **What stands when the premise breaks**, accepted by the same decision (`compact.test.ts`, "two compactors cut off from each other"):
+  - The compactor that reconnects loses: nothing is lost, within the 1,000-entry hold.
+  - The one that stayed online loses within `retainMs`: it puts back, and a late joiner replays the entries before another writer's later edit.
+  - The one that stayed online loses after `retainMs`, or past the hold: the room's snapshot and log lack what it folded until it folds again, and every later entry of those writers stays held on every client that missed the gap and every client that joins from the winning snapshot, since the order rule waits on the gap. It reopens on the winner only when the winner's `covers` hold an entry it lacks, a writer's on the other side; otherwise its replica keeps everything and its next fold writes it all back, which those clients rejoin on. When it did reopen, what it folded is lost for good.
+  - Even with nothing lost, the order among writers is not kept. A loser's offline diff can reach a live client ahead of its put-back, and so can another writer's later entry, so a live client applies an edit ahead of one it builds on (a rename of a table whose add is put back after it) and ends apart from the loser and a late joiner. A probe outside the repository reproduced it on 2026-10-30; no spec pins it, and whether to close it, by folding again after a put-back under a `covers` key no binding has applied so every binding rejoins, is the owner's call.
+
+### Compaction cost
+
+- **Measured 2026-10-30** by `bench/compact.bench.ts` on macOS 27.2 (arm64) with Node 24.16.0: a 500-table document of 8 columns each, its log 9,000 entries and its `Y.Doc` 2,505 KiB. The first fold took 20.7 ms and sent a 2,746 KiB update. A fold of 20 new entries took 16.4 ms on average over 64 folds (p50 15.6 ms, p99 18.5 ms, max 18.7 ms) and sent 2,749 KiB. The snapshot's `runtimeValue` was 2,417 KiB and its `lww` 381 KiB, and the `Y.Doc` ended at 2,755 KiB.
+- **Why it is recorded**: every fold rewrites the whole `runtimeValue` and `lww` into the map, so a fold's time and bytes follow the document's size, not the entries it takes, and every client receives about one copy of the document per fold. `compactAfter` is sized so the entries a fold takes outweigh that copy; the e2e's `compactAfter: 3` suits its small document alone.
+
+### Covers
+
+- **`covers` never shrinks**: a joiner takes its watermarks from it. It holds one key per binding that ever wrote to the room, and a binding made again or moved to another lineage writes under a new one, each a 32-character id and a number in every snapshot and every fold's update. The growth is accepted (an owner decision of 2026-10-29) and stated in `README.md`.
+
+### Runtime and imports
+
+- **The shipping sources may import `yjs` and `y-protocols/awareness` at run time, and `@dineug/erd-editor` and `@dineug/erd-editor/peer.js` for types alone** (`src/imports.test.ts`, which reads named and type imports, re-exports, imports for a side effect and `import()` alike), so a bundle of the binding carries no editor code; the element binding calls the element's own methods. Today they take yjs and Awareness for types alone too, so the package loads no copy of either and works on the caller's `Y.Doc` and `Awareness`.
+- **They read no browser global and no built-in past the browser floor**, checked with comments and strings blanked: no `window`, `document`, `navigator`, `location`, storage, `customElements`, `HTMLElement`, `SharedWorker`, `MutationObserver` or `requestAnimationFrame`, and no `structuredClone`, `.at(`, `Object.hasOwn`, `findLast`, `toSorted` and its kin, `randomUUID`, `Array.fromAsync`, `Object.groupBy` or `Promise.withResolvers`. The same modules run in a browser at `BROWSER_TARGET` and in Node 22.12 or later.
+- **One copy of yjs**: `resolve.dedupe: ['yjs']` in `vite.config.ts` and in both Vitest projects, since the dev page and the specs import yjs themselves and reach it through `y-websocket` and `y-protocols` too, and two copies break each other's constructor checks. The browser spec and the e2e fail on "Yjs was already imported".
+
+### Build
+
+- **One library entry**: `defineLibraryConfig`, `src/index.ts`, `preserveModules` and `minify: false`, `sideEffects: false`, no `dependencies`, the three peers external. `files` ships `dist` less its maps, since a `.d.ts.map` names `src/`, which is not shipped, and `LICENSE`, the root one's copy as the other published packages keep, goes in beside them, since npm packs a package's own `LICENSE` whatever `files` says. `pnpm publish` from the package directory writes `workspace:^` as a caret range of `erd-editor`'s version (root § Contracts Outside This Repo).
+
+## Testing Requirements
+
+- **The `test` task** runs `tsc --noEmit` over `src/` and `bench/`, which the package `tsconfig.json` includes, then `unit` in happy-dom (a spec that needs Node says `// @vitest-environment node`) and `browser` in headless Chromium. The `unit` glob matches the browser specs too, so its `exclude` names them, spreading Vitest's `defaultExclude`. Neither retries a spec.
+- **Coverage** is 80% per file on all four metrics, over `src/**/*.ts` less the specs, `__test-utils__` and `src/index.dev.ts`.
+- **Scenarios come from the public barrels alone.** `MODULE_SCENARIOS` builds one or more per module (tables, columns, indexes, relationships, memos, groups, dictionaries, settings, an import and an append) from `@dineug/erd-editor/peer.js`, and each converges through a binding, a compaction and a late joiner (`binding.test.ts`). `erd-editor`'s `SEED_SCENARIOS` sit outside this package's boundary and stay in its specs (an owner decision of 2026-10-29).
+- **Rooms are `createFakeRoom`**: a server `Y.Doc` and clients joined by `applyUpdate`, the star a websocket server makes, with an offline toggle, a state-vector exchange on reconnect and each client's Awareness. A spec that needs a known winner fixes the clients' ids. The compactor specs run the election grace and the hold on fake timers, never the wall clock.
+- **Compare values sorted.** Two clients that add at once can list the same ids in another order, which is left for later, so a comparison sorts the document's id lists or adds one at a time, and no spec retries over it.
+- **The browser spec** (`src/binding.browser.test.ts`) imports yjs, `y-websocket`, the fake room, the package and the editor through `import()` once its `console.error` spy is in place, so a second yjs copy is caught, and drives real elements: a keyboard shortcut, hovers over the canvas, a zoom and a tab switch.
+
+### The dev page
+
+`pnpm --filter @dineug/erd-editor-yjs dev` serves `index.html` on 5179 once `erd-editor` is built (the package's `build` task builds it). With no query it puts two editors on two `Y.Doc`s and two Awareness instances joined directly by `applyUpdate`, and a toolbar toggle cuts and restores the link; a restore exchanges state vectors and renews both presences. With `?room=&ws=` it binds one editor through a `WebsocketProvider` (`disableBc: true`) once synced and seeds an empty room. `?e2e=1` seeds nothing and sets `window.__erdYjs = { editor, provider, binding }` for the e2e. Opening a code tab starts the highlighting SharedWorker, whose imports Vite optimizes late and reloads the page for once; the specs open none.
+
+### The e2e
+
+- **Outside `pnpm test`, in CI as `yjs-e2e`**, which builds the package, runs `e2e:typecheck` and `e2e`, and uploads `e2e/.report`. `e2e/tsconfig.json` checks the specs, their support and the config, which read `erd-editor`'s `dist/` declarations, so the build comes first; the relay and the compactor are plain modules Node runs as they are.
+- **`e2e/playwright.config.ts` starts two web servers** from the package folder: `node e2e/support/servers.mjs` on 5180 (`E2E_YJS_PORT`), ready once its `/health` answers 200, and `vp dev` on 5179 (`E2E_PORT`). It runs one worker, since the relay keeps one room with its compactor, and CI retries twice where a local run never does. `grid`'s bench defaults to 5179 too, so running both at once sets `E2E_PORT`.
+- **`ws-server.mjs` is the relay** (an owner decision of 2026-10-29): `ws`, the `y-protocols` sync and awareness messages and `lib0`, one `Y.Doc` per room path, one yjs copy, no native dependency. It sends sync step 1 and the present states to a socket that connects, answers sync messages, broadcasts updates and presence, and removes a socket's states as it closes. A socket owns every state it last wrote, an update as much as an add: y-protocols reports a returning client's state as an update, since it keeps a removed client's clock, so a relay that owned only adds would leave a reconnected client's cursor on the others after it closed, until Awareness's 30 s timeout.
+- **`compactor.mjs` is the room's compactor in a child process**, as a sidecar runs: `createPeerStore({ nickname: 'server', presence: false })`, `bindPeerStore(..., { compactAfter: 3, synced })` and a `WebsocketProvider` with `WebSocketPolyfill: ws`. It tells `servers.mjs` once synced, and `/health` answers 503 until then, so no spec starts ahead of it. `POST /reset` stops the compactor, drops the room and starts a new compactor; every spec calls it first.
+- **`room.spec.ts`**: A seeds and adds a table, and B sees it. B disconnects its provider and adds one while A adds three, and the spec polls the snapshot's `generation` through `__erdYjs` until it rises, with no fixed wait, B still on the old one. B reconnects, A and B match sorted with five tables, and a late C matches. B's cursor label shows on A's Konva stage and goes when B's page closes; no page logged an error or a second yjs. `presence.ts` reopens the editor's closed shadow root before any page script runs and catches each stage as its layers draw. A client that reconnects shows on the others only once it writes a state newer than the one the relay removed, which B's pointer moves do.
+
+### The bench
+
+`pnpm --filter @dineug/erd-editor-yjs bench`, outside `pnpm test` and CI, runs `bench/compact.bench.ts` in Node through `vp test bench`, outside the specs' globs. It prints and judges nothing; Rules § Compaction cost holds its last figures.
+
+## Dependencies
+
+### Internal
+
+`@dineug/erd-editor`, a peer (`workspace:^`) and a devDependency (`workspace:*`). The shipping code takes types alone from it, `ErdEditorElement` from the root and `PeerStore` from `peer.js`. The specs, the bench, the dev page and the e2e run it: `peer.js`'s barrels and `createPeerStore`, and `erd-editor.js` for the element. The `test` and `build` tasks build it first.
+
+### External
+
+- `yjs` `^13.6` and `y-protocols` `^1.0` as peers, whose types alone the shipping code takes, so the declarations name them and nothing loads them at run time, and as devDependencies.
+- `y-websocket` `^3` (the dev page's, the e2e's and the compactor's `WebsocketProvider`), `ws` from the catalog, which `app` shares, `@types/ws`, and `lib0`, which the relay imports itself, since pnpm resolves no transitive dependency for it. `@playwright/test`, `@vitest/browser-playwright` and happy-dom for the specs.
+- **The e2e speaks to its own relay** rather than a published server (an owner decision of 2026-10-29): those either need a prerelease yjs, or load a second yjs copy beside this package's modules in one process, or bring a native dependency tree into the lockfile.
+
+<!-- MANUAL: notes added below this line are preserved on regeneration -->

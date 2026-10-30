@@ -356,7 +356,9 @@ remote.subscribe(actions => local.dispatch(actions));
 An editor never forwards what it received, so with three or more, send each one's batches to every
 other. Call `flushStreamBuffers()` before destroying a store, or the last drags and resizes never
 reach the peers. `getSharedStore({ getNickname, mouseTracker, focusTracker })` also shares cursors
-and focus.
+and focus. To share a diagram through a Yjs document and any of its providers instead,
+[`@dineug/erd-editor-yjs`](https://github.com/dineug/erd-editor/tree/main/packages/erd-editor-yjs#readme)
+binds the element and the headless peer store to a `Y.Doc`.
 
 | Method | Description |
 | --- | --- |

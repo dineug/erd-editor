@@ -9,7 +9,7 @@
 
 ## Making a Change
 
-1. For a change to what `peer.js` exports, read `packages/mcp-server/AGENTS.md` too, since `mcp-server` builds its tools from the entry (root step 1).
+1. For a change to what `peer.js` exports, read `packages/mcp-server/AGENTS.md` too, since `mcp-server` builds its tools from the entry, and `packages/erd-editor-yjs/AGENTS.md`, since that binding's shipping code takes the `PeerStore` type from it and its specs mirror the entry's type lists (root step 1).
 2. Change `src/peer/index.test.ts` with the key set, since it pins the set. Change the two allowlists together (Rules, Node graph).
 3. Run the package's `test` task (package step 3), which runs `imports.test.ts`, `index.test.ts` and `engine/no-agent-concepts.test.ts`. A change to the key set also runs the `test` task of each package `src/engine/AGENTS.md` names under Peer store internals.
 4. Run `pnpm peer-graph` after `pnpm build` (package step 5) when this package's output or a library it inlines changed (root step 5). It reads `dist/`, which `imports.test.ts` does not.

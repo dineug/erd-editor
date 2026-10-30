@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["../src/*"]
+    },
+    "types": ["node"],
+    "noEmit": true
+  },
+  // The specs, their support and the config beside them; the relay and the
+  // compactor are plain modules Node runs as they are.
+  "include": ["."]
+}
