@@ -197,6 +197,9 @@ const clear: ReducerType<typeof ActionType.clear> = (state, { payload }) => {
   state.collections = collections;
   state.editor.scrollPullPending = false;
   clearViews(state.editor);
+  // A draw from the document held before would add a relationship from its
+  // tombstone; the editors stay open for whoever types in them.
+  state.editor.drawRelationship = null;
 };
 
 /**

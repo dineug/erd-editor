@@ -713,6 +713,26 @@ describe('editor.clear / initialClear', () => {
     expect(store.state.settings.databaseName).toBe('keep-me');
   });
 
+  it('ends a relationship draw on clear and leaves the memo and group name editors open', () => {
+    addTable(store, 't1');
+    addMemo(store, 'm1');
+    addTableGroup(store, 'g1');
+    store.dispatchSync(
+      editMemoAction({ id: 'm1' }),
+      editTableGroupAction({ id: 'g1' }),
+      drawStartRelationshipAction({ relationshipType: 8 }),
+      drawStartAddRelationshipAction({ tableId: 't1' })
+    );
+    expect(store.state.editor.drawRelationship?.start?.tableId).toBe('t1');
+
+    store.dispatchSync(clearAction());
+
+    const { editor } = store.state;
+    expect(editor.drawRelationship).toBeNull();
+    expect(editor.editMemoId).toBe('m1');
+    expect(editor.editTableGroupId).toBe('g1');
+  });
+
   it('resets doc and collections on initialClear', () => {
     seedTableWithColumns(store);
 

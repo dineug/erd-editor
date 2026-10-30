@@ -22,6 +22,7 @@ import {
   selectAction,
   sharedMouseTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
+import { loadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { removeMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
@@ -258,6 +259,25 @@ describe('a peer seeded again', () => {
       );
     }
   );
+
+  it('ends its relationship draw on a replacing load of a value that keeps the drawn table as a tombstone', () => {
+    const { user } = busyUser();
+    const peer = latePeer(createSeedValue());
+    peer.dispatch([
+      drawStartRelationshipAction({ relationshipType: RelationshipType.OneN }),
+      drawStartAddRelationshipAction({ tableId: SEED.users }),
+    ]);
+    user.rxStore.dispatchSync(removeTableAction({ id: SEED.users }));
+
+    // The runtime value an undo of a load or a clear carries keeps the table.
+    peer.dispatch([loadJsonAction$(toJson(user.rxStore.state))]);
+
+    expect(peer.state.editor.drawRelationship).toBeNull();
+    const report = peer.dispatch([selectTableAction$(SEED.orders, false)]);
+    expect(report.actions.map(({ type }) => type)).not.toContain(
+      'relationship.add'
+    );
+  });
 
   it('opens the value alone when asked to keep a screen it does not have', () => {
     const { user, snapshot } = busyUser();
