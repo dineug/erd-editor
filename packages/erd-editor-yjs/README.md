@@ -95,9 +95,9 @@ undo history, the selection and the focus, and closes an open Flow view, a relat
 memo, group name or cell editor, since they can name what the snapshot no longer holds; a group name
 typed and not yet entered is dropped. A binding that had joined the room keeps what its reader sees:
 the scroll and zoom, the tab, the name view and the code settings while their locks hold through the
-rejoin, even over an unlock, a change and a relock the snapshot took while it was away, and the
-settings a readonly reader turned, while `value` reports the snapshot's. An element not shown since
-its last load, and a binding that had not joined yet, open where the snapshot puts them.
+rejoin at the locked value it last saw, and the settings a readonly reader turned, while `value`
+reports the snapshot's. An element not shown since its last load, and a binding that had not joined
+yet, open where the snapshot puts them.
 
 ### Destroying a binding
 

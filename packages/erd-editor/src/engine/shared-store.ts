@@ -171,20 +171,26 @@ function readScreen({ settings, editor }: RootState) {
     code: pick(settings, CODE_SETTINGS),
     held: pick(settings, held),
     lockSettings: settings.lockSettings,
+    lockedValues: { ...settings.lockedValues },
   };
 }
 
+type LockedField = keyof RootState['settings']['lockedValues'];
+
 /**
- * True when a lock held both before the load and after it, so the value the
- * reader showed under it was its own rather than the shared one it missed.
+ * True when a lock held before the load and after it at the value it held, so
+ * the reader's value was its own pick and no unlock, change and relock of the
+ * field it missed moved the locked one.
  */
 const heldThrough = (
   screen: ReaderScreen,
   { settings }: RootState,
-  lock: Parameters<typeof isSettingLocked>[1]
+  lock: Parameters<typeof isSettingLocked>[1],
+  field: LockedField
 ) =>
   isSettingLocked(screen.lockSettings, lock) &&
-  isSettingLocked(settings.lockSettings, lock);
+  isSettingLocked(settings.lockSettings, lock) &&
+  screen.lockedValues[field] === settings.lockedValues[field];
 
 /**
  * The turns that lay that screen back over the value loaded, as a peer's load
@@ -211,7 +217,12 @@ function screenTurnsOf(screen: ReaderScreen, state: RootState): AnyAction[] {
     turns.push(changeCanvasTypeAction({ value: screen.canvasType }));
   }
   if (
-    heldThrough(screen, state, LockSettingType.unlockNameViewMode) &&
+    heldThrough(
+      screen,
+      state,
+      LockSettingType.unlockNameViewMode,
+      'nameViewMode'
+    ) &&
     screen.nameViewMode !== settings.nameViewMode
   ) {
     turns.push(
@@ -238,7 +249,7 @@ function ownCodeSettingsOf(
   const own = CODE_SETTINGS.filter(
     field =>
       !Reflect.has(screen.held, field) &&
-      heldThrough(screen, state, CodeSettingLocks[field])
+      heldThrough(screen, state, CodeSettingLocks[field], field)
   );
   const setters = screenSettingRestores(pick(screen.code, own), state.settings);
   return setters.length

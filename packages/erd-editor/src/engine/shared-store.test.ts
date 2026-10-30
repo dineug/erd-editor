@@ -101,6 +101,7 @@ import {
   SharedStoreConfig,
   SharedStoreInternalOptions,
 } from '@/engine/shared-store';
+import type { RootState } from '@/engine/state';
 import { Tag } from '@/engine/tag';
 import { bHas } from '@/utils/bit';
 
@@ -1604,6 +1605,96 @@ describe('createSharedStore registers, clock and reseed', () => {
     expect(reader.types()).toEqual(['editor.getLWW']);
     expect(documentJsonOf(reader.store)).toBe(documentJsonOf(late));
     expect(runtimeJsonOf(reader.store)).toBe(runtimeJsonOf(late));
+  });
+
+  /** A peer's unlock of the language and the name view, carrying what it shows, its edits, then its relock at the values given. */
+  const relockOn = (
+    peer: Fixture,
+    between: () => AnyAction[],
+    relocked: Pick<
+      RootState['settings']['lockedValues'],
+      'language' | 'nameViewMode'
+    >
+  ) => {
+    const lockSettingType =
+      LockSettingType.language | LockSettingType.unlockNameViewMode;
+    const { language, nameViewMode } = peer.store.state.settings;
+    peer.store.dispatchSync(
+      changeLockSettingsAction({
+        lockSettingType,
+        value: false,
+        values: { language, nameViewMode },
+      })
+    );
+    const edits = between();
+    if (edits.length) peer.store.dispatchSync(...edits);
+    peer.store.dispatchSync(
+      changeLockSettingsAction({
+        lockSettingType,
+        value: true,
+        values: relocked,
+      })
+    );
+  };
+
+  it('opens the code settings and the name view a peer unlocked, changed and locked again while the reader held its own', () => {
+    vi.useFakeTimers();
+    const value = seedValue(true);
+    const peer = makePeer(value);
+    const reader = makeReader(value);
+    reader.shared.subscribe(actions => reader.seen.push(actions));
+    reader.store.dispatchSync(
+      changeLanguageAction({ value: Language.Kotlin }),
+      toNameViewModeAction(reader.store.state, NameViewMode.logical, false)
+    );
+    relockOn(
+      peer,
+      () => [
+        changeLanguageAction({ value: Language.Swift }),
+        toNameViewModeAction(peer.store.state, NameViewMode.both, false),
+      ],
+      { language: Language.Swift, nameViewMode: NameViewMode.both }
+    );
+    vi.advanceTimersByTime(400);
+    reader.reset();
+    const snapshot = snapshotOf(peer);
+
+    reader.shared.reseed(snapshot.value, {
+      lww: snapshot.lww,
+      version: snapshot.version,
+      keepScreen: true,
+    });
+    vi.advanceTimersByTime(400);
+
+    const late = lateJoinerOf(snapshot).store;
+    expect(reader.store.state.settings.language).toBe(Language.Swift);
+    expect(reader.store.state.settings.nameViewMode).toBe(NameViewMode.both);
+    expect(reader.types()).toEqual(['editor.getLWW']);
+    expect(documentJsonOf(reader.store)).toBe(documentJsonOf(late));
+    expect(runtimeJsonOf(reader.store)).toBe(runtimeJsonOf(late));
+  });
+
+  it('keeps the code setting and the name view the reader held of its own where a peer locked them again at the values they held', () => {
+    const value = seedValue(true);
+    const peer = makePeer(value);
+    const reader = makeReader(value);
+    const { language, nameViewMode } = peer.store.state.settings;
+    reader.store.dispatchSync(
+      changeLanguageAction({ value: Language.Kotlin }),
+      toNameViewModeAction(reader.store.state, NameViewMode.logical, false)
+    );
+    relockOn(peer, () => [], { language, nameViewMode });
+    const snapshot = snapshotOf(peer);
+
+    reader.shared.reseed(snapshot.value, {
+      lww: snapshot.lww,
+      version: snapshot.version,
+      keepScreen: true,
+    });
+
+    expect(reader.store.state.settings.language).toBe(Language.Kotlin);
+    expect(reader.store.state.settings.nameViewMode).toBe(NameViewMode.logical);
+    expect(documentJsonOf(reader.store)).toBe(documentJsonOf(peer.store));
   });
 
   it('shows the shared name view once the snapshot unlocks it, though the reader held its own under the lock', () => {
