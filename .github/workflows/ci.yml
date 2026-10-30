@@ -125,7 +125,7 @@ jobs:
 
   # The dev page and the compactor load erd-editor's dist/ and this package's,
   # and the e2e typecheck reads their .d.ts, so the build comes first. Its relay
-  # and dev page take 5180 and 5179, which no other suite here binds.
+  # and dev page take 5182 and 5181, which no other suite here binds.
   yjs-e2e:
     runs-on: ubuntu-latest
     steps:

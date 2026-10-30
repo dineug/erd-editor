@@ -6,7 +6,7 @@ import { cursorLabels, moveMouse, reopenShadowRoots } from './presence';
 /** The room the relay keeps its compactor in, which every spec joins. */
 export const ROOM = 'e2e';
 
-export const YJS_PORT = Number(process.env.E2E_YJS_PORT ?? 5180);
+export const YJS_PORT = Number(process.env.E2E_YJS_PORT ?? 5182);
 
 const RELAY_URL = `ws://localhost:${YJS_PORT}`;
 

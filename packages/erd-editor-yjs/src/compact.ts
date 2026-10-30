@@ -58,6 +58,10 @@ export type CompactorHost = {
   /** The lineage the binding joined, null until it joined one. */
   lineage: () => string | null;
   applied: () => Readonly<Watermarks>;
+  /** Records a seq of a writer as applied, as the binding does an entry it wrote itself. */
+  note: (by: string, seq: number) => void;
+  /** Draws an id no binding has written under. */
+  createId: () => string;
   /** The id the binding writes its entries under, which names it as a compactor. */
   bindingId: () => string;
   /** False once the binding stopped, as it does with error on finding its peer store destroyed. */
@@ -74,10 +78,13 @@ export type Compactor = {
   readonly candidate: boolean;
   compact: () => CompactResult;
   /**
-   * Puts back, at the log's head, what this binding folded that a snapshot
-   * written over its last fold does not cover, before the binding follows it.
+   * Keeps what this binding folded that a snapshot written over its last fold
+   * does not cover, before the binding follows it, to put back at the log's
+   * head in the fold it makes once it has followed, which every binding reopens on.
    */
   reconcile: (snapshot: Snapshot) => void;
+  /** The entries kept to put back, which a rejoin before that fold replays ahead of the log. */
+  putBack: () => ReadonlyArray<LogEntry>;
   /**
    * Lets the held entries go once another write to the snapshot, in a later
    * transaction than the fold's own, left this binding's in place.
@@ -180,6 +187,8 @@ export function createCompactor(
   let held: HeldFold[] = [];
   let heldCount = 0;
   let last: { compactorId: string; generation: number } | null = null;
+  // What this binding puts back with its next fold, and the lineage it is of.
+  let toPutBack: { lineage: string; entries: LogEntry[] } | null = null;
   let standing = auto && awareness !== undefined;
   // A fold called inside the caller's transaction writes under its origin,
   // so the binding's observers see the fold as another's write to the snapshot.
@@ -285,11 +294,23 @@ export function createCompactor(
     }
 
     port.flushStreamBuffers();
+    // A subscriber handed a held batch may have destroyed the peer store.
+    if (!host.usable()) return { compacted: false, reason: 'destroyed' };
+    const back = toPutBack;
+    toPutBack = null;
+    if (back !== null) {
+      // A key no binding has applied, so every binding reopens on this fold
+      // rather than keep what it applied in the order the entries arrived.
+      host.note(host.createId(), 1);
+    }
     const generation = read.snapshot.generation + 1;
     const compactorId = host.bindingId();
     let removed: unknown[] = [];
     doc.transact(transaction => {
       foldTransactions.add(transaction);
+      // Inserted and deleted in this one transaction, so a client takes them
+      // only in the snapshot that covers them, never as entries of their own.
+      if (back !== null) log.insert(0, back.entries);
       removed = foldLog(doc, {
         generation,
         lineage,
@@ -316,6 +337,24 @@ export function createCompactor(
     if (destroyed || !isSynced || !graceOver || !inSight) return;
     if (!elected() || foldable() < threshold) return;
     compact();
+  };
+
+  /** Writes the entries kept to put back at the log's head on their own, for a binding that cannot fold them. */
+  const putBackAlone = () => {
+    if (toPutBack === null) return;
+    const { entries } = toPutBack;
+    toPutBack = null;
+    if (readSnapshot(map).state !== 'ready') return;
+    doc.transact(() => log.insert(0, entries), origin);
+  };
+
+  /**
+   * Folds after the change that left entries to put back, once the binding has
+   * followed it, with no election, grace or threshold, unless a fold came first.
+   */
+  const refold = () => {
+    if (destroyed || toPutBack === null) return;
+    if (!compact().compacted) putBackAlone();
   };
 
   /** Folds after the change at hand, so a fold never lands inside another transaction's observers. */
@@ -398,7 +437,12 @@ export function createCompactor(
       return standing;
     },
     compact,
+    putBack: () => (toPutBack === null ? [] : toPutBack.entries),
     reconcile: snapshot => {
+      // A snapshot of another lineage leaves nothing to put back.
+      if (toPutBack !== null && toPutBack.lineage !== snapshot.seedId) {
+        toPutBack = null;
+      }
       if (!held.length || isLast(snapshot)) return;
 
       const back: LogEntry[] = [];
@@ -411,9 +455,12 @@ export function createCompactor(
         }
       }
       release();
-      // At the head, so a replica that opens the snapshot replays them
-      // before an entry of another writer that came after them.
-      if (back.length) doc.transact(() => log.insert(0, back), origin);
+      if (!back.length) return;
+      // Sent apart from a fold, a client online throughout would apply them
+      // after a later entry that builds on them, and another compactor could
+      // fold them so before this one's fold reached it.
+      toPutBack = { lineage: snapshot.seedId, entries: back };
+      void Promise.resolve().then(refold);
     },
     confirm: (snapshot, transaction) => {
       if (isLast(snapshot) && !foldTransactions.has(transaction)) release();
@@ -422,6 +469,7 @@ export function createCompactor(
     destroy: () => {
       destroyed = true;
       if (graceTimer !== null) clearTimeout(graceTimer);
+      putBackAlone();
       release();
       doc.off('afterTransaction', onAfterTransaction);
       stopWatching();

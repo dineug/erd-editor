@@ -209,7 +209,10 @@ function createBinding(
     compactor?.schedule();
   };
 
-  /** Opens the snapshot's value and replays the entries it does not cover, the binding's own among them. */
+  /**
+   * Opens the snapshot's value and replays the entries it does not cover, the
+   * binding's own among them, those its compactor is to put back at the head first.
+   */
   const open = (snapshot: Snapshot, keepScreen: boolean) => {
     port.reseed(snapshot.runtimeValue, {
       lww: copyJson(snapshot.lww),
@@ -218,7 +221,8 @@ function createBinding(
     });
     lineage = snapshot.seedId;
     reader.reset(snapshot.covers);
-    reader.offer(log.toArray(), snapshot.seedId);
+    const putBack = compactor?.putBack() ?? [];
+    reader.offer([...putBack, ...log.toArray()], snapshot.seedId);
     if (!keepScreen) presence?.setScreen(screenOf(snapshot.runtimeValue));
   };
 
@@ -230,6 +234,8 @@ function createBinding(
   const rejoin = (snapshot: Snapshot, reason: RejoinReason) => {
     const joined = lineage;
     port.flushStreamBuffers();
+    // A subscriber handed a held batch may have destroyed the peer store.
+    if (!usable()) return;
     if (joined !== null && joined !== snapshot.seedId) writer.restart();
     open(snapshot, joined !== null);
     emitRejoin(reason);
@@ -317,6 +323,8 @@ function createBinding(
       awareness,
       lineage: () => lineage,
       applied: () => reader.applied,
+      note: (by, seq) => reader.note(by, seq),
+      createId,
       bindingId: () => writer.bindingId,
       usable,
       follow: () => {

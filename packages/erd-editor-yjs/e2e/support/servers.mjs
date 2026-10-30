@@ -8,7 +8,7 @@ import { createRelay } from './ws-server.mjs';
  * answers once the compactor has synced, so no spec starts ahead of it, and a
  * reset gives a spec the room empty again with a fresh compactor in it.
  */
-const port = Number(process.argv[2] ?? 5180);
+const port = Number(process.argv[2] ?? 5182);
 const room = process.argv[3] ?? 'e2e';
 const url = `ws://localhost:${port}`;
 

@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 import { ROOM, YJS_PORT } from './support/room';
 
-const PORT = Number(process.env.E2E_PORT ?? 5179);
+const PORT = Number(process.env.E2E_PORT ?? 5181);
 // Vite's dev server binds to localhost only; 127.0.0.1 is refused.
 const BASE_URL = `http://localhost:${PORT}`;
 // A web server starts in the config's folder unless told otherwise, and both

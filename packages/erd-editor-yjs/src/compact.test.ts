@@ -19,8 +19,10 @@ import {
   rename,
   tableNames,
 } from '@/__test-utils__/edits';
+import type { FakeClient } from '@/__test-utils__/fakeProvider';
 import { createHarness, type Harness } from '@/__test-utils__/harness';
 import { instrumentPeer } from '@/__test-utils__/instrumentPeer';
+import type { ErdYjsBinding, PeerBindOptions } from '@/binding';
 import { isLogged } from '@/classify';
 import {
   type CompactResult,
@@ -112,11 +114,9 @@ const ping = (doc: Y.Doc) =>
 
 /**
  * Writes a snapshot over the one doc holds from another Y.Doc that has seen
- * it, as another compactor's later fold arrives. Returns how many entries
- * the log gained, which are the ones the binding put back.
+ * it, as another compactor's later fold arrives.
  */
-const writeOver = (doc: Y.Doc, fields: Partial<Snapshot> = {}): number => {
-  const before = getLog(doc).length;
+const writeOver = (doc: Y.Doc, fields: Partial<Snapshot> = {}) => {
   const other = new Y.Doc();
   Y.applyUpdate(other, Y.encodeStateAsUpdate(doc));
   writeSnapshot(getSnapshotMap(other), {
@@ -128,7 +128,18 @@ const writeOver = (doc: Y.Doc, fields: Partial<Snapshot> = {}): number => {
   });
   Y.applyUpdate(doc, Y.encodeStateAsUpdate(other, Y.encodeStateVector(doc)));
   other.destroy();
-  return getLog(doc).length - before;
+};
+
+/** Each run of entries a binding on doc puts back at the log's head from here on, as seqs. */
+const watchPutBacks = (doc: Y.Doc) => {
+  const insert = vi.spyOn(getLog(doc), 'insert');
+  onTestFinished(() => insert.mockRestore());
+  return () =>
+    insert.mock.calls
+      .filter(([index]) => index === 0)
+      .map(([, values]) =>
+        (values as LogEntry[]).map(({ by, seq }) => by + seq)
+      );
 };
 
 describe('foldLog', () => {
@@ -466,6 +477,97 @@ describe('start conditions', () => {
     expect(snapshotOf(client.doc)).toEqual(folded);
   });
 
+  it('a call stops when a subscriber destroys the peer store as the flush hands out a held drag, folding nothing over the room', () => {
+    const { room, peer, bind } = setup();
+    const a = peer('a');
+    bind(a, room.join().doc).seed();
+    const store = peer('server');
+    const server = instrumentPeer(store);
+    const replica = bind(server.store, room.server);
+    const errors = vi.fn();
+    replica.on('error', errors);
+    const table = addTable(a, 'one');
+    server.holdBack(['table.moveTo']);
+    server.store.subscribe(actions => {
+      if (actions.some(action => action.type === 'table.moveTo')) {
+        store.destroy();
+      }
+    });
+    server.store.dispatch([
+      tableActions.moveTableAction({
+        movementX: 30,
+        movementY: 40,
+        ids: [table],
+      }),
+    ]);
+    const seed = snapshotOf(room.server);
+
+    expect(replica.compact()).toEqual({
+      compacted: false,
+      reason: 'destroyed',
+    });
+    expect(store.isDestroyed).toBe(true);
+    expect(snapshotOf(room.server)).toEqual(seed);
+    expect(errors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringMatching(/peer store was destroyed/),
+      })
+    );
+    // The drag left before the store closed, so the room still holds it.
+    expect(
+      entriesOf(room.server).some(({ actions }) =>
+        actions.some(action => action.type === 'table.moveTo')
+      )
+    ).toBe(true);
+    expect(replica.compact()).toEqual({
+      compacted: false,
+      reason: 'destroyed',
+    });
+  });
+
+  it('a call stops when a subscriber destroys the peer store as the rejoin it follows flushes a held drag, rather than throw', () => {
+    const { room, peer, bind } = setup();
+    const a = peer('a');
+    bind(a, room.join().doc).seed();
+    const replica = bind(peer('server'), room.server);
+    const client = room.join();
+    const store = peer('b');
+    const b = instrumentPeer(store);
+    const binding = bind(b.store, client.doc);
+    const errors = vi.fn();
+    binding.on('error', errors);
+    const table = addTable(a, 'one');
+
+    client.disconnect();
+    addTable(a, 'away');
+    expect(replica.compact()).toEqual({ compacted: true, generation: 1 });
+    const folded = snapshotOf(room.server);
+    b.holdBack(['table.moveTo']);
+    b.store.subscribe(actions => {
+      if (actions.some(action => action.type === 'table.moveTo')) {
+        store.destroy();
+      }
+    });
+    b.store.dispatch([
+      tableActions.moveTableAction({
+        movementX: 30,
+        movementY: 40,
+        ids: [table],
+      }),
+    ]);
+    // The fold arrives inside a transaction of the caller's, so the call
+    // follows it before the binding's own observers do.
+    let result: CompactResult | undefined;
+    client.doc.transact(() => {
+      client.connect();
+      result = binding.compact();
+    });
+    expect(result).toEqual({ compacted: false, reason: 'destroyed' });
+    expect(store.isDestroyed).toBe(true);
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(snapshotOf(room.server)).toEqual(folded);
+  });
+
   it('a binding destroyed before synced settles neither folds nor raises error when it does', async () => {
     const { room, peer, bind } = setup();
     const a = peer('a');
@@ -689,21 +791,55 @@ describe('election', () => {
 });
 
 describe('AC-P9 two compactors cut off from each other', () => {
-  /** A seeded room with its first table, compactors p and q on clients of their own; the higher id wins two snapshots written at once. */
-  const splitRoom = (ids: { p: number; q: number }) => {
+  /**
+   * A seeded room with its first table, compactors p and q on clients of their
+   * own, each bound with what compaction gives its client; the higher id wins
+   * two snapshots written at once.
+   */
+  const splitRoom = (
+    ids: { p: number; q: number },
+    compaction: (client: FakeClient) => PeerBindOptions = () => ({})
+  ) => {
     const { room, peer, bind } = setup();
     const a = peer('a');
     const b = peer('b');
     const p = peer('p');
     const q = peer('q');
-    bind(a, room.join().doc).seed();
-    bind(b, room.join().doc);
+    const bindingA = bind(a, room.join().doc);
+    bindingA.seed();
+    const bindingB = bind(b, room.join().doc);
     const clientP = room.join({ clientID: ids.p });
     const clientQ = room.join({ clientID: ids.q });
-    const bindingP = bind(p, clientP.doc);
-    const bindingQ = bind(q, clientQ.doc);
+    const bindingP = bind(p, clientP.doc, compaction(clientP));
+    const bindingQ = bind(q, clientQ.doc, compaction(clientQ));
     addTable(a, 'base');
-    return { room, peer, bind, a, b, p, q, clientP, bindingP, bindingQ };
+    return {
+      room,
+      peer,
+      bind,
+      a,
+      b,
+      p,
+      q,
+      clientP,
+      clientQ,
+      bindingA,
+      bindingB,
+      bindingP,
+      bindingQ,
+    };
+  };
+
+  /** Counts each named binding's rejoins. */
+  const countRejoins = <K extends string>(
+    bindings: Record<K, ErdYjsBinding>
+  ): Record<K, number> => {
+    const counts = {} as Record<K, number>;
+    for (const name of Object.keys(bindings) as K[]) {
+      counts[name] = 0;
+      bindings[name].on('rejoin', () => counts[name]++);
+    }
+    return counts;
   };
 
   it('AC-P9 the side that reconnects loses and puts back what it folded, however long it was away, and no batch is lost', async () => {
@@ -725,13 +861,338 @@ describe('AC-P9 two compactors cut off from each other', () => {
       'base',
       'room',
     ]);
+    // What p folded reaches the others with the fold it makes over the winner.
+    await turn();
+    expect(namesIn(snapshotOf(room.server).runtimeValue)).toEqual([
+      'base',
+      'room',
+      'side',
+    ]);
     for (const replica of [a, b, p, q, side]) {
       expect(tableNames(replica)).toEqual(['base', 'room', 'side']);
     }
     expectConverged([a, b, p, q, side, lateJoiner()]);
   });
 
-  it('AC-P9 the other way, the compactor that stayed puts back what it folded while it holds it, and a late joiner replays it before a later edit of another writer', () => {
+  it('AC-P9 the side that reconnects puts back, follows the winner and folds once more, with no grace, so a client online throughout that took a later edit ahead of the add it renames ends with every replica and a late joiner, each reopening once more', async () => {
+    const { room, peer, bind, a, b, p, q, clientP, ...bindings } = splitRoom(
+      { p: 10, q: 20 },
+      // Elected and synced, folding on its own only past a threshold no
+      // spec reaches, so each fold here is a call or the one after a put-back.
+      client => ({
+        awareness: client.awareness,
+        synced: Promise.resolve(),
+        compactAfter: 1_000,
+      })
+    );
+    // Two writers on the cut-off side: one adds a table p folds, the other
+    // renames it after the fold, so only the rename leaves in p's offline diff.
+    const side = peer('side');
+    const side2 = peer('side2');
+    const rejoins = countRejoins({
+      a: bindings.bindingA,
+      b: bindings.bindingB,
+      p: bindings.bindingP,
+      q: bindings.bindingQ,
+      side: bind(side, clientP.doc),
+      side2: bind(side2, clientP.doc),
+    });
+    await turn();
+
+    clientP.disconnect();
+    const table = addTable(side, 'side');
+    expect(bindings.bindingP.compact()).toEqual({
+      compacted: true,
+      generation: 1,
+    });
+    rename(side2, table, 'renamed after the fold');
+    addTable(a, 'room');
+    expect(bindings.bindingQ.compact()).toEqual({
+      compacted: true,
+      generation: 1,
+    });
+    const winner = snapshotOf(room.server);
+
+    // p sees the others again, which starts its grace over, and folds anyway.
+    clientP.connect();
+    await turn();
+    const refold = snapshotOf(room.server);
+    expect(refold.generation).toBe(2);
+    expect(refold.compactorId).not.toBe(winner.compactorId);
+    for (const replica of [a, b, p, q, side, side2]) {
+      expect(tableNames(replica)).toEqual([
+        'base',
+        'renamed after the fold',
+        'room',
+      ]);
+    }
+    expectConverged([p, a, b, q, side, side2, lateJoiner()]);
+    // p reopened on the winner, its two writers on the winner and the fold
+    // after it, and every client online throughout on that fold alone.
+    const once = { a: 1, b: 1, p: 1, q: 1, side: 2, side2: 2 };
+    expect(rejoins).toEqual(once);
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_RETAIN_MS);
+    expect(snapshotOf(room.server)).toEqual(refold);
+    expect(rejoins).toEqual(once);
+  });
+
+  it('AC-P9 the side that reconnects folds once more though a candidate of a smaller client id is in sight, since that fold takes no election', async () => {
+    const elected = (client: FakeClient): PeerBindOptions => ({
+      awareness: client.awareness,
+      synced: Promise.resolve(),
+      compactAfter: 1_000,
+    });
+    const { room, peer, bind, a, b, p, q, clientP, bindingP, bindingQ } =
+      splitRoom({ p: 10, q: 20 }, elected);
+    const clientS = room.join({ clientID: 5 });
+    const s = peer('s');
+    bind(s, clientS.doc, elected(clientS));
+    const side = peer('side');
+    bind(side, clientP.doc);
+    await turn();
+
+    clientP.disconnect();
+    addTable(side, 'side');
+    expect(bindingP.compact()).toEqual({ compacted: true, generation: 1 });
+    addTable(a, 'room');
+    expect(bindingQ.compact()).toEqual({ compacted: true, generation: 1 });
+    const winner = snapshotOf(room.server);
+
+    clientP.connect();
+    // s renews its state, as its heartbeat would, so p sees a smaller candidate.
+    clientS.awareness.setLocalState(clientS.awareness.getLocalState());
+    expect(clientP.awareness.getStates().get(5)?.erd?.compactor).toBe(true);
+    await turn();
+    const refold = snapshotOf(room.server);
+    expect(refold.generation).toBe(2);
+    expect(refold.compactorId).not.toBe(winner.compactorId);
+    for (const replica of [a, b, p, q, s, side]) {
+      expect(tableNames(replica)).toEqual(['base', 'room', 'side']);
+    }
+    expectConverged([a, b, p, q, s, side, lateJoiner()]);
+  });
+
+  it('AC-P9 the winner, folding on its own as updates arrive one per task, never folds what the side that reconnects puts back ahead of that side, so every replica and a late joiner end alike', async () => {
+    const RELAY = Symbol('relay');
+    const server = new Y.Doc();
+    const queue: Array<() => void> = [];
+    const clients: Array<{ doc: Y.Doc; online: boolean }> = [];
+    onTestFinished(() => {
+      clients.forEach(({ doc }) => doc.destroy());
+      server.destroy();
+    });
+    server.on('update', (update: Uint8Array, from: unknown) => {
+      for (const client of clients) {
+        if (client.online && client.doc !== from) {
+          queue.push(() => Y.applyUpdate(client.doc, update, RELAY));
+        }
+      }
+    });
+    // Each update waits its turn and lands in a task of its own, as a socket
+    // delivers it, so what a client queues for a microtask runs in between.
+    const join = (clientID: number) => {
+      const client = { doc: new Y.Doc(), online: true };
+      client.doc.clientID = clientID;
+      clients.push(client);
+      Y.applyUpdate(client.doc, Y.encodeStateAsUpdate(server), RELAY);
+      client.doc.on('update', (update: Uint8Array, origin: unknown) => {
+        if (origin !== RELAY && client.online) {
+          queue.push(() => Y.applyUpdate(server, update, client.doc));
+        }
+      });
+      return client;
+    };
+    const reconnect = (client: { doc: Y.Doc; online: boolean }) => {
+      client.online = true;
+      queue.push(() =>
+        Y.applyUpdate(
+          server,
+          Y.encodeStateAsUpdate(client.doc, Y.encodeStateVector(server)),
+          client.doc
+        )
+      );
+      queue.push(() =>
+        Y.applyUpdate(
+          client.doc,
+          Y.encodeStateAsUpdate(server, Y.encodeStateVector(client.doc)),
+          RELAY
+        )
+      );
+    };
+    const drain = async () => {
+      await turn();
+      while (queue.length) {
+        queue.shift()!();
+        await turn();
+      }
+    };
+
+    const { peer, bind } = setup();
+    const a = peer('a');
+    bind(a, join(1).doc).seed();
+    await drain();
+    const b = peer('b');
+    const p = peer('p');
+    const q = peer('q');
+    const side = peer('side');
+    const side2 = peer('side2');
+    bind(b, join(2).doc);
+    const clientP = join(10);
+    const bindingP = bind(p, clientP.doc);
+    // Folds on its own past two entries, with no Awareness to elect it.
+    bind(q, join(20).doc, { compactAfter: 2, synced: Promise.resolve() });
+    bind(side, clientP.doc);
+    bind(side2, clientP.doc);
+    addTable(a, 'base');
+    await drain();
+
+    clientP.online = false;
+    const table = addTable(side, 'side');
+    const folded = snapshotOf(clientP.doc).generation;
+    expect(bindingP.compact()).toEqual({
+      compacted: true,
+      generation: folded + 1,
+    });
+    rename(side2, table, 'renamed after the fold');
+    addTable(a, 'room');
+    await drain();
+    // q folded the room's side on its own, at the generation p folded at.
+    expect(snapshotOf(server).generation).toBe(folded + 1);
+
+    reconnect(clientP);
+    await drain();
+    const late = peer('late');
+    bind(late, join(99).doc);
+    await drain();
+
+    for (const replica of [a, b, p, q, side, side2, late]) {
+      expect(tableNames(replica)).toEqual([
+        'base',
+        'renamed after the fold',
+        'room',
+      ]);
+    }
+    expectConverged([p, a, b, q, side, side2, late]);
+  });
+
+  it('AC-P9 the other way, the compactor that stayed puts back, follows the winner and folds once more, every other client reopening once more', async () => {
+    const { room, peer, bind, a, b, p, q, clientP, ...bindings } = splitRoom({
+      p: 30,
+      q: 20,
+    });
+    const side = peer('side');
+    const side2 = peer('side2');
+    const rejoins = countRejoins({
+      a: bindings.bindingA,
+      b: bindings.bindingB,
+      p: bindings.bindingP,
+      q: bindings.bindingQ,
+      side: bind(side, clientP.doc),
+      side2: bind(side2, clientP.doc),
+    });
+
+    clientP.disconnect();
+    const offline = addTable(side, 'side');
+    bindings.bindingP.compact();
+    rename(side2, offline, 'side renamed');
+    const online = addTable(a, 'room');
+    bindings.bindingQ.compact();
+    rename(b, online, 'room renamed');
+
+    clientP.connect();
+    await turn();
+    expect(snapshotOf(room.server).generation).toBe(2);
+    for (const replica of [a, b, p, q, side, side2]) {
+      expect(tableNames(replica)).toEqual([
+        'base',
+        'room renamed',
+        'side renamed',
+      ]);
+    }
+    expectConverged([q, a, b, p, side, side2, lateJoiner()]);
+    // a, b and q reopen on p's snapshot, which holds what the side wrote,
+    // and every client but q on q's fold after it.
+    expect(rejoins).toEqual({ a: 2, b: 2, p: 1, q: 1, side: 1, side2: 1 });
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_RETAIN_MS);
+    expect(snapshotOf(room.server).generation).toBe(2);
+  });
+
+  it('AC-P9 two compactors that both lose to a third and reconnect at once each fold once more, and the room ends alike, a late joiner included', async () => {
+    const { room, peer, bind } = setup();
+    const a = peer('a');
+    const bindingA = bind(a, room.join().doc);
+    bindingA.seed();
+    const clients = {
+      p: room.join({ clientID: 10 }),
+      r: room.join({ clientID: 15 }),
+      q: room.join({ clientID: 20 }),
+    };
+    const stores = {
+      p: peer('p'),
+      r: peer('r'),
+      q: peer('q'),
+      pSide: peer('p side'),
+      pSide2: peer('p side 2'),
+      rSide: peer('r side'),
+      rSide2: peer('r side 2'),
+    };
+    const bindings = {
+      a: bindingA,
+      p: bind(stores.p, clients.p.doc),
+      r: bind(stores.r, clients.r.doc),
+      q: bind(stores.q, clients.q.doc),
+      pSide: bind(stores.pSide, clients.p.doc),
+      pSide2: bind(stores.pSide2, clients.p.doc),
+      rSide: bind(stores.rSide, clients.r.doc),
+      rSide2: bind(stores.rSide2, clients.r.doc),
+    };
+    const rejoins = countRejoins(bindings);
+    addTable(a, 'base');
+
+    clients.p.disconnect();
+    clients.r.disconnect();
+    const onP = addTable(stores.pSide, 'p side');
+    bindings.p.compact();
+    rename(stores.pSide2, onP, 'p side renamed');
+    const onR = addTable(stores.rSide, 'r side');
+    bindings.r.compact();
+    rename(stores.rSide2, onR, 'r side renamed');
+    addTable(a, 'room');
+    bindings.q.compact();
+
+    clients.p.connect();
+    clients.r.connect();
+    await turn();
+    expect(snapshotOf(room.server).generation).toBe(3);
+    for (const store of Object.values(stores)) {
+      expect(tableNames(store)).toEqual([
+        'base',
+        'p side renamed',
+        'r side renamed',
+        'room',
+      ]);
+    }
+    expectConverged([a, ...Object.values(stores), lateJoiner()]);
+    // Every binding reopens on each loser's fold but its own, and the losers
+    // and the writers beside them on the winner first.
+    expect(rejoins).toEqual({
+      a: 2,
+      p: 2,
+      r: 2,
+      q: 2,
+      pSide: 3,
+      pSide2: 3,
+      rSide: 3,
+      rSide2: 3,
+    });
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_RETAIN_MS);
+    expect(snapshotOf(room.server).generation).toBe(3);
+  });
+
+  it('AC-P9 the other way, the compactor that stayed puts back what it folded while it holds it, folded in its own order under a later edit of another writer, which a late joiner opens', async () => {
     const { room, a, b, p, q, clientP, bindingP, bindingQ } = splitRoom({
       p: 30,
       q: 20,
@@ -745,6 +1206,11 @@ describe('AC-P9 two compactors cut off from each other', () => {
 
     clientP.connect();
     expect(namesIn(snapshotOf(room.server).runtimeValue)).toEqual(['base']);
+    await turn();
+    expect(namesIn(snapshotOf(room.server).runtimeValue)).toEqual([
+      'base',
+      'renamed by b',
+    ]);
     for (const replica of [a, b, p, q]) {
       expect(tableNames(replica)).toEqual(['base', 'renamed by b']);
     }
@@ -792,7 +1258,7 @@ describe('AC-P9 an author that reopens on the winning snapshot before the loser 
       for (const to of docs) if (from !== to) sync(from, to);
   };
 
-  it('AC-P9 keeps its own folded edits and the drag it held once they are put back, though it wrote again in between', () => {
+  it('AC-P9 keeps its own folded edits and the drag it held once they are put back, though it wrote again in between', async () => {
     const { peer, bind } = setup();
     // The author and the compactor that loses share one side, the server and
     // the compactor that wins the other; the higher client id wins.
@@ -837,6 +1303,8 @@ describe('AC-P9 an author that reopens on the winning snapshot before the loser 
     addTable(author.store, 'c3');
     link(authorDoc, server);
     link(loserDoc, server);
+    // The loser folds what it puts back once it has followed the winner.
+    await turn();
     link(authorDoc, server, loserDoc);
 
     const late = peer('late');
@@ -856,7 +1324,7 @@ describe('AC-P9 an author that reopens on the winning snapshot before the loser 
 });
 
 describe('holding and putting back', () => {
-  it(`holds at most the latest ${RETAIN_LIMIT} entries of its folds and puts back at the head those a snapshot written over them leaves out`, () => {
+  it(`holds at most the latest ${RETAIN_LIMIT} entries of its folds and puts back at the head those a snapshot written over them leaves out, in the transaction of the fold after it`, async () => {
     const { doc, binding, push } = loneCompactor();
     push(1, 100);
     binding.compact();
@@ -867,23 +1335,44 @@ describe('holding and putting back', () => {
     binding.compact();
     expect(getLog(doc).length).toBe(0);
     push(1_106, 1_106);
+    const putBacks = watchPutBacks(doc);
+    const transactions: Y.Transaction[] = [];
+    getLog(doc).observe(event => transactions.push(event.transaction));
+    getSnapshotMap(doc).observe(event => transactions.push(event.transaction));
 
-    expect(writeOver(doc, { covers: { x: 200 } })).toBe(905);
-    const seqs = seqsOf(doc);
-    expect(seqs.slice(0, 2)).toEqual(['x201', 'x202']);
-    expect(seqs.slice(-2)).toEqual(['x1105', 'x1106']);
+    writeOver(doc, { covers: { x: 200 } });
+    expect(putBacks()).toEqual([]);
+    expect(seqsOf(doc)).toEqual(['x1106']);
+    transactions.length = 0;
+
+    await turn();
+    const [back] = putBacks();
+    expect(back).toHaveLength(905);
+    expect(back.slice(0, 2)).toEqual(['x201', 'x202']);
+    expect(back.slice(-2)).toEqual(['x1104', 'x1105']);
+    // One transaction wrote them, the snapshot and the deletions together.
+    expect(new Set(transactions).size).toBe(1);
+    expect(getLog(doc).length).toBe(0);
+    expect(snapshotOf(doc)).toMatchObject({ generation: 100 });
   });
 
-  it('puts back nothing a snapshot written over its fold covers', () => {
+  it('puts back nothing a snapshot written over its fold covers, and folds nothing after it', async () => {
     const { doc, binding, push } = loneCompactor();
     push(1, 3);
     binding.compact();
+    const putBacks = watchPutBacks(doc);
 
-    expect(writeOver(doc, { covers: { x: 3 } })).toBe(0);
-    expect(writeOver(doc, { covers: {}, generation: 100 })).toBe(0);
+    writeOver(doc, { covers: { x: 3 } });
+    writeOver(doc, { covers: {}, generation: 100 });
+    await turn();
+    expect(putBacks()).toEqual([]);
+    expect(snapshotOf(doc)).toMatchObject({
+      compactorId: 'other',
+      generation: 100,
+    });
   });
 
-  it('lets its fold go once a write to the snapshot made alongside it leaves its own in place', () => {
+  it('lets its fold go once a write to the snapshot made alongside it leaves its own in place', async () => {
     const { doc, binding, push } = loneCompactor();
     push(1, 3);
     const before = Y.encodeStateAsUpdate(doc);
@@ -903,10 +1392,14 @@ describe('holding and putting back', () => {
     rival.destroy();
     expect(snapshotOf(doc)).toEqual(mine);
 
-    expect(writeOver(doc)).toBe(0);
+    const putBacks = watchPutBacks(doc);
+    writeOver(doc);
+    await turn();
+    expect(putBacks()).toEqual([]);
+    expect(snapshotOf(doc)).toMatchObject({ compactorId: 'other' });
   });
 
-  it("keeps its hold on a fold called inside the caller's own transaction, and puts back what a snapshot written over it leaves out", () => {
+  it("keeps its hold on a fold called inside the caller's own transaction, and puts back what a snapshot written over it leaves out", async () => {
     const { doc, binding, push } = loneCompactor();
     push(1, 3);
     let result: CompactResult | undefined;
@@ -915,12 +1408,14 @@ describe('holding and putting back', () => {
     }, 'caller');
     expect(result).toEqual({ compacted: true, generation: 1 });
     expect(getLog(doc).length).toBe(0);
+    const putBacks = watchPutBacks(doc);
 
-    expect(writeOver(doc)).toBe(3);
-    expect(seqsOf(doc)).toEqual(['x1', 'x2', 'x3']);
+    writeOver(doc);
+    await turn();
+    expect(putBacks()).toEqual([['x1', 'x2', 'x3']]);
   });
 
-  it("lets a fold made inside the caller's own transaction go once a later write to the snapshot leaves it in place", () => {
+  it("lets a fold made inside the caller's own transaction go once a later write to the snapshot leaves it in place", async () => {
     const { doc, binding, push } = loneCompactor();
     push(1, 3);
     const before = Y.encodeStateAsUpdate(doc);
@@ -939,7 +1434,11 @@ describe('holding and putting back', () => {
     rival.destroy();
     expect(snapshotOf(doc)).toEqual(mine);
 
-    expect(writeOver(doc)).toBe(0);
+    const putBacks = watchPutBacks(doc);
+    writeOver(doc);
+    await turn();
+    expect(putBacks()).toEqual([]);
+    expect(snapshotOf(doc)).toMatchObject({ compactorId: 'other' });
   });
 
   it('holds a fold however long the room stays silent after it', async () => {
@@ -947,8 +1446,11 @@ describe('holding and putting back', () => {
     push(1, 2);
     binding.compact();
     await vi.advanceTimersByTimeAsync(DEFAULT_RETAIN_MS * 10);
+    const putBacks = watchPutBacks(doc);
 
-    expect(writeOver(doc)).toBe(2);
+    writeOver(doc);
+    await turn();
+    expect(putBacks()).toEqual([['x1', 'x2']]);
   });
 
   it('lets a fold go retainMs after the first update the room sends after it', async () => {
@@ -961,20 +1463,94 @@ describe('holding and putting back', () => {
     binding.compact();
     ping(doc);
     await vi.advanceTimersByTimeAsync(1);
+    const putBacks = watchPutBacks(doc);
 
-    expect(writeOver(doc)).toBe(1);
-    expect(seqsOf(doc)).toEqual(['x3']);
+    writeOver(doc);
+    await turn();
+    expect(putBacks()).toEqual([['x3']]);
   });
 
-  it('drops what it holds when a snapshot of another lineage takes over, putting nothing back', () => {
+  it('drops what it holds when a snapshot of another lineage takes over, putting nothing back', async () => {
     const { doc, binding, push } = loneCompactor();
     const rejoins = vi.fn();
     binding.on('rejoin', rejoins);
     push(1, 2);
     binding.compact();
+    const putBacks = watchPutBacks(doc);
 
-    expect(writeOver(doc, { seedId: 'another lineage' })).toBe(0);
+    writeOver(doc, { seedId: 'another lineage' });
+    await turn();
+    expect(putBacks()).toEqual([]);
     expect(rejoins).toHaveBeenCalledWith('seedLost');
+  });
+
+  it('drops what it was to put back when a snapshot of another lineage arrives before its fold, which then folds nothing', async () => {
+    const { doc, binding, push } = loneCompactor();
+    const rejoins = vi.fn();
+    binding.on('rejoin', rejoins);
+    push(1, 2);
+    binding.compact();
+    const putBacks = watchPutBacks(doc);
+
+    writeOver(doc);
+    writeOver(doc, { seedId: 'another lineage', generation: 5 });
+    expect(rejoins).toHaveBeenCalledWith('seedLost');
+    await turn();
+    expect(putBacks()).toEqual([]);
+    expect(snapshotOf(doc)).toMatchObject({
+      seedId: 'another lineage',
+      compactorId: 'other',
+      generation: 5,
+    });
+  });
+
+  it('drops what it was to put back when the snapshot is cleared before its fold, which then folds nothing', async () => {
+    const { doc, binding, push } = loneCompactor();
+    push(1, 2);
+    binding.compact();
+    const putBacks = watchPutBacks(doc);
+
+    writeOver(doc);
+    getSnapshotMap(doc).clear();
+    await turn();
+    expect(putBacks()).toEqual([]);
+    expect(getSnapshotMap(doc).size).toBe(0);
+    expect(getLog(doc).length).toBe(0);
+  });
+
+  it('puts back in a call that folds before the microtask does, which carries the new key, so the binding folds once', async () => {
+    const { doc, binding, lineage, push } = loneCompactor();
+    push(1, 2);
+    binding.compact();
+    const putBacks = watchPutBacks(doc);
+
+    writeOver(doc);
+    expect(putBacks()).toEqual([]);
+    expect(binding.compact()).toEqual({ compacted: true, generation: 100 });
+    expect(putBacks()).toEqual([['x1', 'x2']]);
+    const fold = snapshotOf(doc);
+    expect(fold.seedId).toBe(lineage);
+    expect(Object.keys(fold.covers)).toHaveLength(2);
+    expect(fold.covers.x).toBe(2);
+
+    await turn();
+    expect(snapshotOf(doc)).toEqual(fold);
+    expect(putBacks()).toHaveLength(1);
+  });
+
+  it('puts back on its own what a binding destroyed before that fold was to put back', async () => {
+    const { doc, binding, push } = loneCompactor();
+    push(1, 2);
+    binding.compact();
+    const putBacks = watchPutBacks(doc);
+
+    writeOver(doc);
+    expect(putBacks()).toEqual([]);
+    binding.destroy();
+    expect(putBacks()).toEqual([['x1', 'x2']]);
+    expect(seqsOf(doc)).toEqual(['x1', 'x2']);
+    await turn();
+    expect(snapshotOf(doc)).toMatchObject({ compactorId: 'other' });
   });
 
   it('destroy ends the grace and the clocks, so nothing folds or expires after it and no timer of its own is left', async () => {

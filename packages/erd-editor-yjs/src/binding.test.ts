@@ -427,6 +427,51 @@ describe('a peer store destroyed before its binding', () => {
     });
   });
 
+  it('stops the binding with error when a subscriber destroys the peer store as a rejoin flushes a held drag, so nothing throws out of the provider', () => {
+    const { room, peer, bind } = setup();
+    const a = peer('a');
+    const store = peer('b');
+    const b = instrumentPeer(store);
+    const clientB = room.join();
+    bind(a, room.join().doc).seed();
+    const bindingB = bind(b.store, clientB.doc);
+    const replica = bind(peer('server'), room.server);
+    const errors = vi.fn();
+    const rejoins = vi.fn();
+    bindingB.on('error', errors);
+    bindingB.on('rejoin', rejoins);
+    const table = addTable(a, 'one');
+
+    clientB.disconnect();
+    addTable(a, 'while b was away');
+    expect(replica.compact()).toEqual({ compacted: true, generation: 1 });
+    b.holdBack(['table.moveTo']);
+    b.store.subscribe(actions => {
+      if (actions.some(action => action.type === 'table.moveTo')) {
+        store.destroy();
+      }
+    });
+    b.store.dispatch([
+      tableActions.moveTableAction({
+        movementX: 30,
+        movementY: 40,
+        ids: [table],
+      }),
+    ]);
+
+    expect(() => clientB.connect()).not.toThrow();
+    expect(store.isDestroyed).toBe(true);
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(errors).toHaveBeenCalledWith(closedError);
+    expect(rejoins).not.toHaveBeenCalled();
+    // The drag left before the store closed, so the room still holds it.
+    expect(
+      entriesOf(room.server).some(({ actions }) =>
+        actions.some(action => action.type === 'table.moveTo')
+      )
+    ).toBe(true);
+  });
+
   it("folds nothing when asked, so the room never takes the closed store's value", () => {
     const { a, server, replica } = seededRoom();
     const errors = vi.fn();
