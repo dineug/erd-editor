@@ -59,6 +59,8 @@ import {
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
+import { toMoveTableGroupActions } from '@/engine/modules/table-group/generator.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import {
   createSharedStore,
@@ -382,8 +384,8 @@ describe('createSharedStore', () => {
       vi.advanceTimersByTime(400);
 
       const sent = fixture.seen.flat();
-      expect(sent.map(action => action.type)).toEqual(['table.move']);
-      expect(sent[0].payload).toMatchObject({ ids: ['t1'], movementX: 40 });
+      expect(sent.map(action => action.type)).toEqual(['table.moveTo']);
+      expect(sent[0].payload).toEqual({ id: 't1', x: 240, y: 100 });
       expect(fixture.store.state.collections.tableEntities.t1.ui.x).toBe(240);
     });
 
@@ -429,7 +431,7 @@ describe('createSharedStore', () => {
       expect(sent.map(({ type, payload }) => [type, payload])).toEqual([
         ['settings.scrollTo', { originX: 40, originY: 40 }],
         ['settings.changeZoomLevel', { value: 1 }],
-        ['settings.streamScrollTo', { movementX: 30, movementY: 0 }],
+        ['settings.scrollTo', { originX: 70, originY: 40 }],
       ]);
       expect(
         sent.every(({ tags }) => bHas(tags!, Tag.shared | Tag.following))
@@ -689,6 +691,146 @@ describe('createSharedStore', () => {
 
     expect(fixture.seen).toHaveLength(0);
     expect(fixture.store.state.doc.tableIds).toEqual(['t1']);
+  });
+});
+
+describe('createSharedStore absolute geometry', () => {
+  /** A store holding t1 at (200, 100) and the group g1, whose sends are seen from here on. */
+  function makeSeen() {
+    vi.useFakeTimers();
+    const fixture = make();
+    fixture.store.dispatchSync(
+      addTable('t1'),
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 160, y: 40, width: 400, height: 300, zIndex: 1 },
+      })
+    );
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+    // The history's quiet period, so an undo finds the adds behind it.
+    vi.advanceTimersByTime(400);
+    fixture.reset();
+    return fixture;
+  }
+
+  const positionVersion = (fixture: Fixture, id: string) =>
+    fixture.store.state.lww[id][3]['ui.position'];
+
+  it('sends a drag’s steps as one absolute move, 200 ms after the last, at the last step’s version (AC-P1)', () => {
+    const fixture = makeSeen();
+
+    fixture.store.dispatchSync(
+      moveTableAction({ ids: ['t1'], movementX: 30, movementY: 0 })
+    );
+    fixture.store.dispatchSync(
+      moveTableAction({ ids: ['t1'], movementX: 30, movementY: 10 })
+    );
+    vi.advanceTimersByTime(199);
+    expect(fixture.seen).toEqual([]);
+    vi.advanceTimersByTime(1);
+
+    expect(fixture.seen).toHaveLength(1);
+    const [moveTo] = fixture.seen[0];
+    expect(moveTo).toMatchObject({
+      type: 'table.moveTo',
+      payload: { id: 't1', x: 260, y: 110 },
+      version: fixture.store.context.clock.getVersion(),
+    });
+    expect(fixture.types()).not.toContain('table.move');
+  });
+
+  it('sends the undo of a drag as the absolute point it puts the table back at', () => {
+    const fixture = makeSeen();
+    fixture.store.dispatchSync(
+      moveTableAction({ ids: ['t1'], movementX: 60, movementY: 0 })
+    );
+    vi.advanceTimersByTime(400);
+    const dragged = fixture.seen.flat()[0].version!;
+    fixture.reset();
+
+    fixture.store.undo();
+    const replayed = fixture.store.context.clock.getVersion();
+    vi.advanceTimersByTime(200);
+
+    const sent = fixture.seen.flat();
+    expect(sent.map(({ type, payload }) => [type, payload])).toEqual([
+      ['table.moveTo', { id: 't1', x: 200, y: 100 }],
+    ]);
+    expect(sent[0].version).toBe(replayed);
+    expect(sent[0].version).toBeGreaterThan(dragged);
+  });
+
+  it('sends a group drag’s group and the tables it carries in one batch, tagged as shared alone, so a receiver sorts their connectors in a microtask', () => {
+    const fixture = makeSeen();
+
+    fixture.store.dispatchSync(toMoveTableGroupActions(['g1'], ['t1'], 40, 0));
+    fixture.store.dispatchSync(toMoveTableGroupActions(['g1'], ['t1'], 40, 0));
+    vi.advanceTimersByTime(200);
+
+    expect(fixture.seen).toHaveLength(1);
+    expect(
+      fixture.seen[0].map(({ type, payload, tags }) => [type, payload, tags])
+    ).toEqual([
+      ['table.moveTo', { id: 't1', x: 280, y: 100 }, Tag.shared],
+      ['tableGroup.moveTo', { id: 'g1', x: 240, y: 40 }, Tag.shared],
+    ]);
+  });
+
+  it('answers a join only after the drag it holds has left, so the versions the answer carries stand on a point sent', () => {
+    const fixture = makeSeen();
+
+    fixture.store.dispatchSync(
+      moveTableAction({ ids: ['t1'], movementX: 30, movementY: 0 })
+    );
+    const stepped = positionVersion(fixture, 't1');
+    fixture.shared.dispatchSync({ ...getLWWAction(), tags: Tag.shared });
+
+    const sent = fixture.seen.flat();
+    expect(sent.map(({ type }) => type)).toEqual([
+      'table.moveTo',
+      'editor.mergeLWW',
+    ]);
+    expect(sent[0]).toMatchObject({
+      payload: { id: 't1', x: 230, y: 100 },
+      version: stepped,
+    });
+    expect(sent[1].payload.lww.t1[3]['ui.position']).toBe(stepped);
+  });
+
+  it('sends a drag under 20 px, which leaves no undo entry', () => {
+    const fixture = makeSeen();
+    const size = fixture.store.history.size;
+
+    fixture.store.dispatchSync(
+      moveTableAction({ ids: ['t1'], movementX: 5, movementY: 5 })
+    );
+    vi.advanceTimersByTime(400);
+
+    expect(fixture.store.history.size).toBe(size);
+    expect(
+      fixture.seen.flat().map(({ type, payload }) => [type, payload])
+    ).toEqual([['table.moveTo', { id: 't1', x: 205, y: 105 }]]);
+  });
+
+  it('sends a pan and a zoom as the origin and the zoom they end at, 200 ms after the last step', () => {
+    const fixture = makeSeen();
+
+    fixture.store.dispatchSync(
+      streamScrollToAction({ movementX: 30, movementY: -10 }),
+      streamZoomLevelAction({ value: -0.25 })
+    );
+    vi.advanceTimersByTime(200);
+
+    const sent = fixture.seen.flat();
+    expect(sent.map(({ type, payload }) => [type, payload])).toEqual([
+      ['settings.scrollTo', { originX: 30, originY: -10 }],
+      ['settings.changeZoomLevel', { value: 0.75 }],
+    ]);
+    const viewport = fixture.store.state.lww['settings.viewport'][3];
+    expect(sent.map(({ version }) => version)).toEqual([
+      viewport.origin,
+      viewport.zoomLevel,
+    ]);
   });
 });
 

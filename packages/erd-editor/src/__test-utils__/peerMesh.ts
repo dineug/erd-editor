@@ -45,6 +45,17 @@ export type MeshPeer = Pick<
   dispatch: (actions: CompositionActions) => DispatchReport;
 };
 
+/** How deliver hands a peer its batches, each as a transport might. */
+export type DeliverOptions = {
+  /** Hands each batch over twice in a row, as a transport that sends one again does. */
+  duplicate?: true;
+  /**
+   * Interleaves the senders' batches in an order the seed picks, each sender's
+   * own still in the order it sent them, as one channel per sender keeps them.
+   */
+  shuffle?: number;
+};
+
 export type Mesh = {
   peers: MeshPeer[];
   /** Every batch each peer sent, presence off, copied as it left. */
@@ -53,9 +64,14 @@ export type Mesh = {
   replicas: ReplicationStore[];
   /**
    * Hands the peer every batch the senders sent since it last heard from them,
-   * sender after sender in the order given, the hooks run after each batch.
+   * sender after sender in the order given unless shuffled, the hooks run after
+   * each batch.
    */
-  deliver: (to: number, from?: number[]) => Promise<void>;
+  deliver: (
+    to: number,
+    from?: number[],
+    options?: DeliverOptions
+  ) => Promise<void>;
   /** Delivers until every peer has heard every batch, peer by peer in order. */
   deliverAll: () => Promise<void>;
   /** Opens one more peer on the value, as one that joins the session later. */
@@ -75,6 +91,18 @@ export type MeshOptions = {
    */
   replicas?: boolean;
 };
+
+/** A seeded generator of numbers from 0 up to 1, so an order a spec shuffles is the same on every run. */
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 /**
  * Peer stores on one value whose batches wait for the spec to deliver them, so
@@ -140,17 +168,54 @@ export function createMesh(
     }
   };
 
+  /** The senders of the pending batches, one entry per batch, in an order the seed picks. */
+  const shuffledTurns = (to: number, from: number[], seed: number) => {
+    const turns = from.flatMap(sender =>
+      sender === to
+        ? []
+        : Array.from(
+            { length: sent[sender].length - heard[to][sender] },
+            () => sender
+          )
+    );
+    const random = seededRandom(seed);
+    for (let index = turns.length - 1; index > 0; index--) {
+      const other = Math.floor(random() * (index + 1));
+      [turns[index], turns[other]] = [turns[other], turns[index]];
+    }
+    return turns;
+  };
+
   const deliver = async (
     to: number,
-    from: number[] = peers.map((_, index) => index)
+    from: number[] = peers.map((_, index) => index),
+    { duplicate, shuffle }: DeliverOptions = {}
   ) => {
-    for (const sender of from) {
-      if (sender === to) continue;
-
-      while (heard[to][sender] < sent[sender].length) {
-        receive(to, sent[sender][heard[to][sender]++]);
+    const handOver = async (sender: number) => {
+      const batch = sent[sender][heard[to][sender]++];
+      receive(to, batch);
+      await settle();
+      if (duplicate) {
+        receive(to, batch);
         await settle();
       }
+    };
+
+    if (shuffle === undefined) {
+      for (const sender of from) {
+        if (sender === to) continue;
+
+        while (heard[to][sender] < sent[sender].length) {
+          await handOver(sender);
+        }
+      }
+      return;
+    }
+
+    let turns = shuffledTurns(to, from, shuffle);
+    while (turns.length) {
+      for (const sender of turns) await handOver(sender);
+      turns = shuffledTurns(to, from, shuffle);
     }
   };
 

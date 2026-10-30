@@ -16,6 +16,12 @@ import {
   NameViewMode,
   Show,
 } from '@/constants/schema';
+import type { EngineContext } from '@/engine/context';
+import {
+  isOwnStep,
+  VIEWPORT_REGISTER,
+  ViewportRegister,
+} from '@/engine/geometryRegisters';
 import { Viewport } from '@/engine/modules/editor/state';
 import { keepFocusShown } from '@/engine/modules/editor/utils/nameView';
 import {
@@ -85,35 +91,103 @@ const changeDatabaseName: ReducerType<typeof ActionType.changeDatabaseName> = (
   );
 };
 
+/**
+ * Writes the origin or the zoom through its register, so the latest absolute
+ * write of each wins on every replica in any order. A screen turn writes the
+ * screen alone, outside the register.
+ */
+function replaceViewport(
+  state: RootState,
+  version: number,
+  path: ValuesType<typeof ViewportRegister>,
+  tags: number | undefined,
+  write: () => void
+): void {
+  if (isScreenWrite(tags)) return write();
+
+  replaceOperator(
+    state.lww,
+    version,
+    VIEWPORT_REGISTER,
+    'settings',
+    path,
+    write
+  );
+}
+
+/**
+ * A step of a pan or a zoom: the store's own adds through the register, and
+ * every other, each step a replica takes among them, outside it (isOwnStep).
+ */
+function stepViewport(
+  state: RootState,
+  context: EngineContext,
+  version: number | undefined,
+  path: ValuesType<typeof ViewportRegister>,
+  tags: number | undefined,
+  write: () => void
+): void {
+  if (!isOwnStep(context, tags)) return write();
+
+  replaceViewport(
+    state,
+    version ?? context.clock.getVersion(),
+    path,
+    tags,
+    write
+  );
+}
+
 export const changeZoomLevelAction = createAction<
   ActionMap[typeof ActionType.changeZoomLevel]
 >(ActionType.changeZoomLevel);
 
 const changeZoomLevel: ReducerType<typeof ActionType.changeZoomLevel> = (
   state,
-  { payload: { value }, tags }
-) => {
-  if (!isNil(tags) && bHas(tags, Tag.following)) {
-    return;
-  }
-
-  viewportWriteTarget(state, tags).zoomLevel = zoomLevelInRange(value);
-};
-
-export const streamZoomLevelAction = createAction<
-  ActionMap[typeof ActionType.streamZoomLevel]
->(ActionType.streamZoomLevel);
-
-const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
-  state,
-  { payload: { value }, tags }
+  { payload: { value }, version, tags },
+  { clock }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
   const target = viewportWriteTarget(state, tags);
-  target.zoomLevel = zoomLevelInRange(target.zoomLevel + value);
+  replaceViewport(
+    state,
+    version ?? clock.getVersion(),
+    ViewportRegister.zoomLevel,
+    tags,
+    () => {
+      target.zoomLevel = zoomLevelInRange(value);
+    }
+  );
+};
+
+export const streamZoomLevelAction = createAction<
+  ActionMap[typeof ActionType.streamZoomLevel]
+>(ActionType.streamZoomLevel);
+
+/** A step of a zoom, added to the zoom it finds, as streamScrollTo adds to the origin. */
+const streamZoomLevel: ReducerType<typeof ActionType.streamZoomLevel> = (
+  state,
+  { payload: { value }, version, tags },
+  context
+) => {
+  if (!isNil(tags) && bHas(tags, Tag.following)) {
+    return;
+  }
+
+  const target = viewportWriteTarget(state, tags);
+  stepViewport(
+    state,
+    context,
+    version,
+    ViewportRegister.zoomLevel,
+    tags,
+    () => {
+      target.zoomLevel = zoomLevelInRange(target.zoomLevel + value);
+    }
+  );
 };
 
 export type ScrollRanges = {
@@ -255,15 +329,24 @@ export const scrollToAction = createAction<
  */
 const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
   state,
-  { payload: { originX, originY }, tags }
+  { payload: { originX, originY }, version, tags },
+  { clock }
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
   const target = viewportWriteTarget(state, tags);
-  target.originX = round(originX, 4);
-  target.originY = round(originY, 4);
+  replaceViewport(
+    state,
+    version ?? clock.getVersion(),
+    ViewportRegister.origin,
+    tags,
+    () => {
+      target.originX = round(originX, 4);
+      target.originY = round(originY, 4);
+    }
+  );
 };
 
 export const streamScrollToAction = createAction<
@@ -277,15 +360,18 @@ export const streamScrollToAction = createAction<
  */
 const streamScrollTo: ReducerType<typeof ActionType.streamScrollTo> = (
   state,
-  { payload: { movementX, movementY }, tags }
+  { payload: { movementX, movementY }, version, tags },
+  context
 ) => {
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
 
   const target = viewportWriteTarget(state, tags);
-  target.originX = round(target.originX + movementX, 4);
-  target.originY = round(target.originY + movementY, 4);
+  stepViewport(state, context, version, ViewportRegister.origin, tags, () => {
+    target.originX = round(target.originX + movementX, 4);
+    target.originY = round(target.originY + movementY, 4);
+  });
 };
 
 /**

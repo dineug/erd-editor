@@ -275,7 +275,9 @@ canvas and a pan or a zoom from the keyboard that brings a table under it, and
 not for a pinch whose first finger lands on a table, which draws to that table
 as a tap there does and still zooms. `shared-presence.spec.ts` sends a mapping
 made in the dialog and one edited from the menu to a wired peer, and closes the
-dialog with a toast once the peer removes its relationship.
+dialog with a toast once the peer removes its relationship. It also drags a
+table and finds it at the same point on the peer, and again once the drag is
+undone, since a drag reaches a peer as the absolute point it ends at.
 
 `schema-sql-options.spec.ts` holds down the Schema SQL tab's options panel: on
 a wide editor it opens beside the code, on If not exists and CREATE + USE

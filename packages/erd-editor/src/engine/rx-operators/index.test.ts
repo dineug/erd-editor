@@ -8,7 +8,6 @@ import { bufferCircuitBreaker } from '@/engine/rx-operators/bufferCircuitBreaker
 import { groupByStreamActions } from '@/engine/rx-operators/groupByStreamActions';
 import { ignoreTagFilter } from '@/engine/rx-operators/ignoreTagFilter';
 import { notEmptyActions } from '@/engine/rx-operators/notEmptyActions';
-import { sharedStreamActionsCompressor } from '@/engine/rx-operators/sharedStreamActionsCompressor';
 
 describe('rx-operators barrel', () => {
   it('re-exports the operator implementations by identity', () => {
@@ -17,9 +16,6 @@ describe('rx-operators barrel', () => {
     expect(rxOperators.groupByStreamActions).toBe(groupByStreamActions);
     expect(rxOperators.ignoreTagFilter).toBe(ignoreTagFilter);
     expect(rxOperators.notEmptyActions).toBe(notEmptyActions);
-    expect(rxOperators.sharedStreamActionsCompressor).toBe(
-      sharedStreamActionsCompressor
-    );
   });
 
   it('does not re-export readonlyIgnoreFilter, which callers must deep-import', () => {
@@ -29,7 +25,6 @@ describe('rx-operators barrel', () => {
       'groupByStreamActions',
       'ignoreTagFilter',
       'notEmptyActions',
-      'sharedStreamActionsCompressor',
     ]);
   });
 

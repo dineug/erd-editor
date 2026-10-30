@@ -194,7 +194,7 @@ export function toMoveTableGroupActions(
 
 /**
  * Moves groups by a step in scene units, their member tables with them, in one
- * dispatch: moves are relative, so a peer's concurrent move adds up.
+ * dispatch, which a peer hears as the points they end at.
  *
  * @example
  * store.dispatch(moveTableGroupAction$(['g1'], 40, 0));

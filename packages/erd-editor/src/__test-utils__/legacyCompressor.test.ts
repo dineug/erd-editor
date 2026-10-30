@@ -9,6 +9,7 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { createLegacyStreamActionsCompressor } from '@/__test-utils__/legacyCompressor';
 import {
   sharedDragSelectTrackerAction,
   sharedFocusTrackerAction,
@@ -27,9 +28,14 @@ import {
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { bufferCircuitBreaker } from '@/engine/rx-operators/bufferCircuitBreaker';
-import { createSharedStreamActionsCompressor } from '@/engine/rx-operators/createSharedStreamActionsCompressor';
 import { flushOnNotifier } from '@/engine/rx-operators/flushOnNotifier';
-import { sharedStreamActionsCompressor } from '@/engine/rx-operators/sharedStreamActionsCompressor';
+
+/**
+ * The compressor of editors built before the registers, held to the cases the
+ * shipping compressor passed before it sent moves as absolute positions, so
+ * the copy keeps their wire as it was.
+ */
+const sharedStreamActionsCompressor = createLegacyStreamActionsCompressor();
 
 function createHarness() {
   const source$ = new Subject<Array<AnyAction>>();
@@ -40,7 +46,7 @@ function createHarness() {
   return { source$, emitted };
 }
 
-describe('sharedStreamActionsCompressor', () => {
+describe('the legacy compressor', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -267,7 +273,7 @@ describe('sharedStreamActionsCompressor', () => {
   });
 });
 
-describe('sharedStreamActionsCompressor versions', () => {
+describe('the legacy compressor versions', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -327,7 +333,7 @@ describe('sharedStreamActionsCompressor versions', () => {
   );
 });
 
-describe('createSharedStreamActionsCompressor', () => {
+describe('createLegacyStreamActionsCompressor', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -341,7 +347,7 @@ describe('createSharedStreamActionsCompressor', () => {
     const source$ = new Subject<Array<AnyAction>>();
     const emitted: Array<Array<AnyAction>> = [];
     source$
-      .pipe(createSharedStreamActionsCompressor(flushOnNotifier(notifier$)))
+      .pipe(createLegacyStreamActionsCompressor(flushOnNotifier(notifier$)))
       .subscribe(actions => emitted.push(actions));
     return { notifier$, source$, emitted };
   }
@@ -350,7 +356,7 @@ describe('createSharedStreamActionsCompressor', () => {
     const source$ = new Subject<Array<AnyAction>>();
     const emitted: Array<Array<AnyAction>> = [];
     source$
-      .pipe(createSharedStreamActionsCompressor())
+      .pipe(createLegacyStreamActionsCompressor())
       .subscribe(actions => emitted.push(actions));
 
     source$.next([
@@ -416,7 +422,7 @@ describe('createSharedStreamActionsCompressor', () => {
     (_, action) => {
       const notifier$ = new Subject<void>();
       const opening$ = new Subject<void>();
-      const compressor = createSharedStreamActionsCompressor(
+      const compressor = createLegacyStreamActionsCompressor(
         flushOnNotifier(notifier$)
       );
       const source$ = new Subject<Array<AnyAction>>();

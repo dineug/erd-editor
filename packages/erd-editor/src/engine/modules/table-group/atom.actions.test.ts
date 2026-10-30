@@ -2,6 +2,8 @@ import { AnyAction } from '@dineug/r-html';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { Clock } from '@/engine/clock';
+import type { ReplicaEngineContext } from '@/engine/context';
+import { POSITION_REGISTER, SIZE_REGISTER } from '@/engine/geometryRegisters';
 import {
   addTableGroupAction,
   changeTableGroupColorAction,
@@ -13,6 +15,7 @@ import {
   resizeTableGroupAction,
 } from '@/engine/modules/table-group/atom.actions';
 import { createStore, Store } from '@/engine/store';
+import { Tag } from '@/engine/tag';
 
 const UI = { x: 10, y: 20, width: 300, height: 200, zIndex: 2 };
 
@@ -141,17 +144,57 @@ describe('moveTableGroup', () => {
     expect(groupOf(store, 'g2').ui).toMatchObject({ x: 1.1235, y: -2.5 });
   });
 
-  it('adds up concurrent steps whatever their versions, a move being relative', () => {
+  it('adds up a peer’s concurrent steps whatever their versions, outside the register (AC-M3)', () => {
+    store.dispatchSync(addTableGroupAction({ id: 'g1', ui: UI }));
+    const shared = (action: AnyAction, version: number) => ({
+      ...at(action, version),
+      tags: Tag.shared,
+    });
+
+    store.dispatchSync(
+      shared(
+        moveTableGroupAction({ ids: ['g1'], movementX: 5, movementY: 0 }),
+        9
+      )
+    );
+    store.dispatchSync(
+      shared(
+        moveTableGroupAction({ ids: ['g1'], movementX: 0, movementY: 7 }),
+        2
+      )
+    );
+
+    expect(groupOf(store, 'g1').ui).toMatchObject({ x: 15, y: 27 });
+    expect(lwwOf(store, 'g1')[3]).toEqual({});
+  });
+
+  it('adds the store’s own step through the position register, which refuses an older absolute move after it', () => {
     store.dispatchSync(addTableGroupAction({ id: 'g1', ui: UI }));
 
     store.dispatchSync(
       at(moveTableGroupAction({ ids: ['g1'], movementX: 5, movementY: 0 }), 9)
     );
+    store.dispatchSync(at(moveToTableGroupAction({ id: 'g1', x: 0, y: 0 }), 8));
+
+    expect(groupOf(store, 'g1').ui).toMatchObject({ x: 15, y: 20 });
+    expect(lwwOf(store, 'g1')[3]).toEqual({ [POSITION_REGISTER]: 9 });
+  });
+
+  it('adds every step a replica’s context takes outside the register', () => {
+    const replicaContext: ReplicaEngineContext = {
+      toWidth: text => text.length * 10,
+      clock: new Clock(),
+      remote: true,
+    };
+    store = createStore(replicaContext);
+    store.dispatchSync(addTableGroupAction({ id: 'g1', ui: UI }));
+
     store.dispatchSync(
-      at(moveTableGroupAction({ ids: ['g1'], movementX: 0, movementY: 7 }), 2)
+      at(moveTableGroupAction({ ids: ['g1'], movementX: 5, movementY: 0 }), 9)
     );
 
-    expect(groupOf(store, 'g1').ui).toMatchObject({ x: 15, y: 27 });
+    expect(groupOf(store, 'g1').ui).toMatchObject({ x: 15, y: 20 });
+    expect(lwwOf(store, 'g1')[3]).toEqual({});
   });
 
   it('creates a group it has not seen at the default rect before moving it', () => {
@@ -165,6 +208,18 @@ describe('moveTableGroup', () => {
 });
 
 describe('moveToTableGroup', () => {
+  it('lands the same absolute move twice as once, and refuses an older one (AC-M1)', () => {
+    store.dispatchSync(addTableGroupAction({ id: 'g1', ui: UI }));
+    const moveTo = at(moveToTableGroupAction({ id: 'g1', x: -50, y: 75 }), 5);
+
+    store.dispatchSync(moveTo);
+    store.dispatchSync(moveTo);
+    store.dispatchSync(at(moveToTableGroupAction({ id: 'g1', x: 0, y: 0 }), 4));
+
+    expect(groupOf(store, 'g1').ui).toEqual({ ...UI, x: -50, y: 75 });
+    expect(lwwOf(store, 'g1')[3]).toEqual({ [POSITION_REGISTER]: 5 });
+  });
+
   it('places the group at the point and keeps its size', () => {
     store.dispatchSync(addTableGroupAction({ id: 'g1', ui: UI }));
 
@@ -181,11 +236,20 @@ describe('moveToTableGroup', () => {
 });
 
 describe('resizeTableGroup', () => {
-  it('writes the whole rect', () => {
+  it('writes the whole rect, its point and its size each through its register', () => {
     store.dispatchSync(addTableGroupAction({ id: 'g1', ui: UI }));
 
     store.dispatchSync(
-      resizeTableGroupAction({ id: 'g1', x: 0, y: 5, width: 640, height: 480 })
+      at(
+        resizeTableGroupAction({
+          id: 'g1',
+          x: 0,
+          y: 5,
+          width: 640,
+          height: 480,
+        }),
+        6
+      )
     );
 
     expect(groupOf(store, 'g1').ui).toEqual({
@@ -195,6 +259,35 @@ describe('resizeTableGroup', () => {
       height: 480,
       zIndex: 2,
     });
+    expect(lwwOf(store, 'g1')[3]).toEqual({
+      [POSITION_REGISTER]: 6,
+      [SIZE_REGISTER]: 6,
+    });
+  });
+
+  it('keeps a newer move’s point and an older resize’s size, whichever arrives first (AC-P5)', () => {
+    const moveTo = at(moveToTableGroupAction({ id: 'g1', x: 90, y: 80 }), 7);
+    const resize = at(
+      resizeTableGroupAction({ id: 'g1', x: 0, y: 5, width: 640, height: 480 }),
+      6
+    );
+
+    for (const order of [
+      [moveTo, resize],
+      [resize, moveTo],
+    ]) {
+      store = createTestStore();
+      store.dispatchSync(addTableGroupAction({ id: 'g1', ui: UI }));
+      order.forEach(action => store.dispatchSync(action));
+
+      expect(groupOf(store, 'g1').ui).toEqual({
+        x: 90,
+        y: 80,
+        width: 640,
+        height: 480,
+        zIndex: 2,
+      });
+    }
   });
 
   it('creates a group it has not seen', () => {

@@ -6,7 +6,7 @@ import {
   type CompositionActions,
   compositionActionsFlat,
 } from '@dineug/r-html';
-import { cloneDeep } from 'es-toolkit';
+import { cloneDeep, pick } from 'es-toolkit';
 import {
   afterEach,
   beforeEach,
@@ -35,6 +35,7 @@ import {
 import {
   createSeedValue,
   createSession,
+  createUserStore,
   SEED,
   type Session,
   settle,
@@ -62,6 +63,7 @@ import {
 } from '@/engine/modules/dictionary/generator.actions';
 import {
   changeViewportAction,
+  getLWWAction,
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
@@ -72,17 +74,30 @@ import {
 } from '@/engine/modules/editor/generator.actions';
 import { SelectType } from '@/engine/modules/editor/state';
 import {
+  moveMemoAction,
+  resizeMemoAction,
+} from '@/engine/modules/memo/atom.actions';
+import {
   addRelationshipAction,
   changeRelationshipColumnsAction,
   removeRelationshipAction,
 } from '@/engine/modules/relationship/atom.actions';
 import {
   changeDDLScriptAction,
+  changeZoomLevelAction,
+  scrollToAction,
+  streamScrollToAction,
+  streamZoomLevelAction,
   toNameViewModeAction,
 } from '@/engine/modules/settings/atom.actions';
-import { changeLockSettingsAction$ } from '@/engine/modules/settings/generator.actions';
+import {
+  changeLockSettingsAction$,
+  changeZoomLevelAction$,
+} from '@/engine/modules/settings/generator.actions';
 import {
   changeTableNameAction,
+  moveTableAction,
+  moveToTableAction,
   sortTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { removeTableAction$ } from '@/engine/modules/table/generator.actions';
@@ -100,11 +115,16 @@ import {
   changeColumnDataTypeAction$,
   removeColumnAction$,
 } from '@/engine/modules/table-column/generator.actions';
+import {
+  moveTableGroupAction,
+  resizeTableGroupAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { createPeerStore, type PeerStore } from '@/engine/peer-store';
 import { createReplicationStore } from '@/engine/replication-store';
 import { createRxStore } from '@/engine/rx-store';
 import { createSharedStore } from '@/engine/shared-store';
 import type { RootState } from '@/engine/state';
+import { Tag } from '@/engine/tag';
 import { defaultToWidth } from '@/engine/to-width';
 import { bHas } from '@/utils/bit';
 import { type MapColumnsDraft, toMapColumnsActions } from '@/utils/map-columns';
@@ -144,7 +164,7 @@ const expectConverged = (session: Session) => {
   }
 };
 
-describe('a peer store and an element’s store converge (AC-E5)', () => {
+describe('a peer store and an element’s store converge (AC-E5, AC-M5)', () => {
   it.each(Object.keys(SEED_SCENARIOS))(
     'after %s both sides serialize the same document',
     async name => {
@@ -2022,6 +2042,652 @@ describe('writes at one counter converge on the greater slot', () => {
         expect(
           JSON.parse(replica.value).collections.tableEntities[SEED.users].name
         ).toBe('products_A');
+      }
+    });
+  });
+});
+
+describe('geometry converges through its registers', () => {
+  const meshes: Mesh[] = [];
+  const closers: Array<() => void> = [];
+
+  /** Lets every hook a batch woke run: the 5 ms windows and the microtasks. */
+  const settleHooks = async () => {
+    await vi.advanceTimersByTimeAsync(20);
+  };
+
+  /**
+   * Peers on the seed, each with a replica, past the opening handshake, the
+   * viewport unlocked so a replica's file shows the viewport it holds.
+   */
+  async function open(peers: MeshOptions['peers'] = [{}, {}, {}, {}]) {
+    const mesh = createMesh(peers.length, {
+      settle: settleHooks,
+      replicas: true,
+      peers,
+    });
+    meshes.push(mesh);
+    await settleHooks();
+    await mesh.deliverAll();
+    mesh.peers[0].dispatch([
+      changeLockSettingsAction$(LockSettingType.viewport, false),
+    ]);
+    await mesh.deliverAll();
+    return mesh;
+  }
+
+  /** The two writers' batches to the third peer in their order and to the fourth in the other. */
+  async function deliverBothOrders(mesh: Mesh) {
+    await mesh.deliver(2, [0, 1]);
+    await mesh.deliver(3, [1, 0]);
+    await mesh.deliverAll();
+  }
+
+  type Geometry = { x: number; y: number; width?: number; height?: number };
+
+  const COLLECTION = {
+    table: 'tableEntities',
+    memo: 'memoEntities',
+    group: 'tableGroupEntities',
+  } as const;
+
+  /** An entity's point, and its size when it has one, as the store's document holds it. */
+  const geometryOf = (
+    store: HasRuntimeValue,
+    kind: keyof typeof COLLECTION,
+    id: string
+  ): Geometry => {
+    const { ui } = JSON.parse(store.runtimeValue).collections[COLLECTION[kind]][
+      id
+    ];
+    return kind === 'table'
+      ? { x: ui.x, y: ui.y }
+      : { x: ui.x, y: ui.y, width: ui.width, height: ui.height };
+  };
+
+  /** Every peer and every replica of the mesh holds the entity where the first peer does. */
+  const expectEverywhere = (
+    mesh: Mesh,
+    kind: keyof typeof COLLECTION,
+    id: string,
+    expected = geometryOf(mesh.peers[0], kind, id)
+  ) => {
+    for (const store of [...mesh.peers, ...mesh.replicas]) {
+      expect(geometryOf(store, kind, id)).toEqual(expected);
+    }
+    return expected;
+  };
+
+  /** The viewport a replica saves. */
+  const viewportOf = (store: HasRuntimeValue) =>
+    pick(JSON.parse(store.runtimeValue).settings, [
+      'originX',
+      'originY',
+      'zoomLevel',
+    ]);
+
+  /** The version of the last action of the type given that the peer sent. */
+  const sentVersion = (mesh: Mesh, index: number, type: string) =>
+    mesh.sent[index]
+      .flat()
+      .filter(action => action.type === type)
+      .pop()!.version!;
+
+  const step = (ids: string[], movementX: number, movementY = 0) =>
+    moveTableAction({ ids, movementX, movementY });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    meshes.splice(0).forEach(mesh => mesh.destroy());
+    closers.splice(0).forEach(close => close());
+    vi.useRealTimers();
+  });
+
+  it('lands each absolute write of a drag, a resize, a pan and a zoom once, though every batch arrives twice (AC-M1)', async () => {
+    const mesh = await open([{}, {}]);
+    const [mover] = mesh.peers;
+
+    mover.dispatch([step([SEED.users], 40, 25)]);
+    mover.dispatch([
+      resizeMemoAction({ id: SEED.memo, x: 0, y: 0, width: 260, height: 180 }),
+    ]);
+    mover.dispatch([
+      moveMemoAction({ ids: [SEED.memo], movementX: -30, movementY: 0 }),
+    ]);
+    mover.dispatch([
+      resizeTableGroupAction({
+        id: SEED.group,
+        x: 10,
+        y: 10,
+        width: 500,
+        height: 300,
+      }),
+    ]);
+    mover.dispatch([
+      moveTableGroupAction({ ids: [SEED.group], movementX: 0, movementY: 30 }),
+    ]);
+    mover.dispatch([streamScrollToAction({ movementX: 70, movementY: -20 })]);
+    mover.dispatch([streamZoomLevelAction({ value: -0.25 })]);
+    await mesh.deliver(1, [0], { duplicate: true });
+
+    const sentTypes = mesh.sent[0].flat().map(({ type }) => type);
+    for (const relative of [
+      'table.move',
+      'memo.move',
+      'tableGroup.move',
+      'settings.streamScrollTo',
+      'settings.streamZoomLevel',
+    ]) {
+      expect(sentTypes).not.toContain(relative);
+    }
+    expectEverywhere(mesh, 'table', SEED.users);
+    expectEverywhere(mesh, 'memo', SEED.memo, {
+      x: -30,
+      y: 0,
+      width: 260,
+      height: 180,
+    });
+    expectEverywhere(mesh, 'group', SEED.group, {
+      x: 10,
+      y: 40,
+      width: 500,
+      height: 300,
+    });
+    const viewport = pick(mover.state.settings, [
+      'originX',
+      'originY',
+      'zoomLevel',
+    ]);
+    expect(viewport.zoomLevel).toBe(0.75);
+    mesh.replicas.forEach(replica =>
+      expect(viewportOf(replica)).toEqual(viewport)
+    );
+  });
+
+  it('ends two moves of one table made at once on the greater version’s point, in every order, on every peer and replica (AC-M2)', async () => {
+    const mesh = await open();
+    const [a, b] = mesh.peers;
+
+    a.dispatch([step([SEED.users], 120)]);
+    b.dispatch([step([SEED.users], 0, -80)]);
+    const versionA = sentVersion(mesh, 0, 'table.moveTo');
+    const versionB = sentVersion(mesh, 1, 'table.moveTo');
+    const pointA = geometryOf(a, 'table', SEED.users);
+    const pointB = geometryOf(b, 'table', SEED.users);
+    await deliverBothOrders(mesh);
+
+    expect(counterOf(versionA)).toBe(counterOf(versionB));
+    expectEverywhere(
+      mesh,
+      'table',
+      SEED.users,
+      versionA > versionB ? pointA : pointB
+    );
+    for (const peer of mesh.peers) {
+      expect(peer.state.lww[SEED.users][3]['ui.position']).toBe(
+        Math.max(versionA, versionB)
+      );
+    }
+  });
+
+  it.each([1, 2, 3])(
+    'ends a move and a resize of one memo and one group made at once on one rect, delivered in the order seed %i picks, on every peer and replica (AC-P5)',
+    async seed => {
+      const mesh = await open();
+      const [mover, resizer] = mesh.peers;
+
+      mover.dispatch([
+        moveMemoAction({ ids: [SEED.memo], movementX: 50, movementY: 50 }),
+        moveTableGroupAction({
+          ids: [SEED.group],
+          movementX: -40,
+          movementY: 0,
+        }),
+      ]);
+      resizer.dispatch([
+        resizeMemoAction({
+          id: SEED.memo,
+          x: 880,
+          y: 90,
+          width: 300,
+          height: 240,
+        }),
+        resizeTableGroupAction({
+          id: SEED.group,
+          x: 50,
+          y: 50,
+          width: 520,
+          height: 260,
+        }),
+      ]);
+      const moved = sentVersion(mesh, 0, 'memo.moveTo');
+      const resized = sentVersion(mesh, 1, 'memo.resize');
+      const pointOf = (kind: 'memo' | 'group', id: string) => {
+        const { x, y } = geometryOf(
+          moved > resized ? mover : resizer,
+          kind,
+          id
+        );
+        const { width, height } = geometryOf(resizer, kind, id);
+        return { x, y, width, height };
+      };
+      const memo = pointOf('memo', SEED.memo);
+      const group = pointOf('group', SEED.group);
+      for (let to = 0; to < mesh.peers.length; to++) {
+        await mesh.deliver(to, undefined, { shuffle: seed + to });
+      }
+      await mesh.deliverAll();
+
+      expectEverywhere(mesh, 'memo', SEED.memo, memo);
+      expectEverywhere(mesh, 'group', SEED.group, group);
+      expectSameDocuments(mesh.peers);
+    }
+  );
+
+  /**
+   * A user store, which holds a drag for its 200 ms window as an element does,
+   * beside an observer with a replica and a writer, on the seed and past the
+   * opening handshake; take hands the batches given to the stores named.
+   */
+  async function openWindow() {
+    const value = createSeedValue();
+    const user = createUserStore(value);
+    const [observer, writer] = ['observer', 'writer'].map(nickname => {
+      const peer = createPeerStore({ nickname, presence: false });
+      peer.setInitialValue(value);
+      return peer;
+    });
+    const replica = createReplicationStore({ toWidth: defaultToWidth });
+    replica.setInitialValue(value);
+    const fromUser: AnyAction[][] = [];
+    const fromWriter: AnyAction[][] = [];
+    const fromObserver: AnyAction[][] = [];
+    closers.push(
+      user.sharedStore.subscribe(actions => fromUser.push(cloneDeep(actions))),
+      writer.subscribe(actions => fromWriter.push(cloneDeep(actions))),
+      observer.subscribe(actions => fromObserver.push(cloneDeep(actions))),
+      user.destroy,
+      () => [observer, writer, replica].forEach(store => store.destroy())
+    );
+    const take = (
+      batches: AnyAction[][],
+      ...stores: Array<'user' | 'observer' | 'writer'>
+    ) => {
+      for (const actions of batches.splice(0)) {
+        for (const store of stores) {
+          if (store === 'user') {
+            user.sharedStore.dispatchSync(cloneDeep(actions));
+          } else if (store === 'observer') {
+            observer.receive(cloneDeep(actions));
+            replica.dispatchSync(cloneDeep(actions));
+          } else {
+            writer.receive(cloneDeep(actions));
+          }
+        }
+      }
+    };
+    /** Has the writer rename the empty table until its counter reaches the version's. */
+    const writeUpTo = (version: number) => {
+      let written = 0;
+      while (counterOf(written) < counterOf(version)) {
+        writer.dispatch([
+          changeTableNameAction({ id: SEED.empty, value: `empty_${written}` }),
+        ]);
+        written = lastBatch(fromWriter)[0].version!;
+      }
+    };
+    await vi.advanceTimersByTimeAsync(400);
+    take(fromUser, 'observer', 'writer');
+    take(fromWriter, 'observer', 'user');
+    await vi.advanceTimersByTimeAsync(400);
+    take(fromUser, 'observer', 'writer');
+
+    fromObserver.length = 0;
+
+    return {
+      user,
+      observer,
+      writer,
+      replica,
+      fromUser,
+      fromWriter,
+      fromObserver,
+      take,
+      writeUpTo,
+    };
+  }
+
+  it('ends two tables a window drags in one burst apart, each at its own steps’ version, when a third peer’s write of one arrives late (AC-P6)', async () => {
+    const {
+      user,
+      observer,
+      writer,
+      replica,
+      fromUser,
+      fromWriter,
+      take,
+      writeUpTo,
+    } = await openWindow();
+
+    // Two steps of users, then two of orders, within one 200 ms burst.
+    for (const id of [SEED.users, SEED.users, SEED.orders, SEED.orders]) {
+      user.rxStore.dispatchSync(step([id], 30));
+    }
+    await vi.advanceTimersByTimeAsync(400);
+    const burst = fromUser.flat();
+    const versionOfMove = (id: string) =>
+      burst.find(
+        ({ type, payload }) => type === 'table.moveTo' && payload.id === id
+      )!.version!;
+    // The writer, which has heard none of the burst, writes users one counter
+    // past the version users stands at in the window, below the burst's last.
+    writeUpTo(versionOfMove(SEED.users));
+    writer.dispatch([moveToTableAction({ id: SEED.users, x: -500, y: -400 })]);
+    const versionOfWrite = lastBatch(fromWriter)[0].version!;
+    expect(versionOfWrite).toBeGreaterThan(versionOfMove(SEED.users));
+    expect(versionOfWrite).toBeLessThan(versionOfMove(SEED.orders));
+
+    take(fromUser, 'observer', 'writer');
+    take(fromWriter, 'observer', 'user');
+    await vi.advanceTimersByTimeAsync(400);
+
+    const orders = user.rxStore.state.collections.tableEntities[SEED.orders].ui;
+    for (const store of [
+      observer,
+      writer,
+      replica,
+      { runtimeValue: toJson(user.rxStore.state) },
+    ]) {
+      expect(geometryOf(store, 'table', SEED.users)).toEqual({
+        x: -500,
+        y: -400,
+      });
+      expect(geometryOf(store, 'table', SEED.orders)).toEqual({
+        x: orders.x,
+        y: orders.y,
+      });
+    }
+  });
+
+  it('ends a lone scroll and a zoom made at once on one viewport on every replica, in every order (AC-P7)', async () => {
+    const mesh = await open();
+    const [scroller, zoomer] = mesh.peers;
+
+    scroller.dispatch([scrollToAction({ originX: 300, originY: -120 })]);
+    zoomer.dispatch([changeZoomLevelAction$(0.5)]);
+    await deliverBothOrders(mesh);
+
+    const scrolled = sentVersion(mesh, 0, 'settings.scrollTo');
+    const zoomed = sentVersion(mesh, 1, 'settings.scrollTo');
+    const [first, ...rest] = mesh.replicas.map(viewportOf);
+    expect(first.zoomLevel).toBe(0.5);
+    expect(pick(first, ['originX', 'originY'])).toEqual(
+      pick((scrolled > zoomed ? scroller : zoomer).state.settings, [
+        'originX',
+        'originY',
+      ])
+    );
+    rest.forEach(viewport => expect(viewport).toEqual(first));
+  });
+
+  it('ends a removed table one peer moves where the other’s undo of the removal brings it back, the same on every peer and replica (AC-P8)', async () => {
+    const mesh = await open([{}, {}, {}]);
+    const [mover, remover] = mesh.peers;
+    const seed = geometryOf(mover, 'table', SEED.empty);
+
+    remover.dispatch([removeTableAction$(SEED.empty)]);
+    await mesh.deliverAll();
+    mover.dispatch([step([SEED.empty], 150, 75)]);
+    await mesh.deliverAll();
+    remover.undo();
+    await mesh.deliverAll();
+
+    for (const peer of mesh.peers) {
+      expect(peer.state.doc.tableIds).toContain(SEED.empty);
+    }
+    expectEverywhere(mesh, 'table', SEED.empty, {
+      x: seed.x + 150,
+      y: seed.y + 75,
+    });
+    expectSameDocuments([...mesh.peers, ...mesh.replicas]);
+  });
+
+  it('lets the absolute point a drag ends at stand everywhere, over a peer’s newer write that came in while its window stood open (AC-P16)', async () => {
+    const {
+      user,
+      observer,
+      writer,
+      replica,
+      fromUser,
+      fromWriter,
+      take,
+      writeUpTo,
+    } = await openWindow();
+    const userView = () => ({ runtimeValue: toJson(user.rxStore.state) });
+
+    user.rxStore.dispatchSync(step([SEED.users], 30));
+    const stepped = user.rxStore.state.lww[SEED.users][3]['ui.position'];
+    writeUpTo(stepped);
+    writer.dispatch([moveToTableAction({ id: SEED.users, x: -300, y: -300 })]);
+    const written = lastBatch(fromWriter)[0].version!;
+    expect(written).toBeGreaterThan(stepped);
+    take(fromWriter, 'observer', 'user');
+
+    expect(fromUser).toEqual([]);
+    expect(geometryOf(userView(), 'table', SEED.users)).toEqual({
+      x: -300,
+      y: -300,
+    });
+
+    user.rxStore.dispatchSync(step([SEED.users], 30));
+    await vi.advanceTimersByTimeAsync(400);
+    const moves = fromUser.flat().filter(({ type }) => type === 'table.moveTo');
+    expect(moves).toHaveLength(1);
+    expect(moves[0].version).toBeGreaterThan(written);
+    take(fromUser, 'observer', 'writer');
+
+    for (const store of [observer, writer, replica, userView()]) {
+      expect(geometryOf(store, 'table', SEED.users)).toEqual({
+        x: -270,
+        y: -300,
+      });
+    }
+  });
+
+  it('lets a peer’s write stand everywhere over a window’s drag, though a third peer’s answer to a join raised the window’s register to it before the write arrived (AC-P1)', async () => {
+    const {
+      user,
+      observer,
+      writer,
+      replica,
+      fromUser,
+      fromWriter,
+      fromObserver,
+      take,
+      writeUpTo,
+    } = await openWindow();
+    const userView = () => ({ runtimeValue: toJson(user.rxStore.state) });
+
+    user.rxStore.dispatchSync(step([SEED.users], 30));
+    const stepped = user.rxStore.state.lww[SEED.users][3]['ui.position'];
+    writeUpTo(stepped);
+    writer.dispatch([moveToTableAction({ id: SEED.users, x: -300, y: -300 })]);
+    const written = lastBatch(fromWriter)[0].version!;
+    expect(written).toBeGreaterThan(stepped);
+    // The observer hears the write and answers a joiner, and the answer
+    // reaches the window ahead of the write, which brings no point.
+    take([...fromWriter], 'observer');
+    observer.receive({
+      ...getLWWAction(),
+      version: 1,
+      tags: Tag.shared,
+      meta: { editorId: 'joiner' },
+    });
+    take(fromObserver, 'user');
+    expect(user.rxStore.state.lww[SEED.users][3]['ui.position']).toBe(written);
+    expect(geometryOf(userView(), 'table', SEED.users)).not.toEqual({
+      x: -300,
+      y: -300,
+    });
+
+    await vi.advanceTimersByTimeAsync(400);
+    const moves = fromUser.flat().filter(({ type }) => type === 'table.moveTo');
+    expect(moves).toHaveLength(1);
+    expect(moves[0].version).toBe(stepped);
+    take(fromUser, 'observer', 'writer');
+    take(fromWriter, 'user');
+
+    for (const store of [observer, writer, replica, userView()]) {
+      expect(geometryOf(store, 'table', SEED.users)).toEqual({
+        x: -300,
+        y: -300,
+      });
+    }
+  });
+
+  it('ends a window’s drag on every replica, though another window that answered a join closed with its own drag of the table still held', async () => {
+    const value = createSeedValue();
+    const windows = [createUserStore(value), createUserStore(value)];
+    const replicas = windows.map(() => {
+      const replica = createReplicationStore({ toWidth: defaultToWidth });
+      replica.setInitialValue(value);
+      return replica;
+    });
+    const outboxes: AnyAction[][][] = [[], []];
+    const unsubscribes = windows.map(({ sharedStore }, index) =>
+      sharedStore.subscribe(actions => outboxes[index].push(cloneDeep(actions)))
+    );
+    const open = [true, true];
+    closers.push(
+      () => unsubscribes.forEach(unsubscribe => unsubscribe()),
+      () => windows.forEach(({ destroy }, index) => open[index] && destroy()),
+      () => replicas.forEach(replica => replica.destroy())
+    );
+    /** Each open window's sends to the other, and to both replicas, the first hearing the first window first. */
+    const exchange = () => {
+      const [fromFirst, fromSecond] = outboxes.map(outbox => outbox.splice(0));
+      const hand = (
+        batches: AnyAction[][],
+        take: (actions: AnyAction[]) => void
+      ) => batches.forEach(actions => take(cloneDeep(actions)));
+      if (open[1]) {
+        hand(fromFirst, actions =>
+          windows[1].sharedStore.dispatchSync(actions)
+        );
+      }
+      hand(fromSecond, actions => windows[0].sharedStore.dispatchSync(actions));
+      hand([...fromFirst, ...fromSecond], replicas[0].dispatchSync);
+      hand([...fromSecond, ...fromFirst], replicas[1].dispatchSync);
+    };
+    for (let round = 0; round < 2; round++) {
+      await vi.advanceTimersByTimeAsync(400);
+      exchange();
+    }
+
+    const seed = geometryOf(replicas[0], 'table', SEED.users);
+    windows[0].rxStore.dispatchSync(step([SEED.users], 100));
+    windows[1].rxStore.dispatchSync(step([SEED.users], 0, 40));
+    windows[1].rxStore.dispatchSync(step([SEED.users], 0, 40));
+    const [first, second] = windows.map(
+      ({ rxStore }) => rxStore.state.lww[SEED.users][3]['ui.position']
+    );
+    expect(counterOf(second)).toBe(counterOf(first) + 1);
+    // A joiner asks both, and the second closes before its drag's window ends.
+    for (const { sharedStore } of windows) {
+      sharedStore.dispatchSync({
+        ...getLWWAction(),
+        version: 1,
+        tags: Tag.shared,
+        meta: { editorId: 'joiner' },
+      });
+    }
+    exchange();
+    unsubscribes[1]();
+    windows[1].destroy();
+    open[1] = false;
+    await vi.advanceTimersByTimeAsync(400);
+    exchange();
+
+    // The closed window's drag left before its answer, and its later step wins.
+    const point = { x: seed.x, y: seed.y + 80 };
+    for (const store of [
+      { runtimeValue: toJson(windows[0].rxStore.state) },
+      ...replicas,
+    ]) {
+      expect(geometryOf(store, 'table', SEED.users)).toEqual(point);
+    }
+  });
+
+  describe('in a session with editors built before the registers', () => {
+    const mixed = [{}, { legacy: true as const }, {}];
+
+    it('adds their relative move outside every register, while a peer store sends none (AC-M3)', async () => {
+      const mesh = await open(mixed);
+      const [peer, older, other] = mesh.peers;
+      const before = geometryOf(peer, 'table', SEED.users);
+
+      older.dispatch([step([SEED.users], 40, 10)]);
+      await mesh.deliverAll();
+
+      expect(mesh.sent[1].flat().map(({ type }) => type)).toContain(
+        'table.move'
+      );
+      for (const store of [peer, other, ...mesh.replicas]) {
+        expect(geometryOf(store, 'table', SEED.users)).toEqual({
+          x: before.x + 40,
+          y: before.y + 10,
+        });
+      }
+      for (const store of [peer, other]) {
+        expect(store.state.lww[SEED.users]?.[3]['ui.position']).toBeUndefined();
+      }
+      // A write at the lowest version still lands on each replica, as one
+      // would on a register no write has reached.
+      mesh.replicas.forEach(replica =>
+        replica.dispatchSync([
+          { ...moveToTableAction({ id: SEED.users, x: 1, y: 2 }), version: 0 },
+        ])
+      );
+      mesh.replicas.forEach(replica =>
+        expect(geometryOf(replica, 'table', SEED.users)).toEqual({ x: 1, y: 2 })
+      );
+
+      peer.dispatch([step([SEED.users], 5)]);
+      expect(lastBatch(mesh.sent[0]).map(({ type }) => type)).toEqual([
+        'table.moveTo',
+      ]);
+    });
+
+    it('adds their zoom and pan steps outside each replica’s registers (AC-P14)', async () => {
+      const mesh = await open(mixed);
+      const [, older] = mesh.peers;
+
+      older.dispatch([streamZoomLevelAction({ value: -0.25 })]);
+      older.dispatch([streamScrollToAction({ movementX: 60, movementY: 0 })]);
+      await mesh.deliverAll();
+
+      expect(mesh.sent[1].flat().map(({ type }) => type)).toEqual(
+        expect.arrayContaining([
+          'settings.streamZoomLevel',
+          'settings.streamScrollTo',
+        ])
+      );
+      // Neither register took a version from those steps, so writes at the
+      // lowest version still land.
+      for (const replica of mesh.replicas) {
+        expect(viewportOf(replica).zoomLevel).toBe(0.75);
+        replica.dispatchSync([
+          { ...changeZoomLevelAction({ value: 0.5 }), version: 0 },
+          { ...scrollToAction({ originX: 7, originY: 8 }), version: 0 },
+        ]);
+        expect(viewportOf(replica)).toEqual({
+          originX: 7,
+          originY: 8,
+          zoomLevel: 0.5,
+        });
       }
     });
   });

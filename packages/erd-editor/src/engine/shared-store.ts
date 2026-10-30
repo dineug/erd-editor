@@ -77,7 +77,8 @@ export function createSharedStore(
   const closingNotifier$ = new Subject<void>();
   const flush$ = new Subject<void>();
   const compressor = createSharedStreamActionsCompressor(
-    manualStreamFlush ? flushOnNotifier(flush$) : quietPeriodOrNotifier(flush$)
+    manualStreamFlush ? flushOnNotifier(flush$) : quietPeriodOrNotifier(flush$),
+    () => store.state
   );
   const getReadonly = store.readonlyEditState ? store.getReadonly : () => false;
 
@@ -157,6 +158,17 @@ export function createSharedStore(
     }
   };
 
+  const flushStreamBuffers = () => {
+    for (let tick = 0; tick < FLUSH_TICKS; tick++) {
+      flush$.next();
+    }
+  };
+
+  /**
+   * Answers a join with the registers, after the drag held here has left: the
+   * answer carries its steps' versions, which a store that never sent the drag
+   * would leave on every peer with no point behind them.
+   */
   const toMergeLWWAction = (actions: Array<AnyAction> | AnyAction) => {
     const safeActions = Array.isArray(actions) ? actions : [actions];
     const isGetLWWAction = safeActions.some(
@@ -165,6 +177,7 @@ export function createSharedStore(
     const lww = store.state.lww;
 
     if (isGetLWWAction && !isEmpty(lww)) {
+      flushStreamBuffers();
       internal$.next([
         {
           ...mergeLWWAction({ lww }),
@@ -209,12 +222,6 @@ export function createSharedStore(
   const dispatch = (actions: Array<AnyAction> | AnyAction) => {
     store.dispatch(actions);
     toMergeLWWAction(actions);
-  };
-
-  const flushStreamBuffers = () => {
-    for (let tick = 0; tick < FLUSH_TICKS; tick++) {
-      flush$.next();
-    }
   };
 
   const destroy = () => {

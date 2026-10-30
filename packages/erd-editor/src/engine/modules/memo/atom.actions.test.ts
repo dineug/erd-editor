@@ -1,8 +1,11 @@
 import { AnyAction } from '@dineug/r-html';
+import { pick } from 'es-toolkit';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { MEMO_MIN_HEIGHT, MEMO_MIN_WIDTH } from '@/constants/layout';
 import { Clock } from '@/engine/clock';
+import type { ReplicaEngineContext } from '@/engine/context';
+import { POSITION_REGISTER, SIZE_REGISTER } from '@/engine/geometryRegisters';
 import {
   addMemoAction,
   changeMemoColorAction,
@@ -14,6 +17,7 @@ import {
   resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
 import { createStore, Store } from '@/engine/store';
+import { Tag } from '@/engine/tag';
 
 function createTestStore(): Store {
   return createStore({ toWidth: text => text.length * 10, clock: new Clock() });
@@ -159,6 +163,63 @@ describe('moveToMemo', () => {
   });
 });
 
+describe('memo position register', () => {
+  const position = () => pick(memoOf(store, 'm1').ui, ['x', 'y']);
+  const register = () => lwwOf(store, 'm1')?.[3][POSITION_REGISTER];
+
+  beforeEach(() => {
+    store.dispatchSync(
+      at(addMemoAction({ id: 'm1', ui: { x: 10, y: 20, zIndex: 2 } }), 1)
+    );
+  });
+
+  it('lands the same absolute move twice as once, and refuses an older one (AC-M1)', () => {
+    const moveTo = at(moveToMemoAction({ id: 'm1', x: 40, y: 60 }), 5);
+
+    store.dispatchSync(moveTo);
+    store.dispatchSync(moveTo);
+    store.dispatchSync(at(moveToMemoAction({ id: 'm1', x: -1, y: -1 }), 4));
+
+    expect(position()).toEqual({ x: 40, y: 60 });
+    expect(register()).toBe(5);
+  });
+
+  it('raises the register with the store’s own step', () => {
+    store.dispatchSync(
+      at(moveMemoAction({ ids: ['m1'], movementX: 5, movementY: 5 }), 7)
+    );
+    store.dispatchSync(at(moveToMemoAction({ id: 'm1', x: 0, y: 0 }), 6));
+
+    expect(position()).toEqual({ x: 15, y: 25 });
+    expect(register()).toBe(7);
+  });
+
+  it('adds a peer’s step and a replica’s outside the register', () => {
+    store.dispatchSync({
+      ...at(moveMemoAction({ ids: ['m1'], movementX: 5, movementY: 5 }), 7),
+      tags: Tag.shared,
+    });
+    expect(position()).toEqual({ x: 15, y: 25 });
+    expect(register()).toBeUndefined();
+
+    const replicaContext: ReplicaEngineContext = {
+      toWidth: text => text.length * 10,
+      clock: new Clock(),
+      remote: true,
+    };
+    store = createStore(replicaContext);
+    store.dispatchSync(
+      at(addMemoAction({ id: 'm1', ui: { x: 10, y: 20, zIndex: 2 } }), 1)
+    );
+    store.dispatchSync(
+      at(moveMemoAction({ ids: ['m1'], movementX: 5, movementY: 5 }), 7)
+    );
+
+    expect(position()).toEqual({ x: 15, y: 25 });
+    expect(register()).toBeUndefined();
+  });
+});
+
 describe('removeMemo', () => {
   it('unregisters the id from the document', () => {
     store.dispatchSync(
@@ -298,13 +359,13 @@ describe('changeMemoColor', () => {
 });
 
 describe('resizeMemo', () => {
-  it('writes position and size at once without touching lww', () => {
+  it('writes position and size at once, each through its register', () => {
     store.dispatchSync(
       addMemoAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 2 } })
     );
 
     store.dispatchSync(
-      resizeMemoAction({ id: 'm1', x: 3, y: 4, width: 300, height: 200 })
+      at(resizeMemoAction({ id: 'm1', x: 3, y: 4, width: 300, height: 200 }), 6)
     );
 
     expect(memoOf(store, 'm1').ui).toMatchObject({
@@ -313,7 +374,36 @@ describe('resizeMemo', () => {
       width: 300,
       height: 200,
     });
-    expect(lwwOf(store, 'm1')[3]).toEqual({});
+    expect(lwwOf(store, 'm1')[3]).toEqual({
+      [POSITION_REGISTER]: 6,
+      [SIZE_REGISTER]: 6,
+    });
+  });
+
+  it('keeps a newer move’s point and takes its own size from an older resize, whichever arrives first (AC-P5)', () => {
+    const moveTo = at(moveToMemoAction({ id: 'm1', x: 90, y: 80 }), 7);
+    const resize = at(
+      resizeMemoAction({ id: 'm1', x: 3, y: 4, width: 300, height: 200 }),
+      6
+    );
+
+    for (const order of [
+      [moveTo, resize],
+      [resize, moveTo],
+    ]) {
+      store = createTestStore();
+      store.dispatchSync(
+        addMemoAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 2 } })
+      );
+      order.forEach(action => store.dispatchSync(action));
+
+      expect(memoOf(store, 'm1').ui).toMatchObject({
+        x: 90,
+        y: 80,
+        width: 300,
+        height: 200,
+      });
+    }
   });
 
   it('creates the memo when it is unknown', () => {

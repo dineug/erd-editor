@@ -1,5 +1,6 @@
 import { toJson } from '@dineug/erd-editor-schema';
 import { type AnyAction, compositionActionsFlat } from '@dineug/r-html';
+import { pick } from 'es-toolkit';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import {
@@ -50,6 +51,7 @@ import {
   changeTableColorAction,
   changeTableNameAction,
   changeZIndexAction,
+  moveTableAction,
   removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { createPeerStore } from '@/engine/peer-store';
@@ -489,6 +491,66 @@ describe('createReplicationStore', () => {
         expect(parse(store).settings.originX).toBe(-40_500);
         expect(parse(store).settings.originY).toBe(250.5);
       }
+    });
+  });
+
+  describe('a window’s sends that arrive twice', () => {
+    /** A window on the seed, its viewport unlocked, each of whose sends its replica takes twice. */
+    function openTwiceFed() {
+      vi.useFakeTimers();
+      const { user, replica } = openWindow(createSeedValue());
+      closers.push(
+        user.sharedStore.subscribe(actions => {
+          replica.dispatchSync(copy(actions));
+          replica.dispatchSync(copy(actions));
+        })
+      );
+      user.rxStore.dispatchSync(unlock(viewport));
+      return { user, replica };
+    }
+
+    it('save the origin and the zoom the window panned and zoomed to, pushed by neither (AC-M1)', () => {
+      const { user, replica } = openTwiceFed();
+      const before = pick(user.rxStore.state.settings, ['originX', 'originY']);
+
+      user.rxStore.dispatchSync(
+        streamScrollToAction({ movementX: 40, movementY: -25 })
+      );
+      user.rxStore.dispatchSync(
+        streamScrollToAction({ movementX: 40, movementY: -25 }),
+        streamZoomLevelAction({ value: -0.25 })
+      );
+      vi.advanceTimersByTime(400);
+
+      const { originX, originY, zoomLevel } = user.rxStore.state.settings;
+      expect([originX, originY, zoomLevel]).toEqual([
+        before.originX + 80,
+        before.originY - 50,
+        0.75,
+      ]);
+      expect(parse(replica).settings).toMatchObject({
+        originX,
+        originY,
+        zoomLevel,
+      });
+    });
+
+    it('save the table where the window dragged it', () => {
+      const { user, replica } = openTwiceFed();
+      const { x, y } =
+        user.rxStore.state.collections.tableEntities[SEED.users].ui;
+
+      user.rxStore.dispatchSync(
+        moveTableAction({ ids: [SEED.users], movementX: 60, movementY: 30 })
+      );
+      vi.advanceTimersByTime(400);
+
+      expect(
+        parse(replica).collections.tableEntities[SEED.users].ui
+      ).toMatchObject({
+        x: x + 60,
+        y: y + 30,
+      });
     });
   });
 

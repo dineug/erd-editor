@@ -12,6 +12,7 @@ import { slotOf } from '@/engine/clock';
 import {
   createEngineContext,
   type InjectEngineContext,
+  type ReplicaEngineContext,
 } from '@/engine/context';
 import { changeViewportAction } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
@@ -68,7 +69,11 @@ export function createReplicationStore(
   context: InjectEngineContext
 ): ReplicationStore {
   const subscriptionSet = new Set<Subscription>();
-  const engineContext = createEngineContext({ ...context, routes: false });
+  // Every step of a drag or a pan a replica takes is another store's.
+  const engineContext: ReplicaEngineContext = {
+    ...createEngineContext({ ...context, routes: false }),
+    remote: true,
+  };
   const { clock } = engineContext;
   const store = createStore(engineContext, false);
   clock.setSlot(slotOf(store.state.editor.id));

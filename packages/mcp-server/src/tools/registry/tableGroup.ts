@@ -114,8 +114,8 @@ const changeTableGroupColorAction$ = (
   };
 
 /**
- * Moves a group to a point by the relative step the editor's drag sends, its
- * tables by the same step, so a peer's concurrent move adds up; a group
+ * Moves a group to a point by the step the editor's drag takes, its tables by
+ * the same step, which the peer sends as the points they end at; a group
  * already there sends nothing.
  */
 const moveTableGroupToAction$ = (
