@@ -1,3 +1,4 @@
+import { type LWW, setSettingLock } from '@dineug/erd-editor-schema';
 import { AnyAction } from '@dineug/r-html';
 import {
   afterEach,
@@ -8,20 +9,29 @@ import {
   vi,
 } from 'vite-plus/test';
 
+import { createSeedValue, SEED } from '@/__test-utils__/peerSeed';
 import type { ErdEditorElement } from '@/components/erd-editor/ErdEditor';
 import {
   BracketType,
   CanvasType,
   Database,
   Language,
+  LockSettingType,
+  LockSettingTypeList,
   NameCase,
   NameViewMode,
   RelationshipType,
+  Show,
 } from '@/constants/schema';
 import { Clock } from '@/engine/clock';
 import { EngineContext } from '@/engine/context';
+import { documentJsonOf, runtimeJsonOf } from '@/engine/documentJson';
 import {
+  changeViewportAction,
+  clearAction,
+  focusTableAction,
   getLWWAction,
+  selectAction,
   sharedDragSelectTrackerAction,
   sharedFocusTrackerAction,
   sharedMouseTrackerAction,
@@ -32,6 +42,17 @@ import {
   initialLoadJsonAction$,
   loadJsonAction$,
 } from '@/engine/modules/editor/generator.actions';
+import {
+  FocusType,
+  SelectType,
+  ViewKind,
+  VisualizationMode,
+} from '@/engine/modules/editor/state';
+import { getActiveView } from '@/engine/modules/editor/view';
+import {
+  changeVisualizationModeAction,
+  viewOpenAction,
+} from '@/engine/modules/editor/view.actions';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
 import { addIndexColumnAction } from '@/engine/modules/index-column/atom.actions';
 import {
@@ -45,6 +66,8 @@ import {
   changeColumnNameCaseAction,
   changeDatabaseAction,
   changeLanguageAction,
+  changeLockSettingsAction,
+  changeShowAction,
   changeTableNameCaseAction,
   changeZoomLevelAction,
   scrollToAction,
@@ -56,7 +79,9 @@ import { restoreScreenSettingsAction$ } from '@/engine/modules/settings/generato
 import {
   addTableAction,
   changeTableColorAction,
+  changeTableNameAction,
   moveTableAction,
+  removeTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
@@ -996,5 +1021,692 @@ describe('createSharedStore stream flushing', () => {
       .parameter(2)
       .toEqualTypeOf<SharedStoreInternalOptions | undefined>();
     expect(Object.keys(makeManual().shared)).toContain('flushStreamBuffers');
+  });
+});
+
+describe('createSharedStore registers, clock and reseed', () => {
+  const READER_SIZE = { width: 1100, height: 700 };
+  /** Where the reader's screen stands as the snapshot arrives, away from the document's own. */
+  const SCREEN = { originX: -320, originY: -180, zoomLevel: 0.5 };
+
+  /** The seed with every lock on, as a new document has them, or every lock off. */
+  const seedValue = (locked: boolean) => {
+    if (locked) return createSeedValue();
+
+    const value = JSON.parse(createSeedValue());
+    value.settings.lockSettings = LockSettingTypeList.reduce(
+      (bits, bit) => setSettingLock(bits, bit, false),
+      value.settings.lockSettings
+    );
+    return JSON.stringify(value);
+  };
+
+  /** A peer holding the document: its store reports no screen, as a peer store's does. */
+  function makePeer(value: string) {
+    const fixture = make();
+    fixture.store.dispatchSync(
+      changeViewportAction({ width: 0, height: 0 }),
+      initialLoadJsonAction$(value)
+    );
+    return fixture;
+  }
+
+  /**
+   * An element's store pair as getSharedStore wraps it: readonly read from a
+   * switch, edit state dropped while readonly, a viewport before the first
+   * measure, the document opened, then measured unless told not to be.
+   */
+  function makeReader(value: string, { measured = true } = {}) {
+    let readonly = false;
+    const fixture = make(undefined, {
+      getReadonly: () => readonly,
+      readonlyEditState: true,
+    });
+    fixture.store.dispatchSync(
+      changeViewportAction({ width: 0, height: 0 }),
+      initialLoadJsonAction$(value)
+    );
+    if (measured) fixture.store.dispatchSync(changeViewportAction(READER_SIZE));
+    return {
+      ...fixture,
+      setReadonly: (next: boolean) => {
+        readonly = next;
+      },
+    };
+  }
+
+  const snapshotOf = ({ store, shared }: Fixture) => ({
+    value: runtimeJsonOf(store),
+    lww: shared.getLWW(),
+    version: shared.getVersion(),
+  });
+
+  const screenOf = ({ store }: Fixture) => {
+    const { originX, originY, zoomLevel, canvasType } = store.state.settings;
+    return { originX, originY, zoomLevel, canvasType };
+  };
+
+  /** The file form with the units each element writes of its own screen left out. */
+  const outsideScreen = (fixture: Fixture) => {
+    const { settings, ...rest } = JSON.parse(documentJsonOf(fixture.store));
+    const { originX, originY, zoomLevel, canvasType, ...kept } = settings;
+    return { ...rest, settings: kept };
+  };
+
+  /** An element that opens the snapshot after the rejoin, as a host's late joiner does. */
+  function lateJoinerOf(snapshot: ReturnType<typeof snapshotOf>) {
+    const joiner = makeReader(snapshot.value, { measured: false });
+    joiner.shared.mergeLWW(snapshot.lww, snapshot.version);
+    joiner.store.dispatchSync(changeViewportAction(READER_SIZE));
+    return joiner;
+  }
+
+  it('exposes the five methods a transport binds to', () => {
+    const { shared } = make();
+
+    expect(
+      ['getLWW', 'mergeLWW', 'getVersion', 'forgetPeer', 'reseed'].map(
+        key => typeof shared[key as keyof SharedStore]
+      )
+    ).toEqual(['function', 'function', 'function', 'function', 'function']);
+  });
+
+  it('hands out a JSON copy of its registers, which a write to the copy leaves as they were', () => {
+    const fixture = make();
+    fixture.store.dispatchSync(addTable('t1'));
+    fixture.store.dispatchSync(
+      changeTableNameAction({ id: 't1', value: 'named' })
+    );
+    const held = JSON.parse(JSON.stringify(fixture.store.state.lww));
+
+    const lww = fixture.shared.getLWW() as unknown as LWW;
+    lww.t1[1] += 1;
+    lww.t1[3].name += 1;
+    Reflect.deleteProperty(lww, 't1');
+
+    expect(fixture.store.state.lww).toEqual(held);
+    expect(fixture.shared.getLWW()).toEqual(held);
+  });
+
+  it('reports the version its clock has merged', () => {
+    const fixture = make();
+    fixture.store.dispatchSync(addTable('t1'));
+
+    expect(fixture.shared.getVersion()).toBe(
+      fixture.store.context.clock.getVersion()
+    );
+    expect(fixture.shared.getVersion()).toBeGreaterThan(0);
+  });
+
+  it('takes another store’s registers and version, refusing an older write after, and sends and answers nothing', () => {
+    const value = createSeedValue();
+    const peer = makePeer(value);
+    peer.store.dispatchSync(
+      changeTableNameAction({ id: SEED.users, value: 'peer' })
+    );
+    const fixture = makePeer(value);
+    fixture.shared.subscribe(actions => fixture.seen.push(actions));
+    fixture.reset();
+
+    fixture.shared.mergeLWW(peer.shared.getLWW(), peer.shared.getVersion());
+    fixture.shared.dispatchSync({
+      ...changeTableNameAction({ id: SEED.users, value: 'stale' }),
+      version: 1,
+      tags: Tag.shared,
+    });
+
+    expect(fixture.seen).toEqual([]);
+    expect(fixture.store.state.lww).toEqual(peer.store.state.lww);
+    expect(fixture.shared.getVersion()).toBe(peer.shared.getVersion());
+    expect(fixture.store.state.collections.tableEntities[SEED.users].name).toBe(
+      'users'
+    );
+  });
+
+  it('forgets the trackers of one other editor and their expiry, keeping every other editor’s', () => {
+    vi.useFakeTimers();
+    const fixture = make();
+    const trackers = (editorId: string): AnyAction[] =>
+      [
+        sharedMouseTrackerAction({ x: 1, y: 2 }),
+        sharedFocusTrackerAction({
+          focus: { tableId: 't1', columnId: null, focusType: 'tableName' },
+        }),
+        sharedSelectionTrackerAction({ selectedIds: ['t1'] }),
+        sharedDragSelectTrackerAction({ rect: { x: 0, y: 0, w: 4, h: 4 } }),
+      ].map(action => ({
+        ...action,
+        tags: Tag.shared,
+        meta: { editorId, nickname: editorId },
+      }));
+    fixture.shared.dispatchSync(trackers('gone'));
+    fixture.shared.dispatchSync(trackers('kept'));
+    const { editor } = fixture.store.state;
+    const maps = () => [
+      editor.sharedMouseTrackerMap,
+      editor.sharedFocusTrackerMap,
+      editor.sharedSelectionTrackerMap,
+      editor.sharedDragSelectTrackerMap,
+    ];
+    const timers = maps().map(map => map.gone.timeoutId);
+    const clear = vi.spyOn(globalThis, 'clearTimeout');
+    const before = vi.getTimerCount();
+
+    fixture.shared.forgetPeer('gone');
+
+    expect(maps().map(map => Object.keys(map))).toEqual([
+      ['kept'],
+      ['kept'],
+      ['kept'],
+      ['kept'],
+    ]);
+    timers.forEach(timer => expect(clear).toHaveBeenCalledWith(timer));
+    expect(vi.getTimerCount()).toBe(before - 4);
+  });
+
+  describe.each([
+    ['every lock on', true],
+    ['every lock off', false],
+  ])('a rejoin under %s (AC-P11)', (_label, locked) => {
+    it.each([
+      ['the Schema SQL tab', [CanvasType.schemaSQL]],
+      [
+        'the Settings tab through Schema SQL',
+        [CanvasType.schemaSQL, CanvasType.settings],
+      ],
+    ])(
+      'keeps a screen scrolled, zoomed and moved to %s, and the tab it came from, while the value is the snapshot’s, sending only the request for registers',
+      (_tab, tabs) => {
+        const canvasType = tabs[tabs.length - 1];
+        vi.useFakeTimers();
+        const value = seedValue(locked);
+        const peer = makePeer(value);
+        const reader = makeReader(value);
+        reader.shared.subscribe(actions => reader.seen.push(actions));
+        reader.store.dispatchSync(addTable('mine'));
+        reader.store.dispatchSync(
+          scrollToAction({ originX: SCREEN.originX, originY: SCREEN.originY }),
+          changeZoomLevelAction({ value: SCREEN.zoomLevel })
+        );
+        tabs.forEach(value =>
+          reader.store.dispatchSync(changeCanvasTypeAction({ value }))
+        );
+        const { lastCanvasType } = reader.store.state.editor;
+        peer.store.dispatchSync(addTable('t9'));
+        peer.store.dispatchSync(
+          changeTableNameAction({ id: 't9', value: 'theirs' })
+        );
+        vi.advanceTimersByTime(400);
+        expect(reader.store.history.size).toBeGreaterThan(0);
+        const versionBefore = reader.shared.getVersion();
+        let changes = 0;
+        const changed = reader.store.change$.subscribe(() => changes++);
+        reader.reset();
+        const snapshot = snapshotOf(peer);
+
+        reader.shared.reseed(snapshot.value, {
+          lww: snapshot.lww,
+          version: snapshot.version,
+          keepScreen: true,
+        });
+        vi.advanceTimersByTime(400);
+        changed.unsubscribe();
+
+        expect(screenOf(reader)).toEqual({ ...SCREEN, canvasType });
+        expect(reader.store.state.editor.lastCanvasType).toBe(lastCanvasType);
+        expect(reader.types()).toEqual(['editor.getLWW']);
+        expect(changes).toBe(0);
+        expect(reader.store.history.size).toBe(0);
+        expect(reader.store.state.editor.hasUndo).toBe(false);
+        expect(reader.shared.getLWW()).toEqual(snapshot.lww);
+        expect(reader.shared.getVersion()).toBe(
+          Math.max(versionBefore, snapshot.version)
+        );
+        expect(reader.store.state.doc.tableIds).not.toContain('mine');
+        expect(reader.store.state.collections.tableEntities.t9.name).toBe(
+          'theirs'
+        );
+        if (locked) {
+          expect(documentJsonOf(reader.store)).toBe(documentJsonOf(peer.store));
+        } else {
+          expect(outsideScreen(reader)).toEqual(outsideScreen(peer));
+        }
+        expect(documentJsonOf(reader.store)).toBe(
+          documentJsonOf(lateJoinerOf(snapshot).store)
+        );
+        expect(runtimeJsonOf(reader.store)).toBe(
+          runtimeJsonOf(lateJoinerOf(snapshot).store)
+        );
+      }
+    );
+
+    it('leads the reader’s next pan with where the screen stands, so a replica takes the screen’s zoom', () => {
+      vi.useFakeTimers();
+      const value = seedValue(locked);
+      const peer = makePeer(value);
+      const reader = makeReader(value);
+      reader.shared.subscribe(actions => reader.seen.push(actions));
+      reader.store.dispatchSync(
+        scrollToAction({ originX: SCREEN.originX, originY: SCREEN.originY }),
+        changeZoomLevelAction({ value: SCREEN.zoomLevel })
+      );
+      vi.advanceTimersByTime(400);
+      const snapshot = snapshotOf(peer);
+      reader.shared.reseed(snapshot.value, {
+        lww: snapshot.lww,
+        version: snapshot.version,
+        keepScreen: true,
+      });
+      vi.advanceTimersByTime(400);
+      reader.reset();
+
+      reader.store.dispatchSync(
+        streamScrollToAction({ movementX: 30, movementY: 0 })
+      );
+      vi.advanceTimersByTime(400);
+
+      expect(
+        reader.seen.flat().map(({ type, payload }) => [type, payload])
+      ).toEqual([
+        [
+          'settings.scrollTo',
+          { originX: SCREEN.originX, originY: SCREEN.originY },
+        ],
+        ['settings.changeZoomLevel', { value: SCREEN.zoomLevel }],
+        [
+          'settings.scrollTo',
+          { originX: SCREEN.originX + 30, originY: SCREEN.originY },
+        ],
+      ]);
+      expect(reader.store.state.editor.screenBaseline).toBeNull();
+    });
+
+    it('keeps the screen of a readonly reader, and leads its first pan once writable with it', () => {
+      vi.useFakeTimers();
+      const value = seedValue(locked);
+      const peer = makePeer(value);
+      const reader = makeReader(value);
+      reader.shared.subscribe(actions => reader.seen.push(actions));
+      reader.setReadonly(true);
+      reader.store.dispatchSync(
+        scrollToAction({ originX: SCREEN.originX, originY: SCREEN.originY }),
+        changeZoomLevelAction({ value: SCREEN.zoomLevel }),
+        changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+      );
+      peer.store.dispatchSync(addTable('t9'));
+      vi.advanceTimersByTime(400);
+      reader.reset();
+      const snapshot = snapshotOf(peer);
+
+      reader.shared.reseed(snapshot.value, {
+        lww: snapshot.lww,
+        version: snapshot.version,
+        keepScreen: true,
+      });
+      vi.advanceTimersByTime(400);
+
+      expect(screenOf(reader)).toEqual({
+        ...SCREEN,
+        canvasType: CanvasType.schemaSQL,
+      });
+      expect(reader.types()).toEqual(['editor.getLWW']);
+      expect(reader.store.state.doc.tableIds).toContain('t9');
+      if (locked) {
+        expect(documentJsonOf(reader.store)).toBe(documentJsonOf(peer.store));
+      } else {
+        expect(outsideScreen(reader)).toEqual(outsideScreen(peer));
+      }
+      expect(documentJsonOf(reader.store)).toBe(
+        documentJsonOf(lateJoinerOf(snapshot).store)
+      );
+
+      reader.setReadonly(false);
+      reader.store.dispatchSync(restoreScreenSettingsAction$());
+      reader.reset();
+      reader.store.dispatchSync(
+        streamScrollToAction({ movementX: 30, movementY: 0 })
+      );
+      vi.advanceTimersByTime(400);
+
+      expect(reader.types()).toEqual([
+        'settings.scrollTo',
+        'settings.changeZoomLevel',
+        'settings.scrollTo',
+      ]);
+      expect(reader.seen.flat()[1].payload).toEqual({
+        value: SCREEN.zoomLevel,
+      });
+    });
+
+    it('keeps the name view the reader switched to while its lock holds, and shows the value’s once it is shared', () => {
+      vi.useFakeTimers();
+      const value = seedValue(locked);
+      const peer = makePeer(value);
+      const reader = makeReader(value);
+      reader.shared.subscribe(actions => reader.seen.push(actions));
+      reader.store.dispatchSync(
+        toNameViewModeAction(reader.store.state, NameViewMode.logical, false)
+      );
+      vi.advanceTimersByTime(400);
+      reader.reset();
+      const snapshot = snapshotOf(peer);
+
+      reader.shared.reseed(snapshot.value, {
+        lww: snapshot.lww,
+        version: snapshot.version,
+        keepScreen: true,
+      });
+      vi.advanceTimersByTime(400);
+
+      expect(reader.store.state.settings.nameViewMode).toBe(
+        locked ? NameViewMode.logical : NameViewMode.physical
+      );
+      expect(reader.types()).toEqual(['editor.getLWW']);
+      if (locked) {
+        expect(documentJsonOf(reader.store)).toBe(documentJsonOf(peer.store));
+      } else {
+        expect(outsideScreen(reader)).toEqual(outsideScreen(peer));
+      }
+      const joiner = lateJoinerOf(snapshot);
+      expect(documentJsonOf(reader.store)).toBe(documentJsonOf(joiner.store));
+
+      [reader, joiner].forEach(({ store }) =>
+        store.dispatchSync(
+          toNameViewModeAction(store.state, NameViewMode.both, false)
+        )
+      );
+
+      expect(reader.store.state.editor.screenBaseline?.nameViewMode).toBe(
+        undefined
+      );
+      expect(documentJsonOf(reader.store)).toBe(documentJsonOf(joiner.store));
+    });
+
+    it('keeps the show bits, the database and the code settings a readonly reader turned, the value’s beneath until it turns writable', () => {
+      vi.useFakeTimers();
+      const value = seedValue(locked);
+      const peer = makePeer(value);
+      const reader = makeReader(value);
+      reader.shared.subscribe(actions => reader.seen.push(actions));
+      const held = (fixture: Fixture) => {
+        const { show, database, language, tableNameCase } =
+          fixture.store.state.settings;
+        return { show, database, language, tableNameCase };
+      };
+      reader.setReadonly(true);
+      reader.store.dispatchSync(
+        changeShowAction({
+          show: Show.tableComment,
+          value: !bHas(reader.store.state.settings.show, Show.tableComment),
+        }),
+        changeDatabaseAction({ value: Database.SQLite }),
+        changeLanguageAction({ value: Language.Kotlin }),
+        changeTableNameCaseAction({ value: NameCase.snakeCase })
+      );
+      const turned = held(reader);
+      expect(turned).not.toEqual(held(peer));
+      vi.advanceTimersByTime(400);
+      reader.reset();
+      const snapshot = snapshotOf(peer);
+
+      reader.shared.reseed(snapshot.value, {
+        lww: snapshot.lww,
+        version: snapshot.version,
+        keepScreen: true,
+      });
+      vi.advanceTimersByTime(400);
+
+      expect(held(reader)).toEqual(turned);
+      expect(reader.types()).toEqual(['editor.getLWW']);
+      if (locked) {
+        expect(documentJsonOf(reader.store)).toBe(documentJsonOf(peer.store));
+      } else {
+        expect(outsideScreen(reader)).toEqual(outsideScreen(peer));
+      }
+      expect(documentJsonOf(reader.store)).toBe(
+        documentJsonOf(lateJoinerOf(snapshot).store)
+      );
+
+      reader.setReadonly(false);
+      reader.store.dispatchSync(restoreScreenSettingsAction$());
+      vi.advanceTimersByTime(400);
+
+      expect(held(reader)).toEqual(held(peer));
+      expect(reader.types()).toEqual(['editor.getLWW']);
+    });
+  });
+
+  it('shows the shared name view once the snapshot unlocks it, though the reader held its own under the lock', () => {
+    const value = seedValue(true);
+    const peer = makePeer(value);
+    const reader = makeReader(value);
+    reader.store.dispatchSync(
+      toNameViewModeAction(reader.store.state, NameViewMode.logical, false)
+    );
+    peer.store.dispatchSync(
+      changeLockSettingsAction({
+        lockSettingType: LockSettingType.unlockNameViewMode,
+        value: false,
+        values: { nameViewMode: NameViewMode.physical },
+      })
+    );
+    const snapshot = snapshotOf(peer);
+
+    reader.shared.reseed(snapshot.value, {
+      lww: snapshot.lww,
+      version: snapshot.version,
+      keepScreen: true,
+    });
+
+    expect(reader.store.state.settings.nameViewMode).toBe(
+      NameViewMode.physical
+    );
+    expect(reader.store.state.editor.screenBaseline?.nameViewMode).toBe(
+      undefined
+    );
+    expect(documentJsonOf(reader.store)).toBe(documentJsonOf(peer.store));
+  });
+
+  /** Far from every table, where a load's pull brings the origin back at the next measure. */
+  const FAR = { originX: -50000, originY: -50000 };
+
+  it('keeps the screen of an element measured and then hidden through each rejoin while hidden and the measure that shows it', () => {
+    const value = seedValue(false);
+    const peer = makePeer(value);
+    const reader = makeReader(value);
+    reader.store.dispatchSync(
+      scrollToAction(FAR),
+      changeZoomLevelAction({ value: SCREEN.zoomLevel })
+    );
+    reader.store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    const snapshot = snapshotOf(peer);
+
+    for (let rejoin = 0; rejoin < 2; rejoin++) {
+      reader.shared.reseed(snapshot.value, {
+        lww: snapshot.lww,
+        version: snapshot.version,
+        keepScreen: true,
+      });
+    }
+    reader.store.dispatchSync(changeViewportAction(READER_SIZE));
+
+    const { originX, originY, zoomLevel } = JSON.parse(snapshot.value).settings;
+    expect(reader.store.state.settings).toMatchObject({
+      ...FAR,
+      zoomLevel: SCREEN.zoomLevel,
+    });
+    expect(reader.store.state.editor.scrollPullPending).toBe(false);
+    expect(JSON.parse(documentJsonOf(reader.store)).settings).toMatchObject({
+      originX,
+      originY,
+      zoomLevel,
+    });
+    expect(outsideScreen(reader)).toEqual(outsideScreen(peer));
+  });
+
+  it('opens an element no measure has shown where the value’s pull puts it, keeping its tab, as a late joiner opens', () => {
+    const value = seedValue(false);
+    const peer = makePeer(value);
+    const reader = makeReader(value, { measured: false });
+    // The pull the load left waiting takes the first measure, rejoin or not,
+    // so the origin the reader holds was never on a screen.
+    reader.store.dispatchSync(
+      scrollToAction(FAR),
+      changeZoomLevelAction({ value: SCREEN.zoomLevel }),
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+    );
+    const snapshot = snapshotOf(peer);
+
+    reader.shared.reseed(snapshot.value, {
+      lww: snapshot.lww,
+      version: snapshot.version,
+      keepScreen: true,
+    });
+    reader.store.dispatchSync(changeViewportAction(READER_SIZE));
+
+    const joiner = lateJoinerOf(snapshot);
+    expect(screenOf(reader)).toEqual({
+      ...screenOf(joiner),
+      canvasType: CanvasType.schemaSQL,
+    });
+    expect(reader.store.state.settings.originX).not.toBe(FAR.originX);
+    expect(documentJsonOf(reader.store)).toBe(documentJsonOf(joiner.store));
+  });
+
+  it.each([
+    ['never loaded', false],
+    ['cleared after a load that found no screen', true],
+  ])(
+    'opens an element %s, which no measure has shown, where the value’s pull puts it, as a late joiner opens',
+    (_label, loaded) => {
+      const value = seedValue(false);
+      const peer = makePeer(value);
+      peer.store.dispatchSync(
+        scrollToAction(FAR),
+        changeZoomLevelAction({ value: SCREEN.zoomLevel })
+      );
+      const reader = make();
+      reader.store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+      if (loaded) {
+        reader.store.dispatchSync(initialLoadJsonAction$(value), clearAction());
+      }
+      const snapshot = snapshotOf(peer);
+
+      reader.shared.reseed(snapshot.value, {
+        lww: snapshot.lww,
+        version: snapshot.version,
+        keepScreen: true,
+      });
+      reader.store.dispatchSync(changeViewportAction(READER_SIZE));
+
+      const joiner = lateJoinerOf(snapshot);
+      expect(screenOf(reader)).toEqual(screenOf(joiner));
+      expect(reader.store.state.settings.zoomLevel).toBe(SCREEN.zoomLevel);
+      expect(reader.store.state.settings.originX).not.toBe(FAR.originX);
+      expect(documentJsonOf(reader.store)).toBe(documentJsonOf(joiner.store));
+    }
+  );
+
+  it.each([
+    ['keeping the screen', true],
+    ['opening the value’s', false],
+  ])(
+    'drops the selection and the focus, on a table a peer removed among them, %s',
+    (_label, keepScreen) => {
+      vi.useFakeTimers();
+      const value = seedValue(true);
+      const peer = makePeer(value);
+      const reader = makeReader(value);
+      reader.shared.subscribe(actions => reader.seen.push(actions));
+      reader.store.dispatchSync(
+        selectAction({
+          [SEED.users]: SelectType.table,
+          [SEED.orders]: SelectType.table,
+        }),
+        focusTableAction({
+          tableId: SEED.users,
+          focusType: FocusType.tableName,
+        })
+      );
+      expect(Object.keys(reader.store.state.editor.selectedMap)).toHaveLength(
+        2
+      );
+      peer.store.dispatchSync(removeTableAction({ id: SEED.users }));
+      vi.advanceTimersByTime(400);
+      reader.reset();
+      const snapshot = snapshotOf(peer);
+
+      reader.shared.reseed(snapshot.value, {
+        lww: snapshot.lww,
+        version: snapshot.version,
+        keepScreen,
+      });
+      vi.advanceTimersByTime(400);
+
+      expect(reader.store.state.editor.selectedMap).toEqual({});
+      expect(reader.store.state.editor.focusTable).toBeNull();
+      expect(reader.store.state.doc.tableIds).not.toContain(SEED.users);
+      expect(reader.types()).toEqual(['editor.getLWW']);
+    }
+  );
+
+  it('closes a Flow view open at the rejoin, then keeps the screen it stood over, on the Visualization tab', () => {
+    const value = seedValue(false);
+    const peer = makePeer(value);
+    const reader = makeReader(value);
+    reader.store.dispatchSync(
+      scrollToAction({ originX: SCREEN.originX, originY: SCREEN.originY }),
+      changeZoomLevelAction({ value: SCREEN.zoomLevel })
+    );
+    reader.store.dispatchSync(
+      changeCanvasTypeAction({ value: CanvasType.visualization }),
+      changeVisualizationModeAction({ value: VisualizationMode.flow })
+    );
+    reader.store.dispatchSync(viewOpenAction({ kind: ViewKind.flow }));
+    reader.store.dispatchSync(
+      selectAction({ [SEED.users]: SelectType.table }),
+      focusTableAction({ tableId: SEED.users, focusType: FocusType.tableName })
+    );
+    expect(getActiveView(reader.store.state)).not.toBeNull();
+    expect(reader.store.state.editor.focusTable).not.toBeNull();
+    const snapshot = snapshotOf(peer);
+
+    reader.shared.reseed(snapshot.value, {
+      lww: snapshot.lww,
+      version: snapshot.version,
+      keepScreen: true,
+    });
+
+    expect(reader.store.state.editor.views.flow).toBeNull();
+    expect(reader.store.state.editor.selectedMap).toEqual({});
+    expect(reader.store.state.editor.focusTable).toBeNull();
+    expect(screenOf(reader)).toEqual({
+      ...SCREEN,
+      canvasType: CanvasType.visualization,
+    });
+    expect(documentJsonOf(reader.store)).toBe(
+      documentJsonOf(lateJoinerOf(snapshot).store)
+    );
+  });
+
+  it('opens the snapshot’s screen too unless asked to keep the reader’s, holding no baseline', () => {
+    const value = seedValue(false);
+    const peer = makePeer(value);
+    const reader = makeReader(value);
+    reader.store.dispatchSync(
+      scrollToAction({ originX: SCREEN.originX, originY: SCREEN.originY }),
+      changeCanvasTypeAction({ value: CanvasType.schemaSQL })
+    );
+    const snapshot = snapshotOf(peer);
+    const joiner = lateJoinerOf(snapshot);
+
+    reader.shared.reseed(snapshot.value, {
+      lww: snapshot.lww,
+      version: snapshot.version,
+    });
+
+    expect(screenOf(reader)).toEqual(screenOf(joiner));
+    expect(reader.store.state.editor.screenBaseline).toBeNull();
+    expect(documentJsonOf(reader.store)).toBe(documentJsonOf(joiner.store));
   });
 });

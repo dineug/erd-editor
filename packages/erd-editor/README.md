@@ -358,6 +358,19 @@ other. Call `flushStreamBuffers()` before destroying a store, or the last drags 
 reach the peers. `getSharedStore({ getNickname, mouseTracker, focusTracker })` also shares cursors
 and focus.
 
+| Method | Description |
+| --- | --- |
+| `subscribe(fn)` | Take this editor's batches to send to the peers. The first subscriber also asks them for their registers. |
+| `dispatch(actions)`, `dispatchSync(actions)` | Apply a peer's batch, in a microtask or at once. |
+| `connection()`, `disconnect()` | Resume or hold sending; what this editor does meanwhile waits. |
+| `flushStreamBuffers()` | Send the drags, pans, resizes and color strokes still held back. |
+| `getLWW()` | A JSON copy of the editor's registers, to hand over beside `runtimeValue` as it is. |
+| `mergeLWW(lww, version)` | Take another store's registers and version, sending nothing. |
+| `getVersion()` | The highest version the editor's clock has merged. |
+| `forgetPeer(editorId)` | Drop the cursor, focus, selection and marquee a peer that left had sent. |
+| `reseed(value, { lww, version, keepScreen })` | Open a session's document again, as a rejoin does: no undo entry, no `change` event and nothing sent but the request for registers and, with `focusTracker`, the selection and focus it clears. The undo history, the selection, the focus and an open Flow view go. `keepScreen` keeps what the reader sees while `value` reports the document's: the scroll and zoom, the tab, the name view while the document locks it, and the settings a readonly reader changed on their own screen. An editor never shown, or not shown since its last load, opens where the value puts it. Drags and color strokes still held back go out after a reseed, so call `flushStreamBuffers()` first and reseed with a value that holds what it sent, and never reseed while `disconnect()` holds batches. |
+| `destroy()` | Release the store. |
+
 ## Key bindings
 
 `createKeyBindingMap()` returns the default shortcuts, and `setKeyBindingMap` replaces each list it
@@ -448,7 +461,8 @@ store.dispatch(actions);
 `changed` is false when `value` matches what the store last reported or loaded.
 
 `peer.js` runs a collaboration peer with no DOM: `createPeerStore({ nickname })` dispatches actions,
-receives a peer's batches and undoes its own. The
+receives a peer's batches and undoes its own. It has the shared store's `getLWW`, `mergeLWW`,
+`getVersion`, `forgetPeer` and `reseed` too, where `keepScreen` changes nothing. The
 [ERD Editor MCP server](https://github.com/dineug/erd-editor/tree/main/packages/mcp-server#readme)
 is built on it.
 

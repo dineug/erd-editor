@@ -159,6 +159,8 @@ const changeViewport: ReducerType<typeof ActionType.changeViewport> = (
 
   if (state.editor.scrollPullPending) {
     pullScrollIntoRange(state);
+  } else if (hasViewport(state.editor.viewport)) {
+    state.editor.originShown = true;
   }
 };
 
@@ -207,6 +209,7 @@ function pullScrollIntoRange(state: RootState) {
 
   if (!hasViewport(editor.viewport)) {
     editor.scrollPullPending = true;
+    editor.originShown = false;
     return;
   }
 
@@ -215,6 +218,7 @@ function pullScrollIntoRange(state: RootState) {
   settings.originX = round(origin.x, 4);
   settings.originY = round(origin.y, 4);
   editor.scrollPullPending = false;
+  editor.originShown = true;
 }
 
 export const loadJsonAction = createAction<

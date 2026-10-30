@@ -656,6 +656,38 @@ describe('editor.loadJson / initialLoadJson', () => {
     store.dispatchSync(changeViewportAction(VIEWPORT));
     expect(store.state.settings.originX).toBe(40_000);
   });
+
+  it('counts the origin shown once a measured screen held it, through a hide and a clear, until a load finds no screen', () => {
+    const shown = () => store.state.editor.originShown;
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    expect(shown()).toBe(false);
+
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    expect(shown()).toBe(true);
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    store.dispatchSync(clearAction());
+    expect(shown()).toBe(true);
+
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 40_000, 0, [['t1', 0, 0]]) })
+    );
+    expect(shown()).toBe(false);
+    store.dispatchSync(clearAction());
+    expect(shown()).toBe(false);
+    store.dispatchSync(changeViewportAction(VIEWPORT));
+    expect(shown()).toBe(true);
+
+    store.dispatchSync(changeViewportAction({ width: 0, height: 0 }));
+    store.dispatchSync(
+      loadJsonAction({ value: documentAt(1, 40_000, 0, [['t1', 0, 0]]) })
+    );
+    store.dispatchSync({
+      ...scrollToAction({ originX: 40_000, originY: 0 }),
+      tags: Tag.screen,
+    });
+    expect(shown()).toBe(true);
+    expect(store.state.editor.scrollPullPending).toBe(false);
+  });
 });
 
 describe('editor.clear / initialClear', () => {

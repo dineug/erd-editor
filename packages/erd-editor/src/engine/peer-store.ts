@@ -14,6 +14,7 @@ import {
   focusTableAction,
   focusTableEndAction,
   getLWWAction,
+  unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { initialLoadJsonAction$ } from '@/engine/modules/editor/generator.actions';
 import type { FocusType } from '@/engine/modules/editor/state';
@@ -23,7 +24,11 @@ import {
   type FocusPresence,
 } from '@/engine/presence';
 import { createRxStore } from '@/engine/rx-store';
-import { createSharedStore } from '@/engine/shared-store';
+import {
+  createSharedStore,
+  type ReseedOptions,
+  type SharedRegisters,
+} from '@/engine/shared-store';
 import type { RootState } from '@/engine/state';
 import { createStreamFlusher } from '@/engine/stream-flush';
 import { defaultToWidth } from '@/engine/to-width';
@@ -118,10 +123,24 @@ export type PeerStore = {
   /**
    * Replaces the document and forgets every undo entry, label and register with
    * it, since those were taken against the old one, and once subscribed asks the
-   * other peers for their registers again. The one reseed operation.
+   * other peers for their registers again.
    */
   setInitialValue: (value: string) => void;
   mergeClock: (version: number) => void;
+  /** A copy of the registers the peer holds, as JSON. */
+  getLWW: () => SharedRegisters;
+  /** Takes another store's registers and the version beside them, sending nothing. */
+  mergeLWW: (lww: SharedRegisters, version: number) => void;
+  /** The highest version the peer's clock has merged. */
+  getVersion: () => number;
+  /** Drops the cursor, focus, selection and marquee one other editor sent, with their expiry. */
+  forgetPeer: (editorId: string) => void;
+  /**
+   * Opens a document again with the registers and the version held beside it,
+   * as setInitialValue does, its selection dropped too, refused inside a group.
+   * A peer has no screen, so keepScreen changes nothing.
+   */
+  reseed: (value: string, options: ReseedOptions) => void;
   dispatch: (
     actions: CompositionActions,
     options?: DispatchOptions
@@ -460,6 +479,14 @@ export function createPeerStore({
     redoStack = [];
   };
 
+  const reseed = (value: string, { lww, version }: ReseedOptions) => {
+    assertUsable('reseed');
+    assertOutsideGroup('reseed');
+    rxStore.dispatchSync(unselectAllAction());
+    setInitialValue(value);
+    sharedStore.mergeLWW(lww, version);
+  };
+
   const subscribe = (fn: (actions: AnyAction[]) => void): Unsubscribe => {
     assertUsable('subscribe');
     subscribers.add(fn);
@@ -530,6 +557,14 @@ export function createPeerStore({
     mergeClock: (version: number) => {
       rxStore.context.clock.merge(version);
     },
+    getLWW: sharedStore.getLWW,
+    mergeLWW: (lww: SharedRegisters, version: number) => {
+      if (destroyed) return;
+      sharedStore.mergeLWW(lww, version);
+    },
+    getVersion: sharedStore.getVersion,
+    forgetPeer: sharedStore.forgetPeer,
+    reseed,
     dispatch,
     receive,
     group,

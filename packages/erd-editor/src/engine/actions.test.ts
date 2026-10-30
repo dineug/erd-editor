@@ -36,7 +36,11 @@ import {
 import { ActionType as DictionaryActionType } from '@/engine/modules/dictionary/actions';
 import { dictionaryReducers } from '@/engine/modules/dictionary/atom.actions';
 import { ActionType as EditorActionType } from '@/engine/modules/editor/actions';
-import { editorReducers } from '@/engine/modules/editor/atom.actions';
+import {
+  editorReducers,
+  getLWWAction,
+  mergeLWWAction,
+} from '@/engine/modules/editor/atom.actions';
 import { ActionType as IndexActionType } from '@/engine/modules/index/actions';
 import { indexReducers } from '@/engine/modules/index/atom.actions';
 import { ActionType as IndexColumnActionType } from '@/engine/modules/index-column/actions';
@@ -661,6 +665,16 @@ describe('the mapping edit', () => {
 });
 
 describe('shared action types', () => {
+  // A transport outside the package keeps copies of the presence types and the
+  // handshake's two to tell them from the batches it logs, so the next two
+  // specs pin the names exactly and a rename here is one it has to follow.
+  it('names the register handshake by the two types a transport mirrors', () => {
+    expect([getLWWAction.type, mergeLWWAction.type]).toEqual([
+      'editor.getLWW',
+      'editor.mergeLWW',
+    ]);
+  });
+
   it('SharedStreamActionTypes tracks the ephemeral presence streams', () => {
     expect(SharedStreamActionTypes).toEqual([
       'editor.sharedMouseTracker',

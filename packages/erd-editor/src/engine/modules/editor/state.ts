@@ -31,6 +31,12 @@ export type Editor = {
    * first changeViewport that reports one applies the pull and clears this.
    */
   scrollPullPending: boolean;
+  /**
+   * Whether a measured screen has shown the origin the settings hold. A load
+   * that finds none clears it until the first measure, and a clear, which moves
+   * no origin, leaves it; a rejoin keeping the screen keeps the origin by it.
+   */
+  originShown: boolean;
   focusTable: FocusTable | null;
   /** The memo whose body an overlay editor is open on, and null while none is. */
   editMemoId: string | null;
@@ -289,6 +295,7 @@ export const createEditor = (): Editor => ({
     height: DEFAULT_HEIGHT,
   },
   scrollPullPending: false,
+  originShown: false,
   focusTable: null,
   editMemoId: null,
   editTableGroupId: null,

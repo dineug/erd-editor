@@ -35,9 +35,9 @@ const tagScreen = (action: AnyAction): AnyAction =>
     : action;
 
 /**
- * The first writable placement after a readonly screen moved the viewport is
- * led by where the screen stands, absolute and recording no undo entry, so a
- * replica and a peer that never heard the screen take its pan from there.
+ * The first writable placement after a readonly screen or a rejoin that kept
+ * the screen moved the viewport is led by where the screen stands, absolute with
+ * no undo entry, so a replica and a peer that never heard it pan from there.
  */
 export function alignViewport(
   actions: Array<AnyAction>,

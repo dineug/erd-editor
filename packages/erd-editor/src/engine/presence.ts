@@ -29,15 +29,21 @@ const SHARED_TRACKER_MAPS = [
 type SharedTrackerMaps = Pick<Editor, (typeof SHARED_TRACKER_MAPS)[number]>;
 
 /**
- * Clears the expiry the engine set on every tracker another peer sent, and the
- * trackers with it. A pending expiry is a Node timer the reducer never releases,
- * so a closed peer's process would wait up to 90 seconds for it.
+ * Clears every tracker another peer sent, or those of the one editor named,
+ * with the expiry the engine set on each. A pending expiry is a Node timer the
+ * reducer never releases, so a closed peer's process would wait up to 90 s.
  */
-export function clearSharedTrackers(editor: SharedTrackerMaps) {
+export function clearSharedTrackers(
+  editor: SharedTrackerMaps,
+  editorId?: string
+) {
   for (const key of SHARED_TRACKER_MAPS) {
     const trackers: Record<string, { timeoutId: unknown }> = editor[key];
+    const ids = Object.keys(trackers).filter(
+      id => editorId === undefined || id === editorId
+    );
 
-    for (const id of Object.keys(trackers)) {
+    for (const id of ids) {
       clearTimeout(trackers[id].timeoutId as ReturnType<typeof setTimeout>);
       Reflect.deleteProperty(trackers, id);
     }

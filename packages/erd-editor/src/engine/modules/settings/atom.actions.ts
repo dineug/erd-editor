@@ -335,6 +335,13 @@ const scrollTo: ReducerType<typeof ActionType.scrollTo> = (
   if (!isNil(tags) && bHas(tags, Tag.following)) {
     return;
   }
+  // A screen turn names where the screen stands, so a load's pull still waiting
+  // for the first measure gives way to it and the origin counts as shown, as a
+  // rejoin keeping the screen needs.
+  if (isScreenWrite(tags)) {
+    state.editor.scrollPullPending = false;
+    state.editor.originShown = true;
+  }
 
   const target = viewportWriteTarget(state, tags);
   replaceViewport(
