@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-05 | Updated: 2026-10-11 -->
-
 # uuid
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-10-05 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -60,4 +60,6 @@ None: a leaf package. `erd-editor-schema` names it in `dependencies`, so its `di
 
 None. `BigInt` and `DataView` are inside the browser floor (`build-target.ts`).
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

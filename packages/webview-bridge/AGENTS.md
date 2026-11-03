@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
-
 # webview-bridge
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-08-27 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -9,7 +9,7 @@
 
 ## Making a Change
 
-1. Read the `AGENTS.md` on each side of the boundary (root step 1). A command or payload change reaches the consumers Rules § Wire Protocol lists for it. A change to `src/theme.ts` or `src/locale.ts` reaches `vscode-extension`, `obsidian-plugin`, `intellij-plugin` and `webview-client` (Rules § Theme and Locale Lists).
+1. Read the `AGENTS.md` on each side of the boundary (root step 1). A command or payload change reaches the consumers Rules § Wire Protocol lists for it. A change to `src/theme.ts` or `src/locale.ts` reaches `vscode-extension`, `obsidian-plugin`, `intellij-plugin` and `webview-client`, and an `Appearance` entry also reaches `vscode-webview`'s `src/main.ts` (Rules § Theme and Locale Lists).
 2. Change every consumer in the same change: walk the list in Rules § Wire Protocol for a command, or Rules § Theme and Locale Lists for a value. A consumer that ignores a field fails no build, so only the walk finds it. For a locale change, compare `erd-editor`'s `src/i18n/locales.ts` by hand, since no gate compares its order or names.
 3. Run this package's `test` task (root step 3):
 
@@ -28,6 +28,7 @@
 | File | Description |
 | --- | --- |
 | `src/bridge.ts` | `Bridge` (`registerCommand`, `executeAction`, static `executeCommand` / `mergeRegister`) and `createCommand` |
+| `src/index.ts` | The public surface: `Bridge`, `createCommand`, every command, the theme maps and `LocaleLabel`, with their types; `src/index.test.ts` pins its exact runtime members, so a new runtime export from `theme.ts` or `locale.ts` lands in both |
 | `src/commands.ts` | The wire catalogue: seven `host*` commands (webview → host) and six `webview*` (host → webview); field rules in Rules § Payload Fields |
 | `src/commands.test.ts` | Pins the exact set of thirteen commands and asserts that each `type` equals its export name |
 | `src/locale.ts` | `LocaleLabel`, the 25 display languages the editor offers, code to native name in its picker's order (each by its own name, English among them); `Locale`, its keys; `LocaleSetting`, a code or `'auto'`, the host's spelling of the editor's System. Who holds it: Rules § Theme and Locale Lists |
@@ -64,7 +65,7 @@
 - **A theme value change fails three hosts.** A value added to or removed from `src/theme.ts` fails a spec or a type check in each of three hosts until that host follows:
   - `vscode-extension`'s manifest enums, which its `src/configuration.test.ts` holds to these maps.
   - The Obsidian plugin's `readSettings`. It takes these gray and accent values, and for the appearance only `auto`, `light` and `dark` from `settings.ts`'s own `APPEARANCES`. It falls back to the default for any other. Its `settings.test.ts` pins six gray and 26 accent colors. An appearance added fails no Obsidian spec, only `tsc --noEmit` on `main.ts`'s `APPEARANCE_NAMES` record, and needs adding to `APPEARANCES` too.
-  - The IntelliJ plugin's settings page, whose `ErdEditorThemeTest` reads this file. It holds the gray and accent lists equal to these maps in source order. It holds the appearances, `auto` added, equal to `Appearance` as a set, and pins the same counts.
+  - The IntelliJ plugin's settings page, whose `ErdEditorThemeTest` reads `src/theme.ts`. It holds the gray and accent lists equal to these maps in source order. It holds the appearances, `auto` added, equal to `Appearance` as a set, and pins the same counts.
 - **A locale change fails these host specs.** A code added, removed or moved, or a name changed, fails each until that host follows:
   - `vscode-extension`'s `src/configuration.test.ts`, which holds the manifest's `enum` and `enumItemLabels` to `LocaleLabel`.
   - The IntelliJ plugin's `ErdEditorLocaleTest`, which reads `src/locale.ts` and holds `ErdEditorLocale` equal to it in source order.
@@ -74,7 +75,7 @@
 ## Testing Requirements
 
 - **The `test` task runs in the node environment.** It is `pnpm exec vp run --filter @dineug/erd-editor-webview-bridge --fail-if-no-match test` (Making a Change step 3).
-- **This suite cannot see consumer breakage.** After a protocol change, run `pnpm build`, where a removed or retyped command fails the TypeScript consumers. Update the Kotlin mirror by hand, because nothing compares it with this file.
+- **This suite cannot see consumer breakage.** After a protocol change, run `pnpm build`, where a removed or retyped command fails the TypeScript consumers. Update the Kotlin mirror by hand, because nothing compares it with `src/commands.ts`.
 
 ## Common Patterns
 
@@ -92,4 +93,6 @@ None.
 
 `es-toolkit`: `isPlainObject` / `isString` in `executeAction`. It is a `dependencies` entry the build leaves external (root § Working In This Directory, Externals).
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

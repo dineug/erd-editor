@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-18 | Updated: 2026-10-25 -->
-
 # grid
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-10-18 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -151,7 +151,7 @@
 - **Measure a web face once it has loaded.** A font whose faces the document's font set has not loaded (`fontLoaded`, its `check`) measures in a fallback face, so `measureFont` and the digit width answer that but keep nothing, and the scene marks its font provisional. The grid listens for the font set's `loadingdone` and calls `refreshFont`, which, once the faces have loaded, empties pretext's caches and the fitter's (`reset`), measures the font again and marks both layers, so the ascent, the ellipsis cuts and the row-number header take the loaded face.
 - **Keep the miss budget.** A layer draw makes at most `MISS_BUDGET` (200) pretext measurements. Past it a text that may overflow is drawn whole under its column clip and the layer marks itself dirty, so the next frame measures and cuts it; `src/model/text.test.ts` and `src/scene/GridScene.browser.test.tsx` hold both halves.
 - **The cache holds one font, keyed by the text.** Its LRU holds each text's width, or its prepared segments and last cut once it overflowed, so a cell builds no key. `reserve` grows it to four times the cells a frame draws and never shrinks it, and a new font empties it.
-- **Bound pretext's own caches.** pretext keeps every segment it measures, per font, in module caches that its `clearCache` empties, and empties them itself only once they hold more than 262,144 segments between all fonts, forgetting its emoji calibration with them, so a scroll through a million distinct values would keep that many whatever the LRU holds. Every prepare goes through `prepareCellText`, which counts the segments it returned, and `GridScene`'s `onBeforeFlush` listener calls the fitter's `trim` before each commit books its draws: past `SEGMENT_FACTOR` (16) segments per entry of the fitter's cache, it empties pretext's caches and has `recalibrateFonts` calibrate every measured font's emoji widths again, a DOM read the draws after it never make. A prepared text the LRU holds stays valid, since its cut reads its own widths. pretext's caches are its module's, so a consumer that inlines another user of the same copy, as erd-editor's memos would be, sees them emptied too.
+- **Bound pretext's own caches.** pretext keeps every segment it measures, per font, in module caches that its `clearCache` empties, and empties them itself only once they hold more than 262,144 segments between all fonts, forgetting its emoji calibration with them, so a scroll through a million distinct values would keep that many whatever the LRU holds. Every cell text's prepare goes through `prepareCellText`, which counts the segments it returned, and `GridScene`'s `onBeforeFlush` listener calls the fitter's `trim` before each commit books its draws: past `SEGMENT_FACTOR` (16) segments per entry of the fitter's cache, it empties pretext's caches and has `recalibrateFonts` calibrate every measured font's emoji widths again, a DOM read the draws after it never make. A prepared text the LRU holds stays valid, since its cut reads its own widths. pretext's caches are its module's, so a consumer that inlines another user of the same copy, as erd-editor's memos would be, sees them emptied too.
 
 ### The models
 
@@ -163,7 +163,7 @@
 
 ### Browser floor
 
-- **Ship nothing the floor lacks.** `build-target.ts` sets chrome91, firefox93 and safari16.4, so shipping code calls no `Array.prototype.at` or `Object.hasOwn` (read the last element by index) and relies on no CSS a floor browser lacks without a fallback: the component pairs `scrollbar-width` with `::-webkit-scrollbar` and `overflow: clip` with `overflow: hidden` (The component). pretext asks for `Intl.Segmenter`, which firefox93 lacks, only to break a run of Thai, Lao, Khmer or Myanmar letters (its graphemes and every other line break come from its own rule tables), so there such text throws as pretext prepares it; erd-editor's memo text shares that gap.
+- **Ship nothing the floor lacks.** `build-target.ts` sets chrome91, edge94, firefox93 and safari16.4, so shipping code calls no `Array.prototype.at` or `Object.hasOwn` (read the last element by index) and relies on no CSS a floor browser lacks without a fallback: the component pairs `scrollbar-width` with `::-webkit-scrollbar` and `overflow: clip` with `overflow: hidden` (The component). pretext asks for `Intl.Segmenter`, which firefox93 lacks, only to break a run of Thai, Lao, Khmer or Myanmar letters (its graphemes and every other line break come from its own rule tables), so there such text throws as pretext prepares it; erd-editor's memo text shares that gap.
 
 ## Testing Requirements
 
@@ -186,4 +186,6 @@
 
 `@chenglou/pretext` `^1.0.0` in `dependencies`, the text measure and cut (Rules § Text); `konva` `^10.3.2` as a peer and a devDependency, through `konva/lib/*` only (Rules § Importing); `@playwright/test` for the bench.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

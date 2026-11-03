@@ -1,18 +1,18 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-27 -->
-
 # services
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
-`src/services/` holds the editor's three SharedWorker services. `elk-layout/` runs ELK for automatic placement and the Flow view, `export-png/` draws the PNG, SVG and preview exports, and `shiki/` highlights the code tabs. This file holds the rules of automatic placement with table groups, the coordinate hints ELK reads, and the export worker's hot swap, scene, language and name view. The same features have rules in other nested files. The Export image dialog's are in `src/components/export-image/AGENTS.md`, and the Code Generator tab's highlighting in `src/components/generator-code/AGENTS.md`. An import's placement is in `src/utils/AGENTS.md`, and the scene modules the export draws in `src/konva/AGENTS.md`. A change here keeps table groups together in every placement but the views' preset. It keeps every export drawn at 100%, in the language and the name view it is handed.
+`src/services/` holds the editor's three SharedWorker services. `elk-layout/` runs ELK for automatic placement and the Flow view, `export-png/` draws the PNG, SVG and preview exports, and `shiki/` highlights the code tabs. This file holds the rules of automatic placement with table groups, the coordinate hints ELK reads, the export worker's hot swap, scene, language and name view, and `toImage`, the export from outside the element. The same features have rules in other nested files. The Export image dialog's are in `src/components/export-image/AGENTS.md`, and the Code Generator tab's highlighting in `src/components/generator-code/AGENTS.md`. An import's placement is in `src/utils/AGENTS.md`, and the scene modules the export draws in `src/konva/AGENTS.md`. A change here keeps table groups together in every placement but the views' preset. It keeps every export drawn at 100%, in the language and the name view it is handed.
 
 ## Making a Change
 
 1. **Read the files on the other side.** A change to the export's scene reads `src/konva/AGENTS.md` and `src/components/export-image/AGENTS.md`. A change to what the export worker imports from `i18n/` reads `src/i18n/AGENTS.md`. A change to placement reads `src/components/AGENTS.md` (Flow's placement) and `src/utils/AGENTS.md` (an import's placement).
 2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run.
 3. **Run the e2e suites for a change a user sees.** `pnpm --filter @dineug/erd-editor e2e` builds the package and runs every Playwright spec against the dev server. `e2e/specs/automatic-table-placement.spec.ts` places tables through the ELK worker, `export-png.spec.ts` checks the exported png, and `shared-workers.spec.ts` starts all three workers on the dev server.
-4. **Change a guarded rule and its spec together.** The specs that guard a rule are named beside it (Rules) and listed under Testing Requirements.
+4. **Change a guarded rule and its spec together.** The specs that guard a rule are named beside it (Rules).
 
 ## Key Files
 
@@ -29,6 +29,7 @@
 | `export-png/ExportScene.tsx` | The scene an export draws: the whole document on one layer, the groups behind it, no culling, no check marked |
 | `export-png/exportBox.ts` | `EXPORT_ZOOM_LEVEL`, `getExportRect`, `getExportScale`, `getExportSize`, `getStageSize` |
 | `export-png/pixelRatio.ts` | The canvas ceilings `CANVAS_AREA_MAX` and `CANVAS_SIDE_MAX`, `fitPixelRatio` |
+| `export-png/exportTheme.ts` | `createExportTheme`, the dialog's palette for the appearance picked (`src/components/export-image/AGENTS.md`), and `TRANSPARENT_BACKGROUND`, which `toImage` paints with the background off |
 | `export-png/toImage.ts` | `toImage` and `ToImageOptions`, which the package root exports: a document's png or svg with the Export image dialog's options |
 | `export-png/exportPngService.ts`, `exportPng.shared-worker.ts` | `ExportPngService`, which draws off the thread that asked, and the worker's entry |
 | `export-png/renderPng.ts`, `renderSvg.ts`, `sceneSvg.ts` | The png and the svg; the svg's rules are in `src/components/export-image/AGENTS.md` |
@@ -65,7 +66,7 @@
 - **A group lands at its members' padded bounds.** This holds for each group with members, whatever placed them (`getTableGroupWraps`, DOM-free, in the peer graph). It lands in the dispatch that moves the tables:
   - `toPlacementActions` for Auto Layout and the preview's Apply, with the scroll, so it is one undo;
   - `toLandingJson` for a placed replace;
-  - `toSchemaAppend` for an append;
+  - `toSchemaAppend` for an append the grid or Flow lays out; a json file's append keeps its own placement and moves each group's stored rect with the block (`toAppendTableGroups`);
   - the sort reducer itself for a grid, on a copy whose points travel as values (`sortTablesToMoveAction$`, `withGridPoints`).
 - **No placement changes membership.** A group with no member keeps its rect.
 - How an import is placed before it lands, as a placed replace or as an append (`toSchemaAppend`): `src/utils/AGENTS.md`.
@@ -111,10 +112,12 @@
 
 ## Testing Requirements
 
-- `elk-layout/elkLayoutService.test.ts`: its packing case ("packs what nothing joins beside a component, as it packs it with no group") guards the root's options. `ElkLayoutService under the views preset` (AC-60) shows what `toHints` buys, with a case that reads raw coordinates back as one layer per table.
+- `elk-layout/elkLayoutService.test.ts`: its packing case ("packs what nothing joins beside a component, as it packs it with no group") guards the root's options. `ElkLayoutService under the views preset` shows what `toHints` buys, with a case that reads raw coordinates back as one layer per table.
 - `export-png/realm.test.ts`: the two realms an export falls through, worker then main thread, and the language and the name view every request carries.
 - `export-png/renderSvg.browser.test.ts`: the svg in the language it is asked in, and English when asked in none; in the name view it is asked in, and the document's when asked in none; no check marked.
 - `export-png/worker.browser.test.ts`: a document saved zoomed out exports at 100% in the worker and on the main thread.
 - Each `*.browser.test.ts` here runs in real Chromium, in the package's `browser` project.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

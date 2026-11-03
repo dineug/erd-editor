@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-24 -->
-
 # r-html
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-08-27 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -46,10 +46,12 @@
 | --- | --- |
 | `src/template/` | The tags, the `tNode` template AST, CSS source and diagnostics, `vCSSStyleSheet` |
 | `src/css/` | The stylis pipeline: `compile`, `flatten`, `selector` (scoping), `emit`, `hash`, `diagnostics` |
-| `src/parser/` | HTML tokenizer (`html/`) and the virtual-node builder (`vNode.ts`) |
+| `src/parser/` | HTML tokenizer and parser (`html/`, `htmlParser`) and the `VNode` tree it builds (`vNode.ts`) |
 | `src/render/` | The host seam, `hmr.ts`, `directives/` (`cache`, `repeat`, `innerHTML`, `ref`) |
 | `src/render/part/` | Update units: `attribute/`, and `node/` (text value kinds, `arrayDiff`, `component/`) |
 | `src/observable/`, `src/store/` | `observable` / `observer` / `watch` and `scheduler.ts`; `createStore` / `createAction` |
+| `src/helpers/` | Shared utilities: `array.ts` (`groupBy`), `fn.ts` (`asap`, `safeCallback`), `is-type.ts`, `subject.ts` |
+| `src/internal-types/` | Ambient `adoptedStyleSheets` / `replaceSync` declarations |
 | `src/context/` | `createContext` / `useProvider` / `useContext` over bubbling `CustomEvent`s |
 | `e2e/` | Playwright suite (`specs/`, `fixture/`, `support/`) with its own `tsconfig.json`; `e2e/README.md` describes it |
 
@@ -88,7 +90,7 @@
 - **`HostAdapter` has 24 methods in six groups.** They are creation (5), tree (6), value (3), discrimination (5), event (2), and root and context (3). A host that breaks a clause below breaks `repeat`, `cache` or the component context, not just its own rendering. `src/render/fakeHost.test.ts` holds each clause.
 - **Inserting a fragment is a child splice.** Given an `isFragment` node, `appendChild`, `insertBefore` and `prependChild` insert its children in order and leave it empty. `cache` parks a range in a fragment and reinserts it whole, so the interleaved order of markers and real nodes must survive.
 - **The host owns sibling order.** `rangeNodes` walks only `nextSiblingOf`. A host that keeps its own ledger projects that ledger onto its child order, never the reverse.
-- **Every text-position interpolation asks for a text node.** This holds on a text-less host too. `render/part/index.ts` builds a transient marker-only node through `createNode`, which `TextPart` removes in its constructor. One interpolation costs two `createText` calls and one `removeChild`. A text-less host answers `createText` and throws from `setText`, the `PrimitivePart` backstop.
+- **Every text-position interpolation asks for a text node.** This holds on a text-less host too. `render/part/index.ts` builds a transient marker-only node through `createNode`, which `TextPart` removes in its constructor. One interpolation costs two `createText` calls and one `removeChild`. A text-less host still answers `createText` and `setText`: the Konva host returns a virtual text node it never draws, and its `setText` throws only for a node that is not one.
 - **A marker is a host node.** It is not a comment: nothing outside the adapter may assume a marker renders or belongs to the host's real tree.
 - **A whole-attribute value reaches the host raw.** § Attribute values below gives the rule.
 - **The host builds the context and fragment bridges.** `createComponentContext(startNode, eventBus)` builds `ctx`. `bridgeFragment(fragment, root)` makes a parked fragment behave as if still under `root` and returns one destroy function.
@@ -117,7 +119,7 @@
 - **The `test` task runs Vitest in happy-dom**, after `tsc --noEmit` (Making a Change step 3).
 - **Cover each CSS rule class with a case.** Read a coverage drop in `src/css/` as a rule class no longer run. The CSS compiler is reached through one narrow seam: `template/css.ts` calls `compileToRules`. A whole rule class can stop being exercised without a test going red, so `test:coverage`'s `perFile` 80% gate is the only signal. Cover the drop with a case that runs that class.
 - **Specs predating the host seam are frozen.** They are the only proof the seam refactor preserved DOM behaviour. Add specs or cases freely, and change or delete no existing one; the check in Making a Change step 4 must show zero deletions. `src/css/compile.behaviour.test.ts` alone has lost cases since. Its three 69 KB real-stylesheet cases, with the helper that found their input, went with the vendored stylesheet `erd-editor` dropped (an owner decision of 2026-10-05).
-- **The e2e specs alone pin `adoptedStyleSheets` behaviour.** happy-dom has no style engine, so only they pin how `vCSSStyleSheet.ts` uses `adoptedStyleSheets`. `pnpm --filter @dineug/r-html e2e` serves `vp dev` on port 5176 with no build step (`e2e/README.md`).
+- **The e2e specs alone pin `adoptedStyleSheets` behaviour.** happy-dom has no style engine, so only they pin what a browser does with the sheets `vCSSStyleSheet.ts` adopts. `pnpm --filter @dineug/r-html e2e` serves `vp dev` on port 5176 with no build step (`e2e/README.md`).
 - **Run this e2e apart from `app`'s.** `app`'s e2e relay takes port 5176 too, so run the two at different times or move one (`E2E_PORT` here, `E2E_RELAY_PORT` there).
 - **`e2e:typecheck` is the only program covering `e2e/`.** CI runs `e2e:typecheck` and `e2e` for this package.
 - **The fake host measures host work.** `src/render/__fake-host__/tree.ts` is a doubly linked in-memory tree, and its `adapter.ts` counts every call, so specs assert the shape of host work.
@@ -137,4 +139,6 @@ None: a leaf package. `@dineug/vite-plugin-r-html` pairs with `src/render/hmr.ts
 
 `stylis` (`^4.4.0` through the catalog) is the only runtime dependency (the `css` pipeline).
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

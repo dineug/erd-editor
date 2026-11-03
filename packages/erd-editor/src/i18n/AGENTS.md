@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
-
 # i18n
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -62,7 +62,7 @@
 - **Set `lang` and `dir` on the root alone.** That is the editor's `div.root` and the read-only view's root (`src/components/erd-view/ErdView.tsx`). Nothing is set on the host element or the page.
 - **Read `t` inside the render function.** A component takes `useI18n(ctx)` at setup and reads `i18n.value.t` inside its render function. A string read at setup keeps the language the component mounted in.
 - **Hand a template on with `localized`.** Code outside a component that hands a template on, such as a toast, writes `localized(key, params)` (`src/components/localized/Localized.tsx`). It is read where it renders, so it follows a switch too.
-- **Hand functions needing text the live `I18n`.** A function that needs a string now takes `i18n: I18n = sourceI18n` as its last parameter. Its caller passes the live one.
+- **Hand functions needing text the live `I18n`.** A function that needs a string takes an `i18n` parameter that defaults to `sourceI18n` (`I18n` or a `Pick` of it). Its caller passes the live one.
 - **Without a provider, `localeContext` reads English.** It reads `sourceI18n`, as in a spec that mounts a component alone.
 
 ### Naming the display language
@@ -117,28 +117,30 @@
 - **The export stage resolves to `ltr`.** It is detached, so it takes no direction from a root.
 - **Give left-to-right parts `dir="ltr"` too.** The parts that read left to right in any language carry it on their roots:
   - the floating and Visualization toolbars and the read-only view's controls bar (`.view-controls`, `src/components/erd-view/ErdView.tsx`), and through their root the view controls they hold (`src/components/erd/view-controls/`), the content compass and the scrollbars;
-  - the column data type cell and Map Columns' data types;
+  - the column data type cell, the logical name cell's term list and the domain picker (`ColumnLogicalName.tsx`, `ColumnDomain.tsx`), the Dictionary tab's domain cell editor (`DomainCellEditor.tsx`) and Map Columns' data types;
+  - the Explorer rows' muted details and a foreign key's columns (`ExplorerPanel.tsx`);
   - the code block;
   - the Schema SQL and Code Generator tabs' rows of code and options panel (`SchemaSQL.tsx`, `GeneratorCode.tsx`), each panel taking the reader's direction back on its own root;
   - the Schema SQL panel's script editors (`ScriptEditor.tsx`);
   - the color picker, the diff viewer, time travel and its slider, and the automatic placement preview;
   - `Kbd`, `Slider`, `Switch` and the welcome screen's arrows;
-  - a menu row's name kept as written (`Menu`'s `literal`): the vendors, the code languages and the referential actions, so `C#` never reads `#C`.
+  - a menu row's name kept as written (`Menu`'s `literal`): the vendors, the code languages, the Schema SQL statements and headers and the referential actions, so `C#` never reads `#C`.
 - **`Kbd` is `width: fit-content`.** So in a right-to-left cell it starts where the cell does.
 - **Set direction as a root attribute.** Never write it as a stylesheet rule. A global `.konvajs-content` rule would move the global bucket the `src/styles/emittedCss.*.test.ts` specs pin.
-- **Write other CSS as logical properties.** Other physical CSS became logical (`margin-inline-*`, `inset-inline-*`, `border-inline-*`). Four parts keep a physical side in every language:
+- **Write other CSS as logical properties.** Other physical CSS became logical (`margin-inline-*`, `inset-inline-*`, `border-inline-*`). Five parts keep a physical side in every language:
   - The draw-target layer places its outline, strip and buttons by `left` in the canvas's coordinates. So the buttons stand on a table's left in every language, which `DrawTargetButtons.browser.test.tsx` checks in Arabic.
   - The table group draw's box (`TableGroupDraft.tsx`) is placed by `left` and a translate in the erd root's pixels. `useTableGroupDraw` measures from the root's left edge, so the box spans from the press in every language. `tableGroupCommands.browser.test.tsx` checks it right to left.
   - The Explorer stands left of the canvas in a `dir="ltr"` row and keeps its border and its edge on the physical right (`border-right`, `right`), while its root and the canvas's scope take the reader's direction (`e2e/specs/explorer.spec.ts` checks it in Arabic).
+  - The diff viewer's tree stands left of its two panes in the viewer's `dir="ltr"` root and keeps its border and its sash on the physical right (`border-right`, `right`, `DiffTree.styles.ts`), while its root takes the reader's direction.
   - The options panels keep `border-left`, and the Code Generator panel's is the Schema SQL panel's `shell.panel`. The rule stays beside the code in every language, since the row is `ltr` while the panel follows the reader. `SchemaSQLOptions.browser.test.tsx` checks it in Arabic.
 - **Open a context menu at the pointer.** It does so in every language.
 - **Open a submenu leftward under right-to-left.** Under a right-to-left language a submenu opens to the left of its row. `ContextMenuItem` passes `openLeft`, which `fitMenu` flips only when the left edge cuts it more. The chevron (`SubmenuChevron`) turns to match.
 - **The toolbar's undo and redo swap glyphs.** So undo points back the way a right-to-left reader goes.
 - **The Flow steps swap what they do.** The Visualization toolbar stays `ltr`, so its `arrow-left` and `arrow-right` keep their places, and under right-to-left the right-pointing one is Previous table and the left-pointing one Next table, back pointing right as the undo above does (`src/components/AGENTS.md`, Scene sources and views).
 - **Give text that may run either way `dir="auto"`.** That covers:
-  - the palette's names and keywords, the Explorer search's excerpt rows, Table Properties' chips, Map Columns' column names, the Schema SQL panel's table group choices, the locale picker's System hint;
+  - the palette's names and keywords, the Explorer search's excerpt rows, the diff tree's names, Table Properties' chips, Map Columns' table and column names, the Schema SQL panel's table group choices, the locale picker's System hint;
   - the toolbar's database name and the Settings lock values;
-  - the palette's input and the Explorer search's two inputs while they hold text (`TextInput`'s `dir`). An empty one follows the page, since Chromium sets an empty auto field left to right.
+  - the palette's input, the Explorer search's two inputs, the diff tree's filter and the Dictionary tab's search while they hold text (`TextInput`'s `dir`). An empty one follows the page, since Chromium sets an empty auto field left to right.
 - **Align rows to the panel's side.** A palette row's keywords align `left`, or `right` under `[dir='rtl']`, since Chromium ignores `match-parent`. So text in the other direction still sits by its icon or its rule.
 
 ### The export worker's language
@@ -183,4 +185,6 @@
   - The Playwright Linux image cut ko-KR's `데이터 타입`, and DejaVu Sans cut eight placeholders and pt-PT's database name (measured 2026-10-06, when the bounds were set).
   - So elsewhere `messages.test.ts`'s 12-code-point cap is the check.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

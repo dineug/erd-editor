@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
-
 # konva
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -29,7 +29,11 @@
 | `scene/viewFreeze.ts` | `sceneKeyOf` and the freeze a drag holds (rules in `src/components/erd/AGENTS.md`) |
 | `scene/konvaFlip.ts` | The column flip, the one shipped module that names `konva/lib/Tween` |
 | `scene/fitZoom.ts` | Fitting: `previewZoomLevel`, the zoom a fit opens at, and `fitDocument(store, maxZoom = CANVAS_ZOOM_MAX)`, which fits everything the document draws into the screen. It reads `getContentRect`, then that zoom, then the origin `getScrollToCenter` puts the content's middle at, and dispatches the zoom and the scroll; a screen not yet measured or an empty document leaves both as they are. Keep the module out of the engine and peer graphs, which need none of the minimap geometry it reads |
+| `scene/contentBounds.ts` | `getContentRect`, the box every table, shown memo and shown group fits in, `hasContent`, `getSceneContentRect`, `getContentRects` and `getContentRectAfter` |
+| `scene/metrics.ts` | `Rect`, `unionRect`, a table's cell widths and the boxes of a table, its header, a column and a memo |
+| `scene/columnDropTarget.ts` | `findColumnDropTarget`, the row a column drag would drop on, and `isDropInPlace` |
 | `scene/stacking.ts` | `stackTablesAndMemos`, the one order tables and memos paint in (rule in `src/components/erd/AGENTS.md`, The canvas and its presses) |
+| `scene/renderScene.ts` | `renderScene`: one Stage, its scene and the app, theme and language providers, which the export scene draws through (`src/services/AGENTS.md`) |
 | `scene/renderScene.browser.test.tsx` | Pins the `Konva.DD` registration the host package's draw gate makes, on a real scene |
 
 ## Rules
@@ -43,8 +47,8 @@
 
 ### Scene roots
 
-- **Scene roots export in lower case on purpose.** `renderCanvasScene` (`src/components/erd/canvas/CanvasScene.tsx`) and `renderMinimapScene` (`src/components/erd/minimap/MinimapScene.tsx`) render imperatively. `src/components/erd/canvas/Canvas.tsx` and `src/components/erd/minimap/Minimap.tsx` hand-roll `import.meta.hot.accept`. A capitalized or dropped export would make `vite-plugin-r-html` treat the module as a component boundary, and the parent's accept would silently stop running.
-- **The canvas scene takes its editing, presence and view parts from its host.** `CanvasScene.tsx` draws what every scene of the document draws, and takes the rest as `CanvasLayers` from its host through `Canvas.tsx`'s `layers`, read once as the stage mounts: a layer under the scene, a relationship draw's preview, a drop target, the marquee and the presence layer's parts, each drawn at its own layer and only where the scene's own gates allow it, so the preview and the presence layer stay in the document. `Erd.tsx` hands in `editingLayers` (`src/components/erd/canvas/editingLayers.ts`) and, while it is not readonly, the cell editor as `Canvas.tsx`'s `overlay`, the Flow its particles and the marquee, and a scene that edits nothing hands in neither. A part comes in as a slot, never as an import of the scene, since `src/viewer/imports.test.ts` holds the modules a read-only view composes to `scripts/viewer-boundary.json`.
+- **Scene roots export in lower case on purpose.** `renderCanvasScene` (`src/components/erd/canvas/CanvasScene.tsx`), `renderMinimapScene` (`src/components/erd/minimap/MinimapScene.tsx`) and `renderVisualizationScene` (`src/components/visualization/VisualizationScene.tsx`) render imperatively. `src/components/erd/canvas/Canvas.tsx`, `src/components/erd/minimap/Minimap.tsx` and `src/components/visualization/VisualizationGraph.tsx` hand-roll `import.meta.hot.accept`. A capitalized or dropped export would make `vite-plugin-r-html` treat the module as a component boundary, and the parent's accept would silently stop running.
+- **The canvas scene takes its parts from its host.** `src/components/erd/canvas/CanvasScene.tsx` draws what every scene of the document draws, and takes the rest as `CanvasLayers` from its host through `src/components/erd/canvas/Canvas.tsx`'s `layers`, read once as the stage mounts: a layer under the scene, a relationship draw's preview, a drop target, the marquee and the presence layer's parts, each drawn at its own layer and only where the scene's own gates allow it, so the preview and the presence layer stay in the document. `src/components/erd/Erd.tsx` hands in `editingLayers` (`src/components/erd/canvas/editingLayers.ts`) and, while it is not readonly, the cell editor as `src/components/erd/canvas/Canvas.tsx`'s `overlay`, the Flow its particles and the marquee, and a scene that edits nothing hands in neither. A part comes in as a slot, never as an import of the scene, since `src/viewer/imports.test.ts` holds the modules a read-only view composes to `scripts/viewer-boundary.json`.
 
 ### Konva JSX
 
@@ -52,7 +56,7 @@
 - **Use the eight intrinsics the host package declares.** They are `k-circle`, `k-group`, `k-layer`, `k-line`, `k-path`, `k-rect`, `k-shape` and `k-text`, in `packages/r-html-konva/src/jsx.ts`, which merges them into r-html's `JSX.IntrinsicElements`; this program reads them from the package's `dist/jsx.d.ts`.
 - **One host per file and named attributes only.** Mixing hosts in a file, `class` / `style` / `zIndex`, a spread or a text child fail the compile. `class` and `style` commit through an `HTMLElement` check a Konva node never passes, and z-order belongs to the host's ledger. A spread would reach the node through `Reflect.set`, which the Konva host does not read.
 - **`bool:`, `prop:`, `draggable`, `on:drag*` are typed `never`.** The DOM sigils write through paths a Konva node does not have. Konva's own dragging moves a node behind the ledger and reorders its siblings, so a column drag is `drag$` over the scene's mouse stream instead.
-- **Three specs gate the Konva JSX.** `src/__jsx-parity__/parity.konva.browser.test.tsx` gates the rules above. `packages/r-html-konva/src/jsx-types.test-d.ts` holds the `never` types against the host package's source, and `intrinsics.test-d.ts` holds one of them and the `k-shape` `sceneFunc` type as this program sees them, so a build of the package that stops shipping the merge fails here.
+- **Four specs gate the Konva JSX.** `src/__jsx-parity__/parity.konva.browser.test.tsx` holds compiled Konva JSX to the node tree its tagged template draws, and each compile refusal above is a case of `packages/vite-plugin-r-html/src/jsx/codegen.test.ts`. `packages/r-html-konva/src/jsx-types.test-d.ts` holds the `never` types against the host package's source, and `intrinsics.test-d.ts` holds one of them and the `k-shape` `sceneFunc` type as this program sees them, so a build of the package that stops shipping the merge fails here.
 
 ### What a view shows
 
@@ -76,4 +80,6 @@
 
 - **`intrinsics.test-d.ts` runs under `tsc --noEmit` alone.** The package configures no Vitest typecheck project, so the `tsc --noEmit` gate in front of the build and the test task enforces its assertions. `tsconfig.build.json` leaves every `*.test-d.ts` out of `dist/`.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

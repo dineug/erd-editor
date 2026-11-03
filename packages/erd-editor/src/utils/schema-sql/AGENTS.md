@@ -1,7 +1,7 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
-
 # schema-sql
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -17,10 +17,13 @@
 1. **Read the files on the other side.** Purpose names them. Modules outside this directory import from it, so a change to one of these reaches them:
    - `referentialActionSupport`: the code generators and the relationship context menu (`src/components/erd/erd-context-menu/menus/relationshipMenus.ts`).
    - `toForeignKeyPairs` and `SQLite.ts`'s `isIntegerFamily`: the code generators.
+   - `toOrderName`: Table Properties' Indexes column (`src/components/erd/table-properties/table-properties-indexes/indexes-column/IndexesColumn.tsx`).
+   - `resolveSchemaSQLOptions` and `schemaSQLSupport`: the palette's Statements and Header rows (`src/components/quick-search/actions.tsx`; `src/components/quick-search/AGENTS.md`).
    - The name helpers the writers import live in `src/utils/tableName.ts`, outside this directory, since modules that never reach the writers read them too. A change to one reaches:
      - `autoName`, `autoNameIgnoreCase`, `orderByNameASC` and `primaryKeyColumns`: the code generators; `autoName` and `primaryKeyColumns` also the GraphQL, DBML and AML importers (`src/utils/schema-{graphql,dbml,aml}-parser/convert.ts`), and `orderByNameASC` Find and Replace, the diff, the Explorer's tree and the palette.
      - `tableNamePart`: `src/utils/tableKeys.ts`, `src/utils/map-columns/prefill.ts` and `doctrine.ts`; `splitsTableName`: `src/utils/tableKeys.ts`.
-   - `createSchemaSQL`, `SchemaSQLStatementsList` and `SchemaSQLHeaderList`: `peer.js`, through which `mcp-server`'s `erd_read` writes DDL (`src/peer/AGENTS.md`, `packages/mcp-server/AGENTS.md`).
+     - `splitNameParts`, `unquoteNamePart` and `isDelimitedPart`: `seaorm.ts` and `doctrine.ts`.
+   - `createSchemaSQL`, `SchemaSQLOptions`, `SchemaSQLStatementsList` and `SchemaSQLHeaderList`: `peer.js`, through which `mcp-server`'s `erd_read` writes DDL (`src/peer/AGENTS.md`, `packages/mcp-server/AGENTS.md`). `SchemaSQLOptions` is also the package root's type for `getSchemaSQL` (`src/index.ts`), whose shape `src/index.test.ts` pins.
 2. **Update the fixture with the bytes.** `compose.test.ts` and the vendor specs compare the output with the files under `__fixtures__/options/<vendor>/` (Testing Requirements). A change to what a combination or a rule file writes updates that file in the same change.
 3. **Run the output on its database.** Root step 6 names the docker loop for generated SQL (`docker/<vendor>/` with `data/*.sql`). Snowflake and Databricks have no container, so their output follows their documentation, unmeasured.
 4. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run.
@@ -32,7 +35,7 @@
 | `index.ts` | `createSchemaSQL` and `CreateSchemaSQLOptions`: the parts in order, the table filter, the scripts |
 | `options.ts` | `SchemaSQLOptions`, `schemaSQLSupport`, `resolveSchemaSQLOptions`, `HEADER_NAME_PATTERN`, `formatScript` |
 | `utils.ts` | What the writers share: `commentToWrite`, `toStringLiteral`, `formatDefault`, `toForeignKeyPairs`, `toSchemaEntities`, `selectIndexColumns`, `referentialActionSupport` |
-| `src/utils/tableName.ts` | The name helpers the writers share with the scene's key rows and the importers, outside this directory: `getBracket`, the name split (`splitNameParts`, `unquoteNamePart`, `splitTableName`, `tableNamePart`, `splitsTableName`), `autoName` and `autoNameIgnoreCase`, `primaryKeyColumns`, `orderByNameASC` |
+| `src/utils/tableName.ts` | The name helpers the writers share with the scene's key rows and the importers, outside this directory: `getBracket`, the name split (`splitNameParts`, `isDelimitedPart`, `unquoteNamePart`, `splitTableName`, `tableNamePart`, `splitsTableName`), `autoName` and `autoNameIgnoreCase`, `primaryKeyColumns`, `orderByNameASC` |
 | `MySQL.ts`, `MariaDB.ts`, `PostgreSQL.ts`, `MSSQL.ts`, `Oracle.ts`, `SQLite.ts`, `Snowflake.ts`, `Databricks.ts` | One writer per database; `Oracle.ts` also holds `oracleLongNames` |
 | `__fixtures__/options/<vendor>/` | The bytes each combination writes, and the bytes of a few rules on their own |
 
@@ -105,7 +108,7 @@
 - **Number names that differ only in case.** Those six number an automatic index name that repeats an earlier one, or repeats it but for case, quoted or not (`autoNameIgnoreCase`, `src/utils/tableName.ts`), as the owner decided. The five that name foreign keys number an automatic foreign key name the same way.
   - `sales.users` and `hr.Users` referenced from `sales.orders` write `FK_users_TO_orders` and `FK_Users_TO_orders1`. Those five refused the unnumbered pair and ran the numbered script clean. SQLite, which writes no foreign key name, ran either script.
   - MySQL and MariaDB refused the unnumbered pair for a quoted `users` and `Users` too, since a foreign key's index name folds. PostgreSQL and Oracle ran that pair either way, and SQL Server and SQLite refuse its second table.
-- **Other numbering compares exactly.** A name differing in more than case keeps its bytes. Snowflake, Databricks, Oracle's sequence names, the importers and the code generators but `doctrine.ts` number through `autoName`, which compares exactly. `doctrine.ts` numbers a blank index name with `autoNameIgnoreCase`, as its Indexes rule says (`src/utils/generator-code/AGENTS.md`, `doctrine.ts`).
+- **Other numbering compares exactly.** A name differing in more than case keeps its bytes. Snowflake, Databricks, Oracle's sequence names, the importers and the code generators but `doctrine.ts` number through `autoName`, which compares exactly. `doctrine.ts` numbers a blank index name with `autoNameIgnoreCase`, as its Indexes rule says (`src/utils/generator-code/notes/doctrine.md`, Indexes).
 - **Oracle qualifies indexes on a dotted table.** Oracle writes every index on a dotted table beside it, automatic or named (`sales.IDX_users`, `sales.idx_users_name`). Unqualified, an index lands in the current user's schema, where one name given in two schemas clashes.
 - **Oracle puts the sequence and trigger there too.** It creates an `autoIncrement` column's sequence and trigger in the table's schema, named from the table part: `sales.SEQ_users` and `sales.SEQ_TRG_users`, whose body reads `sales.SEQ_users.NEXTVAL`. Oracle ran it as SYSTEM and as each schema's owner. The trigger name is numbered against the sequence names, never the earlier triggers.
 - **SQLite qualifies the index name only.** SQLite writes `CREATE INDEX sales.IDX_users ON users` and `REFERENCES users`, the only spelling it reads. A foreign key resolves in the child table's schema.
@@ -193,6 +196,8 @@
   - Snowflake's referential actions.
   - A database name that is no plain identifier, which writes no header and no schema on PostgreSQL's DROP (`*-invalid-name.sql`).
   - Logical names as comments, one per database (`logical-name-comment-create-none.sql`): tables and columns with a logical name and no comment, a table and a column whose comments stay, and a logical name holding a quote.
-- **`compose.test.ts` and the vendor specs read them.** `compose.test.ts` reads the combination files, Oracle's long names, PostgreSQL's identity comment under the editor defaults (`non-integer-identity-ifNotExists-createAndUse.sql`), the invalid names and the logical name files, and holds that no option writes no logical name. Each vendor spec holds its own form of a logical name comment. `Oracle.test.ts`, `SQLite.test.ts`, `PostgreSQL.test.ts`, `Databricks.test.ts` and `Snowflake.test.ts` read their own rule files.
+- **`compose.test.ts` and the vendor specs read them.** `compose.test.ts` reads the combination files, Oracle's long names, PostgreSQL's identity comment under the editor defaults (`non-integer-identity-ifNotExists-createAndUse.sql`), the invalid names and the logical name files, and holds that no option writes no logical name. Each vendor spec holds its own form of a logical name comment. `Oracle.test.ts`, `SQLite.test.ts`, `PostgreSQL.test.ts`, `Databricks.test.ts` and `Snowflake.test.ts` read their own rule files. `src/components/erd-editor/useErdEditorAttachElement.test.ts` reads a few of PostgreSQL's and Oracle's files for `getSchemaSQL()`, from its own copy of the sample document (`schemaSQLSampleDocument`), so a change to the sample goes into both.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

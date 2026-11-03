@@ -1,7 +1,7 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-20 -->
-
 # schema-sql
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -9,9 +9,9 @@
 
 ## Making a Change
 
-1. **Read the nested files the change reaches.** Purpose names them. A change to `SchemaSQL.styles.ts`, `SchemaSQLOptions.styles.ts`, `keepSpace`, `resolvePanel` or `togglePanel` reaches the Code Generator tab too. Its `GeneratorCode.test.ts` and `generatorCodeView.test.ts` import them.
+1. **Read the nested files the change reaches.** Purpose names them. A change to `SchemaSQL.styles.ts`, `SchemaSQLOptions.styles.ts`, `keepSpace`, `resolvePanel`, `togglePanel` or `schema-sql-context-menu/menus/bracketMenus.ts` reaches the Code Generator tab too. `GeneratorCode.tsx`, `generatorCodeView.ts`, `GeneratorCodeOptions.tsx` and `GeneratorCodeContextMenu.tsx` import them, so the specs beside those modules run against them too.
 2. **Update the spec holding the changed rule.** Testing Requirements maps each rule to its spec.
-3. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The `*.browser.test.tsx` specs here run in real Chromium in that task.
+3. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The `*.browser.test.{ts,tsx}` specs here run in real Chromium in that task.
 
 ## Key Files
 
@@ -28,7 +28,7 @@
 
 ### The options panel and the window's own choices
 
-The rules in this section are owner decisions of 2026-10-07.
+Unless a bullet says otherwise, the rules in this section are owner decisions of 2026-10-07; the logical name switch and the readonly caption came later.
 
 - **The DDL sits beside a 300 px panel.** The tab draws the DDL of the whole document, or of the tables chosen under Tables. The code sits on the left in every language, beside a 300 px panel (`SCHEMA_SQL_PANEL_WIDTH`).
 - **The panel holds the DDL's controls.** From the top: the Database and Bracket selects, then Statements (Create, If not exists, Drop & re-create), Header (None, `USE`, `CREATE + USE`) and the switch that writes logical names into empty comments (`schemaSql.logicalNameAsComment`). Tables follows while the document lists a table group. Last come the before and after script editors, with Save file and Copy at the panel's foot.
@@ -57,7 +57,7 @@ The rules in this section are owner decisions of 2026-10-07.
 
 ### Script editors
 
-- **A script editor commits once per edit.** `schema-sql-options/ScriptEditor.tsx` is a textarea under a shiki overlay that keeps a draft. It commits on blur, or on unmount while it holds the focus (a tab switch by its shortcut). The panel dispatches `changeDDLScriptAction` with what it commits. So one undo on the ERD tab takes back one edit.
+- **A script editor commits once per edit.** `schema-sql-options/ScriptEditor.tsx` is a transparent textarea over its shiki-highlighted text, and keeps a draft. It commits on blur, or on unmount while it holds the focus (a tab switch by its shortcut). The panel dispatches `changeDDLScriptAction` with what it commits. So one undo on the ERD tab takes back one edit.
 - **Commit only a draft that changed.** It commits only when the draft differs both from what it held as it took the focus and from the document's. So a field only read never writes back over a peer's or an agent's script.
 - **Take the document's value while unfocused.** It takes a peer's or an agent's value while it is not focused. It also takes it on a blur with nothing typed, and in a readonly editor, where it is a readonly textarea.
 - **The field grows with its text.** Its box holds its height while the field is measured, so the scrolled panel keeps its place and the caret stays in sight.
@@ -76,4 +76,6 @@ The rules in this section are owner decisions of 2026-10-07.
 - **`schema-sql-options/ScriptEditor.test.ts` and `ScriptEditor.browser.test.tsx`** hold the commit once per edit, the draft, the growth, the keyboard and the paste.
 - **`schema-sql-context-menu/`** has a spec beside the menu and beside each of its three menu modules.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

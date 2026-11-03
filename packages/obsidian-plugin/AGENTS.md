@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-09-26 | Updated: 2026-10-11 -->
-
 # obsidian-plugin
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-09-26 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -62,7 +62,7 @@ Deltas from root § Making a Change.
 - **Unreadable files open read-only** (not JSON, or at the top no `doc`, no `canvas`, and no `settings` beside a `version` of `3.0.0`, which takes a file a later release may write without `doc`), and `getViewData` returns their text, so a merge conflict or a cut-off sync never becomes an empty diagram. It returns the text, not `editor.value`, which holds the empty diagram the tab shows in its place.
 - **`isPlaintext` is false**: an outside change during an unsaved edit wins and drops the edit; the default merges both into the JSON as text.
 - **A load settles what the editor derives** (key marks, widths, anchors, relationship flags) before its reducer returns, and the file form keeps none of it, so an inconsistent document (FK flags with no relationship) changes only with an edit.
-- **The welcome screen waits for a document.** `onOpen` creates the editor, often before the tab has its file, with no document and `enableWelcomeScreen` off; `loadDocument` turns it on right after `setInitialValue`. The editor then shows it while the diagram has no table, memo or shown table group and is not read-only. So it never shows before a tab's first file is in, over a tab waiting to seed (read-only, after a file switch too) or over an unreadable file. An empty file loads as an empty diagram and opens on it. The first table, memo or shown table group takes it away.
+- **The welcome screen waits for a document.** `onOpen` creates the editor, often before the tab has its file, with no document and `enableWelcomeScreen` off; `loadDocument` turns it on right after `setInitialValue`. The editor then shows it while the diagram has no table, shown memo or shown table group and is not read-only. So it never shows before a tab's first file is in, over a tab waiting to seed (read-only, after a file switch too) or over an unreadable file. An empty file loads as an empty diagram and opens on it. The first table, shown memo or shown table group takes it away.
 - **`styles.css` overrides `contain: strict !important`** on diagram leaves only: layout or paint containment makes the leaf the box `position: fixed` resolves against, which offset the editor's menus, placed in viewport coordinates.
 - **Export** goes through `setExportFileCallback` to `fileManager.getAvailablePathForAttachment`, replacing the characters Obsidian refuses in a name.
 
@@ -79,10 +79,10 @@ Deltas from root § Making a Change.
 - **The window going writes synchronously.** A quit or reload skips the 2 s `requestSave`, a quit-task write never lands on Windows (§ Obsidian versions), and a 1.13 reload fires no `quit`. So `main.ts`'s one `workspace.on('quit')` and one `pagehide` handler call `saveBeforeExit` on every ERD tab, and the writer writes its unsaved value with `writeFileSync` to `adapter.getFullPath(file.path)` before the handler returns.
 - **`exitSave` (`tabSave.ts`) decides:**
   - no unsaved value, no write, so a file's tabs never both write (`hasUnsavedValue`: the writer only, never a waiting or unreadable tab or before the file loaded);
-  - the tab's own write under way (`saving`) leaves the value to a quit task, `saveDocument`, which waits it out and saves again: a sync write over an async one left the file mixed in 80 of 80 scratch runs;
+  - the tab's own write under way (`saving`) leaves the value to a quit task, `saveDocument`, which waits it out and saves again: a sync write over an async one left the file mixed in 80 of 80 scratch runs (2026-09-28);
   - otherwise it writes only if the file holds exactly `lastSavedData`, set by the core save before writing, so a half-written file differs too; anything else is an undelivered outside change, which wins, as with `isPlaintext` false;
   - it reads the file without one leading byte order mark, as `Vault.read` drops it from `lastSavedData`; with it, such a file looked changed, and a quit before the timed save lost the edit;
-  - an unreadable file, a failed write (`console.error`) or no disk path falls back to the quit task.
+  - a file it cannot read, a failed write (`console.error`) or no disk path falls back to the quit task.
 - **Then the tab sets `data`, `lastSavedData` and `dirty`** like `TextFileView.save`, so the pending `requestSave`, the core `quit` handler and a `pagehide` after `quit` find nothing to write. It writes in place like the adapter (through a symlink, keeping identity and permissions) and cannot tear, the page's thread being blocked. The vault hears nothing (`TFile.stat` and metadata lag); should the page stay, the watcher's `modify` finds `lastSavedData` equal.
 - **Tabs write, then the hub releases.** The same handler then calls `releaseSync`, deleting the lock and socket before it returns, since `onunload` never runs as a window closes, reloads or quits. So no agent goes headless on a file a tab is about to write in place. A quit task left for a write under way runs after that and may not land on Windows. A tab closed a few ms before the quit is not covered: its closing `save(true)` cleared `lastSavedData` and is async.
 - **A `quit` task is only a fallback.** It turns 1.12's Reload app into a window close, as Obsidian core does for its unsaved views. So the plugin queues one only while a write is under way or the sync write falls back, and none for the hub.
@@ -119,7 +119,7 @@ Deltas from root § Making a Change.
 - **The display language is a per-vault setting too**, handled like the theme: `locale` is `auto` (the default) or one of the 25 codes of webview-bridge's `LocaleLabel`, anything else read as `auto`. The Display language dropdown, after Accent color, offers Auto, then each language by its own name (`LOCALE_NAMES`, in the editor's picker order).
 - **The plugin's own strings (settings, Notices) stay English**: the owner decisions of 2026-10-06 translate the editor and leave each host's own UI as it is.
 - **The first paint is in that language**: each tab sets `enableLocalePicker` and listens for `changeLocale` in `onOpen`, in the task that creates the editor, and `applyLocale` sends `setSystemLocale`, then `setLocale`.
-- **A pick re-applies every tab.** `localeFromPicker` takes the picker's or the palette's pick as it comes, `system` as `auto`; `LocaleHost.picked` hands it to `main.ts`'s `setLocale`, which saves it, re-applies every ERD leaf (`getLeavesOfType`, popouts included) and refreshes the settings tab. `onload` applies it again for restored tabs.
+- **A pick re-applies every tab.** `localeFromPicker` takes the picker's or the palette's pick as it comes, `system` as `auto`; `LocaleHost.picked` hands it to `main.ts`'s `setLocale`, which saves it and re-applies every ERD leaf (`getLeavesOfType`, popouts included), then refreshes the settings tab. `onload` applies it again for restored tabs.
 - **`auto` follows Obsidian's language**: the editor's `system`, from the tag `obsidianLanguage` gives `setSystemLocale`. That is `getLanguage()` (added in Obsidian 1.8.7; `main.ts` checks it with `typeof`, as `minAppVersion` predates it), else `localStorage`'s `language` key, which `getLanguage` reads. Else it is `null`, leaving the editor to `navigator.languages`, where Obsidian with no stored language takes its own too. 1.13.7's `getLanguage` reads that key, else `navigator.language` or its language part where Obsidian has a translation, else `en`.
 - **Obsidian's `pt` goes over as `pt-PT`**: it is European Portuguese, and the editor reads a bare `pt` as Brazilian. A tag the editor lacks shows English. Obsidian reads its language as its window loads; the plugin listens for no change.
 - **`EditorLocale.locale` is typed as the element's `setLocale` parameter**, so a code the bridge lists and the editor lacks fails the type check.
@@ -161,7 +161,7 @@ Deltas from root § Making a Change.
 
 Measured on macOS unless Windows is named.
 
-- **Two versions on one machine.** Over the 1.12.7 `/Applications` bundle Obsidian loads a newer `obsidian-<version>.asar` from its user data folder (1.13.7 here); a fresh `--user-data-dir` starts on the bundle and fetches the update for its next launch.
+- **Two versions on one machine.** Over the 1.12.7 `/Applications` bundle Obsidian loads a newer `obsidian-<version>.asar` from its user data folder; a fresh `--user-data-dir` starts on the bundle and fetches the update for its next launch.
 - **1.12.7 fires `quit` on close, reload and quit** of the window or app. The sync exit write has not been run on 1.12.7. Its `quit` is taken to fire inside `beforeunload` like 1.13.7's, which the smoke on the macOS bundle checks.
 - **1.13.7 fires `quit` only for a closing window** (`sendSync('is-closing')`), synchronously inside `window.onbeforeunload`. A reload fires none, so `pagehide` also writes the tabs and releases.
 - **On Windows no async quit task lands** (1.13.7 installer, 2026-09-27), Obsidian's own for notes included. The page unloads 2 to 24 ms after `beforeunload` though Obsidian prevented it, and a quit ends the process. Everywhere, the main process destroys a closing window 3 s after `close`, quit tasks finished or not.
@@ -172,11 +172,12 @@ Measured on macOS unless Windows is named.
 
 ## Testing Requirements
 
-- **The specs measure the pure modules.** The `test` task (`tsc --noEmit`, then Vitest in Node) and `test:coverage` cover `src/hub/`, `src/keys.ts`, `src/settings.ts`, `src/tabSave.ts` and `src/erdEditorModule.ts` (on a mocked editor). `main.ts`, `ErdView.ts` and `loadErdEditor.ts` run only inside Obsidian (`obsidian` ships types, no runtime; the editor needs a window), so the smoke covers them (Making a Change step 2).
+- **The specs measure the pure modules.** The `test` task (`tsc --noEmit`, then Vitest in Node) and `test:coverage` cover `src/hub/`, `src/keys.ts`, `src/readableDiagram.ts`, `src/settings.ts`, `src/tabSave.ts` and `src/erdEditorModule.ts` (on a mocked editor). `main.ts`, `ErdView.ts` and `loadErdEditor.ts` run only inside Obsidian (`obsidian` ships types, no runtime; the editor needs a window), so the smoke covers them (Making a Change step 2).
 - **What the specs pin.**
   - `settings.test.ts`: the defaults, the fallback of unknown values, and every function and constant the `src/settings.ts` row names.
   - `tabSave.test.ts`: what a tab hands Obsidian to save, a tab waiting to load among them, what `exitSave` does as the window goes, and what `seedValue` gives a tab opened beside others.
   - `keys.test.ts`: how each spelling the editor's shortcuts use becomes a scope key, and that the row chords the loaded module derives join its map's presses.
+  - `readableDiagram.test.ts`: which texts open editable (an empty file, a v3 document by its `doc` or by its `settings` without one, the v2 one by its `canvas`) and that other text and other JSON open read-only.
   - `erdEditorModule.test.ts`: the five members `erdEditorModule.ts` keeps, and that no other file under `src/` imports `@dineug/erd-editor` as a value (its subpaths and type imports aside).
   - The hub specs: `registry.test.ts` (tabs, relays, quiet waits, seeding, content, the runtime value, the lock's documents, shutdown), `join.test.ts` (the join window, an agent joining after a removal the tab then undoes, and over a real socket, a named pipe on Windows, the response ahead of queued actions), `handlers.test.ts` and `runtime.test.ts` run the registry and the handler over `createHubHarness`, beside `host.test.ts`, `lifecycle.test.ts` and `imports.test.ts`.
   - `runtime.test.ts` uses its own memory doubles of `agent-hub-host`'s `HubEnvironment`, `HubListener` and `LockFile` services, never the node layers, which would write a lock under the real home.
@@ -188,7 +189,7 @@ pnpm exec vp run --filter @dineug/erd-editor-obsidian-plugin --fail-if-no-match 
 pnpm --filter @dineug/erd-editor-obsidian-plugin test:coverage
 pnpm exec vp run --filter @dineug/erd-editor-mcp --fail-if-no-match build   # the smoke's agent
 pnpm --filter @dineug/erd-editor-obsidian-plugin smoke
-OBSIDIAN_ASAR="$HOME/Library/Application Support/obsidian/obsidian-1.13.7.asar" pnpm --filter @dineug/erd-editor-obsidian-plugin smoke
+OBSIDIAN_ASAR="$HOME/Library/Application Support/obsidian/obsidian-<version>.asar" pnpm --filter @dineug/erd-editor-obsidian-plugin smoke
 ```
 
 ### The smoke
@@ -225,4 +226,6 @@ All devDependencies, bundled, whose `dist/**/*.d.ts` the build and test tasks re
 
 `obsidian` (types only; external at runtime), `monkey-around`, `effect` and `@effect/platform-node` (bundled; node builtins stay external), `@types/node` (`types: ["node"]`), `@playwright/test` for `smoke`'s `connectOverCDP`.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

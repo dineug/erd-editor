@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
-
 # utils
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -20,14 +20,14 @@
 | Directory | Purpose |
 | --- | --- |
 | `draw-relationship/` | `draw-relationship/AGENTS.md`. Relationship geometry: `sort.ts`, the `WeakMap` sort channels, `viewVersions` and the route versions, referential actions at a connector's child end (`src/utils/referentialAction.ts`), compact ends and round corners, the window of the sort hooks |
-| `generator-code/` | `generator-code/AGENTS.md`: the Code Generator's writers, the rules they share and one section per generator |
+| `generator-code/` | `generator-code/AGENTS.md`: the Code Generator's writers and the rules they share, with a table of the notes under `generator-code/notes/`, one per generator (Java, Kotlin and Scala share one) |
 | `schema-sql/` | `schema-sql/AGENTS.md`: the SQL writers: Snowflake's `bracketType`, SQL Server comments and `MS_Description`, defaults as stored, dotted names, foreign key pairs, `createSchemaSQL`'s order, Oracle triggers, referential actions |
 
 ## Rules
 
 ### Placed imports
 
-- **An import is placed before it lands** (owner decisions of 2026-10-04, `file/importSchema.ts`). One picked from the menu, the palette or a host's file dialog is placed; `webview-client` passes `placement: 'auto'` for a host's. A `setSchema*` call is placed only when given `{ placement: 'auto' }`. `app`'s `convertSource` passes it on a detached element and waits for the Promise before it reads `value`.
+- **An import is placed before it lands** (owner decisions of 2026-10-04, `file/importSchema.ts`). A SQL, GraphQL, DBML or AML file picked from the menu, the palette or a host's file dialog is placed, while a json file loads as it is; `webview-client` passes `placement: 'auto'` for a host's. A `setSchema*` call is placed only when given `{ placement: 'auto' }`. `app`'s `convertSource` passes it on a detached element and waits for the Promise before it reads `value`.
 - **A placed replace runs in four steps.**
   1. It parses once (`toSchemaImportJson`).
   2. It measures that document on a store of its own (`src/components/erd/automatic-table-placement/flowPlacement.ts`), as the PNG export draws on its own, opened in the reader's name view (`readerNameViewAction`), so Flow places the tables at the widths the reader sees. The grid's sort measures in that view too.
@@ -54,12 +54,12 @@
   - A json file keeps its own placement.
   - SQL, GraphQL, DBML and AML take Flow from `placeByFlow`, behind the same rules as a placed replace (`appendSchemaPlaced`, `file/importSchema.ts`).
   - Where those rules give no Flow, the block takes the grid `sortTable` lays a replace out in, run on the document's own copy.
-- **An append supersedes nothing.** Placed imports land in the order they started (`placeAndLand`). An append waits for those started before it and lands on the document a replace among them brings. Only a load or a placed replace started after it drops it.
+- **An append supersedes nothing.** Placed imports land in the order they started (`placeAndLand`). A placed append (`appendSchemaPlaced`) waits for those started before it and lands on the document a replace among them brings; only a load or a placed replace started after it drops it. A json append and a `setSchema*` append without `placement: 'auto'` land at once (`landAppend`), so a placed replace still pending wipes them as it lands.
 - **Land the append selected and in view.** The editor lands it in one dispatch with the new tables, memos and table groups alone selected, the memos only while memos are shown and the groups only while groups are shown. A group is selected beside its members, so a drag of the block carries it and its drop judges none of them. An unselected group would lose them all once the block left its stored rect. A hidden group or memo is never selected, and a drag then judges no group.
 - **The same dispatch scrolls the block into view.** It runs `scrollIntoView` on their box, by the one jump rule every go-to shares (`src/components/erd/AGENTS.md`). So one undo takes back the adds, the selection and the scroll.
 - **Show the ERD tab in an earlier dispatch.** `showErdTab` takes the ERD tab from any other before the landing dispatch, because a batch is classified by the state before it. The owner decision of 2026-10-04 names Graph mode, Schema SQL and Code Generator. Settings follows it as another tab off the canvas. A Flow view must give way too, since `viewIgnoreFilter` would drop every add.
 - **Unreadable or empty input changes nothing.** Text the parser cannot read, or a document with nothing in it, adds nothing and switches no tab.
-- **The engine generators append on the grid.** `appendSchemaAction$` and `appendSchemaJsonAction$` are in the editor barrel. `mcp-server`'s imports run them for `mode: 'append'`: the grid, no selection, no scroll.
+- **The engine generators append with no Flow.** `appendSchemaAction$` (the grid) and `appendSchemaJsonAction$` (the file's own placement, `'file'` by default) are in the editor barrel. `mcp-server`'s imports run them for `mode: 'append'`: no Flow, no selection, no scroll.
 - **A readonly editor adds nothing by any path.** It offers no Import and Add in the menu or the palette (an owner decision of 2026-10-04). `landAppend` reads `store.getReadonly()` first, because the readonly filter drops the adds but not the unselect, the scroll or the tab.
 
 ### Duplicates and the clipboard
@@ -77,7 +77,7 @@
   - The logical view's type cell holds what it draws: the domain's name while it draws one there (`drawsDomainInTypeCell`), else the type. A text pasted into it that names a domain the document lists is that domain, any other text a type.
   - A pasted domain name links the domain of that name the document lists (`findDomain`), else none. The row takes the domain's type unless it pastes a type of its own, and a pasted type off the domain's leaves the column unlinked (`toPastedDomainId`).
   - A paste writes over a column the cells it holds. A logical name cell counts as typed in full: the dictionaries derive the name the row leaves empty or derived and link the term's domain where the row pastes no domain and no other type (`toColumnNameWrites`). A row that pastes a name keeps it and leaves the dictionaries, so it derives nothing. No write of a paste spreads the data type sync.
-- **`PayloadKind.columns` carries no relationships or indexes.** Its payload carries neither the `relationships` nor the `indexes` array.
+- **`PayloadKind.columns` carries no relationships or indexes.** `columnsCopyToPayload` leaves its `relationships` and `indexes` arrays empty.
 - **Every HTML cell goes through `escapeHtml`.** Every cell of the HTML table a copy writes beside `text/plain` goes through `escapeHtml` (`rowsToHtmlTable`, `copy.ts`), the escape the hidden JSON attribute uses. A spreadsheet, a document editor or a paste that reads only the HTML takes each cell's text content, and an unescaped `<b>` or `&amp;` would come back changed.
 
 ### Dictionary CSV
@@ -104,5 +104,11 @@
 - `map-columns/` (the pure half of Map Columns): `src/components/map-columns/AGENTS.md`.
 - `diff/` (the diff engine the diff viewer's tree and panes read, and in `diff.ts` the marks every scene reads): `src/components/erd/AGENTS.md`, The diff viewer.
 - `referentialAction.ts` (the referential action codes a connector's child end shows): `draw-relationship/AGENTS.md`.
+- `text.ts` (`createText`, one of three `toWidth` twins with `replication-store-worker`'s and `app`'s `src/utils/text.ts`): `packages/replication-store-worker/AGENTS.md`, Text Measurement.
+- `clipboard.ts` (`copyImageToClipboard`, written inside the click): `src/components/export-image/AGENTS.md`.
+- `virtualRange.ts` (the rows a virtual list draws, shared by the tree and the palette): `src/components/primitives/AGENTS.md`.
+- `loadValue.ts` (`toLoadValue`, the empty text's document): `src/engine/AGENTS.md`.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

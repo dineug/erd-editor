@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
-
 # intellij-webview
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-08-27 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -20,7 +20,7 @@ The bundle the IntelliJ plugin (`packages/intellij-plugin`) embeds. `src/main.ts
 
 | File | Description |
 | --- | --- |
-| `src/main.ts` | The adapter: a `cefQuery` `dispatch` and the replica worker's name; no `importFile`, no `resolveAppearance` |
+| `src/main.ts` | The adapter: a `cefQuery` `dispatch` and the replica worker's name; no `importFile`, no `resolveAppearance`, no `onMounted` |
 | `src/env.d.ts` | Ambient `window.cefQuery` / `cefQueryCancel` types and `declare module '*.css'` |
 | `src/webview.css` | Body sizing and the `prefers-color-scheme` background shown before the editor mounts |
 | `index.html` | Build entry at the package root (`publicDir: false`) |
@@ -52,6 +52,7 @@ The bundle the IntelliJ plugin (`packages/intellij-plugin`) embeds. `src/main.ts
 
 - **No `importFile`.** The editor's own file input imports, and `ErdEditor.kt` no-ops `hostImportFileCommand`.
 - **No `resolveAppearance`.** The page cannot see the IDE's look and feel. The plugin sends its stored theme, Auto included, with the IDE's light or dark as `systemAppearance` in every `webviewUpdateThemeCommand`. `'auto'` without a `systemAppearance` would mean dark.
+- **No `onMounted`.** The page has no placeholder to clear; `src/webview.css` paints the background until the editor mounts.
 - **The display language comes from the plugin.** The plugin sends its stored language, Auto included, with the IDE's language as `systemLocale` in every `webviewUpdateLocaleCommand`. So the page's System follows the IDE, not JCEF's `navigator.languages`, which the page reads only until a `systemLocale` arrives.
 - **Leave the language picker and welcome screen alone.** `mountWebview` turns both on for every host, so nothing here does.
 - **`onSuccess` and `onFailure` stay no-ops by design.** The plugin answers every query it takes with an empty success, so the router keeps none pending. A command the plugin cannot parse or handle shows only as a `WARN` in `idea.log`.
@@ -82,4 +83,6 @@ cd packages/intellij-plugin && ./gradlew runIde
 
 `core-js/stable`, imported for side effects.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

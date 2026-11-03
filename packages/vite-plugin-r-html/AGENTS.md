@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-18 -->
-
 # vite-plugin-r-html
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-08-27 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -10,10 +10,10 @@
 ## Making a Change
 
 1. Read the files root step 1 names. A change to the `hmr:r-html` event or the `virtual:r-html-hmr` module crosses into r-html's `src/render/hmr.ts`, so read `packages/r-html/AGENTS.md` too. A change to which modules become HMR boundaries reaches erd-editor's scene roots: read `packages/erd-editor/src/konva/AGENTS.md`.
-2. Give the change what root step 2 asks. A new compile error gets its own case in `codegen.test.ts`, as each existing one has. The inline snapshot changes only as Testing Requirements allows.
+2. Give the change what root step 2 asks. A new compile error gets its own case in `codegen.test.ts`. The inline snapshot changes only as Testing Requirements allows.
 3. Run `pnpm exec vp run --filter @dineug/vite-plugin-r-html --fail-if-no-match test` (root step 3). After a codegen change, also run `pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match test`, because erd-editor's parity specs gate the compiled output. A change to `rHtml`, `transformJsxToTagged` or the option types runs `pnpm test`, as root step 3 says for anything a package hands its siblings.
 4. Run `pnpm --filter ./packages/vite-plugin-r-html --fail-if-no-match test:coverage` (root step 4).
-5. Run `pnpm check`, then `pnpm build` (root step 5). The root typecheck in `pnpm check` reads erd-editor's configs through this package's source (Rules, Type checking). A codegen change changes erd-editor's build output, so run `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size` after the build.
+5. Run `pnpm check`, then `pnpm build` (root step 5). The root typecheck in `pnpm check` reads its consumers' `vitest.config.ts` through this package's source (Rules, Type checking). A codegen change changes erd-editor's build output, so run `pnpm peer-graph`, `pnpm dist-shape`, `pnpm consumer-bundles` and `pnpm size` after the build.
 6. A codegen change that alters what the editor renders also runs `pnpm --filter @dineug/erd-editor e2e` (root step 6). A refresh change gets the hand check in Testing Requirements, because no spec drives a hot update through the dev server.
 7. Report as root step 7 says. Name the dev-server hot-update check as run by hand or left out, with the reason.
 
@@ -24,7 +24,8 @@
 | `src/index.ts` | `rHtml(options)`, `transformJsxToTagged`, the option types |
 | `src/options.ts` | `Options`, `JsxOptions` (`importSource`, `konvaImportSource`), `RefreshOptions` |
 | `src/jsx/plugin.ts` | The JSX half: `enforce: 'pre'`, `.tsx` only |
-| `src/jsx/codegen.ts` | JSX AST to tagged-template source: attribute mapping, SVG namespace, the `@jsxHost` pragma, escaping, every compile error |
+| `src/jsx/codegen.ts` | JSX AST to tagged-template source: attribute mapping, SVG namespace, the `@jsxHost` pragma, every compile error |
+| `src/jsx/escape.ts`, `src/jsx/text.ts` | Escaping of template text and attribute values (`escapeTemplateText`, `escapeTemplateAttrValue`); JSX text whitespace rules (`cleanJsxText`) |
 | `src/refresh.ts` | The HMR half: boundary detection, the appended snippet, the `virtual:r-html-hmr` module that calls `hmr()` |
 
 ## Rules
@@ -59,7 +60,7 @@
 
 ### Type checking
 
-- **The root program reads this package's source.** The root `tsconfig.json` maps `@dineug/vite-plugin-r-html` to `src/index.ts`, so the root typecheck reads erd-editor's configs without a build. The package's `types` point at `dist/`, and the `check` job never builds.
+- **The root program reads this package's source.** The root `tsconfig.json` maps `@dineug/vite-plugin-r-html` to `src/index.ts`, so the root typecheck reads the `vitest.config.ts` of erd-editor, grid and r-html-konva, which import it statically, without a build. The package's `types` point at `dist/`, and `pnpm check` runs before anything is built, in the `check` job and on a clean checkout.
 
 ## Testing Requirements
 
@@ -82,4 +83,6 @@ None. The package works with `@dineug/r-html`'s `hmr.ts` through the event contr
 
 `@babel/core` (parsing) and `@rollup/pluginutils` (`createFilter`) are runtime `dependencies`, which the build leaves external, as `createExternal` (`tools/vite/package-metadata.ts`) keeps every `dependencies` entry a bare import.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

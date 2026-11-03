@@ -1,7 +1,7 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-27 -->
-
 # export-image
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -59,7 +59,7 @@
 - **Focus enters and leaves at fixed points.** The `data-autofocus` control is focused on mount; here that is PNG. Tab turns round at either end of the box, which scrolls in a short editor. On unmount it dispatches `focusEvent`, whatever closed it.
 - **Canvas shortcuts stop while it is open.** `erdShortcutPerformCheck` stops the canvas shortcuts, copy and paste.
 - **The palette and Find and Replace close it.** They close it as they close Table Properties. It leaves the Explorer open as it opens, and Find and Replace's chord trades the dialog for the Explorer's search.
-- **The preview stacks above the options when narrow.** It stacks under 640 px of editor width, read from `editor.viewport.width`, since the browser floor has no container query.
+- **The preview stacks above the options when narrow.** It stacks under 640 px of editor width, read from `editorWidthOf` (`src/components/erd-editor/viewportLayout.ts`), the viewport's width plus a docked panel's reach, since the browser floor has no container query.
 - **Map Columns keeps the same contract.** It is the dialog's second user. The canvas shortcuts, undo and redo stop while it is open, and it leaves the Explorer open as it opens. Find and Replace and the palette close it and drop what was picked, by their chords from inside it or any other way they open, an owner decision (2026-10-06).
 - Map Columns' own rules: `src/components/map-columns/AGENTS.md`.
 
@@ -111,4 +111,6 @@
 - `renderSvg.browser.test.ts` and `sceneSvg.browser.test.ts` hold the svg's pixels, text included, to the canvas konva paints, shadows aside. They compare pixels because every text spec that reads attributes repeats the writer's baseline arithmetic.
 - `exportImageActions.test.ts` pins the toast rule (Rules, One dialog for the editor's image exports).
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

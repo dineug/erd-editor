@@ -1,0 +1,61 @@
+# rust.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** Plain structs (owner decisions of 2026-10-09).
+  - Each struct is `#[derive(Debug, Clone, PartialEq)]` with `pub` fields.
+  - A field is typed by its full path (`chrono::NaiveDateTime`, `rust_decimal::Decimal`, `uuid::Uuid`, `serde_json::Value`), with no `use` line. So the whole text and one table both compile against those four crates with no feature.
+  - The one-table view is `formatTable`, as in every generator that does not hand it to a `createTableCode`. PHP, Doctrine, Swift, Zod, JSON Schema and SeaORM do (`php.md`, What it writes).
+- **Types.** They come from `rustTypes.ts`, by name before the shared vendor tables. `rustTypes.ts` is the shared classifier's Rust layer (`../AGENTS.md`, Rules every generator follows), and `seaorm.ts` reads it too.
+  - Integers are at their width (`i8`, `i16`). MySQL and MariaDB UNSIGNED, ZEROFILL and SERIAL are `u8` to `u64`.
+  - MySQL and MariaDB `BIT` is a `bool`, or a `u64` past one bit. Their `YEAR` is a `u16`, and their `TIMESTAMP` a `chrono::DateTime<chrono::Utc>`.
+  - The local time zone timestamps and Databricks' `TIMESTAMP` are a `chrono::DateTime<chrono::Utc>` too.
+  - The time zone timestamps are a `chrono::DateTime<chrono::FixedOffset>`.
+  - Binary types are `Vec<u8>`. `json` and `jsonb` are a `serde_json::Value`.
+  - `uuid` and `uniqueidentifier` are a `uuid::Uuid`. MariaDB's `uuid` is a `String`, since it is sent as text.
+  - Money is a `Decimal`.
+  - An interval, a PostgreSQL bit string, `timetz`, `pg_lsn`, `cid`, `oid`, `xid` and `xid8` are a `String`.
+  - An Oracle DATE is a `NaiveDateTime`, and an Oracle REAL an `f64`.
+  - Snowflake's and Databricks' `VARIANT`, `OBJECT`, `ARRAY` and `MAP`, and Databricks' `STRUCT`, are a `String`, as the shared vendor tables class them.
+  - A PostgreSQL array is one `Vec` per dimension, at every depth.
+  - On PostgreSQL a `String` column of any type but PostgreSQL's character types carries the type sqlx reads it through (`selectAs`), `text`; money carries `numeric`.
+  - An array of more than one dimension carries `text` too. `seaorm.ts` declares such an array a `String` (`entityScalar`).
+  - PostgreSQL's and SQLite's `dec`, bare or with arguments, is a `rust_decimal::Decimal`, the decimal it is (an owner decision of 2026-10-10). It was a `String` before.
+    - Their vendor lists gained `dec` beside `numeric`, and `rustPrimitiveType` reads those lists.
+    - This is the one change to the output of `rust.ts` and `seaorm.ts` since the classifier moved.
+    - `rust.test.ts` and `seaorm.test.ts` pin it.
+- **Names.** Names follow the name cases. A name off Rust's own cases only warns: `non_snake_case` on a camelCase field, `non_camel_case_types` on a snake_case struct.
+  - A keyword of any edition from 2015 to 2024 is a raw identifier (`r#type`, `r#gen`).
+  - `_`, `crate`, `self`, `Self` and `super` take no raw form, so they get `_` after them.
+  - A struct named after a type or crate the output writes gets `_` after it too. Otherwise it would break, or silently retype, the fields of that type.
+    - Those names are `Option`, `String`, `Vec`, `bool`, the integer and float primitives the output uses, `chrono`, `rust_decimal`, `uuid` and `serde_json`.
+  - Any other name that is no identifier, or a repeated one, is written as is, as in `php.ts`.
+- **Keys and nullability.** A primary key or a NOT NULL column is `T`. Any other column is `Option<T>`.
+- **Comments.** A comment is `//` lines, never `///`. A `///` doc comment would turn a fenced or indented line into a doctest.
+  - Its bidirectional controls are written as `\u{…}`, because rustc refuses them in any comment.
+- **Written as is.** These stay in the output, though a driver cannot read them or the Rust type cannot hold them.
+  - MySQL and MariaDB spatial types, as a `String`. sqlx reads them into nothing.
+  - A PostgreSQL array of two or more dimensions, as nested `Vec`s. sqlx does not decode it.
+  - A MySQL TIME past a day, which the chrono type cannot hold.
+  - A PostgreSQL numeric past 28 digits, which the rust_decimal type cannot hold.
+  - SQLite's `DEC`, `DECIMAL` and `NUMERIC`, with or without arguments, as a `rust_decimal::Decimal`. sqlx-sqlite leaves that type out on purpose and neither reads nor binds it.
+  - On SQLite, a `String` or `serde_json::Value` in a column of numeric affinity (`JSON`, `TIMESTAMP`, `TIME`, a type imported from another vendor such as `bit(1)`).
+    - SQLite stores text that looks like a number, a JSON number among it, as an INTEGER or a REAL.
+    - sqlx then cannot read it back.
+  - A UUID another client stored as text in SQLite, which `uuid::Uuid` cannot read.
+  - SQL Server's money, as a `Decimal` field. tiberius reads it as an `f64`.
+  - An integer type at the width its name declares, though the database stores a NUMBER(38) or eight bytes.
+    - An Oracle `INT`, `INTEGER` or `SMALLINT`, a Snowflake `BYTEINT`, `INT`, `INTEGER`, `SMALLINT` or `TINYINT` and a SQLite `INT`, `INTEGER` or `MEDIUMINT` are an `i32`.
+    - SQLite's `SMALLINT` and `INT2` are an `i16`, and its `TINYINT` an `i8`.
+    - So a SQLite rowid past 2^31 − 1 is more than an `i32` holds.
+    - The classifier gives every other generator 64 bits there. Rust and SeaORM keep the output they had.
+    - This gap was reported to the owner on 2026-10-10.
+- **Measured** on 2026-10-09 with rustc 1.98.0, editions 2021 and 2024, chrono 0.4.45, rust_decimal 1.43.0, uuid 1.27.0 and serde_json 1.0.151.
+  - Every type of every vendor list, NOT NULL and optional, compiled with only the naming lints.
+  - Every keyword as a struct name and as a field name compiled with only the naming lints.
+  - rustfmt changed only the opening blank line.
+  - The five `data/*.sql` fixtures compiled whole and per table, with the naming lints alone.
+  - sqlx 0.9.0 read and wrote back each type of PostgreSQL 17, MySQL 8.4, MariaDB 11.4 and SQLite as its Rust type. It did so through `selectAs` where the type carries one.
+    - The exceptions are the MySQL and MariaDB spatial types and the SQLite decimals and numeric-affinity values under Written as is.
+  - PostgreSQL's `dec` and SQLite's `DEC` were listed since. They write the `rust_decimal::Decimal` that `numeric` and `DECIMAL` write, and were not compiled again.

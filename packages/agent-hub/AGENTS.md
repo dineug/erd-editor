@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-09-22 | Updated: 2026-10-11 -->
-
 # agent-hub
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-09-22 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -26,7 +26,7 @@
 
 5. **Run `pnpm check`, then `pnpm build`** (root step 5).
 6. **Check the consumers this suite cannot see** (root step 6). After a protocol or lock change, follow `packages/agent-hub-host/AGENTS.md` (Making a Change, steps 5 to 8). They cover every side: both hosts' suites, `agent-hub-host` itself, `mcp-server` and its `fakeHub.ts`, and the Kotlin hub, which ends in `ERD_MCP_CONFORMANCE=required ./gradlew check` in `packages/intellij-plugin`.
-7. **Update the e2e peer after a lock change.** It is the Extension Host e2e peer, `packages/vscode-extension/test/integration/agent-hub.test.ts`; the steps of step 6 name it only for a frame or protocol change. It imports nothing from this package. It writes the corpus's frame bytes by hand and reads the lock (`~/.erd-editor/ide/<pid>.json`, its `pipe`, `token` and `hub`) by hand too, so a lock change reaches it.
+7. **Update the e2e peer after a lock change.** It is the Extension Host e2e peer, `packages/vscode-extension/test/integration/agent-hub.test.ts`; the steps of step 6 name it only for a frame or protocol change. It imports nothing from this package. It writes the corpus's frame bytes by hand and reads the lock (`~/.erd-editor/ide/<pid>.json`: its `pipe`, `token`, `hub` and `workspaceFolders`, and its `0o600` mode off win32) by hand too, so a lock change reaches it.
 8. **Report what ran** (root step 7), naming each consumer step of steps 6 and 7 that you left to the owner or to another platform, with the reason.
 
 ## Key Files
@@ -38,6 +38,7 @@
 | `src/framing.ts` | `encodeFrame` (JSON + `\n`); `decodeFrameResults(schema)`, a `Stream<string>` → `Stream<Result<message, RefusedFrame>>` step; `decodeFrames(schema)`, the same but failing on the first refusal; their `FrameError`; `decodePeerToHubFrames` / `decodeHubToPeerFrames`, the two directions' readers, which the hub and the MCP server stream frames through; `encodePeerToHubFrame`, the MCP server's request writer; `encodeHubNotificationFrame`, the hub's notification writer; `MAX_FRAME_BYTES` (64 MiB) |
 | `src/paths.ts` | `toSegments`, `isInside`, `isSamePath`, `longestPrefixIndex`, `isAuthorized` and its Effect, `authorize`; `unsafeSegment`, the win32 name rule |
 | `src/discovery.ts` | `readLockDirectory(homeDir)`, the lock files over `FileSystem`; `selectHub`, lock files → an Effect of `HubSelection` (`live` / `blocked` / `headless` plus the `stale` list); its ranking, `matchRank(record, target, platform)` (`Infinity` for a document, the deepest folder's depth, or `-1`) and `outranks(a, b)` on `RankedCandidate`s |
+| `src/index.ts` | The public surface, every member and type of the five modules; `index.test.ts` pins the runtime names, so a new export goes into its list |
 | `src/__fixtures__/conformance.json` | The conformance corpus: the vectors this package and the IntelliJ plugin's Kotlin hub are both held to (Testing Requirements) |
 | `src/conformance.test.ts` | The corpus's TypeScript reader, which holds this package to every vector |
 | `src/node-free.test.ts` | Scans every `src/**/*.ts` for a `node:` import and for an effect specifier other than effect's named entries, and every non-test file for any other bare specifier. The named entries are `effect` and an `effect/<group>` such as `effect/testing`, except `effect/index`, `effect/schema` and `effect/sql` |
@@ -48,7 +49,7 @@
 
 ### Shape of the spec
 
-- **Schemas first, types derived from them.** Every message and the lock file is an effect `Schema`. The types of the same names, the frame decoders and the request encoder are derived from those schemas.
+- **Schemas first, types derived from them.** Every message and the lock file is an effect `Schema`. The types of the same names, the frame decoders and the request and notification encoders are derived from those schemas.
 - **Effects for authorization, selection and streams.** Path authorization and hub selection return Effects, and frames stream through `Stream` steps. The one service any of them requires is effect's `FileSystem`, in `readLockDirectory`. The path rules underneath stay pure functions over strings.
 - **Each side brings its layers and adapter.** Each side provides the layers and its own net adapter. The MCP server does so as the client; `agent-hub-host` does so as the editor window's side, which the VS Code extension and the Obsidian plugin both build on.
 - **No `node:*` import, by choice.** `defineLibraryConfig` builds this package for `BROWSER_TARGET`, and `createExternal` externalizes no builtin. Its `node: true` would build it for Node, as it does `agent-hub-host`; this package does not set it.
@@ -71,6 +72,7 @@
 - **A notification never carries an `id`.** This is the one exception to dropping unknown fields: every `notification(...)` member refuses the key. A frame with an id therefore never reads as a notification, and a peer still takes it for an answer, as it did before it decoded by schema.
 - **A missing field fails the decode.** This includes `hello`'s `client`, which the hub still reads by hand and defaults to `''`. The direction readers hand such a frame over as a `RefusedFrame` holding the parsed value. A reader that keeps fallbacks reads that value itself (Framing).
 - **Bump `HUB_PROTOCOL_VERSION` for an unreadable change.** Any change that an older peer cannot read bumps it, so that a peer and a hub of different versions refuse each other with `protocolMismatchMessage` rather than edit together.
+  - A bump also edits the Kotlin hub's `HUB_PROTOCOL_VERSION` and the conformance corpora, which specs hold to this constant, and these hand-kept copies, which no spec compares with it: `vuerd-vscode`'s `test/integration/agent-hub.test.ts` and `test/integration/linked/linked-folder.test.ts`, `intellij-plugin`'s `e2e/peer.mjs` and the lock check in `e2e/smoke.mjs`, and `obsidian-plugin`'s lock check in `e2e/smoke.mjs`.
   - It is 2. It was raised when saved files took the storage form and a join's `initialValue` became the runtime value the editor holds, else the file. `JoinResult` kept its shape.
 - **There is no `rejoin` message.** Reseeding after an auto open is a session step of the MCP server.
 - **Peers send requests; the hub sends notifications.** A peer hands over its own actions with the `applyActions` request (`{ path, actions }` → `{ webviews }`), so a refusal (`notOpen`, `readonly`) reaches it and the session can rejoin.
@@ -119,7 +121,7 @@
   - Node writes `orders:v2.erd`, or a timestamp `…T10:00.erd`, as the file `orders` plus a stream. It writes `NUL.erd`, `CON`, `trail.erd.` and a folder `sub.` as those very names.
   - A Win32 caller reads the stream's file, a device, or the name without its dot or space. Win32 callers include the JDK, and so the IntelliJ hub, and also cmd and .NET. The device reading holds on Windows 10; build 26200 reads `NUL.erd` as a file.
 - **Every side refuses such a path.** The MCP server refuses it with `invalidPath` before it touches the disk, and leaves such names out of its disk listing. Both hubs' `authorizePath` refuse it with `badRequest`, on the target before the realpath climb and again on the real path.
-- **Keep the name rule at parity with Kotlin.** The corpus's `paths.unsafeSegment` holds both of these traps.
+- **Keep the name rule at parity with Kotlin.** The corpus's `paths.unsafeSegment` holds the first trap: `con`, U+00A0, `.erd` passes. No vector can hold the second, since no non-ASCII character folds to a letter of a device name.
   - The trim takes spaces alone: `/ +$/` here, `trimEnd(' ')` in Kotlin. Never use `trimEnd()`, which also takes a tab or U+00A0.
   - The device test folds ASCII letters only, as JavaScript's `i` without `u` does and Java's `CASE_INSENSITIVE` without `UNICODE_CASE`. Kotlin's `RegexOption.IGNORE_CASE` would add `UNICODE_CASE`.
 
@@ -194,4 +196,6 @@ None: this package depends on no workspace package. It is `private: true`.
 - **File pruning is not exercised.** The two consumers above import from all five modules, so no module file is pruned. Inside a used module, a declaration initialized by a call stays even when unused: `HubRequestError` reaches the MCP bundle, which never imports it.
 - **Of the three bundles, only `mcp-server`'s is gated.** Its `bin.test.ts` holds the one-file bundle, effect included, to `BUNDLE_GZIP_BUDGET` (`packages/mcp-server/AGENTS.md`, Rules § Build, size and imports). `vscode-extension`'s AGENTS.md (Testing Requirements § Build and debugging) says nothing gates its bundle's size. Nothing records the size of the Obsidian plugin's `main.js`.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

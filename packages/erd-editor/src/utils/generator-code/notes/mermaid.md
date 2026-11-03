@@ -1,0 +1,54 @@
+# mermaid.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `mermaid.ts` writes the `erDiagram` that GitHub renders, with GitHub's Mermaid 11.17.2 (an owner decision).
+  - As in DBML and AML, it writes every column whatever View Option shows, and the name cases are inert.
+  - The table comment is a `%%` line.
+  - The one-table view (`formatTable`) is an `erDiagram` header and the one entity under its numbered name. It holds no relationships.
+- **Types.**
+  - The type is trimmed.
+  - A column that is not NOT NULL is `type?`.
+  - A column with no type is `unknown`.
+- **Names.**
+  - Every table name is double-quoted.
+  - The characters a quoted entity name cannot hold are dropped.
+  - A blank table name is written `unnamed`. So is a blank column name, in its attribute and in a relationship's label.
+  - A column name or type is written in backticks in three cases:
+    - It falls outside that release's attribute word.
+    - It starts with a whitespace character the word holds (U+3000, U+FEFF). The lexer's whitespace rule would eat that character.
+    - The lexer's key rule reads it first (`pk`, `pk-id`, `uk번호`).
+- **Keys and relations.** A relationship's label lists the child columns still in the child table. A removed column keeps its entity, so only the table's column list says it is still there.
+- **Strings: line breaks.** A line break, U+2028 and U+2029 included, is written as a space in a comment, a label and a backtick word.
+  - The reason: mermaid strips a `%%` comment from the start of any line its multiline pattern finds.
+- **Strings: tildes.** Every `~` of an attribute line is written `～` (U+FF5E) when the lexer's generic type rule would match.
+  - That rule reads from a word holding a `~` to the line's last `~` (a comment `"1~5, 6~10"`).
+  - The lexer tries it ahead of a backtick and a comment.
+  - Otherwise the line is kept as it is.
+- **Strings: directives.** Every `%%{` is written `%%｛` (U+FF5B) in a comment, the table comment's line included, in a label and in a backtick word.
+  - A `%%{` that a word follows is a directive wherever it stands.
+  - Mermaid applies a directive before its lexer runs.
+  - It can fail the parse, empty the diagram or change its config. An unclosed one in the table comment takes the rest of the text.
+  - Rewriting the other `%%{` as well keeps the rule simple.
+- **Strings: direction words.** A `direction` that whitespace and `TB`, `BT`, `RL` or `LR` follow, in any letter case, gets U+200B after it in a table name and a relationship label.
+  - The rewrite also applies inside a longer word (`sort direction tbl`).
+  - It also applies with semicolons anywhere in the word (`direc;tion LR`), since mermaid's entity encoding can drop them before its lexer runs.
+  - A table name and a label are the strings the lexer reads outside an entity block. There its direction rule takes the rest of the line.
+  - Unrewritten, a table name would fail to parse. A label would drop its relationship and change the diagram's direction without an error.
+  - U+200B is used because `\s` does not match it, while `\s` matches the no-break space.
+  - Attribute words and comments keep the word. The lexer does not try that rule inside an entity block.
+  - Mermaid drops the table comment's line before the lexer runs, so that line keeps the word too.
+- **Written as is.** Two inputs still reach mermaid as written.
+  - A backtick word or a table comment holding an HTML-like tag (`<x y="z">`).
+    - Mermaid's text clean-up rewrites the tag's `="…"` to `='…'` up to the next `>`, a later line's included.
+    - So an unclosed tag can take the opening quote of a name or comment after it and fail the parse.
+  - A semicolon on a line holding `style` or `classDef`, then `:`, a run of non-whitespace and `#`.
+    - Mermaid's entity encoding drops the line's last semicolon before its lexer runs, once for each of the two words.
+    - It also writes a `#`, a word and `;` (`#b;`) in other characters.
+    - A backtick word or a relationship line's entity name that a drop empties (`;`) fails the parse.
+    - A table name it changes on one of its lines and not the other becomes two entities (parent `style`, child `a:#b;`). The relationship goes to the empty one.
+- **Tests.** `mermaid.browser.test.ts` parses the output with `mermaid` 11.17.2 and reads back what it parsed. `mermaid` is a devDependency that no build ships.
+- **Highlighting.** Shiki's `mermaid` grammar colours only unquoted names.
+  - So the panel colours `erDiagram`, the comments, and an attribute line of two bare words alone (`int name`, a NOT NULL column with no key or comment), which the grammar reads as an entity and its alias.
+  - It also colours the first child `o{` in the text: its `{` and the run of letters and hyphens before it (`o`; on an identifying line `--o`, or `o--o` after a parent's `|o`), which the grammar reads as an unquoted entity opening a block. No `}` closes that block, so a later child `o{` stays plain.

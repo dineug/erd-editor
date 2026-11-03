@@ -1,16 +1,16 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-27 -->
-
 # components
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
-`src/components/` holds the editor's r-html function components: `erd/` with the scene and the DOM shell, `visualization/` with Graph and Flow, `table-view/`, `primitives/`, the panels, the two code tabs and the Dictionary tab. This file holds the rules that tell a scene component which geometry it draws, how an element class is built and defined, and the conventions every component follows for its files, its JSX spelling and its icons. Views also follow `src/engine/AGENTS.md` (the view seams, the `editor.view*` actions) and `src/konva/AGENTS.md` (what a view shows). The sort channel a source picks is in `src/utils/draw-relationship/AGENTS.md`, and the ELK coordinate hints are in `src/services/AGENTS.md`.
+`src/components/` holds the editor's r-html function components: `erd/` with the scene and the DOM shell, `visualization/` with Graph and Flow, `table-view/`, `primitives/`, the panels, the two code tabs and the Dictionary tab. This file holds the rules that tell a scene component which geometry it draws, how an element class is built and defined, how a dialog or panel closes, how a toast reports, what the Settings tab and the toolbar show in a readonly editor, and the conventions every component follows for its files, its JSX spelling and its icons. Views also follow `src/engine/AGENTS.md` (the view seams, the `editor.view*` actions) and `src/konva/AGENTS.md` (what a view shows). The sort channel a source picks is in `src/utils/draw-relationship/AGENTS.md`, and the ELK coordinate hints are in `src/services/AGENTS.md`.
 
 ## Making a Change
 
 1. **Read the nested file of each touched subdirectory.** Subdirectories lists them. A scene component also follows `src/konva/AGENTS.md`, which holds the Konva JSX pragma and its intrinsics.
-2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The specs this file names run in that test task, each `*.browser.test.tsx` in real Chromium.
+2. **Run the package's checks.** The package file (`packages/erd-editor/AGENTS.md`) § Making a Change gives the test task and the coverage run. The specs this file names run in that test task, each `*.browser.test.{ts,tsx}` in real Chromium.
 
 ## Key Files
 
@@ -18,6 +18,7 @@
 | --- | --- |
 | `customElementClass.ts` | `CustomElementClass`, the type an exported element class is annotated with: the shape of the class `createCustomElement` returns, written here so the declaration files name no `@dineug/r-html` type for it |
 | `element-host/` | What an element takes from its page beside its document, outside `erd-editor/` so the read-only view's graph can reach it (`src/viewer/imports.test.ts`). `themeHost.ts`'s `useThemeHost` holds the preset its options build, from the options its element starts on (the editor's slate, indigo and dark, the viewer's `system`), the tokens `setTheme` lays over it and the light or dark `system` shows; `localeHost.ts`'s `useLocaleHost` holds the display language and the one `I18n` object (`src/i18n/AGENTS.md`). A component calls each at setup, and each hands back the setters its element installs and a `destroy`, which lets the OS color scheme go at once and on every later mount. `useLocaleHost` imports no dictionary: the element hands it the dictionary source, which may load a language, and the tags `system` reads. `value` stays each element's own. `elementHost.test.ts` pins both |
+| `erd-editor/` | The editor element, `ErdEditor.tsx`, and the viewport the canvas gets, `viewportLayout.ts` (both in the package file's Key Files), with `useErdEditorAttachElement.ts`, which installs the element's API, the `element-host/` setters among them |
 | `erd-viewer/` | The viewer element, `ErdViewer.tsx` (the package file's Key Files), over `ErdView`, and `documentSource.ts`, its `src`: one GET at a time, a later fetch aborting the one before, so a late answer never lands over a later document. `ErdViewer.test.ts` pins the element in happy-dom, `ErdViewer.upgrade.browser.test.ts` the properties a page set before the tag was defined; `ErdViewer.stories.tsx` draws it over a sample document, with and without its map and controls |
 | `sceneSourceContext.ts` | `sceneSourceContext` / `useSceneSource`, through which a scene component reads its `GeometrySource`; default `'document'` |
 | `sceneInteractionContext.ts` | `sceneInteractionContext` / `useSceneInteraction`, through which `erd/canvas/useMoveEntity.ts`, the scene's tables, memos and group bodies and the marquee (`erd/canvas/drag-select/DragSelect.tsx`) read how their scene takes a press; default `'edit'` (Scene sources and views). Also `sceneActiveContext` / `useSceneActive`, whether the scene takes the wheel and the fingers over it now, which a memo's body and the map read; true unless `erd-view/ErdView.tsx` provides that its root holds the focus |
@@ -28,14 +29,14 @@
 | `visualization/VisualizationFlow.tsx` | `FlowScene`, the scene root of the Flow view |
 | `flowCenters.ts` | Narrows the Flow view to the tables given and their one hop, widens it back, and steps it through the centers it stood on (`focusFlowView`, `showAllFlowView`, `stepFlowView`, `canStepFlowView`) |
 | `erd/canvas/SceneIcon.template.tsx` | Draws the `getIcon` data in the scene |
-| `erd/fieldIcon.tsx` | The icon an excerpt row of the Explorer's search carries for the kind of text it was found in (`table-2` for a table name, `list` for a column name, as the Explorer's column rows draw one, and for a logical name, which only the palette's `@` rows list, a column's, `sticky-note` for a memo, `message-square` for a table or column comment), which the palette's `#` rows share |
+| `erd/fieldIcon.tsx` | The icon a search row carries for the kind of text it was found in (`table-2` for a table name, `list` for a column name, as the Explorer's column rows draw one, and for a logical name, which only the palette's `@` rows list, a column's, `sticky-note` for a memo, `logs` for an index name, `group` for a table group name, `message-square` for a table or column comment), drawn by an excerpt row of the Explorer's search and by the palette's `#`, `@` and `:` rows |
 | `primitives/icon/icons.ts` | The registered icons and `getIcon`; `icons.test.ts` beside it |
 
 ## Subdirectories
 
 | Directory | Purpose |
 | --- | --- |
-| `erd/` | `erd/AGENTS.md`: the name views, keys and alternate keys, Table Properties, the buttons beside a draw's target, coordinates and scrolling, table groups in the scene, the closed shadow root, overlays, the column drag handle, pointer and key handling (`YIELDS_TO_A_CARET`, Escape, Delete, Backspace), the welcome screen |
+| `erd/` | `erd/AGENTS.md`: the name views, keys and alternate keys, Table Properties, the buttons beside a draw's target, coordinates and scrolling, table groups in the scene, the closed shadow root, overlays, the column drag handle, the jump rule, the diff viewer, pointer and key handling (`YIELDS_TO_A_CARET`, Escape, Delete, Backspace), the welcome screen |
 | `export-image/` | `export-image/AGENTS.md`: the one dialog every image export the editor offers goes through, PNG and SVG, whose options the package root's `toImage` takes, and the contract of the shared modal `primitives/dialog/Dialog.tsx` |
 | `schema-sql/` | `schema-sql/AGENTS.md`: the Schema SQL tab, its options panel and its script editors |
 | `generator-code/` | `generator-code/AGENTS.md`: the Code Generator tab, its options panel, the language menu, Save file and highlighting |
@@ -43,7 +44,7 @@
 | `map-columns/` | `map-columns/AGENTS.md`: Map Columns and `relationship.changeColumns` |
 | `explorer/` | `explorer/AGENTS.md`: the Explorer docked left of the canvas, its tree, where a row goes, Find and Replace above it and the matcher in `src/utils/find-replace/` |
 | `quick-search/` | `quick-search/AGENTS.md`: the palette with no prefix, its prefixes, and its Theme and Display Language entries |
-| `primitives/` | `primitives/AGENTS.md`: the color picker, removing a color, and the native list in `select/Select.tsx` |
+| `primitives/` | `primitives/AGENTS.md`: the color picker, removing a color, the native list in `select/Select.tsx` and the virtualized tree in `tree/` |
 
 ## Rules
 
@@ -52,7 +53,7 @@
 - **`GeometrySource` picks coordinates, shown set, sort channel.** One value picks all three at once: `GeometrySource = 'document' | 'flow'`, typed in `src/utils/draw-relationship/geometrySource.ts`. Pure functions take it as a trailing `source = 'document'` parameter. Scene components read it with `useSceneSource(ctx)`.
 - **Provide the source inside a wrapper.** Each scene root provides it inside a wrapper, never on the root it returns: `Erd`, `DiffErdViewer`, `AutomaticTablePlacement`, `TimeTravel`, `FlowScene` in `VisualizationFlow.tsx`, and `ErdView`. `useProvider` attaches to the parent element, so a provider on the returned root would reach the root's siblings too.
 - **`sceneInteractionContext` picks how a scene takes an entity press.** Under `'edit'`, the default, a press on a table, memo or group selects it and carries the selection. Under `'read'`, `erd/canvas/useMoveEntity.ts` returns before it selects, so the press draws no selection outline, lifts nothing and starts no Alt duplicate, and the scene root takes it; no cell focuses or edits either, and a drag begun under `'edit'` ends at its first step under `'read'`, writing nothing more, and a marquee begun so ends there too, selecting nothing more (`src/components/erd/AGENTS.md`, The canvas and its presses). The context holds a mode or a getter of one, and `useSceneInteraction` hands back a getter that reads it each time it is called, in a render and a handler alike, so a root whose mode changes provides a getter: `useProvider` hands a scene that subscribes after its `set` the value it started with (`sceneInteractionContext.test.ts`, `sceneInteractionContext.browser.test.tsx`). The read-only scene root, `erd-view/ErdView.tsx`, provides `'read'` inside its wrapper, as a root provides its source, and the ERD tab, `erd/Erd.tsx`, a getter that reads `'read'` while its store is readonly. The takeovers drawn inside the ERD tab, the diff panes, time travel and the placement preview, provide `'edit'` again, so their presses select in a readonly editor too, and the Flow keeps the default `'edit'`.
-- **Outside any provider, read `getActiveView`.** Code that must follow the reader and runs outside any provider reads `getActiveView` (`src/engine/modules/editor/view*.ts`). That is the zoom generators, through `getActiveTransform`, and the view reducers.
+- **Outside any provider, read `getActiveView`.** Code that must follow the reader and runs outside any provider reads `getActiveView` (`src/engine/modules/editor/view*.ts`). That is the zoom generators given no source, through `getZoomTransform`, which then reads `getActiveTransform` (`src/konva/scene/viewport.ts`), and the view reducers.
 - **A scene writes to the slot it reads.** Each write names its source: `sceneScrollToAction(source, …)`, `changeZoomLevelAction$(value, source)`, `moveAllAction$(dx, dy, source)`, and `kind` on a view payload. An unnamed scroll or zoom lands on the active view. An unnamed `moveAllAction$` goes to the document, and an open view drops it.
 - What a view shows, `src/konva/scene/viewLayout.ts`: `src/konva/AGENTS.md`.
 - **`flowLayout.tsx` alone asks for a Flow placement.** It asks with `TablePlacement.viewLayered`. It caches landings under `placedKey`: the centers, the show mode, the name view and the doc's id lists, never `positions`. A key holding `positions` would make the loop re-ask on its own answer. The centers and the show mode are the framing (`framingOf`): each resizes every card, so a change of either places the view again and fits it to the screen. The name view resizes them too and places the view again, but fits it only for the reader's own switch made with the view drawn (`isOwnNameViewSwitch`, the payload's `editorId`): a peer's shared switch, as any peer's edit, and a switch made on another tab keep the reader's screen.
@@ -69,7 +70,7 @@
 ### Icons
 
 - **Colour an icon with `color`, never `fill`.** An icon is stroked from `currentColor`, so a `fill` aimed at one renders it invisible and fails nothing else. `src/styles/emittedCss.iconPaint.test.ts` fails on a `fill` declared in any style module. The scene draws the same `getIcon` data through `erd/canvas/SceneIcon.template.tsx`.
-- **Draw a table with lucide's `table-2`.** Use it wherever a table shows (an owner decision): the table headers on the canvas and in the Visualization tab, and New Table in the context menu, the palette and the welcome screen. It also marks the diff tree, the palette's table rows and a table name found (`erd/fieldIcon.tsx`, which the palette's `#` rows share). A table or column comment found draws `message-square`.
+- **Draw a table with lucide's `table-2`.** Use it wherever a table shows (an owner decision): the table headers on the canvas and in the Visualization tab, and New Table in the floating toolbar, the context menu, the palette and the welcome screen. It also marks the Explorer's and the diff tree's table rows, Map Columns' two headings, the palette's table rows and a table name found (`erd/fieldIcon.tsx`, which the palette's `#` rows share). A table or column comment found draws `message-square`.
 - **Draw a key with lucide's `key-round`.** It is drawn in the key tokens wherever a column's key shows: the scene's key cell, Graph mode's card, Table Properties and the Explorer's rows (the owner's request of 2026-10-14), whose foreign keys take their connector's colour. The diff tree draws its foreign keys with it too, muted like its other glyphs.
 - **The Explorer draws `list-tree`.** The toolbar's Explorer button and the Toggle Explorer rows of the context menu and the palette draw it (the owner's request of 2026-10-15, replacing `text-search` and `panel-left`). An index draws `logs` instead, in the Explorer, the diff tree and an index name found (`erd/fieldIcon.tsx`), so the two never meet (the owner's request of 2026-10-15). The Explorer search's own Replace button keeps `replace`.
 - **Flow's Show all draws lucide's `funnel-x`** (the owner's choice of 2026-10-22, replacing `maximize`), so it never reads as the bracketed `fullscreen` of Fit beside it; the Previous table and Next table steps draw `arrow-left` and `arrow-right`.
@@ -100,11 +101,13 @@
 
 ## Common Patterns
 
-- **A scrolling panel takes the `scrollbar` hook class** (`src/styles/scrollbar.styles.ts`), whose thin bar every DOM box that scrolls draws: Table Properties and its section tabs, the Settings page, the code tabs' code and options, the palette, the locale picker, the tree, the memo field, the data type hint, every dialog and every context menu. A box under one inherits its `scrollbar-color` but not its `scrollbar-width`, so Chrome would draw it a full-width bar.
+- **A scrolling panel takes the `scrollbar` hook class** (`src/styles/scrollbar.styles.ts`), whose thin bar every DOM box that scrolls draws: Table Properties and its section tabs, the Settings page, the code tabs' code and options, the palette, the locale picker, the tree, the memo field, the data type, logical name and domain hints, the Dictionary tab's domain list, every dialog and every context menu. A box under one inherits its `scrollbar-color` but not its `scrollbar-width`, so Chrome would draw it a full-width bar.
 - **One directory per component.** It holds `Foo.tsx`, `Foo.styles.ts` and `Foo.test.ts`, and optionally `Foo.stories.tsx`.
-- **A scene component has no `.styles.ts`.** It draws on the Konva canvas, which no stylesheet styles. Its colours come from `@/konva/theme`. Its geometry comes from `src/konva/scene/metrics.ts` and `erd/canvas/sceneTokens.ts`.
+- **A scene component has no `.styles.ts`.** It draws on the Konva canvas, which no stylesheet styles. Its colours come from `useThemeContext` (`themeContext.ts`), the palette `@/konva/theme` resolves from the theme's custom properties. Its geometry comes from `src/konva/scene/metrics.ts` and `erd/canvas/sceneTokens.ts`.
 - The Konva JSX pragma and its intrinsics: `src/konva/AGENTS.md`.
 - **Spell a second binding of one event `on:x__2`.** JSX cannot write one attribute twice on an element. `vite-plugin-r-html` drops the `__2` suffix when it writes the binding.
 - **Keep an empty template tagged.** An empty template has no JSX spelling, so `global-styles/GlobalStyles.ts` and `primitives/icon/Icon.tsx` keep tagged ones. `src/__jsx-parity__/parity.test.tsx` compares the DOM of both spellings.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

@@ -1,11 +1,11 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
-
 # generator-code
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
-`src/components/generator-code/` holds the Code Generator tab: the code it draws, its options panel, Save file, and its context menu with the language menu's three groups. Whether each editor's panel shows lives in `generatorCodeView.ts`. What each language writes lives in `src/utils/generator-code/`, and its rules in `src/utils/generator-code/AGENTS.md`. The panel borrows the Schema SQL panel's shell, whose rules are in `src/components/schema-sql/AGENTS.md`. The settings the panel changes, and their locks, are ruled in `src/engine/AGENTS.md`. The direction of the code and the panel under a right-to-left language is in `src/i18n/AGENTS.md`. Several rules here are owner decisions, each marked with its date.
+`src/components/generator-code/` holds the Code Generator tab: the code it draws, its options panel, Save file, and its context menu with the language menu's three groups. Whether each editor's panel shows lives in `generatorCodeView.ts`. What each language writes lives in `src/utils/generator-code/`: the rules every generator follows are in `src/utils/generator-code/AGENTS.md`, and each language's are in its note under `src/utils/generator-code/notes/`. The panel borrows the Schema SQL panel's shell, whose rules are in `src/components/schema-sql/AGENTS.md`. The settings the panel changes, and their locks, are ruled in `src/engine/AGENTS.md`. The direction of the code and the panel under a right-to-left language is in `src/i18n/AGENTS.md`. Several rules here are owner decisions, each marked with its date.
 
 ## Making a Change
 
@@ -34,13 +34,13 @@
 
 ### The options panel
 
-These are owner decisions of 2026-10-09, except where a rule names the owner's call on 2026-10-10.
+These are owner decisions of 2026-10-09, except where a rule names another date.
 
 - **The code sits beside a 300 px panel.** The tab draws the whole document's code, on the left in every language. The panel uses the Schema SQL panel's shell: `SchemaSQLOptions.styles.ts` and `SchemaSQL.styles.ts`, `keepSpace`, `resolvePanel` and `togglePanel`.
 - **The panel holds only settings the document has.** It holds Language, Database, Table Name Case and Column Name Case. Then comes Bracket, for Doctrine, JPA and SeaORM alone (`readsBracket`, `languageSettings.ts`). Save file and Copy sit at its foot.
 - **JPA reads Bracket because of reserved names.** JPA quotes a reserved table name only under a bracket type. It joined the Bracket row by the owner's call on 2026-10-10.
 - **No language has an option of its own.** The panel added no document field, action or lock bit, and nothing for `mcp-server`. Each list dispatches the setting's own action, as the tab's context menu and the palette do.
-- **Caption the settings by whether the editor is readonly.** Their group reads Saved in the document (`code.savedInDocument`) while it is writable, though a locked setting's file keeps its locked value (below), and This window only while it is readonly, the Schema SQL panel's caption (`schemaSql.thisWindowOnly`), since a pick then turns the reader's screen alone; a turn either way relabels an open panel. `GeneratorCode` takes the editor's `readonly` as a prop, as `SchemaSQL` does, and hands it to the panel.
+- **Caption the settings by whether the editor is readonly** (after the owner decisions of 2026-10-26, `src/engine/AGENTS.md` § Screen-only settings). Their group reads Saved in the document (`code.savedInDocument`) while it is writable, though a locked setting's file keeps its locked value (below), and This window only while it is readonly, the Schema SQL panel's caption (`schemaSql.thisWindowOnly`), since a pick then turns the reader's screen alone; a turn either way relabels an open panel. `GeneratorCode` takes the editor's `readonly` as a prop, as `SchemaSQL` does, and hands it to the panel.
 - **Keep a setting the language ignores, dimmed.** It stays with the note Not used by {language} (`code.notUsedBy`), which its list's `aria-describedby` names.
   - The Database is ignored by DBML, AML and Mermaid (`readsDatabase`), since they write every data type as is, whatever the database.
   - Both name cases are ignored by SeaORM, DBML, AML and Mermaid (`readsNameCases`). SeaORM names tables and columns its own way, and the schema languages keep the names as written.
@@ -49,7 +49,7 @@ These are owner decisions of 2026-10-09, except where a rule names the owner's c
 - **Under right-to-left, end each name in U+200E.** Under a right-to-left language each name ends in U+200E (`LEFT_TO_RIGHT_MARK`), so `C#` never reads `#C`. The mark goes after the name, since an isolate or a mark before it would keep a typed letter from finding it. `dir="ltr"` on an option is not used, since it aligns the picked value left.
 - **Write the vendors as they are.** The Database list writes them as they are, as the Schema SQL panel does.
 - **The panel shows no Settings lock** (the owner's call on 2026-10-10). No glyph, title or description marks a locked row.
-  - In a writable editor its list changes a locked setting on this screen alone, sent to no peer, while the file keeps the locked value, and an unlocked one on every screen, as the context menu and the palette do. In a readonly one it turns the reader's screen alone (`src/engine/AGENTS.md` § Locks and § Screen-only settings).
+  - In a writable editor its list changes a locked setting on this screen alone, sent to no peer (an owner decision of 2026-10-30), while the file keeps the locked value, and an unlocked one on every screen, as the context menu and the palette do. In a readonly one it turns the reader's screen alone (`src/engine/AGENTS.md` § Locks and § Screen-only settings).
   - The Settings tab alone shows the locks. `GeneratorCodeOptions.test.ts` holds a new document, every code setting locked, to a panel with no lock.
 - What a locked setting saves, and how a change to it travels: `src/engine/AGENTS.md` § Locks.
 
@@ -68,7 +68,7 @@ These are owner decisions of 2026-10-09.
 - **Write the code on mount and setting changes.** `GeneratorCode.tsx` writes it as the tab mounts. It writes again only when a setting it is written from changes: `language`, `database`, `tableNameCase`, `columnNameCase`, `bracketType`.
 - **Never rewrite the code on a document edit.** That keeps the text what the reader is looking at (`GeneratorCode.test.ts`).
 - **`database` joined those keys with the panel.** It joined them with the panel and the menu's Database row, which set it, as `bracketType` joined them for Doctrine. Until then nothing on the tab set it, and the code not following it was intended.
-- What `createGeneratorCode` writes for each language: `src/utils/generator-code/AGENTS.md`.
+- What `createGeneratorCode` writes for each language: its note under `src/utils/generator-code/notes/`, which `src/utils/generator-code/AGENTS.md` lists, beside the rules every generator follows.
 
 ### Save file, the context menu and the palette
 
@@ -113,4 +113,6 @@ These are owner decisions of 2026-10-09.
 - **`src/services/shiki/shikiService.test.ts`** holds the colouring to the shipped grammar's, and fails once a shiki release changes that grammar (Making a Change, step 5).
 - **`e2e/specs/generator-code-options.spec.ts`** drives the panel in the real element, outside `pnpm test`.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

@@ -1,0 +1,132 @@
+# drizzle.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `drizzle.ts` maps PostgreSQL, MySQL and MariaDB, and SQLite to their cores. It borrows `pg-core` for SQL Server, Oracle, Snowflake and Databricks. drizzle-kit then writes their DDL as PostgreSQL's.
+- **Owner decisions of 2026-10-09.**
+  - PostgreSQL's `bytea`, bit strings, `money`, `xml`, `tsvector`, range types and `box` are declared as their own types rather than approximated.
+  - MySQL's and MariaDB's BLOBs, `BIT`, `SET` and spatial types are declared as their own types rather than approximated.
+  - A PostgreSQL array is an array.
+  - SQL Server's `bit` is `boolean()`.
+  - PostgreSQL's `pg_lsn` is `varchar()`.
+  - Every `bigint` and `bigserial` stays `mode: "number"`, an unsigned one too. A JS bigint would set one integer type apart, and `JSON.stringify` refuses it.
+  - A primary key without the NN flag is NOT NULL, here through `.primaryKey()` on a single key and `.notNull()` on each column of a composite one (`../AGENTS.md`, A primary key column is NOT NULL).
+  - The importer keeps MySQL's sign words UNSIGNED and ZEROFILL in the data type. It reads SIGNED and drops it (`../AGENTS.md`, The SQL importer keeps UNSIGNED and ZEROFILL).
+- **Types.**
+  - A type is read by name, in this order:
+    1. The shared classifier (`columnTypes.ts`). It gives the base name, with MySQL's UNSIGNED, ZEROFILL and SIGNED set apart on MySQL and MariaDB. It also gives the PostgreSQL array depth, the ENUM and SET members, the integer width, the scalar and the shared name sets. The sets are `BINARY_TYPES`, `UUID_TYPES`, `JSON_TYPES`, `MONEY_TYPES`, the zoned time and timestamp sets and the PostgreSQL bit strings.
+    2. The names one database reads apart from the rest of its core: PostgreSQL's declared types; MariaDB's `SERIAL`, `UUID`, `INET4`, `INET6` and `CLOB`.
+    3. The generator's table for its core.
+    4. The shared vendor tables' primitive.
+  - On the other databases the generator drops UNSIGNED, ZEROFILL and SIGNED itself. So on PostgreSQL `INT UNSIGNED` is `integer()` and `SMALLINT(5) ZEROFILL` is `smallint()`.
+  - A type's arguments are read only where it has one argument list and each number is a safe integer. A second argument list belongs to a later word, and a number past 2^53 would print rounded or as Infinity. So Oracle's `INTERVAL DAY(3) TO SECOND(2)` passes no precision, and a length past 2^53 passes none.
+  - An INTERVAL's number passes as `precision` only after `SECOND` or after the `INTERVAL` keyword itself. That is the one place PostgreSQL reads a seconds precision. `INTERVAL DAY TO SECOND(3)` gives `interval({ fields: "day to second", precision: 3 })`, and `INTERVAL(3)` gives `interval({ precision: 3 })`.
+  - After a leading field the number is that field's digits, as in Oracle's `INTERVAL YEAR(2) TO MONTH` and `INTERVAL DAY(3) TO SECOND`. It is dropped: `interval({ fields: "year to month" })`. Passed on, drizzle-kit would write `interval year to month(2)`, which PostgreSQL refuses, or a seconds precision the document never gave.
+  - A declared type is a `customType` written once after the imports, sorted by name. A one-table view declares only the ones its columns use.
+  - On pg-core, `bytea` is declared for every name in `BINARY_TYPES`, under the borrowed pg-core too.
+  - On PostgreSQL alone, `bit` is declared. A bare one is `bit(1)`, as PostgreSQL stores it.
+  - On PostgreSQL alone, `varbit` is declared. Its declaration names no global, since a table const may be `undefined`.
+  - On PostgreSQL alone, `money`, `xml`, `tsvector`, `tsquery`, `box`, `lseg`, `path`, `polygon` and the range and multirange types are declared, each under its own name with `data: string`.
+  - On MySQL and MariaDB, `tinyblob`, `blob`, `mediumblob` and `longblob` are declared. `BLOB(n)` is the smallest that holds n bytes. `LONG VARBINARY` is a `mediumblob`, and a VARBINARY with no length a `blob`.
+  - On MySQL and MariaDB, `bit` is declared with `data: Buffer`.
+  - On MySQL and MariaDB, `set` is declared with its `values`. Its declaration doubles a member's backslash and quote.
+  - On MySQL and MariaDB, the spatial types are declared with `data: unknown`. mysql2 parses them into points it writes no value back from.
+  - On MariaDB alone, `uuid`, `inet4` and `inet6` are declared with `data: string`, which mysql2 reads and writes.
+  - A PostgreSQL array chains `.array()` once per dimension: `integer().array()`, an enum's const too. It takes a default only through `sql`, and never an identity.
+  - Integers keep their width: `smallint`, `integer`, `bigint`, and MySQL's `tinyint` to `bigint`.
+  - The borrowed pg-core follows what the classifier says the database stores. Oracle's `INT`, `INTEGER` and `SMALLINT` and Snowflake's integer names are `bigint`. Oracle's `REAL` and Snowflake's `REAL` and `FLOAT4` are `doublePrecision()`. Oracle's `DATE`, which holds a time, is `timestamp()`. Databricks' `TIMESTAMP`, an instant like `TIMESTAMP_LTZ`, is `timestamp({ withTimezone: true })`.
+  - Under the borrowed pg-core, `money` and `xml` stay `numeric()` and `text()`.
+  - Under the borrowed pg-core, SQL Server's `rowversion` and `timestamp` stay `varchar()`. They are 8-byte binaries outside `BINARY_TYPES`, which the shared tables file as strings.
+  - On MySQL and MariaDB a character set, a collation, `BINARY`, `ASCII` or `UNICODE` written after a type is read past, so the type keeps its builder. Both databases read these words as the column's, not the type's. `CHAR(36) BINARY` gives `char({ length: 36 })`, `CHAR(2) CHARACTER SET latin1 COLLATE latin1_bin` gives `char({ length: 2 })`, and `TINYTEXT BINARY` gives `tinytext()`.
+  - MariaDB's `CLOB` is `longtext()`. A `NUMBER` the classifier reads as a double (one with no numeric precision) is `double()`. Both follow what MariaDB's Oracle mode (`sql_mode=ORACLE`) stores, the one mode that takes either name. `NUMBER(10,2)` stays `decimal({ precision: 10, scale: 2 })`. MySQL refuses both names and keeps `text()` and `decimal()`.
+  - On MySQL and MariaDB, UNSIGNED or ZEROFILL gives `unsigned: true` to an integer, a DECIMAL, a FLOAT or a DOUBLE.
+  - MySQL's SERIAL is `serial()`, unsigned by itself.
+  - MariaDB refuses the `AUTO_INCREMENT` drizzle-kit writes after `serial`. So MariaDB's SERIAL is written as the `BIGINT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE` it stands for: `bigint({ mode: "number", unsigned: true }).autoincrement()`. Then comes `.primaryKey()` on a single key and `.notNull().unique()` anywhere else, with no default.
+  - MySQL's `FLOAT(p)` is `float()` up to p = 24 and `double()` past it, as MySQL stores it. `FLOAT(p,s)` and `DOUBLE(p,s)` keep both arguments; `DOUBLE(p)` keeps neither.
+  - MySQL's and MariaDB's `LONG` and `LONG VARCHAR` spellings are `mediumtext()`, as they store them.
+  - On MySQL and MariaDB a zero length passes as `length: 0`: `char({ length: 0 })`, `varbinary({ length: 0 })`. pg-core and SQLite drop it, since their databases refuse it.
+  - A zoned name in any spelling (`TIMESTAMP_TZ`, `TIMESTAMPLTZ`, `datetimeoffset`) is `timestamp({ withTimezone: true })`. A precision from 0 to 6 passes as `precision` on pg-core and as `fsp` on mysql-core.
+  - MySQL's VARCHAR with no length is `text()`.
+  - An INTERVAL is `text()` on MySQL and SQLite.
+- **ENUM.**
+  - On PostgreSQL and the borrowed pg-core, an ENUM is a `pgEnum`. Its const is named from `<table>_<column>_enum` in the table name case.
+  - The `pgEnum` type is `<table>_<column>`, numbered past every other enum type and every table name of the document. PostgreSQL gives each table a row type of its name. So beside a table `user_role` the type `user_role` becomes `user_role2`.
+  - On MySQL and MariaDB an ENUM is a `mysqlEnum`, always naming the column.
+  - On SQLite an ENUM is `text({ enum: [...] })`.
+  - Each member is read as MySQL reads a string literal.
+  - On MySQL and MariaDB a member is written with each backslash doubled: `ENUM('a\\')` gives `mysqlEnum("e", ["a\\\\"])`. drizzle-kit writes a member into its DDL with only its quotes doubled. A single backslash would escape the closing quote (MySQL error 1064) or turn `\b` into a backspace.
+  - drizzle-kit's DDL then stores `a\`, as the editor's does. The member's literal type says `a\\`, as a quoted MySQL default already does. So a value read back (`a\`) lies outside the union. Inserting the typed `a\\` fails with `Data truncated for column` under strict mode.
+  - drizzle-kit pull writes the stored `a\`. drizzle-kit's own DDL from that is refused.
+- **Names.**
+  - A table const follows the table name case.
+  - A character outside `$`, ASCII letters, digits and `_` becomes `_`.
+  - A name that cannot open an identifier takes `x` before it: `1st` gives `x1st`.
+  - A reserved word takes `_` after it: `class_`.
+  - A table const is numbered past every name the module holds. Those are the helpers and builders it can import, `Buffer`, `Date`, `table`, `one`, `many`, its core's `Any…Column` and `…TableExtraConfigValue` type names, the custom types the document declares, earlier table and enum consts, and each `<const>Relations`.
+  - A table `blob` beside a `blob` declaration is `blob2`. A MariaDB table `uuid` beside a `uuid` declaration is `uuid2`.
+  - Any other name is kept, globals such as `undefined`, `NaN` or `Map` included.
+  - A column property follows the column name case through the same repair. It is numbered within its table past `$inferInsert`, `$inferSelect`, `_`, `__proto__`, `enableRLS` and `getSQL`.
+  - A relation property is numbered past `__proto__`.
+  - An object literal reads `__proto__` as its prototype, which would drop the column or relation. So the column is written `__proto__2: integer("__proto__")`.
+  - The builder takes the column's own name as its first argument wherever the two differ.
+- **Keys and relations.** `relationName` is written only where one table pair has several relationships or a relationship returns to its own table.
+- **Strings and defaults.**
+  - A default that is an ENUM member passes as a string: `.default("a\\\\")` on MySQL.
+  - A number literal passes as a number to a number builder and as a string to a decimal.
+  - A quoted literal passes unquoted to a string builder.
+  - `true`, `false`, `1` or `0` pass as `true` or `false` to a boolean. PostgreSQL refuses an integer as a boolean's default, as in SQL Server's `bit DEFAULT 1` under the borrowed pg-core.
+  - Any other default goes through `sql`.
+  - Apart from a MySQL ENUM member, a string the output writes holds the document's value. Its backslash and quote are escaped. Each line terminator is written as its own escape: `\n`, `\r`, `\u2028`, `\u2029`.
+  - A comment is one `//` line per line of the document's comment. A line TypeScript would read as a directive takes a backslash before its at sign: `// \@ts-expect-error` (`../AGENTS.md`, No TypeScript directive in a comment).
+- **Written as is.** The generator writes each case below so, though drizzle-kit alters the column or refuses the DDL.
+  - MySQL and MariaDB: ZEROFILL as plain `unsigned`, since drizzle has no option for ZEROFILL.
+  - MySQL and MariaDB: a display width is left out, so `INT(11)` and `TINYINT(1)` give `int()` and `tinyint()`. MySQL 8.4 keeps the width on `tinyint(1)` and ZEROFILL columns, and MariaDB on every integer.
+  - MySQL and MariaDB: `TEXT(n)` as `text()`. Both databases pick `tinytext` to `longtext` by n characters of the column's character set. Under utf8mb4 `TEXT(63)` is a `tinytext` and `TEXT(64)` a `text`; under latin1 `TEXT(255)` is a `tinytext`.
+  - MySQL and MariaDB: `BLOB(0)` as `blob()`, MariaDB's choice. MySQL stores `tinyblob`.
+  - MariaDB: `YEAR(2)` as `year()`, which MariaDB stores as `year(4)`. mysql-core's `year` takes no width.
+  - MySQL and MariaDB: a SERIAL without the NN flag as NOT NULL, as SERIAL stands for. The editor's DDL writes `NULL` after it. MySQL takes that as a nullable column, and MariaDB refuses it.
+  - MySQL and MariaDB: a key on a zero-length column, written NOT NULL. Neither database indexes it, though MariaDB keys the editor's `CHAR(0) NULL`.
+  - MySQL and MariaDB: an ENUM member holding a comma or an opening parenthesis. drizzle-kit's snapshot splits the type there. `ENUM('x,y','z')` comes out `enum('','','z')`, which MySQL refuses. `ENUM('x(y','z')` comes out `enum('''')`.
+  - MySQL and MariaDB: a composite key or foreign key name that drizzle-kit builds from table and column names. In `data/Magento2-sales.sql` such a name runs past MySQL's 64 characters.
+  - MySQL and MariaDB: the character set and collation written after a type. No mysql-core builder takes them, so drizzle-kit's column takes the database's default. `CHAR(2) CHARACTER SET latin1` comes out `utf8mb4`, and `CHAR(36) BINARY` comes out without its `utf8mb4_bin`.
+  - MySQL and MariaDB: `BIT(0)` as `bit({ length: 0 })`. MySQL refuses it (error 3013, Invalid size), as it refuses the editor's `BIT(0)`. MariaDB stores it as `bit(1)`, as it stores the editor's.
+  - PostgreSQL: `"char"`, `name`, `tid`, `jsonpath`, `pg_snapshot`, `txid_snapshot`, the `reg*` types and `circle` as `varchar()`. node-postgres parses `circle` into an object.
+  - PostgreSQL: `oid`, `xid`, `cid` and `xid8` as `bigint`.
+  - PostgreSQL: a bare `bpchar` as `char()`, which PostgreSQL stores as `character(1)`.
+  - Borrowed pg-core: a length past PostgreSQL's 10,485,760, such as Snowflake's `VARCHAR(16777216)`.
+  - pg-core and SQLite: an index name repeated across tables, such as `data/sakila.sql`'s `idx_fk_film_id`. Both databases hold index names schema-wide. So drizzle-kit refuses the pg-core snapshot, and SQLite refuses the second `CREATE INDEX`. The editor's DDL repeats the name too.
+  - MySQL, MariaDB and SQLite: a table named after an `Object.prototype` member (`constructor`, `toString`, `valueOf`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`, `__defineGetter__`, `__lookupSetter__`), whatever the name case. drizzle-kit's snapshot leaves it out with no error, so its migration creates no such table.
+  - MySQL, MariaDB and SQLite: an index of such a name. drizzle-kit throws at it (`Cannot read properties of undefined`). pg-core keeps both the table and the index. A column of such a name is kept on every core.
+  - Every core: an empty table as `{}`. MySQL, MariaDB and SQLite refuse its `CREATE TABLE x ()`.
+  - Every core: a default as the document gives it, a zero date included.
+  - Every core: a column named `__proto__`, and on MySQL, MariaDB and SQLite a table of that name. drizzle-kit's snapshot throws a ZodError at it. drizzle-orm still reads and writes the column and its relation.
+  - Every core: a relation that takes a column's property name. A relation is named after the other table (`<table>List` for a many side) and numbered only past `__proto__`. The object literal keeps both entries. So `post` with a column `author` referencing table `author` gets `author: integer()` and `author: one(author, …)`. TypeScript types `post.author` as the column's number. drizzle-orm's `findMany({ with: { author: true } })` returns the author row in its place.
+- **Measured on 2026-10-10.** The runs used drizzle-orm 0.45.4 and drizzle-kit 0.31.11.
+  - Corpus: every name of the eight vendor lists and 315 more spellings. Each ran as a NOT NULL and a nullable column, a key without the NN flag and an auto-increment key.
+  - Corpus: 24 ENUM and 6 SET member lists.
+  - Corpus: 130 awkward names under the four name cases with relationships and indexes, again with `__proto__` left out.
+  - Corpus: comments with CR, LF, CRLF, U+2028 and U+2029, and lines TypeScript reads as directives after each kind of whitespace.
+  - Corpus: defaults.
+  - Corpus: empty tables.
+  - Corpus: the five `data/*.sql` fixtures.
+  - Corpus: per database, an enum beside a table of its type's name, SERIAL keys and columns, zero lengths and a `__proto__` column.
+  - Corpus size: for the eight databases, 208 whole texts and 15,519 one-table views.
+  - TypeScript: under TypeScript 5.9.3, 6.0.3 and 7.0.2 strict, the whole texts compiled with no error.
+  - TypeScript: the one-table views' only errors name a sibling table const the view does not declare. A sibling named like a global resolves to that global, such as `File`, `Blob`, `Array` or a PascalCase table `set`'s `Set`.
+  - DDL: drizzle-kit's DDL ran beside the editor's on PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13 and SQLite 3.53.0 (`node:sqlite`, Node 24.16.0). MariaDB also ran `CLOB` and `NUMBER` under `sql_mode=ORACLE`.
+  - DDL: drizzle-kit's DDL created every table the editor's DDL created, except in the three cases below.
+  - DDL: on MySQL and MariaDB it did not create the ENUM with a comma, Magento's key name or a UNIQUE on a zero-length column. The editor's DDL adds that UNIQUE in a statement of its own, which fails too.
+  - DDL: on MariaDB it did not create a key on a zero-length column.
+  - DDL: on MySQL, MariaDB and SQLite it did not create the tables named after `Object.prototype` members, besides the `__proto__` column and table.
+  - DDL: the names corpus was compared through drizzle-kit's statements. Its editor DDL, under no bracket, stops at reserved words.
+  - DDL: its column types differed from the editor's only in four places.
+    - The names under Written as is, `pg_lsn` (Owner decisions, above) and a fractional seconds precision past 6. The generator drops such a precision as outside the 0 to 6 drizzle takes, and PostgreSQL caps it at 6. These made 29 names on PostgreSQL, `"char"`, `pg_lsn`, `TIME(7)`, `TIME(9)` and `TIMESTAMP(9)` among them; 15 on MySQL; 20 on MariaDB.
+    - The ENUM with a parenthesis.
+    - The fixtures' display widths.
+    - Character set and collation, where the type named one.
+  - DDL: its NOT NULL and defaults differed nowhere but at a SERIAL without the NN flag on MySQL, and on SQLite at `true` where the editor writes `1`. SQLite keeps a default's text; both store 1.
+  - drizzle-orm: it read and wrote a `__proto__2` column and its relation on PostgreSQL through node-postgres 8.23.1.
+  - drizzle-orm: through mysql2 3.24.5 it read and wrote MariaDB's `uuid`, `inet6` and `inet4` as strings, and a spelt-out SERIAL.
+  - drizzle-orm: through mysql2, on MySQL 8.4 and MariaDB 11.4, a member written `"a\\\\"` (the value `a\\`) stored and read back `a\`. The typed value was refused on insert.
+  - drizzle-orm: through node-postgres it returned a post's `author` column as 7 from `findMany()`. It returned the author row from `findMany({ with: { author: true } })`, which TypeScript 5.9.3 still typed as a number.

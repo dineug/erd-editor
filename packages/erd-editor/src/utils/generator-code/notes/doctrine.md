@@ -1,0 +1,186 @@
+# doctrine.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** Doctrine ORM 3 attribute entities with public typed properties and no accessors (owner decisions of 2026-10-07).
+  - The properties are public because ORM 3's lazy ghost proxies load a public property, which ORM 2's did not.
+  - The output is for DBAL 4.2 or later (`Types::ENUM`, `Types::SMALLFLOAT`).
+  - Its rules come from three adversarial reviews, run from 2026-10-07 to 2026-10-09. Each ran every finding through ORM 3.7.4 and DBAL 4.2.5, the last against the real databases too.
+- **Types.** Every column writes `name:` and `type: Types::…`.
+  - Its PHP type is what DBAL 4 hydrates. `BLOB` is `mixed`, `JSON` and `SIMPLE_ARRAY` are `array`, and `DECIMAL` is a string.
+  - `BIGINT` is an int, or `int|string` where it is unsigned and can pass PHP's range.
+  - It writes the options DBAL reads back, so a migration diff against the editor's DDL leaves the column as it is but for the shapes under Written as is and Migration diffs below:
+    - A length comes from a character or binary type's argument alone, in every spelling the vendor lists hold (`lengthTypes`). An interval's or a vector's argument is no length.
+    - An Oracle `BYTE` or `CHAR` unit is dropped.
+    - `'fixed' => true` goes on `char`, `nchar`, `binary`, MySQL's `CHAR BYTE` (a `BINARY`) and a `bpchar` with a length.
+    - A bare CHAR takes length 1. So does a bare binary on MySQL, MariaDB and SQL Server, which make it one byte.
+    - `SMALLFLOAT` is a single precision float as each platform reads it back:
+      - MySQL `FLOAT` up to 24 or with two arguments;
+      - PostgreSQL `real`, `float4` and `float(1)` to `float(24)`;
+      - SQL Server `real` and `float(1)` to `float(24)`;
+      - Oracle `REAL` and `FLOAT(63)`, while Oracle `BINARY_FLOAT` is `FLOAT`;
+      - SQLite `real`.
+    - MySQL's types:
+      - Its sized text and blob types take their lengths (255, 65535, 16777215).
+      - A LONG type is a MEDIUMTEXT or MEDIUMBLOB there.
+      - `TEXT(n)` takes the class n four-byte characters need, where `BLOB(n)` counts bytes.
+      - A zero argument takes the TINY class on MySQL and the plain one on MariaDB.
+      - Its national character types take `'charset' => 'utf8mb3'`, which MySQL stores them in.
+      - `ENUM` takes its `'values'`, each read as MySQL reads a literal.
+      - `SET` is `SIMPLE_ARRAY`.
+      - `UNSIGNED`, `ZEROFILL` and `SERIAL` write `'unsigned' => true` on an integer, a DECIMAL or a float.
+    - PostgreSQL `jsonb` takes `'jsonb' => true`.
+    - An Oracle or Snowflake NUMBER with a scale is a `DECIMAL`.
+    - An Oracle NUMBER, DECIMAL, NUMERIC or DEC of no scale is typed as DBAL reads it back. Precision 5 is a `SMALLINT`, any other up to 10 an `INTEGER`, a wider one a `BIGINT`.
+    - Oracle's `SMALLINT`, which Oracle stores as such a NUMBER, is an `INTEGER`.
+    - Oracle's `DATE` is a `DATE_IMMUTABLE`, the type DBAL reads such a column back as. The shared vendor tables now file it as a date and time.
+    - Those two Oracle types sit in `vendorTypes`. They follow DBAL's Oracle type mapping and were not run.
+  - DBAL 4 writes no VARBINARY or DECIMAL without a size.
+    - So any other length-less binary type is a `BLOB`.
+    - A DECIMAL naming no precision takes `precision: 10, scale: 0`, DBAL 3's default.
+    - On SQL Server it takes SQL Server's own 18 and 0 instead. On Oracle it is the `INTEGER` its NUMBER(*,0) reads back as. A money type takes its vendor's digits.
+  - ORM writes a length-less string as VARCHAR(255).
+    - So `varchar(max)` and a length-less `text` or `string` (PostgreSQL, SQLite, Snowflake, Databricks) are a `TEXT`.
+    - A length-less `varchar` or `bpchar` stays a `STRING`.
+    - As a key, it takes length 255, ORM's default, which SchemaTool would not copy to a join column toward it.
+  - A time of day is `TIME_IMMUTABLE`, though `php.ts` writes a string (an owner decision). As a string, a migration would turn the column into VARCHAR.
+  - An interval is a `STRING`.
+  - Doctrine hashes a key as a string, so a key it cannot hash that way takes another type:
+    - A date or time key is a `STRING` of length 255 with a string property and a definition (an owner decision). The length is what SchemaTool copies to a join column toward it, and what DBAL's comparator needs.
+    - A length-less binary key on PostgreSQL or SQLite (`bytea`, `BLOB`) is a `BINARY` with a string property. Its `BLOB` would hydrate a stream. Those platforms write `BINARY` as the same type.
+- **Column definitions.** A column whose type DBAL cannot write keeps a column definition. DBAL writes a definition verbatim where it creates a column.
+  - SQL Server's `rowversion` and `timestamp` are `ROWVERSION`: eight bytes the database writes and never leaves NULL.
+    - They are not fixed, as DBAL reads them back.
+    - They take `insertable: false, updatable: false, generated: 'ALWAYS'`, and the property is null until the insert.
+  - SQL Server's `nvarchar(max)`, `ntext` and `national text` take `length: -1` and `NVARCHAR(MAX)`. DBAL writes a TEXT as VARCHAR(MAX), which keeps no Unicode.
+  - A SQL Server VARCHAR or CHAR past 4000 characters keeps its definition. The NVARCHAR DBAL writes holds 4000 characters at most.
+  - PostgreSQL's arrays, bit strings and `pg_lsn` are a `TEXT` with a string property, since pdo_pgsql reads them as text.
+  - A date or time key keeps a definition, and a join column toward it repeats it.
+  - A definition holds the column's NOT NULL, except on an Oracle key DBAL reads back otherwise: one of a type other than DATE, or one with a default. That key's primary key makes it NOT NULL, and its MODIFY refuses NOT NULL again.
+  - On MySQL and MariaDB a definition also holds the column's comment, which those platforms write nowhere else. The `'comment'` option stays beside it for DBAL's comparator.
+- **Names in SQL.** Doctrine quotes a reserved word in the DDL it writes. In a query it quotes only a name the mapping wraps in backticks.
+  - So every table, column and join column name gets backticks where `settings.bracketType` quotes names.
+  - Under `BracketType.none` these names get backticks:
+    - a word `DOCTRINE_RESERVED_WORDS` lists, in any letter case. `doctrineReservedWords.ts` holds every word DBAL 4 reserves on MySQL, MariaDB, PostgreSQL, SQL Server, Oracle or SQLite.
+    - a name that is no ASCII identifier;
+    - a name typed in delimiters (`"Users"`, and on MySQL, MariaDB, SQLite and Databricks a table name's part in backticks). It keeps its case (an owner decision).
+  - Under `BracketType.none` an undelimited name is written as its database stores it. A backticked one then names what the editor's DDL created.
+    - On Oracle each letter whose capital is one character is upper case. A Greek letter with an iota below takes the capital with the iota beside it, as Oracle does.
+    - On PostgreSQL ASCII letters are lower case.
+  - Doctrine keeps one quoted flag for a join column's two names. So a column takes backticks wherever it, or a key it references in any association, needs them. Its field and every join column on it take them alike.
+  - Doctrine reads a dot in a table name as the end of a schema before it reads a backtick, and keeps one schema. So a dotted name goes out as `name:` and `schema:`.
+    - Its last two parts are split and unquoted as `splitNameParts` and `unquoteNamePart` read them for the SQL generators.
+    - The backticks go on the table alone, and they quote the schema too.
+    - `sales.order` is `` name: '`order`', schema: 'sales' `` under every bracket type.
+    - `shop.sales.users` drops `shop`.
+    - A one-part name the document quotes is written whole, delimiters and all, as its DDL writes it.
+- **PHP names.** `phpIdentifier` repairs them: an ASCII character no PHP identifier holds becomes `_`, and an empty name or one opening on a digit takes `_` before it.
+  - A class name is made an identifier and suffixed as `php.ts` does. A table with no name is `__`.
+  - A class name is numbered against the header's imports and the other classes, in any letter case.
+  - A property name is made an identifier and numbered.
+  - A second column of one name is dropped.
+  - Letters beyond ASCII stay (an owner decision).
+- **Keys and relations.** A relationship maps only between tables the document lists, and only toward the parent's key columns.
+  - A key column is the one column Doctrine lets a join column reference. So a relationship toward a UNIQUE column keeps its columns plain fields.
+  - It maps both sides:
+    - A `ManyToOne` with a `OneToMany` `Collection` the constructor fills.
+    - A `OneToOne` on both, for a one relationship, or for an association that is the child's one key column (`#[ORM\Id]` on it, below). Such an association holds one child a parent, and Doctrine's validator refuses it as a many-to-one.
+  - A foreign key that is the child's whole key in another way stays a `ManyToOne` beside its `#[ORM\Id]` fields, which validates. The other ways are a composite key, or a key toward a parent keyed by an association.
+  - `inversedBy` and `mappedBy` name each other.
+  - Each `JoinColumn` carries:
+    - its own `nullable: false`;
+    - the UNIQUE, written once a column, and left to Doctrine on a single-column one-to-one;
+    - the options of a column the association carries (Types and Column definitions above, Strings and defaults below);
+    - `onDelete` where `referentialActionSupport` takes it. Doctrine has no ON UPDATE.
+  - The foreign key columns an association carries get no field of their own, but a key column may.
+    - An association is the key itself (`#[ORM\Id]` on it) only toward a parent keyed by one column of its own.
+    - Doctrine refuses one toward a composite key at metadata load. Its validator refuses one toward a parent whose key is an association.
+    - Elsewhere the key column stays an `#[ORM\Id]` field beside the association on that column.
+  - Members stand in the table's column order, an association at its first join column. Doctrine builds the primary key in the order its members are declared.
+  - `GeneratedValue` goes on a single-column integer key flagged auto increment or of a serial type.
+    - ORM 3 picks IDENTITY. DBAL reads that back from PostgreSQL only as a BY DEFAULT identity.
+    - So against the editor's `GENERATED ALWAYS` key, every schema update adds the identity again. PostgreSQL refuses that, though inserts work.
+    - On Oracle ORM 3 picks a sequence named `<table>_<column>_seq`. The editor's Oracle DDL does not create it; it writes `SEQ_<table>` and a trigger.
+- **Indexes** (an owner decision). An index is `#[ORM\Index]` and a unique one `#[ORM\UniqueConstraint]`, after `#[ORM\Table]`. Its removed columns are dropped.
+  - A blank name takes the one the editor's DDL gives it: `IDX_<table>`, numbered with `autoNameIgnoreCase` in the document's index order, so the one-table view writes the same.
+  - The exception is an index the document still holds on a table it no longer lists, or one none of whose columns its table still lists. Neither writes that index, but `doctrine.ts` numbers it and the DDL skips it. So a later blank index of that name takes the next number (`IDX_t1` where the DDL writes `IDX_t`).
+  - A name out of its delimiters is written only where DBAL and ORM take it as given:
+    - it is of `[A-Za-z0-9_]`;
+    - it is no number, which ORM reads as no name;
+    - it is not `primary`, the key's name;
+    - it repeats no earlier index name of the table, in any letter case.
+  - Any other name is left out. Then one unnamed index is written per column set and uniqueness. DBAL names those after their table, columns and uniqueness, and refuses a second of one name.
+  - ORM keeps one index for a column set a unique constraint covers. So it folds a UQ column's own unique index into a constraint on that column alone.
+- **Strings and defaults** (an owner decision).
+  - A default goes into `options` when it is one of these:
+    - a number in the grammar the editor's DDL writes (a sign, a point, an exponent);
+    - a quoted string, with an `N` before it, or on MySQL and MariaDB a character set before it. Those two read its backslash escapes too, with `\%` and `\_` kept.
+    - a boolean on a BOOLEAN, or as 1 or 0 on an integer column of MySQL, MariaDB or SQLite;
+    - the current time on a timestamp (`CURRENT_TIMESTAMP`, `NOW()`, `GETDATE()`, `now()`, `LOCALTIMESTAMP` and the like, as each database spells it), all written `CURRENT_TIMESTAMP`.
+  - An expression never goes in, since DBAL would quote it. No default goes on a generated key or a defined column.
+  - A default is written as its database reads it back:
+    - on Oracle and SQLite as typed, since they keep the text;
+    - elsewhere with no exponent, no plus, no leading zero and no trailing zero; PHP reads a leading zero as octal;
+    - an integer bare, but as a string past PHP's int or where the text is kept;
+    - any other number as a string;
+    - on MySQL and MariaDB rounded and padded to its column's scale, a DECIMAL's or a FLOAT(M,D)'s, and on an integer column rounded to an integer;
+    - a quoted `true`, `false`, 1 or 0 on a BOOLEAN as a flag, and on PostgreSQL its `t`, `yes`, `on` and the rest too. Any other text there is left out.
+  - These defaults are left out:
+    - a JSON default on MySQL, which MySQL takes only in parentheses, which DBAL never writes;
+    - a SQL Server `N'…'` holding characters beyond ASCII, which DBAL would write without the N;
+    - a PostgreSQL `E'…'`.
+  - A join column an association carries writes its own default and comment. Otherwise it writes `'default' => null` and `'comment' => ''` over its parent's, which SchemaTool would copy to it.
+- **Written as is, though Doctrine cannot use it.**
+  - A keyless table (the link tables of `data/OKKY.sql`), which Doctrine refuses.
+  - A foreign key to part of a composite key (`data/Magento2-sales.sql`), which Doctrine refuses.
+  - An optional association carrying a key field or a NOT NULL column. ORM writes NULL into it when the association is null.
+  - A column name with a dot, which DBAL splits.
+  - A dotted table name where the bracket type quotes names. The editor's DDL creates it as one identifier, and Doctrine maps it as a schema and a table.
+  - A join column ORM's OneToMany loader cannot reach (an owner decision). The loader writes the name unquoted. So a parent's collection fails to load when that column is reserved, holds other characters, or is quoted in a case PostgreSQL or Oracle would fold otherwise.
+  - A class or property name with letters beyond ASCII, which DQL and the QueryBuilder cannot name (an owner decision).
+  - A column whose name, stripped to ASCII letters, digits and the underscore, opens on a digit (`2fa_enabled`, `주소1`). ORM's unquoted result alias makes it unreadable on PostgreSQL, SQLite, SQL Server and Oracle.
+  - On Oracle, any name not opening on an ASCII letter (`이름`, `имя`). Its alias opens on an underscore, which makes it unreadable the same way.
+  - A name holding a double quote, a bracket or a backtick. A one-part name the document quotes is written with its delimiters.
+    - DBAL's schema tools strip them, so SchemaTool on an empty database creates the name without them and the entity misses it.
+    - A diff drops and recreates a table whose name holds one after its first character.
+  - A value DBAL parses only at the precision it writes itself:
+    - SQL Server's default `time` and `datetimeoffset`, which fail to load;
+    - MySQL `TIME(n)`, which fails to load;
+    - a fractional PostgreSQL `time`, `timetz` or `timestamptz`, which fails to load;
+    - an Oracle DATE holding a time of day, which fails to load;
+    - SQL Server's `datetime` and `smalldatetime`, which load but take none of the six fractional digits DBAL binds. So an insert, an update and a date parameter fail.
+- **Migration diffs keep a statement.** A migration diff against the editor's DDL keeps a statement for each case below.
+  - A column with a definition, which DBAL's comparator compares as its Doctrine type. The statements of both cases below are removed by hand.
+    - On PostgreSQL each diff retypes a date or time key as VARCHAR(255).
+    - On Oracle a NOT NULL join column toward a TIMESTAMP key, or toward a DATE key with a default, gets a MODIFY whose NOT NULL Oracle refuses.
+  - Types DBAL reads only once the application maps them (`mapping_types`):
+    - PostgreSQL's arrays, bit strings and `pg_lsn` to `text`, after which they compare equal;
+    - SQL Server's `timestamp` (a rowversion) to `binary`;
+    - SQLite's `character`, `native character`, `nchar` and `varying character` to `string`;
+    - SQLite's `int2` to `smallint`, and `int8` and `unsigned big int` to `bigint`.
+  - A default DBAL reads back other than it writes it, which the first diff rewrites:
+    - a PostgreSQL `now()`, `transaction_timestamp()` or `LOCALTIMESTAMP`, set to CURRENT_TIMESTAMP with the column retyped TIMESTAMP(0), which drops stored fractions of a second;
+    - a SQL Server `N'…'`, rewritten as a plain literal;
+    - a quoted `'false'` on a BIT, rewritten as 0;
+    - a MySQL JSON default, which the mapping cannot carry and the diff drops. A NOT NULL JSON column then needs a value on every insert.
+  - A join column the mapping backticks: every one under a quoting bracket type, and under `BracketType.none` a reserved, non-ASCII or delimited one, or one beside such a key. DBAL names its implicit index from the quoted name. So the update renames an index that does not exist, and fails on PostgreSQL, MySQL, SQL Server and Oracle.
+  - MySQL and MariaDB `TINYINT`, a `SMALLINT` here, which DBAL reads back as a BOOLEAN. The update widens the column and fails where a foreign key holds it, unless the application maps `tinyint` to `smallint` (`registerDoctrineTypeMapping`).
+  - An Oracle NUMBER DBAL reads back as another integer than the one written, which a diff retypes: a bare one, NUMBER(1), NUMBER(11) to NUMBER(19), one past 20.
+  - A MySQL FLOAT default past its precision, which MySQL rounds.
+  - A MySQL ZEROFILL default, which MySQL pads.
+  - A PostgreSQL default with a plus, which PostgreSQL keeps as the expression `(+ 5)`.
+  - A plain or second unique index on a column set a unique constraint covers, which ORM drops.
+  - On PostgreSQL, the DROP INDEX of a UQ column's constraint, which PostgreSQL refuses.
+  - A MySQL `SET` with a default. DBAL's own CREATE TABLE writes it as a LONGTEXT, which MySQL takes no default on, though a diff leaves the editor's column alone.
+  - On SQLite, where DBAL writes comments inline, the comment of a column with a definition.
+  - An index the mapping leaves unnamed: the unique index of a UQ column and a foreign key's index. DBAL names them `UNIQ_` or `IDX_` and a hash, so the first diff renames them.
+- **Measured** on 2026-10-07 and 2026-10-09.
+  - On 2026-10-07, with ORM 3.7.4 and DBAL 4.2.5 on PHP 8.1:
+    - The mapping for the five `data/*.sql` fixtures validated with no error but the two refused kinds (Written as is).
+    - It wrote its schema for SQLite, MySQL, MariaDB, PostgreSQL, SQL Server and Oracle.
+    - php-cs-fixer's `@PER-CS3.0` left it as it was.
+    - On SQLite, entities stored and read back a reserved table and reserved columns, a date key, a one-to-one key, a dotted table name and an `#[ORM\Id]` field beside its association.
+  - On 2026-10-09 the last review ran its findings and the fixes against MySQL 8.4, MariaDB 11.4, PostgreSQL 17, SQL Server 2022 and Oracle 23ai.
+    - The fixtures passed PHP 8.1 and 8.4, the validator (the same two refused kinds), the schema on all six platforms and `@PER-CS3.0` again.
+    - `sakila.sql` passed them also under every other database setting and the backtick bracket type.

@@ -1,7 +1,7 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
-
 # primitives
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -55,7 +55,7 @@
 ### What the picker holds
 
 - **The picker is the editor's own.** `color-picker/` uses no color library. These are owner decisions of 2026-10-05:
-  - its layout, after uiwjs/react-color's Sketch;
+  - its layout, the six parts below;
   - no alpha;
   - Radix step 9 presets;
   - a row of the document's colors;
@@ -79,7 +79,7 @@
   - A translucent one drifts by up to one in a channel, since that pixel is stored premultiplied.
 - **Some colors show no value.** An empty color, one neither reads, and one the canvas writes back in its own syntax that paints fully transparent show no value and check no swatch. A hex, `rgb()` or `hsl()` with zero alpha, and `transparent`, show their opaque channels.
 - **Opening writes nothing.** A name stays in the document until a change in the picker writes its hex.
-- **Two readers take `toOpaqueHex`'s forms alone.** The document colors row and the DBML and AML exports read only those forms, so a name is left out of both.
+- **Some readers take `toOpaqueHex`'s forms alone.** The document colors row, the DBML and AML exports, a table group's paint (`getTableGroupColors`, `src/utils/tableGroup.ts`) and the Schema SQL options' group dot read only those forms. So a name is left out of the row and the exports, and a group colored by one paints in the theme's tokens with no dot (`src/components/erd/AGENTS.md`, `src/components/schema-sql/AGENTS.md`).
 
 ### Handing a color on
 
@@ -159,4 +159,6 @@
 - `MapColumnsDialog.browser.test.tsx` holds Map Columns' 2 px ring on its lists.
 - `Tree.browser.test.tsx` lays the tree out in real Chromium, counts the DOM mutations a scroll makes; `src/utils/virtualRange.test.ts` holds `visibleRange` and `offsetToShow`; `treeModel.test.ts` covers the rows and the keys.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

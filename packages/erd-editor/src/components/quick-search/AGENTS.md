@@ -1,7 +1,7 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-25 -->
-
 # quick-search
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -25,9 +25,12 @@
 | `scopedActions.tsx` | `scopeBase`, `createPrefixActions`, `createFieldActions` and the rows it builds as they are drawn (`lazyMatchAction`), `rankTableActions` |
 | `paletteQuery.ts` | The prefix grammar and `WIDE_PREFIXES` |
 | `hangul.ts` | The Hangul letter matching and ranking, `clearHangulForms`, `hitRange` |
+| `QuickSearch.styles.ts` | The palette's styles: the row at `PALETTE_ROW_HEIGHT` with `box-sizing: border-box`, the scope label after the input, the `.quick-search-empty` line; `QuickSearch.styles.test.ts` pins them |
 | `QuickSearch.test.ts` | Pins the search over the level's whole list on each keystroke, and the level built again on a change of the language, an option in force or `readonly` |
 | `actions.test.ts` | Pins `documentSearch.tsx`'s `SEARCH_THRESHOLD` at 0.4 and, over the editor's commands, what it takes (`tabel`, `imprt`) and lets go (`talbe`, `mmeo`), and the rows each tab lists writable and readonly, across a turn of readonly either way |
 | `documentSearch.test.ts` | The fuzzy search and the Hangul ranking over rows of its own, with no command |
+| `paletteQuery.test.ts` | Pins the prefix grammar: the first character past spaces, the full-width forms, the first dot of `@`, quotes and `>` as plain text |
+| `hangul.test.ts` | Pins the letter matching, the clusters a Windows IME composes, decomposed texts, the highlight widened to syllables, `hitRange` and `rankHits` |
 | `scopedActions.test.ts` | Bounds the spellings of the document's texts over 200 Korean tables |
 | `QuickSearch.browser.test.ts` | Types through Chromium's own IME over CDP |
 | `e2e/specs/find-replace.spec.ts` | The Playwright spec of Find and Replace and the palette's field rows; it also types through Chromium's own IME over CDP |
@@ -39,7 +42,7 @@
 - **With no prefix, list commands alone.** The empty input and every keyword list only what the tab offers (`scopeBase`). They never list a table, column, comment or memo row. The document is searched only under a prefix. This is an owner decision.
   - The read-only view's level holds no command: `src/components/erd-view/ErdView.tsx` hands in `createTableActions` alone. So its empty input shows the prefix hint, a keyword with no prefix shows `No commands match` over the prefix rows, and `#`, `@` and `:` search the document as in the editor.
 - **The top level still ends with table jumps.** `createScopeActions` still ends with a jump per table, which only `#` hands to Fuse. A table row's `Table` keyword stays out of Fuse's keys (`tableId`), since it fuzzes to most words.
-- **Search the level's whole list each keystroke.** Every keystroke runs Fuse over the level's whole list (`scopeBase`), as VS Code's palette does, never inside its last hits. This holds with no prefix, under a prefix and in a submenu alike. It is an owner decision, pinned in `QuickSearch.test.ts`.
+- **Search the level's whole list each keystroke.** Every keystroke runs Fuse over the level's whole list (`scopeBase`), never inside its last hits. This holds with no prefix, under a prefix and in a submenu alike. It is an owner decision, pinned in `QuickSearch.test.ts`.
   - What a word lists owes nothing to what was typed before it. So `auto` typed over `qqqq` finds Auto Layout.
   - A Backspace from `users` to `u` lists what `u` pasted lists.
 - **Without a holder, end with the prefix rows.** When no command listed holds the keyword, as typed or by its Hangul letters (`keywordHolder`), the list ends with `createPrefixActions`. That is one row per scope that searches the document (`#`, `@`, `:`). A row's `insert` types its prefix before the keyword (`users` becomes `#users`), so the arrows and Enter reach it like any row.
@@ -57,7 +60,7 @@
 
 ### Prefixes
 
-- **Prefixes follow VS Code's Cmd+P grammar.** `paletteQuery.ts` reads them, and `scopedActions.tsx` builds the rows each one lists.
+- **A prefix narrows the palette to one scope.** `paletteQuery.ts` reads them, and `scopedActions.tsx` builds the rows each one lists.
 - **Read a prefix at the top level only.** A submenu filters its own rows.
 - **A prefix is the first character past spaces.** A space typed before it does not hide it, because read as a keyword, ` #users` would reach the prefix rows, which type a second prefix before it. An optional space may follow the prefix.
 - **Four prefixes, each with its scope.**
@@ -76,7 +79,7 @@
 - **`@` and `:` rows are a substring search.** The field rows (`createFieldActions`) search the column names, or the comments and memos, as substrings. They are rebuilt from the document on each keystroke.
 - **A scoped list lists every row it finds** (the owner's request of 2026-10-14). `#`, `@` and `:` have no cap and no row handing the rest to Find and Replace, and `openFindReplace` carries no query.
 - **A field row is built as it is drawn.** `lazyMatchAction` builds its snippet, location and jump the first time the list draws or picks it, so a list of thousands builds a few dozen a keystroke.
-- **A row keeps its icon slot without an icon,** so every name starts in one line, as a context menu's does. The Table and Column Name Case rows and Schema SQL's Statements and Header draw none, as the code tabs' context menus do (the owner's request of 2026-10-15).
+- **A row keeps its icon slot without an icon,** so every name starts in one line, as a context menu's does. The Tab and Name View rows, the Table and Column Name Case rows and Schema SQL's Statements and Header draw none, as the canvas menu's Name View and the code tabs' context menus do (the owner's request of 2026-10-15).
 - **The list draws only the rows in view** (the owner's request of 2026-10-14). Rows stand at `PALETTE_ROW_HEIGHT`, the list stands as tall as they are up to `PALETTE_LIST_MAX_HEIGHT`, and `visibleRange` (`src/utils/virtualRange.ts`, which the tree shares) takes the rows in view with `VIRTUAL_OVERSCAN` either side. An arrow scrolls the keyboard's row into view (`offsetToShow`) once the list holds it, and a new list, a keystroke's or a submenu's, starts at its top.
   - `repeat` builds each row outside the render, so the render reads the selection and the range itself; a row reading them would miss a change.
   - The row style keeps `box-sizing: border-box`, since the offsets assume a row exactly `PALETTE_ROW_HEIGHT` tall.
@@ -145,4 +148,6 @@
 - A key pressed during such a composition reaches the input with `isComposing` set, as a real one does.
 - **The e2e finds a row by `.quick-search-row`**, the one class a row keeps whatever the list draws. The list draws only the rows in view, so a spec, like a reader, types or scrolls to reach a row past them; `QuickSearch.browser.test.ts` lays the list out in real Chromium.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

@@ -1,0 +1,182 @@
+# sqlalchemy.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `sqlalchemy.ts` writes SQLAlchemy 2.0 declarative classes. Each column is `Mapped[...] = mapped_column(...)`.
+  - The classes are held to the editor's DDL on MySQL, MariaDB and PostgreSQL. On SQL Server and Oracle they are held to it for the types the rules below name.
+  - There a column takes the type that database's DDL names. It comes from the core where the core spells it, and otherwise from one `sqlalchemy.dialects.<mysql|postgresql|mssql|oracle>` module. This is so that `create_all` writes the editor's column and Alembic's `compare_metadata` reports nothing outside the limits under Written as is.
+  - Any other type, and every type on SQLite, Snowflake and Databricks, takes the portable type of its category (Types, below).
+  - Types come from the shared classifier (`columnTypes.ts`: `getColumnType`, `BINARY_TYPES`, `JSON_TYPES`, `UUID_TYPES`, the time-zone sets). The rest come from the shared vendor tables.
+  - The vendor tables carry the misclassifications the owner had fixed when they were refiled (an owner decision of 2026-10-09). SQL Server's `bit` is a `Boolean`, and its `numeric` and money types a `Numeric` or `MONEY` / `SMALLMONEY`. An Oracle or Snowflake NUMBER with a scale is a `Numeric`. PostgreSQL's bit strings, `pg_lsn` and `money` are no numbers.
+  - The UNSIGNED and ZEROFILL the importer keeps (an owner decision of 2026-10-09) reach the unsigned rules.
+- **Types.** Each database below follows its DDL for the types named; the portable types cover the rest.
+  - **MySQL and MariaDB.** A column never gets a `String` without a length where the database takes the column, since create_all refuses one (`VARCHAR requires a length`). The spatial types are the exception (Written as is).
+    - `ENUM(...)` is the core `Enum(...)`. `SET(...)` is the dialect's `SET(...)` with `Set[str]`. Their members are read as MySQL reads a literal (`enumMembers`).
+    - A signed integer is the core `Integer` / `BigInteger` / `SmallInteger`. `TINYINT` and `MEDIUMINT` are the dialect's.
+    - UNSIGNED or ZEROFILL makes the dialect's type with `unsigned=True` (and `zerofill=True`). A display width is kept only on `TINYINT(1)` and on a ZEROFILL column, where MySQL still prints it.
+    - `SERIAL` is `BIGINT(unsigned=True)` with `unique=True`, since MySQL's SERIAL adds a unique index wherever the column stands. `unique=True` is written once where the document flags UQ too.
+    - `DECIMAL ... UNSIGNED` is the dialect's `DECIMAL`. `FLOAT` / `DOUBLE UNSIGNED` are the dialect's, with `asdecimal=False` on DOUBLE, which reads a Decimal without it.
+    - `TEXT(n)` and `BLOB(n)` are the core `Text(n)` / `LargeBinary(n)`. This lets MySQL pick the class for create_all as it did for the editor's DDL (`TEXT(70000)` a MEDIUMTEXT, `BLOB(100)` a TINYBLOB).
+    - `BIT(n)`, `YEAR`, `TIMESTAMP`, `DATETIME(n)` / `TIME(n)` (`fsp=`) and the sized TEXT and BLOB types are the dialect's.
+    - `LONG` and `LONG VARCHAR` are a `MEDIUMTEXT`. `LONG VARBINARY` is a `MEDIUMBLOB`.
+    - `BINARY(n)`, `CHAR BYTE(n)` and `VARBINARY(n)` are the core `BINARY` / `VARBINARY`. `CHAR` / `NCHAR` are the core types.
+    - A national varying name with a length is the dialect's `VARCHAR(n, charset="utf8mb3")`, the character set MySQL stores them in. This covers `NVARCHAR(n)`, `NATIONAL VARCHAR(n)`, `NCHAR VARCHAR(n)`, `NATIONAL CHAR VARYING(n)`, MariaDB's `NCHAR VARYING(n)` and the rest.
+    - MariaDB's `INET4` / `INET6` are the dialect's; they need a `mariadb+` engine URL. MariaDB's `UUID` is the core `UUID`.
+    - MariaDB's Oracle mode types are written as MariaDB stores them. `CLOB` is a `LONGTEXT`, `RAW(n)` a `VARBINARY(n)`, and a bare `NUMBER` a `Double`.
+  - **PostgreSQL.**
+    - The smallint names are a `SmallInteger`. `real`, `float4` and `float(1)` to `float(24)` are a `REAL`.
+    - `char(n)` / `bpchar(n)` are a `CHAR`.
+    - Bit strings are the dialect's `BIT` (a `str`). `money` is its `MONEY` (a `str`).
+    - `xid`, `cid` and `xid8` are a `String`. psycopg2 reads them as text, and PostgreSQL casts no integer to them.
+    - `inet`, `cidr`, `macaddr`, `macaddr8`, `jsonpath`, `oid`, `regclass`, `regconfig`, `tsquery` and `tsvector` are the dialect's.
+    - The ranges and multiranges are the dialect's, with `Range[...]` / `List[Range[...]]`.
+    - `jsonb` is a `JSONB`. `uuid` is a `UUID(as_uuid=True)`.
+    - `time(n)` / `timestamp(n)` are a `TIME` / `TIMESTAMP(precision=n)`, with `timezone=True` on the zoned ones.
+    - An interval is an `Interval`, or `INTERVAL(fields=..., precision=n)` where it names them.
+    - An array is `ARRAY(element, dimensions=n)`, with one `List[...]` a dimension. This holds only for the element types psycopg2, SQLAlchemy's default PostgreSQL driver, parses into a list (`postgresArrayTypes`, `dec` among them, and every interval).
+    - psycopg2 hands any other array over as one string, which an `ARRAY` would split into its characters. So that array stays a `String`.
+  - **SQL Server.**
+    - `rowversion` and `timestamp` are its `TIMESTAMP` (a `bytes`). That is the name Alembic reflects them by; it would report the dialect's `ROWVERSION`.
+    - `hierarchyid`, `geography`, `geometry` and `sql_variant` are a `String` annotated `bytes`, the binary form pymssql reads them in.
+    - `money` / `smallmoney` are its `MONEY` / `SMALLMONEY` (a `Decimal`).
+    - `nvarchar(n)` and its synonyms are an `NVARCHAR(n)` (`NVARCHAR` for max). `nchar` is an `NCHAR`, and `ntext` an `NTEXT`.
+    - `binary(n)` is a `BINARY(n)`. `varbinary(n)` and `binary varying(n)` are a `VARBINARY(n)`.
+  - **Oracle.**
+    - `DATE` is the dialect's `DATE` (a `datetime`). The core `Date` drops the time, and `DateTime` compiles to DATE.
+    - Every `TIMESTAMP(n)` is the dialect's `TIMESTAMP` with no argument, since SQLAlchemy 2.0 takes a positional one as `timezone`. create_all writes TIMESTAMP(6).
+    - The zoned timestamps take `timezone=True` / `local_timezone=True`.
+    - `NVARCHAR2(n)` and its synonyms, `NCLOB` and `RAW(n)` are the dialect's.
+    - `INTERVAL DAY TO SECOND` is an `Interval(day_precision=..., second_precision=...)`.
+    - `NUMBER(*,s)` is a `Numeric(38, s)`.
+    - `ANYDATA`, `URIType` and `VECTOR` are a `String`, and `BFILE` a `LargeBinary`, each annotated `Any`. python-oracledb hands them over as a `DbObject` (`ANYDATA`, `URIType`), an `array.array` (`VECTOR`) and a `LOB` (`BFILE`).
+  - **The portable types.**
+    - The text types are a `Text`, and the binary ones a `LargeBinary`.
+    - JSON is a `JSON` (`Any`). A UUID is a `Uuid`.
+    - A time-zone timestamp is `DateTime(timezone=True)`.
+    - An interval is an `Interval` on PostgreSQL, Oracle and Databricks only.
+    - A string is its `String(n)`, and a decimal its `Numeric(p, s)`.
+    - Any other category is its core type (`Integer`, `BigInteger`, `Float`, `Double`, `Boolean`, `Date`, `DateTime`, `Time`).
+- **Names.** Names follow the name cases, then become ASCII identifiers.
+  - Any character an ASCII identifier cannot hold is `_`.
+  - A name not opening on an ASCII letter gets `x` in front, not `_`, since a leading underscore belongs to name mangling and SQLAlchemy's instrumentation.
+  - A Python keyword gets `_` after it. So does `metadata`, which `DeclarativeBase` owns, and `self`, the first parameter of the constructor it writes, which no keyword can pass.
+  - Class names are numbered (`_2`) against each other and against every name the header can import, `Base` and the builtins the annotations use (`int`, `str`, ...), since a class body sees module scope.
+  - Attribute names, relationship attributes included, are numbered against the same names within their class.
+  - A column whose attribute differs from its name writes the name first.
+  - A dotted column name also writes `key=`, since a `ForeignKey` splits its target on the dot.
+  - A second column of one name folds into the first.
+- **Keys.** The `autoincrement` argument follows what the database numbers under the editor's DDL.
+  - A table's only key column of Integer or Numeric affinity (`NUMERIC_NAMES`) without the auto increment flag gets `autoincrement=False`. SQLAlchemy's `"auto"` would make it a SERIAL, an AUTO_INCREMENT or an IDENTITY the document never asked for. For a decimal or float key it would make a CREATE TABLE that MySQL (1063) and SQL Server (2749) refuse.
+  - A serial type on that only key column (PostgreSQL's serials, MySQL's `SERIAL`) gets `autoincrement=True`.
+  - The auto increment flag gets `autoincrement=True` only where the database numbers the column the editor's DDL flags. The type must be of Integer or Numeric affinity, the only ones SQLAlchemy takes it on. The cases by database:
+    - PostgreSQL: the names it takes an identity on (`smallint`, `int`, `integer`, `bigint`, `int2`, `int4`, `int8`) and the serials.
+    - SQLite: a table's only key of an integer name (`isIntegerFamily`). The DDL writes that key `INTEGER` with `AUTOINCREMENT`, so the model types it an `Integer` whatever name it has. SQLite numbers a key declared `INTEGER` alone. The `BIGINT`, `INT8` or `UNSIGNED BIG INT` key that a `BigInteger` makes create_all write takes no insert without a key.
+    - Databricks: `BIGINT` and `LONG`.
+    - MySQL: an integer. MariaDB: an integer or a float.
+    - SQL Server: an integer or a decimal of scale 0.
+    - Oracle (its sequence and trigger) and Snowflake (not measured): any number.
+    - Of a composite key only the first such column gets it, since SQLAlchemy refuses a second.
+  - Any other flagged column gets none, and a lone numeric key gets `autoincrement=False`.
+  - A flagged column gets no `server_default`, numbered or not, as the editor's DDL writes no DEFAULT on it on every database but Oracle. Oracle's DDL keeps the DEFAULT but replaces the column's value on every insert with the sequence's next value through its BEFORE INSERT trigger.
+  - SQLite's only key column declared exactly `INTEGER` keeps `"auto"`. It is the rowid, which SQLite numbers itself.
+  - A key column without the NOT NULL flag is still not `Optional` (an owner decision of 2026-10-09, `../AGENTS.md`, Rules every generator follows).
+- **Strings.** Every name, comment and default is a Python literal in the quote black keeps.
+  - Single quotes appear only where the value holds more `"` than `'`.
+  - A backslash, line break, tab and every other control character is written as its escape. This keeps a comment's or a default's line breaks, and Alembic compares it equal.
+  - The class docstring alone puts the table comment on one line, each line break a space.
+  - The docstring is stripped at both ends as black strips a docstring. One stripped to nothing is a space.
+- **Layout is black's at 88 columns.** Columns are counted as black counts them: two for each character of the East Asian scripts (Hangul, kana, the CJK ideographs, fullwidth forms).
+  - A call past the line puts its arguments one to a line with the magic trailing comma.
+  - A `server_default=text(...)`, an `Enum(...)` or a `SET(...)` too long for its line puts its own arguments one to a line likewise.
+  - An attribute whose call would open past the line puts the call on a line of its own inside parentheses, where the target with `= (` fits.
+  - Otherwise the attribute opens the brackets of `Mapped[...]` onto lines of their own, with the call after the closing one. Black writes this otherwise (Written as is).
+  - A lone `__table_args__` entry stays on one line where it fits. The comma of a one-element tuple keeps nothing open.
+  - The header's names are sorted as isort's black profile sorts them, the all-capital names first.
+  - Black still removes the blank line every whole text opens with, as it does from every generator's.
+  - Emoji and combining marks count one column here. Black counts an emoji as two columns and a combining mark as none. This is not measured.
+  - A class name so long that `List["..."]` passes the line inside the opened `Mapped[` is not broken further. This is not measured.
+- **Written as is.** These stay in the output, though create_all, Alembic or black shows them.
+  - Black 25.11.0 rewrites the lines a very long name pushes past 88 columns, which the layout above leaves whole or breaks otherwise. These were measured on texts built for them; the measured corpus holds none.
+    - `__tablename__ = "..."` (a table name of 67 characters or more): black wraps it in parentheses.
+    - `class X(Base):` (a class name of 76 or more): black writes `class X(` / `Base` / `):`.
+    - An attribute whose `name: Mapped[...] = (` passes the line: the layout opens `Mapped[` / `str` / `] = mapped_column(...)`. Black writes `name: (` / `Mapped[str]` / `) = mapped_column(...)` for column names of 76 to 81 characters on a `Mapped[str]`. From 82 it also splits the call after `] = mapped_column(`.
+    - A `ForeignKey("...")` past the line (a parent table name of 64 or more): black moves its argument to a line of its own.
+    - A `ForeignKeyConstraint` whose column lists pass the line: black writes it one name to a line.
+  - MySQL and MariaDB spatial types (`GEOMETRY`, `POINT`, `LINESTRING`, `POLYGON`, the `MULTI` types, `GEOMETRYCOLLECTION` / `GEOMCOLLECTION`) stay a `String` without a length. create_all refuses it (`VARCHAR requires a length`). The owner has yet to choose between `LargeBinary` (create_all writes a BLOB, values read as WKB bytes) and GeoAlchemy2.
+  - MariaDB's `VECTOR(n)` is a `String(n)`. create_all writes a VARCHAR(n), and Alembic stops on it.
+  - An `ENUM` or `SET` member holding a backslash: SQLAlchemy writes no escape for it in the DDL. create_all fails on a member ending in one and drops it from any other (`back\slash` becomes `backslash`). Reflection doubles it, so Alembic reports a modify_type for every such member, `\%` included. Rows the model writes and reads on the editor's table keep their values.
+  - MySQL and MariaDB `NCHAR` and `NATIONAL CHAR` stay the core `NCHAR`, the column create_all writes. Alembic reports `CHAR(charset='utf8mb3')` against `NCHAR()`. The dialect's `CHAR(n, charset="utf8mb3")` would not be reported; that option is left to the owner.
+  - A `TEXT(n)` or `BLOB(n)` that MySQL stores in another class gets that class from create_all, but Alembic reports it (`MEDIUMTEXT()` against `Text(length=70000)`).
+  - `FLOAT(M,D)` and `DOUBLE(M,D)` lose their (M,D) in create_all (Alembic quiet).
+  - `CHAR(0)` becomes a `CHAR(1)` in create_all (Alembic quiet).
+  - A serial column that is not its table's only key gets no AUTO_INCREMENT or sequence from create_all, and Alembic does not report it. This covers MySQL's `SERIAL` beside another key or in a composite key, and PostgreSQL's serials likewise.
+  - A PostgreSQL serial without the NOT NULL flag, which PostgreSQL makes NOT NULL, is `Optional`, so Alembic reports a modify_nullable.
+  - A PostgreSQL key flagged auto increment, which the editor writes `GENERATED ALWAYS AS IDENTITY`, is `autoincrement=True`. create_all writes it as a SERIAL, and Alembic reports a modify_default.
+  - The second of two PostgreSQL keys flagged auto increment, which the model leaves unmarked, takes no value the model writes on the editor's table (`GENERATED ALWAYS`). MySQL refuses the editor's DDL with two (1075).
+  - SQLite's flagged integer key is `PRIMARY KEY (id AUTOINCREMENT)` in the editor's DDL and `PRIMARY KEY (id)` in create_all, which writes no `sqlite_autoincrement`. That table keeps no `sqlite_sequence` and hands a deleted last id out again (1, 2, then 2 where the editor's table gives 3). Alembic is quiet.
+  - Oracle's flagged column is numbered by a sequence and a BEFORE INSERT trigger, neither of which create_all writes. An insert without the key fails on the model's own table (ORA-01400) and succeeds on the editor's.
+  - An Oracle flagged `VARCHAR2` key is a `String`, which SQLAlchemy takes no `autoincrement=True` on. The trigger replaces the key the model writes, and the ORM loses the row it added (`Instance ... has been deleted`).
+  - A comment holding a backslash on MySQL or MariaDB: the editor's DDL lets the database read it as an escape (`\n` a line break, `\d` a `d`). The model keeps the backslash, so Alembic reports a modify_comment or add_table_comment.
+  - MariaDB keeps an integer's display width (`int(10)`), which the model drops. create_all writes `int(11)`; Alembic is quiet.
+  - The PostgreSQL types SQLAlchemy has no class for take a core type: the portable one, or for `xid`, `xid8` and `cid` a `String` (PostgreSQL, above). create_all writes that type in their place, while Alembic stays quiet. `xml` is a `Text`. `name`, `xid`, `xid8`, `cid`, a `bpchar` without a length, `pg_lsn`, `tid`, the geometric types, the `reg*` types but `regclass` and `regconfig`, `txid_snapshot` and `pg_snapshot` are a `String`.
+  - psycopg 3 refuses any insert into such a column, NULL included, as it does into any array kept a `String`.
+  - psycopg2 reads a multirange as text and refuses to write one.
+  - Alembic reports an array kept a `String` as a modify_type for most element types (`bit(8)[]` as `ARRAY(BIT(length=8))`, `money[]`, `macaddr8[]`, `tsvector[]`, `int4multirange[]`), though not for `xml[]`.
+  - SQL Server, where only the types the rules above name follow its DDL:
+    - `tinyint` and `smallint` are an `Integer`; create_all writes `int`. Alembic reports it.
+    - `real` and `float(1)` to `float(24)` are a `Float`; create_all writes `float(53)`. Alembic reports it.
+    - `datetime2`, `datetime2(n)` and `smalldatetime` are a `DateTime`; create_all writes `datetime`. Alembic reports it.
+    - `image` is a `LargeBinary` (`varbinary(max)`). Alembic reports it.
+    - `xml` and `text` are a `Text` (`varchar(max)`). Alembic reports it.
+    - A bare `varchar`, `nvarchar`, `varbinary` or a synonym of one is one character long in SQL Server. The model makes it a type without a length (max). Alembic reports it.
+    - `float` and `double precision` are a `Double`. Alembic reports it as `FLOAT(precision=53)`, though the column is the same.
+    - `time(n)` and `datetimeoffset(n)` lose their precision; create_all writes 7. Alembic is quiet.
+    - `sql_variant` (which Alembic reports), `hierarchyid`, `geography` and `geometry` are a `String`. create_all writes it as VARCHAR(max) and refuses it as a key (1919).
+    - A `hierarchyid` takes its string form (`'/2/'`) through the model but refuses the bytes it reads back (6522).
+    - A rowversion without the NOT NULL flag is `Optional`, though SQL Server makes the editor's column NOT NULL. Alembic reports a modify_nullable.
+    - A table holding two rowversions, or a default on one, is refused by the editor's DDL and create_all alike (2738, 1755). A MySQL document's `TIMESTAMP DEFAULT CURRENT_TIMESTAMP` carried to SQL Server does this, as in sakila and Magento2-sales.
+  - Oracle, likewise:
+    - `ROWID`, `UROWID`, `XMLType`, `ANYDATA`, `URIType`, the `SDO_` types and `VECTOR` are a `String` without a length. Oracle refuses it (ORA-00906), though the editor's DDL creates the column. Alembic reports `VECTOR`.
+    - A `DbObject` or `LOB` the model read (`ANYDATA`, `URIType`, `BFILE`) cannot be written back through it (ORA-00932).
+    - `BOOLEAN` is a `Boolean`, which create_all writes as a SMALLINT.
+    - An integer `NUMBER` (bare, `NUMBER(p)`, `NUMBER(*)`) is a `BigInteger` (`NUMBER(19)`).
+    - `FLOAT(p)`, `REAL`, `BINARY_FLOAT` and `BINARY_DOUBLE` are a `Float` or `Double` (`FLOAT(126)`). Alembic reports `REAL`, `FLOAT(63)` and the binary ones.
+    - `BFILE` is a `LargeBinary` (a BLOB). Alembic stops on its table (`UnsupportedCompilationError`: it cannot render `BFILE`).
+    - A `VARCHAR2(n)` is a `String(n)`, which create_all writes in CHAR rather than BYTE units.
+    - `INTERVAL YEAR TO MONTH` is an `Interval`, which create_all writes as DAY TO SECOND.
+    - `JSON` is a `JSON`, which SQLAlchemy 2.0's Oracle dialect cannot compile.
+  - SQLite: Alembic reports the declared names SQLite reflects as another type.
+    - `FLOAT`, `REAL` and `DOUBLE PRECISION` against `Double`.
+    - `SMALLINT` against `Integer`.
+    - `INT8`, `UNSIGNED BIG INT`, and a `BIGINT` or `INT8` with UNSIGNED or ZEROFILL (a MySQL document carried to SQLite) against `BigInteger`.
+    - `TIMESTAMP` against `DateTime`.
+    - `NCHAR`, `NVARCHAR`, `CHARACTER`, `NATIVE CHARACTER` and `VARYING CHARACTER` against `String`.
+    - A modify_nullable on every key column without the NOT NULL flag, which create_all writes NOT NULL and the editor's DDL does not.
+  - A flagged key the database numbers nothing on has no `autoincrement=True`. So create_all makes its table where the database refuses the editor's (MySQL 1063, SQL Server 2749). Such keys are a string or a uuid, a PostgreSQL `numeric`, a MySQL decimal or float, a SQL Server decimal with a scale or float, and sakila's MySQL integers on PostgreSQL, SQL Server or Oracle, which are a `String` there.
+  - A keyless table (the mapper refuses it) configures only beside the rest of the module.
+  - A one-table view of a table with relationships, whose related classes are not in the text, configures only beside the rest of the module.
+- **Measured** on 2026-10-10 with SQLAlchemy 2.0.54, Alembic 1.16.5, psycopg2 2.9.12, psycopg 3.2.13, PyMySQL 1.2.3, pymssql 2.4.3 and oracledb 4.0.2 on Python 3.9.6. The databases were PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13, SQL Server 2022 (16.0.4295.3), Oracle AI Database 26ai Free (23.26.3) and SQLite 3.54.0. The method compared what create_all and the editor's DDL made, column by column, and ran `compare_metadata` against the editor's tables, one table at a time.
+  - The cases were every vendor type of the eight lists, as NOT NULL, nullable and only key, and each database's argument, UNSIGNED and ZEROFILL variants. They showed nothing outside the limits above and the spellings the databases themselves refuse.
+  - PostgreSQL `dec(10,2)[]` and `dec[]` read and wrote lists of `Decimal` through psycopg2 and psycopg 3 (Alembic quiet).
+  - The model's own MySQL and MariaDB tables took a 70,000-character `TEXT(70000)` and a 70,000-byte `BLOB(70000)`.
+  - Comments with CR, LF, CRLF and U+2028 breaks, quotes and Hangul came back equal on PostgreSQL, MySQL, MariaDB and Oracle.
+  - On SQL Server the editor's DDL writes a comment as a varchar literal. A character outside the code page arrives as `?`, and Alembic reports it.
+  - sakila showed nothing on MySQL but three items. One is its FULLTEXT index, which the editor's DDL writes as a plain one both sides refuse. One is its customer comment's `\n`. One is a numeric `server_default`, which create_all writes as the expression `(4.99)` where the editor's DDL leaves the literal `'4.99'` (Alembic quiet).
+  - Magento2-sales showed nothing but MariaDB's display widths on the tables both sides created. Both sides stop on the `FULLTEXT` its import reads as a column, and on MySQL 8.4's refusal of a foreign key to part of a key.
+  - GNUBOARD5, YOUNGCART5 and OKKY (keyless tables set aside) showed nothing but the zero-date defaults MySQL 8.4's strict mode refuses on both sides.
+  - MariaDB's `VECTOR`, a type of 11.7 and later, was measured on MariaDB 11.8.9 in the review of 2026-10-09 and 10.
+  - The auto increment, `xid`, rowversion, object-type and `self` rules were measured on 2026-10-10 with the versions above:
+    - Two rows were inserted through the model into the editor's tables and into create_all's on all six databases, for each flagged key shape named above. Alembic was quiet on each but the documented modify_nullable.
+    - On SQLite this ran under these integer names `isIntegerFamily` takes: `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `INTEGER`, `BIGINT`, `INT2`, `INT8`, `UNSIGNED BIG INT`, `INT(10)`, `BIGINT(20)`, and a `BIGINT` without the NOT NULL flag.
+    - `xid`, `cid` and `xid8` were read and written as a `str` through psycopg2. psycopg 3 refuses to write them, as it does for every type kept a `String`.
+    - `rowversion` was read as `bytes`, inserted without a value and compared quiet by Alembic. The `String` it replaced failed create_all as a key and showed a modify_type.
+    - `hierarchyid`, `geography`, `geometry` and `sql_variant` were read as `bytes` through pymssql.
+    - `ANYDATA` and `URIType` were read as a `DbObject`, `VECTOR` as an `array.array` and `BFILE` as a `LOB`.
+    - A `self` column was written through `self_` on PostgreSQL.
+    - Every class of every whole text under the name cases was constructed with each column attribute passed by keyword.
+  - The corpus was 4,806 texts: the eight vendor lists, the variants, names under the four name cases, comment and layout cases, and the five fixtures under every database, whole and per table.
+    - black 25.11.0 changed nothing but the opening blank line of the 104 whole texts.
+    - isort 6.1.0 (black profile) changed nothing.
+    - pyflakes 3.4.0 found nothing in a whole text.
+    - Every text but those the limits above name ran, configured its mappers and compiled CREATE TABLE and CREATE INDEX on its database's dialect.

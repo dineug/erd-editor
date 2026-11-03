@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-25 -->
-
 # replication-store-worker
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-08-27 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -29,7 +29,7 @@ A private package (`private: true`) holding a headless replica of the open docum
 
 ### What the Replica Posts
 
-- **`hostSaveValueCommand` carries three fields.** `value` is the value both IDE hosts write to disk. `changed` is the store's flag, false for a change that left the value as it was, and the hosts do not write such a change. `runtimeValue` is the document as the replica holds it; a host hands it to a second view or a joining agent and never writes it (root § Purpose gives why).
+- **`hostSaveValueCommand` carries three fields.** `value` is the value each host (VS Code, IntelliJ, Obsidian) writes to disk. `changed` is the store's flag, false for a change that left the value as it was, and the hosts do not write such a change. `runtimeValue` is the document as the replica holds it; a host hands it to a second view or a joining agent and never writes it (root § Purpose gives why).
 - **The replica serializes and reports only.** It does not own the file or talk to other tabs; the host does both.
 
 ### Imports
@@ -74,4 +74,6 @@ A private package (`private: true`) holding a headless replica of the open docum
 
 None.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

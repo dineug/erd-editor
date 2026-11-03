@@ -1,0 +1,148 @@
+# zod.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** One Zod 4 row schema per table: `export const <Name>Schema = z.object({…});`, then `export type <Name> = z.infer<typeof <Name>Schema>;`.
+  - The schemas sit under `import * as z from "zod";`.
+  - Tables come in `orderByNameASC` order, and their columns in table order.
+  - Owner decisions of 2026-10-09:
+    - A schema validates a row's JSON shape, as an API sends it, not what a driver returns.
+    - A row schema only, with no insert schema and no relation.
+    - Comments are `//` lines.
+  - A document with no table writes nothing.
+  - The one-table view carries the import line too, so its file compiles alone. `index.ts` hands that view to `createTableCode`.
+  - The panel highlights the output as TypeScript and saves it as `.ts`.
+- **Types.** They come from `getJsonShape` (`jsonShape.ts`): the JSON shape of a column's value, read from `columnTypes.ts`.
+  - `jsonSchema.ts` and `typescript.ts` read `getJsonShape` too, so the three agree column by column. They agree on a kind, an integer's bounds, a character type's length, an ENUM's members and a PostgreSQL array's depth.
+  - The owner decided these on 2026-10-09:
+    - A `date` is `z.iso.date()`, and a `time` is `z.iso.time()`.
+    - A naive timestamp is `z.iso.datetime({ local: true })`: `timestamp`, `datetime`, `datetime2`, `smalldatetime`, `TIMESTAMP_NTZ`, Oracle's `DATE` and `TIMESTAMP`, and SQLite's `TIMESTAMP`.
+    - A zoned or instant timestamp is `z.iso.datetime({ offset: true })`: `timestamptz`, `datetimeoffset`, the `WITH TIME ZONE`, `WITH LOCAL TIME ZONE`, `_TZ` and `_LTZ` types, and MySQL's, MariaDB's and Databricks' `TIMESTAMP`.
+    - A decimal or money type is `z.string()`. SQLite's is `z.number()`, because its NUMERIC affinity stores a number.
+    - A 64-bit integer is `z.int()`, binary `z.base64()`, JSON `z.json()` and a boolean `z.boolean()`.
+  - Integers go by width. Zod has no 8-, 16- or 64-bit integer that `z.toJSONSchema` converts, so those widths take `z.int()` with bounds.
+    - A 32-bit signed integer is `z.int32()`.
+    - A 32-bit unsigned one is `z.uint32()`: `INT UNSIGNED`, `INT ZEROFILL` and PostgreSQL's `oid`.
+    - A narrower one is `z.int()` with its bounds. `TINYINT` is −128 to 127 and `SMALLINT` −32768 to 32767.
+    - MySQL's and MariaDB's `MEDIUMINT` is −8388608 to 8388607, or 0 to 16777215 unsigned.
+    - `YEAR` and `SMALLINT UNSIGNED` are 0 to 65535. `TINYINT UNSIGNED` and SQL Server's `tinyint` are 0 to 255.
+    - A 64-bit unsigned one is `z.int().min(0)`: `BIGINT UNSIGNED`, `SERIAL`, and MySQL's and MariaDB's `BIT(n)` past one bit.
+    - Every Oracle, Snowflake and SQLite integer is `z.int()`, a `SMALLINT` and a `NUMBER`, `NUMBER(p)` or `NUMBER(p,0)` included. Those databases store 64 bits or more.
+  - A float is `z.number()`. So is MariaDB's bare `NUMBER`, which is a DOUBLE there.
+  - A character type is `z.string().max(n)` from its declared length.
+    - This covers `varchar(n)`, `nvarchar(n)`, `VARCHAR2(n BYTE)` or `VARCHAR2(n CHAR)`, Snowflake's `STRING(n)` and `TEXT(n)`, and `char(n)`.
+    - `char(n)` takes `.max(n)`, not `.length(n)`, since MySQL and MariaDB hand `char(n)` over unpadded.
+    - `varchar(max)` and the text types take no `.max`.
+  - `uuid` and MariaDB's and Snowflake's `UUID` are `z.uuid()`.
+  - SQL Server's `uniqueidentifier` is `z.guid()`. It takes the GUIDs outside RFC 9562 that `z.uuid()` refuses.
+  - MySQL's and MariaDB's `BIT` and `BIT(1)` are `z.boolean()`.
+  - The Snowflake and Databricks semi-structured types, typed forms included, are `z.json()`.
+  - MariaDB's `INET4` and `INET6` are `z.ipv4()` and `z.ipv6()`.
+  - Databricks' `VOID` is `z.null()`.
+  - SQL Server's `timestamp` and `rowversion` are binary, so they are `z.base64()`.
+  - An ENUM, `enum('a','b')` under any database, is `z.enum([…])` of its members.
+    - Each member is read as MySQL reads a string literal, and is listed once.
+    - On MySQL and MariaDB a member loses its trailing spaces, since those databases drop them as they create the table. It keeps its tabs and leading spaces.
+    - An ENUM whose list does not parse is `z.string()`.
+  - A PostgreSQL array is one `z.array(…)` per dimension (`int[][]`, `integer ARRAY`). Its elements are never null.
+  - These are `z.string()`:
+    - a time with zone and an interval;
+    - PostgreSQL's bit strings, `pg_lsn`, `inet`, `cidr`, `macaddr`, ranges and geometric types;
+    - PostgreSQL's `xid`, `cid` and `xid8`, which node-postgres hands over as text;
+    - a SET and a spatial type;
+    - any type the classifier does not know.
+  - `z.infer` of a schema is the interface `typescript.ts` writes for the table (an owner decision). They differ in two places:
+    - A JSON column is `unknown` there and Zod's `JSONType` here.
+    - A table with no column is `{}` there and `Record<string, never>` here.
+- **Names.** They follow the name cases.
+  - A type name TypeScript refuses for a type alias gets `_` after it. This holds in the type and its schema alike (`class_` and `class_Schema`, `z_Schema`). PascalCase makes none of these names:
+    - a reserved or strict mode word;
+    - a predefined type name (`RESERVED_TYPE_NAMES` in `jsonShape.ts`: `class`, `let`, `await`, `string`, `any`, …);
+    - `as`;
+    - `z`, the namespace the schemas are imported under.
+  - Any other name is written as is, as in `typescript.ts`:
+    - a name that is no identifier (`order items`, `2fa`, an empty name);
+    - a global's name (`Date`, which the output never names);
+    - a repeated name (an owner decision of 2026-10-09). A compile error shows the repeat, as it shows two keys a name case makes alike (`user_id` and `userId` under camelCase, TS1117).
+  - A property key is bare where TypeScript reads an identifier name, a reserved word included (`class`, `default`).
+  - Any other key is a JSON string (`"order-no"`, `""`, `"2fa_enabled"`).
+  - `__proto__` is written `["__proto__"]`. Written plainly or quoted, an object literal would set its prototype from it.
+  - A key is quoted too where it holds a code point from one of the 31 runs around the identifier characters Unicode 16.0 and 17.0 added (`NEWER_IDENTIFIER_RUNS`). TypeScript reads identifiers by Unicode 15.1, where Node 22 and 24 read 17.0.
+  - `jsonShape.test.ts` checks every code point of planes 0 to 3 and 14 against the scanner of `@typescript/typescript6`. It fails once the repository's Node reads a newer Unicode, and the runs then need the new characters.
+- **Keys and relations.**
+  - A primary key, its NN flag set or not, takes its schema alone. So does a NOT NULL column.
+  - Any other column adds `.nullable()` (`isNullableColumn`). `z.json()` and `z.null()` add it too, though both take null already.
+  - `z.object` strips a key the table lacks, so a joined row parses.
+- **Comments.** A comment is `//` lines, written by `formatComment`. `typescript.ts` writes its comments through it too.
+  - The text is split at CR, LF, CRLF, U+2028 and U+2029 (`splitLines`).
+  - Each line's trailing white space is dropped.
+  - The blank lines at either end are dropped. A blank line inside is written `//`.
+  - A line TypeScript would read as a directive takes a backslash before its at sign (`../AGENTS.md`, Rules every generator follows, No TypeScript directive in a comment).
+  - A table's comment sits above its `export const`, and a column's above its key.
+- **Layout.**
+  - The text opens with the blank line the other languages open with, then the import line.
+  - Each table follows after a blank line.
+  - A table with no column is `z.object({})`.
+- **Written as is.** The generator writes each case below so, though a row of real data fails the schema or the file fails to compile.
+  - Zod versions:
+    - zod before 4.0.0. It is imported from `"zod"`, where zod 3.25 is the v3 API, with no `z.iso` or `z.int32`.
+    - zod 4.0.0 to 4.4 count `.max(n)` in UTF-16 units. 4.5.0 and later count code points, as PostgreSQL and MySQL do. So five U+1F600 fail `.max(5)` on 4.0.0.
+    - A `__proto__` key under zod 4.6.5, which neither checks nor returns it. So `{}` passes a NOT NULL one.
+    - A `__proto__` key under zod 4.0.0, which checks the row's own `__proto__`, or `Object.prototype` where the row has none. So `{}`, `{"__proto__": "x"}` and `{"__proto__": null}` fail a NOT NULL integer key. It returns none either.
+  - TypeScript settings:
+    - With `skipLibCheck` off, a program needs the DOM lib or `@types/node`, because zod's declarations name `URL`.
+    - Under `--isolatedDeclarations`, each `export const …Schema` fails TS9010, as any Zod code does. TypeScript 7.0.2 adds TS9013.
+  - Names:
+    - A name that is no identifier.
+    - A repeated name.
+    - On a runtime past Unicode 17.0, a bare key holding a character added outside those runs. tsc refuses it (TS1127).
+  - Lengths:
+    - A length past 2^53 − 1 is written as the double reads it: rounded (`.max(100000000000000000000)`), or `Infinity` past its range. Both compile and parse. zod 4.6.5's `z.toJSONSchema` then writes `"maxLength": null`.
+    - `.max(n)` counts code points, so a longer stored value fails where the database counts otherwise. SQL Server's `varchar(n)` and Oracle's `BYTE` lengths count bytes.
+    - SQL Server's `nvarchar(n)` and `nchar(n)` and Oracle's `NVARCHAR2(n)` count UTF-16 units.
+    - SQLite enforces no length.
+  - 64-bit integers: `z.int()` holds ±(2^53 − 1), so a 64-bit value past it fails.
+    - pg hands `int8` over as text, which fails raw and in JSON.
+    - mysql2 rounds `BIGINT` 2^63 − 1 to `9223372036854776000`.
+    - better-sqlite3's `safeIntegers` and node:sqlite's `readBigInts` give a `bigint`, which `JSON.stringify` refuses.
+    - Oracle's bare `NUMBER` is a `z.int()` though it holds fractions. It fails the `12.5` its `JSON_OBJECT` writes.
+  - The drivers:
+    - pg 8.23.1 and mysql2 3.24.5 read a DATE as a JS `Date` at local midnight. Its JSON shows the day before east of UTC and fails `z.iso.date()`. pg's `types.setTypeParser(1082, v => v)` and mysql2's `dateStrings: ['DATE']` keep the text.
+    - A timestamp read as a `Date` fails raw and passes as JSON. A naive one is moved to the UTC instant.
+    - Binary, and mysql2's `BIT`, come as Buffers. Their JSON (`{"type":"Buffer",…}`) fails `z.base64()`.
+    - mysql2, better-sqlite3 and node:sqlite read MySQL's, MariaDB's and SQLite's booleans as `1` and `0`, which `z.boolean()` refuses.
+    - pg hands over `interval` (and the elements of an `interval[]`), `point` and `circle` as objects.
+    - pg hands over an array of a user type (`mood[]`), or of `bit` or `varbit`, as text (`{sad,ok}`, `{101}`).
+    - pg hands over an array holding NULL as `[1, null]`, which fails, since an element is never null.
+    - mysql2 hands every MySQL and MariaDB spatial type over as `{x, y}` objects or arrays of them, which `z.string()` refuses.
+    - SQLite's `CURRENT_TIMESTAMP` and mysql2's `dateStrings` write a space for the `T`, which every `z.iso.datetime` refuses.
+    - A MySQL `TIME` past a day (`838:59:59`) or below zero (`-01:00:00`) fails `z.iso.time()`.
+    - MySQL and MariaDB store the ENUM error value `''` under `INSERT IGNORE` or a non-strict `sql_mode`, which `z.enum` refuses.
+    - A snake_case row fails the default camelCase keys. Validating database rows directly needs the `none` column case.
+  - The servers' own JSON: PostgreSQL's `row_to_json` (which PostgREST and Supabase build on), MySQL's and MariaDB's `JSON_OBJECT`, SQL Server's `FOR JSON` and Oracle's `JSON_OBJECT`.
+    - Each writes a DECIMAL as a number, which the owner kept a string.
+    - SQL Server writes its money and smallmoney as numbers too, and PostgreSQL a `numeric[]`'s elements.
+    - MySQL and MariaDB write a DATETIME or TIMESTAMP with a space, and a BOOLEAN as `1`.
+    - MySQL writes a `BIT` as `"base64:type16:…"` and binary as `"base64:type15:…"`.
+    - MariaDB writes binary as raw bytes inside a string.
+    - MariaDB writes a `BIT` unquoted, which is no JSON.
+    - MariaDB writes a character past U+FFFF as a broken `\uD83DDE00` escape.
+    - PostgreSQL writes `bytea` in hex (`"\\x0102"`), and Oracle writes `RAW` and `BLOB` in hex (`"0102FF"`). `z.base64()` refuses that hex, or reads it as other bytes where it is also base64 (`"01020304"`).
+    - PostgreSQL writes `oid` as a string (`"12345"`), which fails.
+    - PostgreSQL writes float `NaN` and `±Infinity` as strings, which fail.
+    - PostgreSQL writes `infinity` dates and timestamps, `24:00:00`, BC years (`"0044-03-15 BC"`), five-digit years and offsets with seconds (`+08:27:52`, Seoul's before 1908). All of them fail.
+    - The rest of SQL Server's JSON passes: binary in base64, and an upper-case GUID through `z.guid()`.
+- **Measured** on 2026-10-10 with Node 24.16.0.
+  - 8,744 files compiled with no error under TypeScript 5.9.3, 6.0.3 and 7.0.2 (strict, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `skipLibCheck: false`), against zod 4.6.5 and 4.0.0.
+  - The files held 296 type spellings: every name of the eight vendor lists, and forms with arguments. Each was a NOT NULL, a nullable and a key column without the NN flag, under each database.
+  - The files also held the five `data/*.sql` fixtures under each database and four name-case pairs, whole and per table.
+  - Every one of the 17,152 schemas loaded, and `z.toJSONSchema` converted it under both zod versions.
+  - 295,159 keys compiled under the three TypeScript versions, 18,081 of them quoted. They are every code point of planes 0 to 3 and 14 that Node reads as an identifier character.
+  - The names those TypeScript versions refuse for a type alias and an interface are exactly `RESERVED_TYPE_NAMES`.
+  - 132 keyword and global table names and 84 odd keys compiled under four name cases, but for the names written as is.
+  - Rows were parsed raw and after `JSON.stringify`. They came from PostgreSQL 17.11 (pg 8.23.1, session zone Asia/Seoul), MySQL 8.4.11 and MariaDB 11.4.13 (mysql2 3.24.5) and SQLite 3.53.4 (better-sqlite3 13.0.3).
+  - The servers' own JSON came from PostgreSQL, MySQL and MariaDB, SQL Server 2022 (16.0.4295.3) and Oracle AI Database 26ai Free (23.26.3).
+  - The rows and the JSON failed only as Written as is says. The verdicts were the same under zod 4.6.5 and 4.0.0, but for `.max(n)` and `__proto__`.
+  - The driver behaviour was first measured in the design research of 2026-10-09.
+  - Prettier 3.9.9 changed only the opening blank line and the lines past 80 columns (a long `z.enum([…])`, a long `z.infer` line).

@@ -1,0 +1,148 @@
+# sequelize.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** Sequelize 6 models.
+  - Each class is `class X extends Model<InferAttributes<X>, InferCreationAttributes<X>>`, with a `declare` per column and per relation.
+  - Then `X.init(attributes, { sequelize, tableName, timestamps: false })`.
+  - Then the associations, which run after every `init`.
+  - `DataTypes`, `Model`, `Range` and the other names it uses stay unimported. `sequelize` is the application's instance.
+  - A column's `type` is the `DataTypes` member that makes Sequelize create the column's own type on the document's database. The exception is a member that cannot write the value a read hands over.
+  - A column's `declare` is what the driver hands over on a read under Sequelize.
+  - Both were measured per type against the real databases (Measured, below).
+- **Types.** A type is read by name through the shared classifier (`columnTypes.ts`).
+  - The classifier gives the base name with MySQL's UNSIGNED, ZEROFILL and SIGNED set apart, the numeric arguments, the PostgreSQL array depth, the ENUM and SET members, and whether the type is a serial or a SQL Server rowversion.
+  - The importer keeps UNSIGNED and ZEROFILL in the data type (an owner decision of 2026-10-09).
+  - On PostgreSQL, MySQL, MariaDB and SQL Server, a name the vendor list holds keeps a member only where that member's DDL is the type itself. The tables are `POSTGRES_MEMBER_TYPES`, `MYSQL_MEMBER_TYPES` and `MSSQL_MEMBER_TYPES`.
+  - A kept member keeps its arguments: `STRING(20)`, `DECIMAL(10, 2)`, and `DATE(6)` for MySQL's `DATETIME(6)`.
+  - A MySQL or MariaDB float of a precision and scale is `FLOAT(7, 4)` or `DOUBLE(10, 2)`. `DOUBLE` writes `DOUBLE PRECISION(10,2)`, which MySQL reads as `double(10,2)`. A lone argument there picks `FLOAT` or `DOUBLE` alone.
+  - On MySQL and MariaDB a numeric member takes `.UNSIGNED` and `.ZEROFILL` (`SMALLINT.UNSIGNED`, `DECIMAL(10, 2).UNSIGNED`). ZEROFILL implies UNSIGNED.
+  - Every other listed name goes in as the string the document holds: `type: "TIMESTAMP(3)"`, `"timetz"`, `"BIT(8)"`, `"YEAR"`, `"SET('a','b')"`, `"BINARY(16)"`, `"BLOB(100)"`, `"varchar(max)"`, `"datetime"`, `"money"`. Sequelize writes that string into its DDL unchanged.
+  - The reason: the nearest member would create another type. A TIMESTAMP would become DATETIME, a BINARY(16) a BLOB no key takes, and a money a float. A `time(3)` or `timestamptz(3)` would lose its precision. A MySQL `BLOB(100)` or `TEXT(50)` would become a BLOB or TEXT, where MySQL picks the TINY type by the length.
+  - Members kept beyond the plain ones:
+    - `REAL` for a single-precision float on PostgreSQL and SQL Server.
+    - On PostgreSQL, `RANGE(INTEGER)`, `RANGE(BIGINT)`, `RANGE(DECIMAL)`, `RANGE(DATEONLY)` and `RANGE(DATE)` for `int4range`, `int8range`, `numrange`, `daterange` and `tstzrange`. A `tsrange` is written as is, since `RANGE(DATE)` is a tstzrange.
+    - On PostgreSQL, `ARRAY(member)` for an array of one dimension whose element keeps a member. The exception is an element pg hands over as one string (`tsvector[]`): `ARRAY` cannot write that value back (`values.map is not a function`).
+    - A deeper PostgreSQL array, or one whose element is written as is, is written as is. Sequelize writes a nested element in generic SQL (`datetime[]`).
+    - On MySQL and MariaDB, `GEOMETRY`, `GEOMETRY("POINT")`, `GEOMETRY("LINESTRING")` and `GEOMETRY("POLYGON")`.
+    - On SQL Server, `TEXT` for `nvarchar(max)` and `BOOLEAN` for `bit`.
+    - On SQL Server, `DATE` for `datetime2`, `datetimeoffset` and `time` at any precision. It is the one member through which tedious writes a `Date`, as text with an offset, which these types convert.
+    - On every database, `ENUM(...)` for an ENUM list, each member read as MySQL reads the literal.
+  - An interval outside PostgreSQL is `STRING`. Sequelize has no interval member, and `TIME` makes a type Oracle lacks.
+  - Oracle always takes a member, because Sequelize builds an Oracle insert's RETURNING binds from it. A type string there fails every `create()`.
+  - On Oracle a `VECTOR` is `STRING`, because its arguments are dimensions and format, never a length.
+  - SQLite keeps `TIMESTAMP` as written. Sequelize reads a SQLite value into a Date only where its column is declared DATETIME.
+  - A name the database's vendor list does not hold takes the first that applies, in this order:
+    1. The member of its name (`jsonb`, `inet`, `tsvector`, `uniqueidentifier`).
+    2. What the classifier reads it as (bytes `BLOB`, an interval `STRING`).
+    3. Its list category, with a first argument as its length (MySQL's `datetimeoffset(7)` is `STRING(7)`).
+    4. `STRING` (`mood`).
+- **Annotations.** A `declare` annotates what each driver hands over.
+  - A BIGINT is `number | string` on MySQL and MariaDB, whose drivers send a safe integer as a number. It is `number` on SQLite and `string` elsewhere.
+  - A DECIMAL, numeric or money is `number` on SQL Server and SQLite, `number | string` on MariaDB, and `string` on PostgreSQL, MySQL and Oracle.
+  - JSON is `unknown`.
+  - A date is a `string` and a timestamp a `Date`. A time of day is a `string`, but on SQL Server a `Date` on 1970-01-01.
+  - On PostgreSQL, an interval, `point` and `circle` are an `object`.
+  - On PostgreSQL, a range is `Range<T>` with its bounds' type (`string` for `int8range` and `numrange`).
+  - On PostgreSQL, `xid`, `cid`, `xid8`, `money` and the bit strings are a `string`.
+  - On PostgreSQL, an array of a type pg parses no further is one `string`. The set is `POSTGRES_TEXT_ARRAY_TYPES`: the bit strings, the geometric types but `point`, the multiranges, the reg types but `regproc`, `tsvector`, `tsquery`, `jsonpath`, `macaddr8`, `name`, `tid`, `xid`, `cid`, `xid8`, `txid_snapshot`, `pg_snapshot`, `pg_lsn` and `xml`.
+  - On MySQL and MariaDB, the spatial types are an `object` (GeoJSON).
+  - On MySQL and MariaDB, BIT is a `Buffer`; MariaDB's BIT(1) is a `boolean`.
+  - A SET is one `string` on MySQL and an array of its members on MariaDB.
+  - MariaDB's VECTOR is a `Buffer`.
+  - MariaDB's annotations follow the mariadb 3.x connector. Under 2.x a BIGINT past a safe integer is a `Long` and BIT(1) a `Buffer`.
+  - On SQL Server, the CLR types, `rowversion` and `timestamp` are a `Buffer`, `sql_variant` is `unknown`, and `json` and `vector` are a `string`.
+  - On Oracle, the intervals are an `object` (oracledb's IntervalDS and IntervalYM), and BFILE is an `object` (a Lob).
+  - On Oracle, a VECTOR is the typed array of its format: `Float32Array`, `Float64Array`, `Int8Array`, or `Uint8Array` for BINARY. It is any of the four where the format is `*` or not given, and an `object` (a SparseVector) where it is SPARSE.
+  - An ENUM is the union of its members.
+  - Snowflake's and Databricks' annotations are those of the `DataTypes` member each name takes (the generator's own name table, else the name's vendor list category), not the shared classifier's scalar, which only makes a binary type a `Buffer` there. They were never measured, both being cloud-only.
+  - On Snowflake, `BIGINT`, `NUMBER`, `NUMBER(38,0)` and a DECIMAL are `string`, while `INT`, `SMALLINT`, `TINYINT` and `BYTEINT` are `number`. Snowflake stores all of them as NUMBER(38,0), and Sequelize 6's snowflake dialect sets no `fetchAsString`. So snowflake-sdk most likely hands each over as a JS number (inferred from its documentation and Sequelize's source).
+- **Names.** Names follow the name cases.
+  - A character outside `$`, ASCII letters, digits and `_` becomes `_`. A leading digit takes `x` before it.
+  - A class name gets `_` after it (`RESERVED_CLASS_NAMES`) in three cases:
+    - TypeScript refuses it for a class, or reads it as a type operator in the class's own `InferAttributes`: `any`, `bigint`, `boolean`, `never`, `number`, `object`, `string`, `symbol`, `undefined`, `unknown`, `Object`, `infer`, `keyof`, `readonly`, `unique`.
+    - A CommonJS module binds it already: `require`, `exports`, `module`, `__filename`, `__dirname`. TypeScript's CommonJS emit refuses the first two with TS2441, which `--noEmit` never reports. Node refuses all five with a SyntaxError.
+    - It is `__proto__`, which would replace the prototype of Sequelize's model registry (`sequelize.models`). After that, a class named `prototype` fails at `init`.
+  - A property keeps such a name (`declare number: number`, `declare require: number`).
+  - Class names are numbered against each other and against the names the output uses. Those are `DataTypes`, `Model`, `Range`, `Sequelize`, `sequelize`, the `Infer…`, `CreationOptional` and `NonAttribute` helpers, `Buffer`, `Date`, and the typed arrays an Oracle vector names (`Float32Array`, `Float64Array`, `Int8Array`, `Uint8Array`).
+  - A property named after a reserved word gets `_` (`class_`, `constructor_`).
+  - A property is numbered (`_model2`, `prototype2`) and keeps `field` when its name is one of these (`MODEL_MEMBER_NAMES`): a member of `Model` or its `Hooks`, a field Sequelize sets on an instance or a model's prototype, a name every object inherits, or `prototype`. Examples: `_model`, `_options`, `_hasCustomGetters`, `_hasCustomSetters`, `dataValues`, `rawAttributes`, `toString`, `__proto__`, `prototype`.
+  - `prototype` is a key lodash's `baseSet` drops from the copies Sequelize makes. A property keeping it would make sync leave the column out and every update leave it unchanged.
+  - A property keeping `_hasCustomGetters` or `_hasCustomSetters` would fail the module's load once a relationship refreshes the model. `refreshAttributes` assigns that prototype field through the attribute's setter.
+  - Relation properties are numbered in the same set, so an alias never reads as a prototype key.
+  - An alias's accessors are a verb and the alias with its first letter upper case. The verbs are `get`, `set` and `create` for `belongsTo` and `hasOne`, and also `add`, `count`, `has` and `remove` for `hasMany`.
+  - An alias is numbered too in three cases:
+    - One of its accessors would hide a `Model` method or an attribute: `dataValue2` beside `getDataValue`, `attributes2` beside `setAttributes`, `team2` beside an attribute `getTeam`.
+    - The alias or one of its accessors is an accessor of an alias named before it on the model. Sequelize keeps the first of two accessors of one name, and an included alias hides an accessor of its name. Examples: `hasRoleList2` beside `roleList`, `team2` beside `Team` under the `none` column case.
+    - It equals its class name ignoring case. Sequelize gives the model's own table that alias in a query, and an include of the alias repeats it. Examples: `employee2` for the inverse end of a self-referencing one-to-one on `Employee`, `userList2` on a class `UserList`.
+  - Each alias's accessors are taken once it is named, so the result follows the relationships' order (`roleList` and `hasRoleList2`, or `hasRoleList` and `roleList2`).
+- **Keys and relations.** A primary key without the NN flag is NOT NULL (an owner decision of 2026-10-09).
+  - A composite foreign key gets no association.
+  - A column with the AI flag is `autoIncrement: true` and `CreationOptional<T>`.
+  - A serial without the AI flag is the same. The serials are PostgreSQL's `serial`, `serial2` to `serial8`, `smallserial` and `bigserial`, and MySQL's and MariaDB's `SERIAL`.
+  - A serial is NOT NULL on PostgreSQL whatever the flags say.
+  - On MySQL and MariaDB a serial outside the key is `unique: true`. That is the key AUTO_INCREMENT needs, which SERIAL implies.
+  - Sequelize allows one auto-increment attribute in a model. A serial past the first, or beside a column with the AI flag, takes `defaultValue: () => Sequelize.literal("DEFAULT")` instead.
+  - SQL Server's `rowversion` and `timestamp` take the same default.
+  - The reasons for that default: Sequelize's NOT NULL check refuses an insert that leaves such a column out. SQL Server takes no value for a rowversion but DEFAULT. A function default never reaches the DDL sync writes.
+  - Both kinds are `CreationOptional<T>`. A document default on them is dropped, as on an auto-increment column.
+- **Strings and defaults.** Any other column with a default (beyond the generated columns above) is `CreationOptional<T>`. A nullable column adds `| null` instead.
+  - Strings Sequelize hands the database keep each CR and LF as `\r` and `\n`, because the database compares them. These are a type written as is, an ENUM member, a table, column or index name, a foreign key, an alias and a default.
+  - A comment writes CR, LF and CRLF as one `\n`. It sits inside a string literal, where TypeScript reads no directive (`../AGENTS.md`, No TypeScript directive in a comment).
+- **Written as is, though Sequelize cannot use it.**
+  - These bare character types are `STRING`, which sync creates as `varchar(255)`, `nvarchar(255)` on SQL Server and `NVARCHAR2(255)` on Oracle:
+    - A bare `char`, `character` or `bpchar`.
+    - Outside SQL Server, a bare `nchar`, `national char` or `national character` (one character).
+    - A bare PostgreSQL `varchar`, `character varying` or `char varying` (no limit).
+    - A bare SQL Server `nvarchar`, `national char varying` or `national character varying` (one character).
+  - SQL Server's bare `nchar`, `national char`, `national character`, `varchar`, `char varying` and `character varying` are written as is (`"nchar"`), since no member writes them.
+  - MySQL's and MariaDB's display widths:
+    - `TINYINT(1)` syncs as `tinyint`.
+    - `INT(11) ZEROFILL` syncs as `int(10) unsigned zerofill`, which pads to ten digits.
+    - On MariaDB an `INT(10)` syncs as `int(11)`.
+  - A value read as an object that Sequelize writes back as JSON text the database refuses:
+    - PostgreSQL's `point`, `circle` and `tsrange`, arrays of `point` and `tsrange`, and a range array of two or more dimensions (`invalid input syntax for type point`, `malformed range literal`).
+    - MySQL's `MULTIPOINT`, `MULTILINESTRING`, `MULTIPOLYGON` and `GEOMETRYCOLLECTION`. A write takes their text only past the declared type.
+  - On SQL Server, `datetime` and `smalldatetime` are written as is and read as a `Date`. No Sequelize 6 member writes a `Date` to them: tedious refuses one through a type written as is (`Invalid string`), and `DataTypes.DATE`'s text carries an offset these types refuse (`Conversion failed`). So they take the value's text, which the declared `Date` refuses at compile time (TS2322).
+  - On SQL Server, the `DATE` member creates a `datetime2`, a `time` or a `datetimeoffset(n)` as `datetimeoffset(7)` at sync.
+  - On SQL Server, `numeric` syncs as its synonym `decimal`.
+  - On SQL Server, a value given for a rowversion is refused (`Cannot insert an explicit value into a timestamp column`), though `CreationOptional<Buffer>` allows one.
+  - A serial past the first in a table syncs without its sequence (`bigint NOT NULL`).
+  - On MySQL, a SERIAL without the NN flag: the editor's DDL writes `SERIAL NULL`, a column MySQL leaves NULL on every insert, and sync creates it NOT NULL. MariaDB refuses `SERIAL NULL`.
+  - A table with the AI flag on two columns: Sequelize refuses it at `init` (`Only one autoincrement field allowed`).
+  - On Oracle, an interval or a vector is read as an object that `STRING` refuses on a write. A write takes its text, again only past the declared type (TS2322).
+  - On Oracle, the members create other types at sync: `VARCHAR2` as `NVARCHAR2`, `DATE` and `TIMESTAMP` as `TIMESTAMP WITH LOCAL TIME ZONE`, `FLOAT` and `REAL` as `BINARY_DOUBLE`, `BOOLEAN` as `CHAR(1)`, `RAW`, `LONG RAW`, `BFILE` and `JSON` as `BLOB`, a bare `DECIMAL` as a NUMBER of no scale, and an interval or vector as `NVARCHAR2(255)`.
+  - On Oracle, a native `BOOLEAN` fails every write (`NJS-016`).
+  - On Oracle, a `RAW` or `LONG RAW` fails every write through `BLOB` (`ORA-00932`).
+  - On Oracle, `LONG` and `XMLType` fail every write (`ORA-22816`, the RETURNING clause).
+  - On Oracle, a native `JSON` column fails every read through `DataTypes.JSON`: oracledb hands over an object that Sequelize parses again.
+  - A column named `__proto__`, though its property compiles: Sequelize leaves it out of sync, inserts and updates, and pg cannot hand it over in a row object.
+  - A keyless table, to which sync adds an `id`.
+  - On SQLite, a type name its list does not hold is stored by its affinity: `money` reads back as a number, `timestamp with time zone` as a string.
+  - On MariaDB under `sql_mode=ORACLE`, a `DATE` is read as a `Date`, since that mode makes it a DATETIME.
+- **Measured** on 2026-10-10.
+  - Libraries: Sequelize 6.37.8, pg 8.16.3, mysql2 3.24.5, mariadb 3.5.4, tedious 20.3.3, sqlite3 5.1.7 (SQLite 3.44.2) and oracledb 6.10.0.
+  - TypeScript 5.9.3, 6.0.3 and 7.0.2 with `--strict` (`nodenext`, no emit) compiled 25,859 files per version with no error.
+  - Those files held 3,387 type tables across the eight databases: every name of the eight vendor lists and other spellings, PostgreSQL's every listed name as `[]`, `[][]` and ` ARRAY` too. Each type sat in one table as a key without the NN flag, NOT NULL, nullable, unique, with a default and with the AI flag.
+  - They held the five `data/*.sql` fixtures.
+  - They held 156 names as tables and columns under the 16 pairs of name cases with relationships, and alias documents under the same 16 pairs. The names were keywords, TypeScript's type names, `Model`, `Hooks` and `Object.prototype` members, the output's own names, what a CommonJS module binds, the typed arrays, a name opening on a digit, Hangul, an empty name, CR and LF.
+  - They held comments with every line terminator, 24 defaults, empty tables, an empty document, repeated names and a composite foreign key.
+  - Each case compiled as the whole text and one table at a time, and every table's text was found in the whole text.
+  - The 128 whole names documents of 113 of those names also compiled with emit to CommonJS, the only mode that reports TS2441, with no error on all three versions.
+  - Node loaded each of the 16 SQLite names documents, running every `init` and association. Of their 45,200 association accessors, none was missing or hid a `Model` method.
+  - Against PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13 and SQL Server 2022 CU27, the editor's DDL created each type's table. A value was inserted, read back through the generated model and written back.
+  - On those four, every value's JS type matched its annotation: 140 on PostgreSQL, 127 on MySQL, 132 on MariaDB, 72 on SQL Server.
+  - On those four, the model's sync created the editor's type but for the shapes under Written as is (6, 8, 8 and 14 types).
+  - On SQL Server, a create and an update of a `Date` passed for every date and time type but `datetime` and `smalldatetime`.
+  - On SQL Server, a create, a bulkCreate, a save and an update on a NOT NULL rowversion passed.
+  - On PostgreSQL, MySQL and MariaDB, a create without the serial passed, and sync created the editor's serial.
+  - Oracle AI Database 26ai Free (23.26.3) (73 types), SQLite (all 31 names its list holds), MariaDB 11.8.9 (VECTOR and `sql_mode=ORACLE`) and SQL Server 2025 CU9 (`json`, `vector`) passed the same read check.
+  - On MySQL and MariaDB, the five fixtures synced with the editor's column types, but for display widths and the keyless tables' `id`.
+  - PostgreSQL 17.11 read, wrote back and synced `tsvector[]` and the `dec` spellings (`numeric`, `numeric(5,1)`, `numeric[]`).
+  - On SQLite 3.44.2 and PostgreSQL 17.11, every include of a self-referencing one-to-one and of `userList2` passed.
+  - On SQLite 3.44.2 and PostgreSQL 17.11, `hasRoleList` stayed callable after including `hasRoleList2`.
+  - On SQLite 3.44.2 and PostgreSQL 17.11, `prototype2` wrote its `prototype` column.
+  - On PostgreSQL, `getTeam()` and `getTeam2()`, the accessors of a child of tables `Team` and `team`, each read its own parent.
+  - The 16 SQLite names documents loaded, synced and included every association, with no alias equal to its class name and no accessor shared.
+  - Their remaining failures were the empty names, a table named `$x` (a SQLite bind parameter) and the `__proto__` column.

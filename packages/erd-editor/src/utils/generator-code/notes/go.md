@@ -1,0 +1,159 @@
+# go.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `go.ts` writes one plain struct per table, sorted by name.
+  - Each field is typed for its database's usual `database/sql` driver.
+  - Each field is tagged `json:"<column name>"`. There is no `db` tag.
+  - There is no package clause and no import block (PR #424's choice). A project imports `time`, `encoding/json`, `github.com/shopspring/decimal` and `mssql "github.com/microsoft/go-mssqldb"` as its fields use them.
+  - The one-table view is `formatTable`, as in the other plain generators.
+- **Types.** They come from the shared classifier (`columnTypes.ts`, an owner decision of 2026-10-09). Its scalars are mapped in `SCALAR_TYPES`. A few database overrides (`elementType`) apply where the driver hands over another value.
+  - **Integers take the classifier's width.** This is an owner decision of 2026-10-09.
+    - `int8` for TINYINT, BYTE and INT1, MySQL's `TINYINT(1)` too.
+    - `int16` for SMALLINT, INT2, the PostgreSQL small serials and Databricks SHORT.
+    - `int32` for INT, MEDIUMINT and serial.
+    - `int64` for BIGINT.
+    - MySQL and MariaDB UNSIGNED and ZEROFILL integers are unsigned at their width: `uint8`, `uint16`, `uint32` for INT and MEDIUMINT, `uint64` for BIGINT and SERIAL.
+    - YEAR is a `uint16`.
+    - SQL Server's `tinyint` is a `uint8`.
+    - PostgreSQL's `oid`, `xid` and `cid` are a `uint32`, and `xid8` is a `uint64`.
+    - Every Oracle, Snowflake and SQLite integer type is an `int64`, since those databases store any integer in a NUMBER(38) or eight bytes.
+    - An Oracle or Snowflake NUMBER with no scale above 0 is an `int64` too, bare included.
+  - **Floats.**
+    - On MySQL, MariaDB, PostgreSQL and SQL Server, `FLOAT(p)` is a `float32` up to 24 and a `float64` above.
+    - On those four, PostgreSQL's and SQL Server's `real`, PostgreSQL's `float4`, and MySQL's and MariaDB's `FLOAT`, `FLOAT4` and `FLOAT(m,d)` are a `float32`.
+    - MySQL's and MariaDB's `REAL`, a DOUBLE, is a `float64`. So is PostgreSQL's and SQL Server's bare `float`.
+    - Every Oracle, Snowflake and SQLite float is a `float64`, `FLOAT(24)` and Oracle's `REAL` too. Oracle's `BINARY_FLOAT` is the exception, a `float32`.
+    - Every Databricks `FLOAT` and `REAL` is a `float32`, `FLOAT(53)` too. Its `DOUBLE` is a `float64`.
+    - MariaDB's bare `NUMBER`, a DOUBLE, is a `float64`.
+  - **Decimals.**
+    - These are a `decimal.Decimal`: numeric, decimal, dec and fixed; SQL Server's money and smallmoney; Snowflake's DECFLOAT; an Oracle or Snowflake NUMBER with a scale above 0 (`NUMBER(*,2)` too); MariaDB's NUMBER with arguments.
+    - PostgreSQL's `money` is a `string`. It holds the session's currency text (`$1,234.56`), which neither a float nor a decimal scans.
+  - **Booleans and bits.**
+    - BOOL, BOOLEAN and SQL Server's `bit` are a `bool`.
+    - MySQL's and MariaDB's `BIT` of any width is a `[]byte`. go-sql-driver/mysql hands over bytes even for `b'1'`.
+  - **Binary and UUID.**
+    - Every binary type is a `[]byte`, SQL Server's `rowversion` and `timestamp` included.
+    - Oracle's `BFILE` is a `string`.
+    - SQL Server's `uniqueidentifier` is an `mssql.UniqueIdentifier`. The value is stored mixed-endian, and only this type reads it back as written and marshals it as its string.
+    - Any other UUID is a `string`.
+  - **JSON and semi-structured types.**
+    - `json` and `jsonb` are a `json.RawMessage` on MySQL, MariaDB, PostgreSQL and Oracle, whose drivers hand JSON over as bytes.
+    - They are a `string` on SQLite, SQL Server, Snowflake and Databricks.
+    - The semi-structured VARIANT, OBJECT, ARRAY, MAP and STRUCT are a `string` too.
+  - **Dates and times.**
+    - A date and every timestamp, zoned or not, is a `time.Time`. Oracle's DATE is among them.
+    - A time of day is a `time.Time` on SQL Server and Snowflake.
+    - On MySQL, MariaDB, PostgreSQL and SQLite a time of day is a `string`, since their usual drivers hand it over as text.
+    - `timetz` and every interval are a `string` on every database.
+  - **Arrays and the rest.**
+    - A PostgreSQL array is one slice a dimension of its element's type: `int[][]` is a `[][]int32`, `jsonb[]` a `[]json.RawMessage`.
+    - Bit strings, `pg_lsn`, ranges, network and geometric types, ENUM, SET, spatial types and any type no rule names are a `string`.
+- **Names.** Go exports a name only when its first rune is an upper-case letter, and encoding/json sees only an exported field.
+  - A table or column name is composed (NFC) before the name case. The name case would otherwise split a word at a lone combining mark.
+  - So a decomposed `émile` (`e` then U+0301) cases as the precomposed one, `Émile`, under every name case.
+  - The cased name's first letter is upper-cased.
+  - Where its first rune is then no upper-case letter, the name gets `X` in front, so that Go exports it: `X회원`, `X_id` and `X1st` under NameCase none, and `X` for an empty name.
+  - Go takes a combining mark in no identifier.
+  - camelCase, pascalCase and snakeCase drop a name's own marks as they split it into words. Under camelCase `ชื่อ` gives `Xชอ` and `नाम` gives `Xनम`.
+  - A mark their casing makes is recomposed or dropped too. `İlçe` stays `İlçe`, `KİLO` gives `Kilo`, and `KİLO_ชื่อ` gives `Kiloชอ` (under snakeCase `Kilo_ช_อ`).
+  - NameCase none keeps a name's own marks (`नाम` is `Xनाम`). With them it keeps any mark its first letter's upper-casing makes.
+  - NameCase none drops that upper-casing mark from a name holding no mark of its own: `ǰx` gives `Jx`.
+  - Keywords, predeclared names and the packages the types name need no change, since an exported name is none of them (`Type`, `String`, `Time`, `Decimal`).
+  - Any other name Go refuses, or a repeated one, is written as is, as in `php.ts` and `rust.ts` (Written as is, below).
+  - The tag keeps the column name. `"` and `\` are escaped.
+  - Every control character except a tab is escaped as an interpreted Go string writes it, and so is U+FEFF: `\n`, `\r`, and a four-digit `\u` escape for the rest. The reasons: Go drops a raw carriage return and refuses a raw line feed, NUL or byte order mark. gofmt ends an alignment run at a form feed.
+  - Where the name holds a backtick, the tag is an interpreted literal.
+  - A column named `-` is tagged `-,`, which encoding/json reads as the key `-`. `json:"-"` would leave the field out.
+- **Keys and nullability.** A primary key is `T`, with or without the NN flag (an owner decision of 2026-10-09; `../AGENTS.md`, Rules every generator follows).
+  - A NOT NULL column is `T`. Any other column is `*T`.
+  - `[]byte` and an array are never a pointer, since they scan NULL as nil.
+  - `json.RawMessage` is a pointer, since database/sql cannot set it to NULL.
+- **Comments.** They are `//` lines, one per line of the comment. A line ends at CR, LF, CRLF, U+2028 or U+2029.
+  - The table's comment sits above its struct, and a column's above its field.
+  - Each line, and the whole comment, lose the spaces gofmt trims: Go's Unicode spaces, NEL included.
+  - A run of empty lines is one `//`, as gofmt folds it in a doc comment.
+  - NUL and U+FEFF are dropped, since Go refuses them inside a file.
+  - A line that reads as a `+build` constraint (Go's spaces around `+build`) is a block comment, `/* +build ignore */`, with its form feeds made spaces. gofmt would move a `// +build` line above the package clause, where it drops the file from the build.
+- **Layout follows gofmt's field alignment.** Fields are aligned as gofmt aligns them, counting runes. An alignment run ends at a field with a comment line above it.
+- **Written as is.** These stay in the output, though Go, gofmt or a driver refuses them.
+  - **Names that fail the build.** A name Go refuses and a repeated one (`id` beside `ID`) fail the build.
+    - Under every name case, a name holding an emoji or another pictographic symbol the name cases keep (`©`, `®`, `™`, `‼`, `↔`, `〰`).
+    - Under NameCase none, which keeps every character, a name holding a character no identifier holds: a space, `-`, `,`, `;`, `.`, `:`, `//`, a quote, a backslash, a backtick, `²`, `€`, `Ⅻ`, `ⓐ`, U+00A0, U+00AD, U+200B, U+202E, U+2028, a private-use character or a control character.
+    - Under NameCase none, a name holding a mark of its own (`नाम`, `ชื่อ`).
+  - **Names gofmt or go vet flags.** Each is under NameCase none.
+    - A table or column name ending in a space or a tab. It builds, but gofmt trims it (`type Trail  struct`, `type Tab<tab> struct`).
+    - A name ending in a `/*…*/` comment. It builds as the part before it (`a/*x*/` the field `A`, `Users/*x*/` the struct `Users`), and gofmt lists it.
+    - A column name with a comma. Go reads it as two fields (`A,b string`), and go vet then reports the second unexported.
+  - **Comments.**
+    - A comment line that reads as a `+build` constraint but holds `*/`, which no block comment can carry. go vet reports `misplaced +build comment`. gofmt moves the line above the package clause, where the build then excludes the file.
+    - A table comment line opening with a space or a tab. gofmt rewrites it as a doc comment's code block (`//` then `//<tab>…`).
+    - A table comment line opening with a space or a tab, then a list marker. gofmt rewrites it as a list item: `  1. one` becomes `//  1. one`, and a tab then `* a` becomes `//   - a`. `  - id` is gofmt's own form and stays.
+    - A table comment line alone between paragraphs that reads as an old-style heading. gofmt adds `# ` to it.
+    - A table comment's link definition (`[docs]: https://x`). gofmt moves it to the comment's end, after an empty `//`.
+    - A column's comment is no doc comment, so gofmt leaves it as written.
+  - **encoding/json keys.**
+    - The key is the tag's name before its first comma. `a,b` reads as `a`.
+    - `a, b` reads as `a` too, which go vet reports (`suspicious space in struct tag value`).
+    - What follows the comma is read as options, which go vet does not report. `a,string` writes the value as a JSON string (`{"a":"1"}`).
+    - `a,omitempty` and `a,omitzero` leave a zero value out.
+    - An option go1.27.1's default encoding/json refuses (`a,format:RFC3339` on an integer) makes `json.Marshal` of the whole struct fail (``unsupported `format` tag option``). `GOEXPERIMENT=nojsonv2` ignores that option.
+    - Under go1.27.1's default encoding/json, built on json/v2, a name holding `"`, `\`, `'` or a backtick reads up to that character: `say"hi` as `say`, ``we`ird`` as `we`.
+    - A name that is only `,`, or empty, reads as the field name.
+    - Two fields that read to one key both leave the JSON, set values included. Examples: `a` beside `a,omitempty`, `a,b` beside `a,c`, and by default `say` beside `say"hi`, `back` beside `back\slash` and `it` beside `it's`. go vet reports only the comma-split pairs (`repeats json tag`).
+    - Under `GOEXPERIMENT=nojsonv2` and on Go 1.26, whose encoding/json is v1, the key is the Go field name for some names. These are names holding a character other than a letter (`unicode.IsLetter`), a digit (`unicode.IsDigit`), an ASCII space and `!#$%&()*+-./:;<=>?@[]^_{|}~`.
+    - Under v1 such characters include a quote, a backslash, an apostrophe or a backtick (`say"hi` as `SayHi`).
+    - Under v1 they also include characters the default reads as the column name: a combining mark (a decomposed `émile` as `Émile`, `नाम` as `Xनम`, `ชื่อ` as `Xชอ`), `²`, `¹`, `½`, `Ⅷ`, `€`, `°`, `·`, `×`, `–`, curly quotes, full-width brackets (`金額（円）` as `X金額円`), U+200B, U+FEFF, a tab and any other control character.
+  - **Driver limits.**
+    - lib/pq reads no array into a slice.
+    - lib/pq reads a `time` into a `string` as `0000-01-01T13:45:30Z`, which PostgreSQL refuses written back.
+    - pgx, natively and through `database/sql`, refuses a NULL element of an array (`'{1,NULL}'`) into its slice: `cannot scan NULL into *int32`. A `[]*int32` would take it. The slice takes only a NULL array as nil.
+    - pgx's native interface reads no interval or bit string into a `string`.
+    - GORM refuses a whole model that holds an array's slice when it parses the schema.
+    - An array's slice reads through pgx's native interface. It also reads through pgx v5.11.0's `database/sql` driver on Go 1.27 (`RowsColumnScanner`), not on Go 1.26.
+    - go-ora reads an Oracle `BFILE` into no plain type, since it hands over a locator.
+    - go-ora refuses to bind a `json.RawMessage` (`ORA-01484`). So an Oracle JSON column reads but is not written back.
+    - An Oracle bare `NUMBER` (and `NUMBER(*)`, the same type) holding a fraction fails its `int64` scan. The `int64` is kept to match `rust.ts`'s `i64`.
+    - An Oracle `INT`, `INTEGER` or `SMALLINT` (a NUMBER(38)), a bare `NUMBER`, or a `NUMBER(p)` with p from 19 to 38 can hold a value past `int64`'s range. go-ora refuses it: `converting driver.Value type string ("100000000000000000000") to a int64: value out of range`.
+    - A Snowflake integer, a NUMBER(38,0), can hold such a value too. This comes from its documented range; what gosnowflake does with it was not run.
+    - go-sql-driver/mysql fills a `time.Time` only with `parseTime=true` in the DSN.
+- **Measured** on 2026-10-10 with go1.27.1 (darwin/arm64), shopspring/decimal v1.5.0 and go-mssqldb v1.11.2. The generator was bundled from the current sources.
+  - **3,439 packages, whole and per table.** Each is a whole text or a one-table view, with the four imports added.
+    - The eight vendor lists' 492 names, each bare and with `(10)`, `(10,2)`, ` UNSIGNED`, ` ZEROFILL`, `[]` and `[][]`, and 101 other spellings. That is 3,545 types in all, as NOT NULL, nullable and key-only columns.
+    - 105 names as table and column names under all four name cases: Go keywords and predeclared names, the output's package and type names, Hangul, Kana, Han, the Turkish İ, combining marks, a decomposed and a precomposed `émile`, Devanagari, Thai, emoji, punctuation, quotes, a backslash, a backtick, control characters, U+FEFF, U+200B, U+202E, a leading space, a trailing space or tab.
+    - 46 comments on tables and columns of PostgreSQL and MySQL: CR, LF, CRLF, U+2028, U+2029, NEL, NUL, U+FEFF, `+build` lines with every Go space, `//go:build`, indented lines, a heading, a link definition, form feeds, bidirectional controls, a lone surrogate.
+    - Empty and column-less tables.
+    - Alignment with Hangul and characters beyond the BMP.
+    - The five `data/*.sql` fixtures on all eight databases.
+  - **Results of the 3,439 packages.**
+    - `go build` failed 119 packages, every one a name Go refuses or a repeated one.
+    - `go vet` failed 15 more: the 6 holding the `+build` line with `*/`, and 9 names with a comma.
+    - `gofmt -l` listed 36 for a table comment it rewrites: 18 an indented line, 6 a heading, 6 a link definition, 6 the `+build` line with `*/`.
+    - `gofmt -l` listed 11 for a name under NameCase none: a trailing space or tab, a lone space, a comma, a line feed. That makes 47 listed in all.
+    - Every type list, fixture, empty table and alignment package built, passed go vet and was left as it was by gofmt.
+    - 2,799 one-table packages parse. In them the tags of 38,299 of the 38,301 fields read back through `reflect.StructTag.Get` as their column name (`-,` for `-`).
+    - The two other fields are a column `x` LF `y` under NameCase none, whose line break splits its field, in a package that does not build.
+  - **A further 732 packages.**
+    - 34 comments on PostgreSQL and SQL Server: indented numbered and bulleted lists, a code block after a paragraph, `+build` after other spaces, CR, U+2028, U+FEFF or NUL, C1, private-use and noncharacters.
+    - 37 names under all four name cases.
+    - ENUM, SET and argument spellings on all eight databases.
+    - `go build` failed 54, every one a name under NameCase none that Go refuses.
+    - `go vet` failed 8 more: the `+build` line with a form feed and `*/`.
+    - `gofmt -l` listed 32 for a table comment: 8 each a numbered list, a tab-indented bulleted list, a code block and the `+build` line with `*/`.
+    - `gofmt -l` listed 8 for a name under NameCase none: `a/*x*/` and `Users/*x*/` 3 each, which build, and 2 that do not. That makes 40 listed in all.
+    - 1,333 of the 1,336 fields read back. The others are in two packages that do not build.
+  - **Names mixing two kinds of mark.** 19 names mixed a mark of their own (Thai, Devanagari, Hebrew, Arabic, a decomposed `é`) with a letter whose case change makes one (İ, ǰ, ΐ, ΰ, ẖ, ẗ, ẘ). They ran as table and column names under all four name cases.
+    - Every package built under camelCase, pascalCase and snakeCase.
+    - Under NameCase none the 15 holding a mark of their own failed.
+  - **JSON keys.** `json.Marshal` ran on the comma, quote, backslash, apostrophe and backtick names, alone and beside the name they read as, and on 60 more column names under camelCase. It gave the keys above (Written as is, encoding/json keys) by default, under `GOEXPERIMENT=nojsonv2` and on go1.26.9. The last two were alike for every name.
+  - **NULL through a stub driver.** A stub `database/sql` driver handed over NULL. A `[]byte` and a `*json.RawMessage` took it. A `json.RawMessage` did not: `unsupported Scan, storing driver.Value type <nil>`.
+  - **Driver limits, measured on 2026-10-09.** The driver limits, and the types they decided, were measured against PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13, SQLite, SQL Server 2022 (CU27) and Oracle Database 23.26 Free.
+    - The drivers were pgx v5.11.0 (`database/sql` and native), lib/pq v1.12.3, go-sql-driver/mysql v1.10.1, mattn/go-sqlite3 v1.14.52, go-mssqldb v1.11.2, go-ora v2.9.0 and GORM v1.31.2.
+    - A value row and a NULL row were each read and written back.
+  - **The NULL array element, on 2026-10-10.** It was measured with `'{1,NULL}'::int[]`, `'{a,NULL}'::text[]` and `'{{1,2},{NULL,4}}'::int[]`, through pgx v5.11.0, natively and through `database/sql`, on PostgreSQL 17.11.
+  - **Integers past `int64`, on 2026-10-10.** An `INTEGER` column holding 10^20, and casts to INTEGER, NUMBER(19) and NUMBER(38) past either end, were scanned into `int64`, `*int64` and `string`. This ran through go-ora v2.9.0 on Oracle Database 23.26 Free.
+  - **`dec` and `DEC`, not run here.** The 2026-10-09 driver run did not cover PostgreSQL's `dec` and SQLite's `DEC`. They are stored as the `numeric` and NUMERIC-affinity columns `decimal` and `DECIMAL` are (`graphql.md`, Measured). So they take their `decimal.Decimal`.
+  - **Snowflake and Databricks, not run.** Their values are inferred from their drivers' documentation.
+  - **Comma options, on 2026-10-10 with go1.27.1.** NOT NULL `INT` columns named `a,string`, `a,format:RFC3339`, `a,omitempty`, `a,omitzero`, `a,b` and `a,unknown` were marshalled holding 1 and 0. This ran under the default name cases, by default and under `GOEXPERIMENT=nojsonv2`. go vet reported none.
+  - **Pictographic symbols, on 2026-10-10 with go1.27.1.** A column name held `™`, `®`, `©`, `‼`, `⁉`, `↔`, `↕`, `↩`, `⌚`, `⌨`, `◻`, `◼`, `〰`, `〽`, `⤴` or an emoji. This ran under the default name cases, camelCase, pascalCase and snakeCase. Each of the 64 packages failed to build (`invalid character U+2122 '™' in identifier`).

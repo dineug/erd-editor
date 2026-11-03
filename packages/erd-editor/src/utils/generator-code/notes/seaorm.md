@@ -1,0 +1,91 @@
+# seaorm.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** SeaORM 2.0 entities in the dense form, each table a module (owner decisions of 2026-10-09).
+  - Each entity is a `#[sea_orm::model]`. Relations are `BelongsTo` / `HasOne` / `HasMany` fields, with no `Relation` enum.
+  - Each table is a `pub mod`, so the whole text compiles as one file.
+  - The one-table view is that module's file body, unwrapped. So `index.ts` hands it to `createTableCode`.
+- **Types.** They come from `rustTypes.ts`, in the prelude's spelling (`Decimal`, `DateTimeWithTimeZone`, `Json`).
+  - A PostgreSQL array of more than one dimension is a `String` read as text.
+  - PostgreSQL's and SQLite's `dec` is a `Decimal`, as in `rust.ts` (an owner decision of 2026-10-10). Before that decision it was a `String` read through `text` or `TEXT`.
+    - On PostgreSQL it is `custom("dec")` bare and `Decimal(Some((p, s)))` with arguments, with no `select_as` or `save_as`.
+    - On SQLite it is `custom` with `select_as = "REAL"`.
+  - `column_type` is written only where SeaORM's schema builder would write another type than the editor's DDL.
+  - It takes a native spelling where `postgresColumnType` or `mysqlColumnType` has one for the type and its arguments. Otherwise it is `custom("<type>")`.
+  - ZEROFILL, a non-integer UNSIGNED, a PostgreSQL array and an argument past the `u32` the native spellings hold take `custom` too. A native type would drop ZEROFILL, and UNSIGNED on any type but an integer.
+  - The native spellings on PostgreSQL, MySQL and MariaDB are `String(StringLen::N(n))` for a varchar, `Char(Some(n))` and `Char(None)`, `Decimal(Some((p, s)))`, a bare `Text`, `Bit(Some(n))` and `Bit(None)`.
+  - On MySQL and MariaDB they add `Binary(n)`, `VarBinary(StringLen::N(n))`, a bare `Blob` and `Year`.
+  - On PostgreSQL they add `VarBit(n)`, and for the bare type `JsonBinary`, `Money(None)`, `Interval(None, None)`, `Inet`, `Cidr` and `MacAddr`.
+  - So `ltree`, `interval(3)` and MySQL's `TINYTEXT` are `custom`.
+  - SQLite takes `custom` by type affinity: where the declared type's affinity differs from that of the type SeaORM would write. A SQLite column keeps an affinity, not the name it was declared with.
+  - SQL Server, Oracle, Snowflake and Databricks take no `column_type`, since SeaORM has no backend for them.
+  - On PostgreSQL, a type sqlx cannot read is read through `select_as` and written through `save_as`, which holds the column's type as typed. So an `inet` host, in an array too, reads back with its mask (`10.0.0.1/32`).
+  - SQLite's numeric affinities store a whole number or numeric text as a number. So on SQLite:
+    - A `Decimal`, which SeaORM reads as an `f64`, takes `select_as = "REAL"`. That rounds one past 15 to 17 significant digits, and fails with `TryIntoErr` near `Decimal`'s maximum.
+    - A `Json` or `String` in such a column takes `select_as = "TEXT"`.
+  - `Eq` is dropped beside an `f32` or `f64`.
+- **Names.** `seaorm.ts` ignores the name cases.
+  - Fields and modules are heck's snake_case, which DeriveEntityModel reads back (`heck.ts`, a port of heck 0.5).
+  - `table_name` is always written. `column_name` is written where the stored name differs.
+  - Under `BracketType.none`, PostgreSQL folds an undelimited name to lower case, and a dotted table name is split into `schema_name` and `table_name`.
+  - The split happens at a dot inside backticks too, since `splitNameParts` knows no backticks. So `` `a.b`.c `` writes `` schema_name = "b`" ``.
+  - A keyword column takes `_` (`type_`), since `r#` on a field breaks `unique`, `unique_key` and `from`.
+  - A keyword module or unique key takes `_` too, which keeps one spelling.
+  - A keyword relation field takes `r#` (`r#match`).
+  - `self`, `crate` and `super` take `_` as a relation field, since rustc takes no `r#` on them. So an optional one warns `non_snake_case` on the `set_self__option` setter the macros derive.
+  - A character no identifier holds parts words as a space does (`a ½b` writes `a_b`). So it leaves no run of underscores for the derived setters to warn on.
+  - A name opening on a digit or on U+0345 takes `column_`, `table_` or `unique_` before it (`rustBase`). U+0345 can continue an identifier only.
+  - A name with nothing left takes that word alone.
+  - An unnamed composite UNIQUE is named from its fields joined, through the same repair (`type_name`, not `type__name`).
+  - A module named beyond ASCII (`주문`) compiles in the one file. Moved to a file of its own, it needs `#[path]`.
+  - Names are repaired, then numbered where they would collide:
+    - `a1_2` beside `a_1`, whose Column variants match.
+    - `self_2` on a unique `self`, whose `find_by_` would name `Column::Self`.
+    - `column_2` on a key column named `column`, or with no name to make one from. Its variant would make the derived `Self::Column` ambiguous.
+    - `parent_key_2`, `parent_key_for_2` and `parent_key_for_self_rev_2` for a field named `parent_key`, `parent_key_for` or `parent_key_for_self_rev`. Its setter would shadow the `ActiveModelTrait` method the derived relation code calls.
+    - `writer_2` for a relation field where a column holds `writer_option`. An optional relation `writer` derives a `set_writer_option` setter, which the column's setter would repeat.
+    - `id_2` for a composite UNIQUE named `id`, whose derived `find_by_id` would hide `EntityTrait::find_by_id`.
+- **Keys and relations.** Keys and unique constraints are written as attributes; relations follow the editor's relationships.
+  - A key column without the auto-increment flag takes `auto_increment = false`.
+  - Outside the key the flag writes nothing, since the macros refuse `auto_increment` there.
+  - A unique column takes `unique`, a table's only key column included (owner decisions). The exception is where PostgreSQL, or SQLite on a key it does not make its rowid, folds that UNIQUE into the primary key.
+  - A composite UNIQUE index takes `unique_key` (owner decisions). A second one sharing a column is left out, since a field keeps only its last key.
+  - No plain index is written (owner decisions).
+  - Relations are read pair by pair.
+  - The child takes `belongs_to`. The parent takes `has_one` or `has_many` by cardinality.
+  - A self relationship takes `self_ref` with `relation_reverse`.
+  - Where one table pair has several relationships written, they take `relation_enum` and `via_rel`.
+  - Those relations, and a self relationship's, are named by their foreign key through `graphql.ts`'s `stripIdWord` (`author`, `posts_by_author_list`).
+  - The list word goes last. That keeps the `add_` setters the macros name apart from the singular.
+  - A one side in such a pair, or on a self relationship, is a `HasMany`, since SeaORM takes no `HasOne` in either.
+  - A link table gets no `via`.
+  - Referential actions follow `referentialActionSupport`.
+- **Strings and defaults.** Comments are written as `comment`, and no default is written (owner decisions).
+- **Written as is, though SeaORM cannot use it.**
+  - A keyless table.
+  - A primary key on a PostgreSQL array, past the keys SeaORM implements.
+  - A primary key of more than twelve columns, or a foreign key of more than twelve, past the keys and tuples SeaORM implements.
+  - An auto-increment column in a composite primary key. On MySQL and MariaDB an insert that leaves it to the database writes the row, then fails with `UnpackInsertId`. On SQLite, where the editor's DDL writes no AUTOINCREMENT on a composite key, the insert fails NOT NULL.
+  - A PostgreSQL `serial`, `serial2`, `serial4`, `serial8`, `smallserial` or `bigserial` column without the NN flag. It is an `Option<T>` by the rule both generators share: a key or NN column is `T`, any other `Option<T>`. PostgreSQL makes it NOT NULL, so a `Set(None)` insert fails where `NotSet` passes.
+  - A unique column named `id` outside the key, whose derived `find_by_id` shadows `EntityTrait::find_by_id`.
+  - A foreign key to part of a composite key (`data/Magento2-sales.sql`). MySQL refuses it in the editor's DDL, and again in a schema sync.
+  - A composite UNIQUE index left out for sharing a column with an earlier one, or one whose columns run against the table's order. Schema sync drops or rebuilds it in table order on MySQL. On PostgreSQL it stops on it with `constraint … does not exist`.
+  - A DESC column in a composite UNIQUE index, which `unique_key` cannot carry.
+  - MySQL and MariaDB spatial types, as in `rust.ts`.
+  - A MySQL TIME past a day, as in `rust.ts`.
+  - A PostgreSQL numeric past 28 digits, as in `rust.ts`.
+  - A UUID another client stored as text in SQLite. SeaORM writes and reads 16 bytes, so `find` fails with `expected 16 bytes, found 36`.
+  - A MariaDB server in `sql_mode=ORACLE`, a mode the editor does not know. It makes a DATE a DATETIME, which a `Date` field fails to read.
+  - Nested writes through the 2.0 builder into a pair with several relationships, which SeaORM skips.
+  - An Oracle, Snowflake or SQLite integer at the width its name declares, as in `rust.ts`.
+- **Measured** on 2026-10-09 with sea-orm 2.0.4 on rustc 1.98, editions 2021 and 2024.
+  - The output compiled.
+  - It matched rustfmt, except for the leading blank line and a line of Hangul. rustfmt counts Hangul at double width, as it does Han and Kana. `formatAttribute` counts a column a character.
+  - It ran insert, find, find_related, load and nested load against the editor's DDL. The databases were PostgreSQL 17, MySQL 8.4, MariaDB 11.4 and SQLite.
+  - On SQLite it also ran with whole-number decimals, and with numeric JSON and text.
+  - Schema sync changed nothing in those runs.
+  - The DDL SeaORM writes from the entities differs from the editor's in what sync leaves alone. It writes a PostgreSQL identity `BY DEFAULT`, not `ALWAYS`, other constraint and index names, and no PostgreSQL comments.
+  - The five `data/*.sql` fixtures compiled, except for their keyless tables.
+  - Without those tables, the fixtures selected every entity on MySQL 8.4 and MariaDB 11.4. Schema sync changed nothing there except the foreign keys MySQL refuses.

@@ -1,7 +1,7 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
-
 # map-columns
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -42,7 +42,7 @@
 
 ### Opening Map Columns
 
-- **Owner decisions of 2026-10-06 shape Map Columns.** Map Columns maps the parent's key onto the child's columns, a row per key column. The rules from here through Text and direction come from those decisions.
+- **Owner decisions of 2026-10-06 shape Map Columns.** Map Columns maps the parent's key onto the child's columns, a row per key column. The rules from here through Text and direction come from those decisions, except The layout (2026-10-11).
 - **Two ways open it.** It opens for a new relationship from the buttons beside a draw's target. It opens for a held relationship from the relationship menu.
 - The buttons beside a draw's target: `src/components/erd/AGENTS.md`.
 - **The menu row respects readonly and a draw.** The relationship menu hides the row in readonly, where `Erd.tsx` raises no relationship menu at all. It ends an armed draw before the dialog opens, since the draw's buttons would otherwise come back over the table once the dialog closed (`handleOpenMapColumns`).
@@ -50,7 +50,7 @@
 
 ### The key
 
-- **The key is primary or unique.** The key is the primary key, read in table column order, or a unique column. References offers the choice only while it lists two or more (`showReferences` in `src/utils/map-columns/buildRows.ts`).
+- **The key is primary or unique.** The key is the primary key, read in table column order, or a unique column. A held relationship whose columns match no key opens on one more choice, `mapColumns.currentColumns` (`CURRENT_KEY_ID` in `src/utils/map-columns/candidateKeys.ts`), which warns and still saves. References offers the choice only while it lists two or more (`showReferences` in `src/utils/map-columns/buildRows.ts`).
 - **A unique primary key is one choice.** A unique column over the primary key's very columns counts as that key, not as a second choice.
 - **A unique index is no key here.** The generators write a foreign key before the index it would need.
 
@@ -88,7 +88,7 @@
 ### Text and direction
 
 - **Its own text is `mapColumns.*`.** The keys are in `src/i18n/messages/en/mapColumns.ts`, the buttons' titles and the menu row included.
-- **It shares `common.*` words.** These are Cancel, Primary Key, unnamed and the notation names. `relationshipTypeName` reads the notation names from the relationship menu's own table.
+- **It shares `common.*` words.** These are Cancel, Close, Primary Key, unnamed and the notation names. `relationshipTypeName` reads the notation names from the relationship menu's own table.
 - **Text is read in each render.** The toasts read theirs where they render: `localized`, and `TableRemovedText` for a removed table's name or its unnamed.
 - **Names and data types enter as placeholders.**
 - **A right-to-left subtitle points its arrow left.** The parent stands on the right.
@@ -108,9 +108,11 @@
 
 ## Testing Requirements
 
-- `mapColumnsAction.test.ts`, `MapColumnsDialog.test.tsx` and `MapColumnsDialog.browser.test.tsx` cover this directory; `src/utils/map-columns/` has a spec beside each module except `index.ts` and `toMapColumnsActions.ts`.
+- `mapColumnsAction.test.ts`, `nameOf.test.ts`, `MapColumnsDialog.test.tsx` and `MapColumnsDialog.browser.test.tsx` cover this directory; `src/utils/map-columns/` has a spec beside each module except `index.ts` and `toMapColumnsActions.ts`.
 - `src/engine/peer-store.converge.test.ts` (`relationship.changeColumns converges`) holds the mapping races, among them `an editor that predates the mapping edit`, `a change racing a mapping made in Map Columns` and the column order of concurrent adds.
 - The two tie-breaks are pinned in `src/engine/modules/relationship/atom.actions.test.ts` and `src/engine/modules/table-column/atom.actions.test.ts` (`changeColumnDataType at one version`).
 - `e2e/specs/relationship-map-columns.spec.ts` drives the buttons beside a draw's target, the dialog and where the buttons stand.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

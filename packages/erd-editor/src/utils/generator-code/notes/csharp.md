@@ -1,0 +1,128 @@
+# csharp.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `csharp.ts` writes plain classes of auto-properties, with no `using` line and no namespace.
+  - Nullable reference types follow `dotnet ef dbcontext scaffold`: `int?`, `string?`, and `= null!;` on a NOT NULL reference type or array.
+  - So the whole text and one table compile in an SDK project with `Nullable` on and its default `ImplicitUsings`.
+  - That default holds `global using global::System;`, which supplies `Guid`, `DateTime`, `DateTimeOffset` and `TimeSpan`.
+  - A primary key or a NOT NULL column is `T`; any other column is `T?`.
+  - A primary key without the NOT NULL flag still reads as NOT NULL. Every generator but DBML, AML and Mermaid does the same (`../AGENTS.md`, A primary key column is NOT NULL).
+  - A comment is written as `//` lines, one for each line. It is split at CR, LF, CRLF, U+0085, U+2028 and U+2029.
+  - The blank lines around a comment and each line's trailing spaces are dropped.
+- **Types.** A type is decided by name first, then by the width `columnTypes.ts` reads, then by the shared vendor tables' category.
+  - The name comes first because the shared vendor tables, which other generators read, file some types under one category that C# tells apart.
+  - Under every database, the binary names (`BINARY_TYPES`) are `byte[]`, and `uuid` / `uniqueidentifier` are `Guid`.
+  - Under every database, the four time-zone timestamps and PostgreSQL's `timetz` are `DateTimeOffset`, and `money` / `smallmoney` are `decimal`.
+  - MySQL's and MariaDB's UNSIGNED, ZEROFILL and SERIAL types take the unsigned type of their width: `byte`, `ushort`, `uint` for MEDIUMINT and INT, or `ulong`.
+  - Their `BIT(n)` past one bit is `ulong`; `BIT` and `BIT(1)` stay `int`. MySqlConnector reads these unsigned types and `BIT(n)` at their maximum.
+  - PostgreSQL's `oid`, `cid`, `xid`, `regtype` and `regconfig` are `uint`, and `xid8` and `pg_lsn` are `ulong`.
+  - Npgsql reads them in these types. It refuses a `long` for the object ids, and a `string` for `regtype`, `regconfig` and `pg_lsn`.
+  - Every integer type of Oracle, Snowflake and SQLite is `long`, `SMALLINT` included. They store up to 64 bits whatever width the name declares.
+  - Elsewhere `smallint` alone is `short`. `int2`, `serial2`, `smallserial` and Databricks `SHORT` stay `int` (an owner decision).
+  - A 64-bit float is a `double` whatever the vendor table says. So MariaDB's bare `NUMBER` is a `double`, since its Oracle mode stores it as a DOUBLE.
+  - Under SQL Server alone, `tinyint` is `byte`, `timestamp` and `rowversion` are `byte[]`, and `sql_variant` is `object`. `timestamp` is binary there and a date and time elsewhere.
+  - The rest follow the shared vendor tables' category. That category reads `float(p)` by its precision, a `NUMBER(p,s>0)` as a decimal and PostgreSQL's bit strings as text.
+  - It keeps `DateTime` / `TimeSpan` over `DateOnly` / `TimeOnly`, and `string` for the spatial types, `hierarchyid`, `vector`, `xml` and `json` (owner decisions).
+  - It keeps `string` for MySQL's and MariaDB's `CHAR(36)` (an owner decision of 2026-10-10).
+  - A PostgreSQL array takes one rank per dimension in one rectangular array, before the element's own brackets: `int[]`, `int[,]`, `byte[,][]`.
+  - It is never a jagged array, because Npgsql does not read one.
+  - Outside PostgreSQL, `int[]` is no array.
+- **Names.** Names follow the name cases.
+  - A property's first letter is upper-cased by `toUpperCase`, whatever the locale.
+  - WebKit's `toLocaleUpperCase` turns `id` into `İd` under a Turkish or Azerbaijani system locale. .NET's `OrdinalIgnoreCase` does not match `İd` to `id`.
+  - A keyword takes `@` where the name stays one. The keywords are C#'s reserved words and Roslyn's `__arglist`, `__makeref`, `__reftype` and `__refvalue`.
+  - They also include the contextual keywords C# refuses or warns against as a type name: `extension`, `file`, `record`, `required`, `scoped`.
+  - The `@` goes before the keyword, and any white space around the name is kept: `public class @class`.
+  - C# refuses a property it reads as its class's name (CS0542). Examples are sakila's `country.country`, `city.city` and `address.address`.
+  - Such a property is renamed as `dotnet ef dbcontext scaffold` renames it. It takes the first of `<Name>1`, `<Name>2`, … that no other property of the class holds, a property renamed before it included.
+  - The renamed property carries `[global::System.ComponentModel.DataAnnotations.Schema.Column("<column name>")]`. EF Core maps it through that attribute (an owner decision of 2026-10-10).
+  - The stored name is a C# string literal with JSON's escapes. U+0085, U+2028 and U+2029, where C# ends a line, are `\u` escapes too.
+  - The attribute is spelled from `global::`, so it needs no `using` line and a class named `System` cannot hide its namespace.
+  - Names compare as C# reads and compares identifiers. An `@`, Unicode formatting characters (Cf), and the white space and line breaks around a name are set aside.
+  - So a column `country` followed by a space, a no-break space, a tab, U+0085 or U+2028 is renamed in class `Country`.
+  - U+001A is the exception. Roslyn alone reads it as white space, so the comparison keeps it, and C# reports CS0542 where it is the one difference.
+  - A class with no name, or with white space alone for one, renames nothing.
+  - Any other name that is no identifier, or a repeated one, is written as is, as in `php.ts`.
+- **Written as is, though a driver reads otherwise.**
+  - MySQL and MariaDB, a `string` for a `CHAR(36)`. MySqlConnector reads it as a `Guid` by default.
+    - `GetString` and `GetFieldValue<string>` fail with `InvalidCastException`, and Dapper with a `DataException` around it.
+    - A value that is no GUID fails with `FormatException`.
+    - `GuidFormat=None` in the connection string reads it as text. A `string` parameter writes either way.
+  - MySQL and MariaDB, an `int` for a `TINYINT(1)`. MySqlConnector reads it as a `Boolean` by default. `GetInt32`, `GetFieldValue<int>` and Dapper return 1 for a stored 2, with no error. `TreatTinyAsBoolean=false` reads the number.
+  - MySQL and MariaDB, a `string` for the spatial types. MySqlConnector reads them as `byte[]`.
+  - SQL Server, a `string` for `geometry`, `geography` and `hierarchyid`. Microsoft.Data.SqlClient reads them only through `Microsoft.SqlServer.Types`.
+    - So `GetFieldValue<string>` and Dapper fail with `FileNotFoundException` for that assembly, and `GetString` with `InvalidCastException`.
+    - A query that selects `STAsText()` or `ToString()` reads a `string`.
+  - Oracle, a `TimeSpan` for an `INTERVAL YEAR TO MONTH`. ODP.NET hands it over as an `Int64` of months. `GetFieldValue<TimeSpan>`, `GetTimeSpan` (on `'0-0'` too) and Dapper fail with `InvalidCastException`. An `INTERVAL DAY TO SECOND` reads.
+  - Databricks, a `TimeSpan` for its year-month intervals too. This is not measured.
+  - Oracle, numbers through `GetFieldValue<T>`. ODP.NET picks a value type by precision and scale, and `GetFieldValue<T>` casts that value without converting it. `GetInt64`, `GetDecimal`, `GetDouble` and Dapper convert each.
+    - `GetFieldValue<T>` reads a `long` only from a `NUMBER(10)` to `NUMBER(18)`. ODP.NET picks an `Int16` under 5 digits and an `Int32` under 10.
+    - ODP.NET picks a `Decimal` from 19 digits and for `INTEGER`, `INT`, `SMALLINT` and a bare `NUMBER`.
+    - `GetFieldValue<T>` reads a `decimal` from no `NUMBER(p,s>0)` under 16 digits, which ODP.NET picks as a `Double`.
+    - `GetFieldValue<T>` reads a `double` from no `FLOAT`, `REAL` or `DOUBLE PRECISION`, which ODP.NET picks as a `Decimal`.
+  - SQLite, a `TimeSpan` for a `TIME`. Microsoft.Data.Sqlite hands Dapper text, which Dapper refuses (`Invalid cast from 'System.String' to 'System.TimeSpan'`). `GetFieldValue<TimeSpan>` reads it.
+  - PostgreSQL, a `string` for `inet`, `cidr`, `macaddr`, `macaddr8`, the range and multirange types, `tsvector`, `tsquery`, `tid` and the geometric types. Npgsql refuses it and reads each as its own Npgsql type.
+  - PostgreSQL, `regclass`, `regproc`, `regrole`, `regnamespace`, `regoper`, `regoperator`, `regprocedure`, `regcollation` and `regdictionary`. Npgsql reads them neither as a `string` nor as a `uint`.
+  - PostgreSQL, `pg_snapshot` and `txid_snapshot`. Npgsql reads them as no type at all.
+  - PostgreSQL, `pg_lsn[]` as a `ulong[]`. Npgsql refuses to read it so.
+  - PostgreSQL, an interval holding months as a `TimeSpan`. Npgsql refuses to read it so.
+  - PostgreSQL, an array holding a NULL as `int[]`. Npgsql refuses it; only `int?[]` reads.
+  - PostgreSQL, a two-dimension column holding a one-dimension value as `int[,]`. Npgsql refuses it. Such a value exists because PostgreSQL enforces no declared dimension.
+  - PostgreSQL through Dapper, a `string` for a `bit(8)` or `varbit`. Npgsql hands Dapper a `BitArray`, which it reads into no `string`. Npgsql's own `GetFieldValue` reads it.
+  - PostgreSQL through Dapper, an `int[,]` for an `int2[][]`. Npgsql hands Dapper an `Int16[,]`, which it reads into no `int[,]`. Npgsql's own `GetFieldValue` reads it.
+  - PostgreSQL, what Npgsql writes only with an `NpgsqlDbType`:
+    - a `string` into a `bit` column (`Bit`);
+    - a `DateTimeOffset` off UTC into a `timetz` (`TimeTz`);
+    - a `uint` into an `oid`, `cid`, `xid` or `regtype` (`Oid`, `Cid`, `Xid`, `Regtype`);
+    - a `ulong` into an `xid8` or `pg_lsn` (`Xid8`, `PgLsn`).
+  - PostgreSQL, a `DateTimeOffset` off UTC into a `timestamptz`. It fails with `ArgumentException` (only offset 0 is supported), with `NpgsqlDbType.TimestampTz` too.
+    - `ToUniversalTime()` writes it.
+    - Npgsql reads every `timestamptz` back at offset 0.
+  - Every database, a `decimal` for a value past its range: ±7.9 × 10^28, 28 or 29 significant digits.
+    - A `numeric` of no precision, a `DECIMAL`, `NUMERIC` or `NUMBER` past 28 digits and Snowflake's `DECFLOAT` can hold such a value.
+    - On 10^30, Npgsql 10.0.3 (PostgreSQL 17.11) throws `OverflowException` in `GetFieldValue<decimal>` and `GetDecimal`.
+    - On 10^30, MySqlConnector 2.6.2 (MySQL 8.4.11) throws `FormatException` in both. Dapper throws a `DataException` around either.
+    - A small value in the same column reads.
+    - That SQL Server, Oracle, Snowflake and Databricks fail too is inferred, not measured.
+  - Dapper and a renamed property. Dapper maps by name and ignores `[Column]`. The property stays unset unless the query aliases the column (`country AS Country1`) or a type map reads the attribute.
+- **Written as is, though C# refuses or warns.**
+  - A class named in lower-case ASCII alone: CS8981, an error under warnings as errors.
+  - A property named after an `object` member (`Equals`, `GetHashCode`, `GetType`, `MemberwiseClone`, `ToString`): CS0108.
+  - A class named after a System type the output names (`Guid`, `DateTime`, `DateTimeOffset`, `TimeSpan`). Its own properties then name the class instead: CS8618 on `public Guid Id` in `class Guid`.
+  - A class named `System` in the global namespace. It hides the `System` namespace from the attributes the SDK generates and from `global using global::System;`.
+    - That gives CS0138, CS0426, CS0437, and CS0246 on a `Guid` property.
+    - Inside a namespace it compiles.
+  - A project without `ImplicitUsings`. It needs `using System;`.
+- **Measured** on 2026-10-10 with .NET SDK 10.0.401 (`mcr.microsoft.com/dotnet/sdk:10.0`). `Nullable` and `ImplicitUsings` were on, with `TreatWarningsAsErrors` and `WarningLevel` 9999.
+  - Every type of every vendor list with extra spellings: 419 names, the lists as PR #503 left them and as they stood before it.
+    - They came with lengths, precisions, UNSIGNED, ZEROFILL, arrays and ENUM / SET values holding quotes and escapes.
+    - Each was written under each of the eight databases, as a primary key with and without the NN flag, NOT NULL and nullable.
+  - Comments with every line terminator, an empty table and the five `data/*.sql` fixtures, under the eight databases, whole and per table.
+  - Those two corpora made 4,973 outputs, each in a file-scoped namespace. They built with no warning and no error.
+  - The 55 whole texts were built again, each alone in the global namespace, with no warning and no error.
+  - Every keyword above as a table and a column name under each name case. Also names that clash with their class, are numbered past taken names, hold characters to escape or name a class `System`.
+    - They built with nothing but CS8981 on lower-case class names, CS0102 on repeated names, CS0108 on the `object` member names and CS8618 in class `Guid`.
+    - Names that are no identifier gave syntax errors, CS9008 for `@@x` among them.
+  - Table and column names with each of 18 white space, line break and formatting characters before, after or around them.
+    - Each was written under every pair of name cases: 2,592 outputs, checked with Roslyn.
+    - They gave nothing more but CS0542, where U+001A is the one difference and on the two missing names of a class with no name.
+  - The driver reads used these drivers and servers:
+    - Npgsql 10.0.3 on PostgreSQL 17.11;
+    - MySqlConnector 2.6.2 on MySQL 8.4.11 and MariaDB 11.4.13;
+    - Microsoft.Data.SqlClient 6.1.1 on SQL Server 2022 (16.00.4295);
+    - Oracle.ManagedDataAccess.Core 23.9.1 on Oracle Database Free 23.26.3;
+    - Microsoft.Data.Sqlite 10.0.12 (SQLite 3.53.3);
+    - Dapper 2.1.66.
+  - Besides the limits under Written as is, those drivers read these as written:
+    - MySQL's and MariaDB's unsigned types and `BIT(64)` read at their maximum, where `int` or `long` overflow.
+    - SQLite's rowid 3000000000 and a `SMALLINT` holding 40000 read as `long`, where `int` and `short` overflow.
+    - Oracle's `SMALLINT` holding 40000 reads as `long` through `GetInt64` and Dapper.
+    - PostgreSQL's `oid`, `cid`, `xid`, `xid8`, `regtype`, `regconfig`, `pg_lsn` and `oid[]` read as written.
+    - PostgreSQL's `money` reads as a `decimal`, `timetz` as a `DateTimeOffset` and `int[][]` as `int[,]`.
+    - MariaDB's `NUMBER` reads as a `double`, where a `decimal` drops the digits past 15.
+    - SQL Server's `sql_variant` reads as an `object`, `smallmoney` as a `decimal`, `rowversion` as a `byte[]` and `xml` as a `string`.
+    - Oracle's `TIMESTAMP WITH TIME ZONE` reads as a `DateTimeOffset` keeping its offset, and `RAW` as a `byte[]`.
+    - Oracle's `BINARY_FLOAT` reads as a `float`, and `JSON` and `XMLType` as a `string`.
+    - EF Core 10.0.12 reads and writes a renamed property through its `[Column]`.

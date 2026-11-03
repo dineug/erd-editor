@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
-
 # schema-sql-parser
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-08-27 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -25,12 +25,12 @@
 
 | File | Description |
 | --- | --- |
-| `src/index.ts` | Public surface: `schemaSQLParser`, `StatementType`, `SortType`, `ReferentialAction`, the statement types, `SchemaSQLParserOptions` and `DatabaseVendor`; everything else is internal |
+| `src/index.ts` | Public surface: `schemaSQLParser`, the values `StatementType`, `SortType` and `ReferentialAction`, and every type of `src/parser/statement/index.ts` (`export type *`: the statement types, `SchemaSQLParserOptions` and `DatabaseVendor`, with `RefPos` and `CreateTableColumns` too); everything else is internal |
 | `src/parser/tokenizer.ts` | Lexer (Rules § Tokenizer) |
 | `src/parser/index.ts` | Dispatch loop: probes each matcher at `$pos`, runs a statement parser, else advances one token |
 | `src/parser/helper.ts` | Token and value predicates, the `is*` lookahead matchers, the merged `DataTypes` set, `matchCreateTable`, `matchCreateIndex`, `matchQualifiedName`, `matchDataType`, `matchUserDataType`, `matchNestedDataType`, `matchReferentialClause`, `matchKeyModifier` (and `matchKeyModifiers`, a run of them), `matchUsingIndexName`, `matchAddExtendedProperty`, `matchAlterTableAlter`, `isNullFilter`, `isTableItemWord`, `isColumnKeywordValue`, `toStringLiteral`, `requote`, `unquoteTypeName` |
 | `src/parser/statement/index.ts` | `Statement`, `StatementType`, `SortType`, `ReferentialAction`, `RefPos` |
-| `src/parser/statement/create.table.ts` | The `create.table` parser, with `typePos`, `opensConstraintItem`, `onNullSpan` and `referencesParser` |
+| `src/parser/statement/create.table.ts` | The `create.table` parser, with `typePos`, `opensConstraintItem`, `onNullSpan`, `referencesParser` and `parserForeignKeyParser`, which `alter.table.add.foreignKey.ts` reads its `FOREIGN KEY` clause through |
 | `src/parser/statement/index.columns.ts` | Reads a key list for `create.table` (its primary and unique keys and its indexes), `create.index`, `alter.table.add.unique` and `alter.table.add.primaryKey` (Rules § Keys and indexes) |
 | `src/parser/statement/default.expression.ts` | Reads a column's `DEFAULT` expression for `create.table`, writes back the one `alter.table.add.default` finds, and tells one call of `nextval('...')` for `create.table` and `alter.table.alter.column.autoIncrement` (`isNextvalDefault`) |
 | `src/parser/statement/alter.table.alter.column.ts` | Reads the actions of an `ALTER TABLE ... ALTER [COLUMN]` |
@@ -88,7 +88,7 @@
 
 - **One merged type set serves every dialect.** `helper.ts` merges all eight `dataType/` lists into one deduplicated uppercase set, so a type added to one vendor widens every dialect.
 - **Two lists carry names their schemas use.** PostgreSQL's list has `dec`, which PostgreSQL reads as `numeric`. SQLite's has `BOOL`, `DEC`, `TIME` and `TIMESTAMP`, which SQLite schemas use: Django declares `bool` and `time`, and `DEC` takes the `NUMERIC` affinity `DECIMAL` has.
-- **Change the editor's type lists together.** Each name is mirrored with a `primitiveType` in `packages/erd-editor/src/constants/sql/dataType/`. No test pins the parity, so change both lists in one change.
+- **Change the editor's type lists together.** Each name is mirrored with a `primitiveType` in `packages/erd-editor/src/constants/sql/dataType/`. No test reads both lists, so change both in one change; for Databricks and Snowflake also change the copy of this package's list in that directory's spec (`PARSER_NAMES` in `Databricks.test.ts` and `Snowflake.test.ts`).
 - **Type names match word by word, longest first.** Write multi-word names in full (`TIMESTAMP WITHOUT TIME ZONE`). `matchDataType` returns the token span, argument lists and an array suffix (`[]`, `[3]`, `ARRAY`) included.
 - **Unlisted words before a listed type join it.** They join in the type's place, since SQLite takes any words as a type (`UNSIGNED BIG INTEGER`). With no listed type after them, only the first is the type (`hstore COMPRESSION pglz`).
 - **Unlisted types are read only in type position.** That place is the token right after the column name (`typePos` in `statement/create.table.ts`): `mood`, `public.mood`, `hstore`.
@@ -167,7 +167,7 @@
 - **A `CONSTRAINT` symbol names only its own clause.** A comma or `ADD` drops it.
 - **An unclaimed word's `UNIQUE` belongs to the column.** A `UNIQUE` after a word no branch claims belongs to the column the clause adds (`ADD [COLUMN] c INT UNIQUE CHECK (...)`), and keys nothing.
 - **Some clauses after the first are dropped.** A foreign key or a default after a first clause of another kind is still dropped, and so is `ADD KEY` / `ADD INDEX`. When the first clause is a foreign key, `alterTableAddForeignKeyParser` reads every one and keeps only the last. When it is a default, `alterTableAddDefaultParser` reads that one alone.
-- **An open group ends at a `;`.** A group the parser skips (a `CHECK`, a foreign key's lists) ends at a `;`. So does a key list `indexColumnsParser` reads, the `ALTER`'s or `CREATE INDEX`'s, which then keys nothing. So a group the source leaves open never swallows the statements after it.
+- **An open group ends at a `;`.** A group `alterTableAddUniqueParser` skips (a `CHECK`, a foreign key's lists) ends at a `;`. So does a key list `indexColumnsParser` reads, the `ALTER`'s or `CREATE INDEX`'s, which then keys nothing. So a group the source leaves open swallows no statement after it, except in an `ALTER` whose first clause is a foreign key: there `parserForeignKeyParser` and `referencesParser` (`statement/create.table.ts`) read each foreign key's lists to their `)` past a `;`.
 
 ### Keys and indexes
 
@@ -266,4 +266,6 @@ None: a leaf package.
 
 None at runtime.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

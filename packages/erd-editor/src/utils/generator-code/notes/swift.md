@@ -1,0 +1,133 @@
+# swift.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `swift.ts` writes one plain struct per table, sorted by name (owner decisions of 2026-10-09).
+  - Each struct is `nonisolated struct X: Codable, Hashable, Sendable`.
+  - Its properties are internal `var`. There is no `Identifiable`, no initializer and no default.
+  - A primary key is `T`, its NN flag set or not (an owner decision of 2026-10-09; `../AGENTS.md`, Rules every generator follows). A NOT NULL column is `T` too. Any other column is `T?`.
+  - So the memberwise init leaves an optional column out.
+  - `nonisolated` keeps the conformances usable off the main actor in a module whose default isolation is MainActor. Xcode 26's new app targets set that default (Apple's release notes, not measured).
+  - `nonisolated` makes Swift 6.1 (Xcode 16.3) the floor, since Swift 6.0.3 refuses it on a struct.
+  - `import Foundation` (`Date`, `Data`, `Decimal`, `UUID`) follows the blank line the other languages open with.
+  - The import is written whatever the columns hold, since an unused import draws no warning.
+  - The import opens the one-table view too. So `index.ts` hands that view to `createTableCode`, and a table pasted alone into a file compiles.
+  - A document with no table is `''`.
+  - An empty table is `nonisolated struct X: Codable, Hashable, Sendable {}`.
+  - The panel highlights the text with Shiki's `swift` grammar and saves it as `.swift`.
+- **Types.** They come from the shared classifier (`getColumnType`, `columnTypes.ts`, an owner decision) through one table, `SWIFT_SCALARS`.
+  - A PostgreSQL array writes one `[…]` a dimension at every depth: `int[][]` gives `[[Int32]]`. Codable decodes an array at any depth.
+  - **Integers keep their exact width** (an owner decision).
+    - Signed integers are `Int8` to `Int64`. `INT` is an `Int32`.
+    - MySQL and MariaDB UNSIGNED, ZEROFILL and SERIAL are `UInt8` to `UInt64`. `MEDIUMINT UNSIGNED` is a `UInt32`; `BIGINT UNSIGNED` and `SERIAL` are a `UInt64`.
+    - MySQL's and MariaDB's `YEAR` is a `UInt16`.
+    - MySQL's and MariaDB's `BIT(n)` past one bit is a `UInt64`.
+    - SQL Server's `tinyint` is a `UInt8`.
+    - Every integer type of Oracle and Snowflake, which store a NUMBER(38), is an `Int64`.
+    - Every integer type of SQLite, which stores eight bytes, is an `Int64`.
+    - An Oracle or Snowflake `NUMBER` with no fraction is an `Int64`, and so is the bare one.
+  - **Floats** are `Float` or `Double`.
+    - `float(p)` goes by p on PostgreSQL, SQL Server, MySQL and MariaDB.
+    - Oracle's `FLOAT` and `REAL` are a `Double`. Its `BINARY_FLOAT` is a `Float`.
+    - MariaDB's bare `NUMBER`, a DOUBLE in its Oracle mode, is a `Double`.
+  - **`Decimal`** holds these:
+    - `decimal`, `numeric`, `dec` and `fixed`.
+    - SQL Server's `money` and `smallmoney`.
+    - Snowflake's `DECFLOAT`.
+    - MariaDB's `NUMBER(p)` and `NUMBER(p,s)`.
+    - An Oracle or Snowflake NUMBER with a scale above 0.
+  - **`Bool`** is a boolean, and MySQL's and MariaDB's `BIT` and `BIT(1)` too. Their `TINYINT(1)` stays an `Int8`.
+  - **`Data`** is the binary types, SQL Server's `rowversion` and `timestamp` among them.
+  - **`UUID`** is `uuid` and `uniqueidentifier`.
+  - **`Date`** is a `date` and every timestamp and datetime type. Oracle's `DATE`, MySQL's `TIMESTAMP` and SQL Server's `datetimeoffset` are among them.
+  - **`String`** holds the rest:
+    - A time of day, `timetz` and an interval, which Foundation has no type for.
+    - JSON, an owner decision, since Swift has no Codable any-value type.
+    - Snowflake's and Databricks' `VARIANT`, `OBJECT`, `ARRAY`, `MAP` and `STRUCT`.
+    - Databricks' `VOID`.
+    - The character, `ENUM`, `SET`, spatial and network types.
+    - A PostgreSQL bit string and `pg_lsn`.
+    - Any type no rule names.
+  - **Three overrides where a Swift reader gets text.** Each overrides the classifier.
+    - MariaDB's `UUID` is a `String`. MariaDB sends 36 characters, and MySQLNIO reads a UUID only from 16 bytes (its source read, not run).
+    - PostgreSQL's `money` is a `String`. SQL Server's stays a `Decimal`.
+    - PostgreSQL's `oid`, `xid`, `cid` and `xid8` are a `String`.
+    - PostgreSQL's JSON (`row_to_json`) writes `money`, `oid`, `xid`, `cid` and `xid8` as text (`"$12.34"`, `"42"`). `Decimal`, `UInt32` and `UInt64` refuse that text.
+    - PostgresNIO has no unsigned decoder (its source read).
+  - An imported MySQL or MariaDB schema keeps UNSIGNED and ZEROFILL (an owner decision). So sakila's `SMALLINT UNSIGNED` keys are `UInt16`.
+- **Coding keys carry the column names.** Codable reads and writes the column names.
+  - A nested `enum CodingKeys: String, CodingKey` is written only where some property's name differs from its column's.
+  - It has one `case` a property, with `= "<column name>"` where the two names differ.
+  - The literal gives `"` and `\` a backslash. A bare `\` would open an interpolation.
+  - The literal writes every C0 control and DEL as `\u{…}`, since a Swift string literal refuses them raw.
+- **Comments are `///` lines.** A comment sits above its struct or property.
+  - `///` is Quick Help's and DocC's form. Swift runs no doctest from it.
+  - Lines split at CR, LF, CRLF, U+2028 and U+2029 (`splitLines`), since a lone CR ends a line comment.
+  - Each line's end is trimmed.
+  - Blank lines at either end are dropped. Those inside are written as a bare `///`.
+  - A NUL is written `\u{0}`, since Swift warns about a raw NUL.
+  - Every other character is left as is, the bidirectional controls rustc refuses included.
+- **Names.** They follow the name cases.
+  - Swift is case sensitive: `date` does not shadow `Date`. Swift warns about no naming style.
+  - A struct named after a type or protocol the output writes unqualified gets `_` after it (`Date_`), as in `rust.ts`. Such a name breaks the conformances or silently retypes every field of its type.
+  - The set is `TYPE_NAMES`: `Bool`, `Codable`, `CodingKey`, `Data`, `Date`, `Decimal`, `Double`, `Float`, `Hashable`, the eight integer types, `Sendable`, `String`, `UUID`.
+  - `Foundation`, `Swift`, `Optional`, `Array` and `CodingKeys` keep their names. Nothing is qualified, and `T?` and `[T]` always name the standard library's types.
+  - A table named `CodingKeys` keeps its name, since the nested enum shadows it.
+  - A word the Swift lexer reserves goes in backticks as a struct, property or case name. The set is `SWIFT_KEYWORDS`, the 54 of `TokenKinds.def`: `class`, `default`, `self`, `Self`, `Any`, `_`, `inout`, ….
+  - A property named `Type` or `Protocol` goes in backticks too. It would otherwise clash with the metatype it names.
+  - A call site writes the memberwise init's `inout`, `var`, `let` and `_` labels in backticks too.
+  - A property named `CodingKeys` or `RawValue` (`RESERVED_KEYS`) gets `_` after it and is keyed to its column. Neither works as a property name, backticks or not:
+    - `CodingKeys` breaks the synthesized conformance.
+    - `RawValue` breaks the `String` raw type of an explicit `CodingKeys`. So a `RawValue` column always writes the enum.
+  - Any other name that is no identifier, or a repeated one, is written as is, as in `rust.ts` and `php.ts` (an owner decision). No identifier means a space, a leading digit, or a name a name case empties, as `_` under camelCase.
+  - Swift 6.2's raw identifiers in backticks would compile some of those names, but Swift 6.1 refuses them.
+- **Written as is.** Each case below stays in the output, and a Swift program has to adjust it.
+  - A name that is no identifier, or a repeated one (Names, above).
+  - A bare Oracle `NUMBER` or `NUMBER(*)`, which keeps any scale, is an `Int64`, as `rust.ts`'s `i64`. So a fractional value (`1.5`) is refused.
+  - A value past 19 digits in any Oracle or Snowflake integer column is refused.
+  - A decimal wider than `Decimal`'s 128-bit mantissa (38 or 39 digits) loses its last digits with no error. PostgreSQL's `numeric` and MySQL's and MariaDB's `DECIMAL` (up to 65 digits) can be that wide.
+  - A time zone offset is dropped, since `Date` is an instant (`timestamptz`, `datetimeoffset`, `TIMESTAMP_TZ`).
+  - `JSONEncoder` and `JSONDecoder` take a `Date` as seconds since 2001 unless the coder sets a date strategy.
+  - Under `.iso8601`, a naive timestamp or a date as PostgreSQL's `row_to_json` writes them is refused (`2026-10-09T12:34:56`, `2026-10-09`).
+  - Under `.iso8601`, the space-separated datetimes of MySQL's and MariaDB's `JSON_OBJECT` are refused.
+  - Under `.iso8601`, a `timestamptz` with fractional seconds decodes on macOS and not on Linux Swift 6.1.
+  - A database's own JSON fails in these places too:
+    - A `jsonb` object or array written inline is refused by a `String`, which reads the text a driver hands over.
+    - The GeoJSON object MySQL writes for a spatial column is refused by a `String` too.
+    - PostgreSQL's bytea (`"\\xdeadbeef"`) and Oracle's RAW in hex (`"0102FF"`) are refused by `Data`'s default base64.
+    - A MySQL or MariaDB boolean written as `1` is refused by `Bool`.
+    - A NULL item in a PostgreSQL array (`[1,null]`) fails, since an array's items are never optional (`[Int32]`).
+  - Databricks' `VOID`, which holds only NULL, is a `String`.
+  - An auto-increment key is a non-optional `T`. GRDB's idiom is `var id: Int64?`, filled after the insert.
+  - The memberwise init is internal. So another module needs a `public init` written by hand.
+  - A `CodingKeys` case past swift-format's 100 columns stays on one line.
+- **Measured** on 2026-10-09 by the design research. The tools were Apple Swift 6.4 (swiftlang-6.4.0.34.1, Command Line Tools) and the Linux `swift` images 6.4, 6.2.4, 6.1.3 and 6.0.3.
+  - The keyword sweep: 249 words in six forms, Swift 5 and 6, 2,988 typechecks. It is behind `SWIFT_KEYWORDS`, the backticked `Type` and `Protocol`, and the `CodingKeys` rename.
+  - The shadowing sweep of 51 names, behind `TYPE_NAMES`.
+  - The MainActor isolation errors a plain `struct` gets and `nonisolated` removes.
+  - GRDB 7.11.1 wrote and read back every SQLite list type through the struct, against the editor's DDL. Without the coding keys it failed (`no column named c0Nn`).
+  - swift-format with 4-space indentation changed only the opening blank line and three Magento2-sales cases past 100 columns.
+- **Measured** on 2026-10-10, on the shared classifier.
+  - 5,782 files typechecked with no diagnostic under `-warnings-as-errors`. They held every vendor list name and its other spellings on all eight databases, the five `data/*.sql` fixtures on all eight under two name-case settings, and the keyword corpus, whole and per table.
+  - The compilers were macOS swiftc 6.4 (`-swift-version 5` and `6`, each also with `-default-isolation MainActor`) and Linux Swift 6.1.3 (5 and 6).
+  - Swift 6.0.3 still refused `nonisolated`.
+  - JSON round trips keyed every property by its column name and decoded back `==` on both platforms. They did so inside `Task.detached` in a MainActor-default module too.
+  - GRDB 7.11.1 round-tripped every SQLite list type with every optional set and with none.
+  - GRDB 7.11.1 read 3,000,000,000 from nine SQLite integer columns, which an `Int32` refuses.
+  - PostgreSQL 18.6's and 17's `row_to_json` wrote `money`, `oid`, `xid`, `cid` and `xid8` as text.
+  - `JSONDecoder` refused `1.5` and `12345678901234567890` for an `Int64` on macOS 6.4 and Linux 6.1.3.
+- **Measured** by an adversarial run. It failed only on the names written as is and on a `RawValue` column, the case behind `RESERVED_KEYS`' `RawValue`.
+  - Its inputs were the vendor lists in both letter cases and 186 other spellings, 218 words under all 16 name-case pairs, 23 kinds of comment, and the fixtures under three name cases.
+  - It ran on macOS 6.4 in the four modes and on Linux 6.1.3.
+- **Measured** on 2026-10-10 by a macOS swiftc 6.4 run over 520 files.
+  - The files held the 492 vendor list names, PostgreSQL's `dec` and SQLite's `DEC` among them, and 67 other spellings. Each was a key without the NN flag, a NOT NULL column and an optional column.
+  - The files also held the names the adversarial run failed on, under four name-case settings.
+  - The files also held the five fixtures on all eight databases whole, and on MySQL and PostgreSQL per table.
+  - Every file but the names written as is typechecked under `-warnings-as-errors`, with `-swift-version 5`, with `6`, and with `6` and `-default-isolation MainActor`.
+  - The decodes under Written as is were run on structs the generator wrote:
+    - `Decimal` dropped the last digit of a 40-digit integer.
+    - `Bool` refused `1`.
+    - `.iso8601` refused `2026-10-09 12:34:56.000000`.
+    - `Data` refused `"0102FF"`.
+    - `[Int32]` refused `[1,null]`.

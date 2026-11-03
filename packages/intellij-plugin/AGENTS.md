@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
-
 # intellij-plugin
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-08-27 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -58,7 +58,7 @@ The Kotlin/JVM half of the JetBrains plugin: a `FileEditor` for `.erd`, `.vuerd`
 ### Webview Bridge And Saves
 
 - **Match bridge `type` strings to `webview-bridge` by hand.** A host command Jackson cannot map is dropped with a WARN in `idea.log`, an unregistered `webview*` type unlogged. A new host command needs its `@JsonSubTypes` entry.
-- **Mirror optional bridge fields as nullable.** Payload classes mirror each optional `webview-bridge` field as nullable with a `null` default (`mode`, `runtimeValue`, `systemAppearance`, `systemLocale`). `WebviewScripts.mapper` ignores unknown properties and writes no null, so a field the bridge adds is dropped with no log until its payload class names it, and a page reads a field left null as absent.
+- **Mirror optional bridge fields as nullable.** Payload classes mirror each optional `webview-bridge` field as nullable, `mode`, `systemAppearance` and `systemLocale` with a `null` default and the theme's three without, and `runtimeValue` too, which the bridge requires but older bundles leave out. `WebviewScripts.mapper` ignores unknown properties and writes no null, so a field the bridge adds is dropped with no log until its payload class names it, and a page reads a field left null as absent.
 - **Post through `WebviewScripts.postMessageScript`.** It embeds JSON as a JS string literal; in a template literal a backtick kills the script and `${…}` executes (`WebviewScriptsTest`). `mapper` and `HubJson` raise the `StreamReadConstraints` of the 252 floor's Jackson 2.19.0; `mapper` lifts its 20,000,000-character string limit, a save being one string.
 - **Keep the page's command order.** `onQuery` offers the request to the sender's `WebviewBridge` channel and answers `callback.success("")`, since the router keeps an unanswered query pending. One consumer per editor handles commands in CEF's order, the page's while CEF calls `onQuery` serially per browser (smoke A11); if that breaks, number commands in `intellij-webview`'s `main.ts` and reorder here. Scripts run in dispatch order on one channel per page; a relayed batch is encoded once (`WebviewScripts.scriptFor`).
 - **Write files in an EDT write action.** Autosave and exports: `readAndEdtWriteAction { writeAction { … } }`; `writeNow`: `edtWriteAction` at `ModalityState.nonModal()`; `dispose`'s flush: `invokeAndWait { runWriteAction { … } }`; dialogs: `invokeLater`.
@@ -86,7 +86,7 @@ The Kotlin/JVM half of the JetBrains plugin: a `FileEditor` for `.erd`, `.vuerd`
 
 ### Hub Lock, Pipe And Paths
 
-- **The lock.** `~/.erd-editor/ide/<pid>.json`, via `<pid>.json.tmp` and a rename (`0600`, folder `0700`): `ide` `intellij`, the plugin's `version`, `workspaceFolders` (local content roots, then each open non-default project's base path, trusted or not, realpathed), `documents` (open ERD files by real path). Home and temp are Node's (`MachineEnvironment.kt`), where the MCP server looks.
+- **The lock.** `~/.erd-editor/ide/<pid>.json`, via `<pid>.json.tmp` and a rename (`0600`, folder `0700`): `ide` `intellij`, the plugin's `version`, `workspaceFolders` (each open non-default project's local content roots, then its base path, in project order, each once, trusted or not, realpathed), `documents` (open ERD files by real path). Home and temp are Node's (`MachineEnvironment.kt`), where the MCP server looks.
 - **The pipe.** `<pid>.sock` beside the lock, else `<tmp>/erd-editor-ide-<pid>.sock` past 100 bytes (past both: none, and `hub: false`); `\\.\pipe\erd-editor-ide-<pid>` on Windows. `DocumentHub` alone deletes the socket file before listening and after stopping, since the JDK neither binds over it nor unlinks it as Node does.
 - **A lock always guards the paths.** A failed listen, unloadable JNA natives (`LinkageError`) included, writes `hub: false`. Folder changes (projects opening or closing, `rootsChanged` storms like a Gradle sync) coalesce: 200 ms after a burst pauses, 1 s after it began at most. Startup sweeps the lock, temp file and sockets of every dead pid whose lock reads (`LockFile.cleanStale`); a live pid's lock stays, even malformed.
 - **Retry and repair lock writes as `agent-hub-host`** (its AGENTS.md, Lock file). A Windows move over a held lock is retried after each of `lockRenameDelaysMs` (10, 20, 40, 80, 160 ms). A write still failing logs once, and a repair after `lockRepairMs` (1 s), doubling to `lockRepairMaxMs` (30 s) while repairs fail, runs `apply` and a rewrite, listening again unless serving or off. `FILE_FLAG_FIRST_PIPE_INSTANCE` rebinds the name while an agent holds the stopped pipe (measured 2026-09-27 with Node's; `agent-hub-host`'s AGENTS.md, Failure handling). `DocumentHub.kt` gives the timer's cancellation and the warnings.
@@ -132,7 +132,7 @@ The Kotlin/JVM half of the JetBrains plugin: a `FileEditor` for `.erd`, `.vuerd`
 
 ### JCEF Gotchas
 
-- **Depend on `com.intellij.modules.jcef` optionally** (`jcef.xml`): mandatory stops loading on 2025.2/2025.3, absent kills the editor on 2026.2+ (`NoClassDefFoundError: JBCefApp`), and the Verifier passes both. So `JBCefApp.isSupported()` is read in a `LinkageError` catch at construction, never class init.
+- **Depend on `com.intellij.modules.jcef` optionally** (`jcef.xml`): mandatory stops loading on 2025.2/2025.3, absent kills the editor on 2026.2+ (`NoClassDefFoundError: JBCefApp`), and the Verifier passes both. So `AgentHubService` reads `JBCefApp.isSupported()` in a `LinkageError` catch when it starts, never at class init; `WebviewPanel.isSupported` still reads it uncaught at class init.
 - **Extend `CefResourceHandlerAdapter`.** 2026.2's JCEF added abstract methods to `CefResourceHandler`, breaking a direct implementation built against the floor.
 - **Keep `WebviewPanel`'s init order.** `JBCefApp.getInstance()`, the scheme handler once per app, then `Webview` and `loadURL`: later registration gives `DNS_PROBE_FINISHED_NXDOMAIN`, raw `CefApp.getInstance()` first "JCEF is not supported in this env". Never call `CefApp.clearSchemeHandlerFactories()`. `WebviewPanel.kt` notes why its callbacks precede `webview`.
 - **Route queries by sender.** Under out-of-process JCEF at 2025.2 the first `CefMessageRouter` hears every browser: a second tab's `Initial` reached the first, leaving it blank. So panels join the static `livePanels`, and `onQuery` hands each query to the live panel whose browser sent it, by `CefBrowser.identifier` (`WebviewPanelBrowserTest`).
@@ -167,7 +167,7 @@ The Kotlin/JVM half of the JetBrains plugin: a `FileEditor` for `.erd`, `.vuerd`
 
 ### Windows Verification (named-pipe hub)
 
-CI's `test-windows` runs the Windows suites; this checks the live IDE's named-pipe hub, realpath and liveness. A Claude session on the branch runs steps 1–6, 8, 9, 14 and the commands of 10–13; the person does the GUI parts of 7 and 10–13 and, when asked, step 1's administrator or Settings-app parts, then the session checks each result. Stop only the pid a lock names (`Stop-Process -Id <pid>`, never `taskkill /IM`) and delete no other process's lock. Commands are PowerShell from the repository root, `.\gradlew.bat` from `packages\intellij-plugin`; from Git Bash wrap each in `powershell -NoProfile -Command`.
+CI's `test-windows` runs the Windows suites; this checks the live IDE's named-pipe hub, realpath and liveness. A Claude session on the branch runs steps 1–6, 8, 9, 14 and the commands of 7 and 10–13; the person does the GUI parts of 7 and 10–13 and, when asked, step 1's administrator or Settings-app parts, then the session checks each result. Stop only the pid a lock names (`Stop-Process -Id <pid>`, never `taskkill /IM`) and delete no other process's lock. Commands are PowerShell from the repository root, `.\gradlew.bat` from `packages\intellij-plugin`; from Git Bash wrap each in `powershell -NoProfile -Command`.
 
 1. Windows 10 1809+ or 11; Git with `git config --global core.longpaths true`; Node 22.22.1+ or 24.11+ (25+ has no corepack); a JDK 21 on `PATH` or `JAVA_HOME` (`winget install EclipseAdoptium.Temurin.21.JDK`, then a new shell; a running Claude session needs a restart or `$env:JAVA_HOME` in each command); Developer Mode or an administrator shell, without which `AuthzTest` and `MachineEnvironmentTest` fail "A required privilege is not held by the client".
 2. `corepack enable` (elevated when Node is under Program Files), then, in a fresh clone at the commit, `pnpm install --frozen-lockfile`.
@@ -194,4 +194,6 @@ CI's `test-windows` runs the Windows suites; this checks the live IDE's named-pi
 
 The IntelliJ Platform and what it bundles (Jackson, kotlinx.coroutines, JNA, JCEF); JUnit 4 and Kover (`gradle/libs.versions.toml`); the robot-server plugin, smoke only, whose version the Gradle plugin resolves. `-PsmokePlatformVersion`, from `SMOKE_PLATFORM`, swaps only the smoke's IDE.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
-
 # peer
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -18,7 +18,7 @@
 
 | File | Description |
 | --- | --- |
-| `index.ts` | The `peer.js` entry, with the per-module `actions` / `actions$` barrels; the package file's Key Files lists what it exports |
+| `index.ts` | The `peer.js` entry, with the per-module `actions` / `actions$` barrels; `index.test.ts` lists every key it exports |
 | `imports.test.ts` | Holds the sources the entry reaches to the peer graph's two rules in `pnpm test`, against its own `BARE_ALLOWLIST` |
 | `index.test.ts` | Pins the entry's key set and the absence of the flat `actions` map |
 
@@ -34,7 +34,9 @@ The peer store itself (the keys that serve specs alone, labelled undo units, the
 
 ### Values, never tools
 
-- **The entry carries values, never tools.** Tool names, the registry, argument validation, reading and the reachability lists belong to `mcp-server`. `engine/no-agent-concepts.test.ts` fails on any of them reappearing in `src/`.
+- **The entry carries values, never tools.** Tool names, the registry, argument validation, reading and the reachability lists belong to `mcp-server`. `engine/no-agent-concepts.test.ts` fails on an `erd_` tool name, an MCP name or a name the registry and its reachability lists went by reappearing in `src/`.
 - **Export one barrel per module, no flat map.** `src/peer/index.test.ts` pins the entry's key set and the absence of the flat `actions` map. In that map `changeZIndexAction` would come from whichever module spread last, since memo and table both export one.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

@@ -1,7 +1,7 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2026-10-11 | Updated: 2026-10-11 -->
-
 # draw-relationship
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -13,6 +13,9 @@
 | --- | --- |
 | `sort.ts` | `relationshipSort`, the whole geometry pass, routing included; `placeLoops` |
 | `route.ts`, `nudge.ts` | The router and the nudge pass, run inside the sort pass |
+| `incremental.ts` | The route cache a sort keeps per store and source (`getSortCache`, `routeTouches`), the dirty lanes and the nudge memo a group is replayed from |
+| `stub.ts` | A slot's stub (`stubFor`), shortened between facing ends no further than `MIN_STUB` (`clampStub`), and the two turning points a route joins (`stubEnds`) |
+| `calc.ts` | `tableToObjectPoint`: a table's box and side midpoints per source, its size cached on the table size key |
 | `search.ts` | `searchRoute`: the way round a table for a route every candidate of the router takes through one |
 | `pathFinding.ts` | `getRelationshipPath`: the path a connector draws, built from the anchors, stub slots and route the sort wrote. It places no end and routes nothing |
 | `index.ts` | The `WeakMap` sort channels, `setAnchors`, `clearSortChannel`, `viewVersions`, the route versions and their drag hold (`holdRouteRedraws`), the marker sizes (`LINE_SIZE`, `LINE_HEIGHT`, `CIRCLE_RADIUS`), the stub lengths, `ROUTE_CORNER_RADIUS` |
@@ -48,7 +51,7 @@
 
 ### Referential action labels
 
-- **Referential actions show at the child end.** `RelationshipActionLabel.tsx` draws them after erwin's notation, an owner decision (2026-10-03). It writes `D:` for ON DELETE, then `U:` for ON UPDATE, each only when set. The codes are `C`, `R`, `SN`, `SD` and `NA` (`src/utils/referentialAction.ts`).
+- **Referential actions show at the child end.** `RelationshipActionLabel.tsx` draws them after a common ERD notation, an owner decision (2026-10-03). It writes `D:` for ON DELETE, then `U:` for ON UPDATE, each only when set. The codes are `C`, `R`, `SN`, `SD` and `NA` (`src/utils/referentialAction.ts`).
 - **The label takes the route's colour and hover.** It is set in the code face and the route's colour, and lights with the route on hover. The hover comes from the group's `hovered`, which only the labels read, and from `hoverRelationshipMap`.
 - **The label box clears the widest marker.** The box has the canvas colour. It sits over a route that leaves sideways, reaching away from the table, and to the right of one that leaves up or down.
 - **`RelationshipGroup` draws every label after every route.** So a connector that crosses a label runs under its box. Drawn inside each connector's own group, a label lay under every connector drawn after it.
@@ -63,7 +66,7 @@
 ### Connector ends and corners
 
 - **Connector ends are compact and corners round.** These are owner decisions of 2026-10-10, issue #468.
-  - The cardinality markers are 85% of their first size: `LINE_SIZE` 6, `LINE_HEIGHT` 9, `CIRCLE_RADIUS` 5, and the guide line from 21px. That is the size Workbench and Liam ERD draw them at.
+  - The cardinality markers are 85% of their first size: `LINE_SIZE` 6, `LINE_HEIGHT` 9, `CIRCLE_RADIUS` 5, and the guide line from 21px. That is the size other ERD tools draw them at.
   - A side's stubs run 24/32/40/48 with a floor of 24 (`index.ts`). So two facing tables about 50px apart join in one straight run; narrow tables shown by name alone sit that far apart.
   - Every connector draws its markers; an option to hide them was left out.
   - A document corner turns on a quarter circle of `ROUTE_CORNER_RADIUS`, flattened to `ROUTE_CORNER_SEGMENTS` chords (`corner.ts`) as a view's curve is (`bezier.ts`). So the hit path, the route box and the bench still read straight segments. The router and the nudge pass keep working on the orthogonal polyline.
@@ -78,4 +81,6 @@
 - **A store that draws nothing routes no connector.** The document's sort hook still places the anchors, and passes `route: false` where the `EngineContext` says `routes: false`, a peer's or a replica's, as their load does (`src/engine/AGENTS.md`, `settleDocument`). Only a drawing and the image export read a route. A comment edit on a table 400 others refer to routed every connector in `mcp-server`'s peer, 107 ms of the 129 ms its sort took (measured 2026-10-25).
 - **Only a domain's name moves a table among the dictionary writes.** Both hooks' filters run `reachesLayout`: a `dictionary.add` or `remove` of a domain, or an `update` whose `values` carry a domain's `name`, passes, and so does a lock change only as an unlock of the name view, and a name view switch only where the store shows it, shared or its own. A word or term commit, a domain's type alone, which reaches the columns through `column.changeDataType`, or another reader's own switch neither bumps the width generation nor sorts (`hooks.test.ts`). A view sorts for a switch and an unlock too, and outside the physical view, which draws neither, for a domain renamed and for a logical name or a domain link on a table it shows (`isNameViewOnly`, `hooks.view.test.ts`). The name views: `src/components/erd/AGENTS.md`, Name views.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

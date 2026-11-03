@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-09-26 | Updated: 2026-10-11 -->
-
 # agent-hub-host
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-09-26 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -20,7 +20,7 @@
 
 4. **Run `pnpm check`, then `pnpm build`** (root step 5). It also builds the MCP server for the conformance run in step 7 below.
 5. **Run both hosts' suites.** This suite cannot see a host break, so run the `test` task and `test:coverage` of `vuerd-vscode` and `obsidian-plugin`. After a change in `agent-hub`, run those of this package and `mcp-server` too.
-6. **Update the hand-written peers** when a peer can see the change (a frame, a refusal text, a join rule). Make `mcp-server`'s `src/__test-utils__/fakeHub.ts` answer the same and run its `test` task, because the MCP specs run against that hand copy, never against this package. A frame or protocol change also goes into `packages/vscode-extension/test/integration/agent-hub.test.ts`, the Extension Host e2e peer, which imports neither package and writes its frames by hand.
+6. **Update the hand-written peers** when a peer can see the change (a frame, a refusal text, a join rule). Make `mcp-server`'s `src/__test-utils__/fakeHub.ts` answer the same and run its `test` task, because the MCP specs run against that hand copy, never against this package. A frame or protocol change also goes into `packages/vscode-extension/test/integration/agent-hub.test.ts`, the Extension Host e2e peer, which imports neither package and writes its frames by hand. A `HUB_PROTOCOL_VERSION` bump edits every hand-kept copy of the number that `packages/agent-hub/AGENTS.md` lists (Protocol).
 7. **Port it to the Kotlin hub** (`intellij-plugin`'s AGENTS.md, Coding-Agent Hub, Changing the hub) and run root step 6's `cd packages/intellij-plugin && ERD_MCP_CONFORMANCE=required ./gradlew check`. Without the variable a missing MCP build skips the conformance run instead of failing it.
 8. **Run or name the in-editor checks.** Only `vuerd-vscode`'s Extension Host e2e and the Obsidian plugin's smoke run the hub inside its editor. Run the ones the change reaches (root step 6) and name any left out in the report (root step 7).
 
@@ -46,7 +46,7 @@
 | `src/imports.test.ts` | The import guard (Rules, Host boundary) |
 | `src/__fixtures__/conformance.json` | The conformance corpus this package and the Kotlin hub are both held to (Testing Requirements) |
 | `src/conformance.test.ts` | The corpus's TypeScript reader, which holds this package to every vector |
-| `src/__test-utils__/hubLayers.ts` | The memory machine and doubles every spec here runs on; outside coverage and the declaration build |
+| `src/__test-utils__/hubLayers.ts` | The memory machine and doubles a spec here runs on in place of the node layers (Testing Requirements); outside coverage and the declaration build |
 | `src/__test-utils__/platform.ts` | `specPipePath(dir, name)`: what a spec on the node layers listens on, a socket in `dir`, or on Windows a named pipe `\\.\pipe\erd-spec-<pid>-<n>-<name>`; `mcp-server` keeps a twin |
 | `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, minify: false, node: true, preserveModules: true })` |
 
@@ -130,7 +130,7 @@
 ### Path authorization
 
 - **Resolve the real path, then call `authorize`.** `authz.ts` leaves the folder and document rule to agent-hub's `authorize` Effect.
-- **Refuse Windows-unsafe names before touching disk.** On `win32`, a target holding a name agent-hub's `unsafeSegment` flags is refused as `badRequest` before the climb touches the disk. Such names are a colon (a stream, as in `notes.txt:x.erd`), a device such as `COM1.erd`, or a trailing dot or space; the why is in agent-hub's AGENTS.md. The text is `<path> holds "<name>", which Windows does not store as written: …`. A real path that meets such a name through a link into a folder `sub.` is refused too, and the text then names the real path.
+- **Refuse Windows-unsafe names before touching disk.** On `win32`, a target holding a name agent-hub's `unsafeSegment` flags is refused as `badRequest` before the climb touches the disk. Such a name holds a colon (a stream, as in `notes.txt:x.erd`) or another character Win32 refuses, names a device such as `COM1.erd`, or ends in a dot or a space; the full rule and the why are in agent-hub's AGENTS.md. The text is `<path> holds "<name>", which Windows does not store as written: …`. A real path that meets such a name through a link into a folder `sub.` is refused too, and the text then names the real path.
 - **The corpus pins the win32 cases.** Its first `win32` authorize vectors pin the text, and a non-ASCII name and a control character quoted as `JSON.stringify` quotes them. They also pin that a share spelling of a drive folder (`\\localhost\C$\ws\a.erd` against `C:\ws`) stays `outsideWorkspace`, since paths compare as strings.
 - **Climb a missing tail only on two `NotFound`s.** It climbs only when `realPath` fails `NotFound` and `HubEnvironment.lstat` fails `NotFound` too. A dangling symlink, any other `realPath` error, or a `..` behind a missing directory is refused as `outsideWorkspace`, because `realpath` cannot see where a write through it would land.
 - **Keep `lstat` on `HubEnvironment` with its raw errno.** Moving it to `FileSystem.readLink` would fold `EINVAL`, `EPERM`, `EIO` and `ENAMETOOLONG` all into `Unknown` in its `PlatformError`. The hub would then read a file it cannot examine as one that exists.
@@ -182,7 +182,7 @@
 
 ## Testing Requirements
 
-- **Build unit specs on the memory layers.** Here or in a host, they build those of `src/__test-utils__/hubLayers.ts` (or the host's own). They never provide the node layers (`hubEnvironmentLayer`, `hubListenerLayer`, `NodeFileSystem.layer`, `nativeFileSystemLayer`, or `nodeHubServices`, which carries them), which would bind a socket and write a lock under the real home directory.
+- **Build unit specs on the memory layers.** They build those of `src/__test-utils__/hubLayers.ts`; a host's specs follow its own AGENTS.md (Testing Requirements), exception included. They never provide the node layers (`hubEnvironmentLayer`, `hubListenerLayer`, `NodeFileSystem.layer`, `nativeFileSystemLayer`, or `nodeHubServices`, which carries them), which would bind a socket and write a lock under the real home directory.
 - **Two specs bind real sockets.** The exceptions are `src/services/nodeHub.test.ts` and `src/services/netSocket.test.ts`, the first running the node layers (and `authorizePath` on them), the second `fromNetSocket` over `node:net` itself, both against a `mkdtemp` directory and listening on `specPipePath`, a named pipe on Windows. `nodeHub.test.ts`'s errno case reads `ENOTDIR` under a file on POSIX and `EINVAL` for `\\.\pipe\` on Windows, where a path under a file answers `ENOENT`. Its `LockFile` case writes over a lock another handle holds open, which on Windows lands only through the rename retry.
 - **The memory helpers.** The specs build the hub with `startMemoryHub` over `createMemoryHub()`: the file system, `HubEnvironment` and `HubListener` over maps and POSIX paths, every member a `vi.fn`, `connect` to a pipe. `createMemoryHost` gives `enabled`, `roots`, `fireEnabledChange`, `fireFoldersChange` and an `isEnabled` a spec can make throw. `createMemoryDocuments` publishes what it holds the moment it gets the publisher. `createMemoryHubServer` and `createMemorySocketPair` serve single connections, `createHubHandler` answers plausibly, and `runHub` / `runMemory` run effects under the hub's logger. They stand in for `@effect/vitest` (root § Dependencies, External), and `imports.test.ts`, which reads the specs too, refuses every `@effect/*` but a platform-node module path.
 - **Run timing specs on fake timers.** The rename retry and repair specs do, with the exact delays as their bounds. `DocumentHub.test.ts`'s repair specs fake only `setTimeout` and `clearTimeout`, and let the hub settle over the real `setImmediate`, which effect's scheduler yields through.
@@ -191,7 +191,7 @@
   - connection scenarios: the raw pieces a peer sends, the exact frames the hub writes, whether it stays open, ends or hangs up, the paths handed to `authorize` (which pin that a request's params are checked before its path is authorized), the handler calls normalized and the log texts;
   - the `documentRules.ts` texts and the `joinWindow.ts` tables, with versions past 2^31 as an editor's slot makes them (counter times 2^22 plus the slot), which a hub reading a version as a 32-bit integer fails;
   - the pipe paths, and `resolveRealPath` / `authorizePath` over a memory machine per vector.
-- **Two suites read the corpus.** `conformance.test.ts` drives `serveConnection` over `createMemorySocketPair` with `createHubHandler`, and the rest over the memory layers. It loads the file with `import.meta.glob` (`?raw`), as `imports.test.ts` reads the sources. This package is the oracle, so a vector it fails is a wrong vector. The Gradle tests of `packages/intellij-plugin` read it through the system property `erd.hub.hostCorpus`.
+- **Two suites read the corpus.** `conformance.test.ts` drives `serveConnection` through `createMemoryHubServer` with `createHubHandler`, runs the authz vectors over `createMemoryHub` and calls the other sections' functions directly. It loads the file with `import.meta.glob` (`?raw`), as `imports.test.ts` reads the sources. This package is the oracle, so a vector it fails is a wrong vector. The Gradle tests of `packages/intellij-plugin` read it through the system property `erd.hub.hostCorpus`.
 - **Give each vector one home.** A table moved into the corpus left the spec that held it. The spec keeps what the corpus normalizes away (the params object a handler gets, a log's detail) and what needs timing, a failing write, a second connection or a thrown defect. `joinWindow.test.ts` also keeps NaN, which JSON cannot hold.
 - **Add a new non-change type to `joinWindow.nonChangeTypes`.** That list is checked one way only, each type in it changing nothing, since `joinWindow.ts` keeps its set unexported. A type added to the set goes into the list too; otherwise the Kotlin hub waits out the join cap on it for a save that never comes.
 
@@ -216,4 +216,6 @@
 - `sideEffects: false` holds: no module registers or mutates anything at load.
 - Checked 2026-10-03 on effect 4.0.0: `dist/*.js` imports `effect`, `effect/socket`, `@effect/platform-node/NodeFileSystem`, `@dineug/erd-editor-agent-hub` and the six `node:` builtins only, all bare. `dist/*.d.ts` names `effect`, `effect/socket`, `node:net` and `@dineug/erd-editor-agent-hub`, plus two inline `import('effect/Cause')` types `tsc` writes itself.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

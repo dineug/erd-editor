@@ -1,0 +1,146 @@
+# jsonSchema.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `jsonSchema.ts` writes JSON Schema draft 2020-12 (owner decisions of 2026-10-09).
+  - The whole text is one document: `$schema`, then `$defs`.
+  - `$defs` holds a row schema per table, keyed by its name in `tableNameCase`, in `orderByNameASC` order.
+  - The root takes any value. So a row is validated against `#/$defs/<Key>` or against the one-table view.
+  - The one-table view is that row schema standing alone, with `$schema` first. `index.ts` takes it from `createTableCode`.
+  - A document with no table writes nothing, as `zod.ts` does.
+  - A row schema is `title` (its key), `description` (the table comment), `"type": "object"`, `properties` in column order, `required` and `"additionalProperties": false`.
+  - `required` lists every key. With `"additionalProperties": false`, a row carries every key and no other.
+  - A table with no column takes only `{}`.
+  - A column comment is its property's `description`, written first. A blank comment writes none.
+  - No `$comment`, `$id`, `default`, `readOnly` or `$ref` is written.
+- **Types.** They come from the JSON shape (`jsonShape.ts`) that `zod.ts` and `typescript.ts` read. So the three agree column by column.
+  - A boolean is `boolean`.
+  - An integer is `integer`, with `minimum` and `maximum` at the column's width. TINYINT runs from −128 to 127, MEDIUMINT from −8388608 to 8388607.
+  - An unsigned type, YEAR, SQL Server `tinyint` and PostgreSQL `oid` start from 0.
+  - A 64-bit integer gets no bound, since no JSON number holds its range exactly. A 64-bit unsigned one, SERIAL included, keeps `"minimum": 0`.
+  - The classifier makes a 64-bit integer of Oracle's `INT`, `INTEGER` and `SMALLINT` (a `NUMBER(38)`).
+  - It does the same for an Oracle or Snowflake `NUMBER` with no fraction: `NUMBER(p)`, a scale of 0 or below, Snowflake's bare `NUMBER`.
+  - It does the same for every Snowflake integer (a `NUMBER(38,0)`) and every SQLite integer (stored in 64 bits).
+  - It does the same for Oracle's bare `NUMBER` and `NUMBER(*)`, though they keep any scale (see Written as is).
+  - A float is `number`. So is MariaDB's bare `NUMBER`, which is a DOUBLE.
+  - A decimal or money type is a `string`. SQLite's `DECIMAL` and `NUMERIC` are a `number` (an owner decision of 2026-10-09).
+  - A character type is `string`, with `maxLength` from its declared length: `varchar(n)`, `nvarchar(n)`, `VARCHAR2(n BYTE)`, Snowflake `STRING(n)`.
+  - A length past 2^53 − 1 writes no `maxLength`. A double rounds such a length or reads it as Infinity, which `JSON.stringify` writes as null.
+  - A uuid, SQL Server's `uniqueidentifier` and MariaDB's `UUID` are `"format": "uuid"`.
+  - A date is `"format": "date"`.
+  - A zoned or instant timestamp is `"format": "date-time"`. MySQL, MariaDB and Databricks `TIMESTAMP` count as one.
+  - A time and a naive timestamp (Oracle `DATE` too) are a `pattern`: `TIME_PATTERN` and `NAIVE_DATE_TIME_PATTERN`. 2020-12's `time` and `date-time` formats require an offset.
+  - The patterns are written with `[0-9]`, since `\d` takes any script's digits in a Python or .NET validator.
+  - The naive pattern takes the `Z` a driver's `Date` adds after seconds.
+  - Binary is `"contentEncoding": "base64"`.
+  - JSON and the semi-structured types are `{}`.
+  - `BOOLEAN`, SQL Server's `bit`, and MySQL's and MariaDB's `BIT` and `BIT(1)` are `boolean`.
+  - A longer MySQL or MariaDB `BIT(n)` is an `integer` from 0.
+  - An ENUM is an `enum` of its members, each listed once.
+  - MariaDB `INET4` and `INET6` are `"format": "ipv4"` and `"format": "ipv6"`.
+  - Databricks `VOID` is `{"type": "null"}`.
+  - A PostgreSQL array is one `"type": "array"` with `items` per dimension. Its elements are never null.
+  - These are a plain `string`: a time with zone, an interval, a bit string, PostgreSQL's `xid`, `cid`, `xid8`, `pg_lsn`, `inet`, `cidr`, `macaddr` and `macaddr8`.
+  - So are a SET, a spatial type and any type the classifier does not know.
+- **Names.** Names are the name cases' output.
+  - Any string is a valid key: `''`, `__proto__`, `$ref`, `a/b~c`, `회원`. `JSON.stringify` escapes each.
+  - A repeated table key is numbered from 2, past every key a table takes as is. Its `title` is numbered too (owner decisions of 2026-10-09, below).
+  - Example: `user`, `User` and `user2` give `User`, `User3` and `User2`.
+  - Of a repeated property key, only the first column is kept. Both rules are owner decisions of 2026-10-09: JSON keeps one value a key, and the metaschema refuses a `required` entry listed twice.
+  - The one-table view is never numbered. So its `title` can differ from its key in the whole text.
+- **Keys and relations.** A primary key or a NOT NULL column takes its type alone.
+  - Any other column adds `"null"` to its `type` (`"type": ["string", "null"]`) and `null` to its `enum`.
+  - `{}` and `{"type": "null"}` already take null, so they stay as they are.
+  - A foreign key is a plain column. No `$ref` and no relation is written.
+- **Layout.** The text is a blank line, the JSON and a newline.
+  - The JSON is written from `Map`s (`formatJson`). A plain object loses a `__proto__` key and moves integer-like keys first.
+  - Each level indents two spaces. An object takes one key a line.
+  - An array (`type`, `required`, `enum`) stays on one line while that line fits in 80 columns. Its comma counts only where another key follows.
+  - An array that does not fit takes one item a line.
+  - Columns are counted as Prettier counts them, a code point at a time (`textWidth`). So a line of Hangul breaks where Prettier breaks it.
+  - An East Asian Wide or Fullwidth character counts two (`WIDE_RUNS`, get-east-asian-width 1.6.0 as Prettier 3.9.9 bundles it).
+  - The nine text-default emoji that take a skin tone count two (`WIDE_EMOJI`). Prettier's emoji pattern matches each of them alone.
+  - A control, U+0300 to U+036F and a variation selector U+FE00 to U+FE0F count none. Any other code point counts one.
+- **Written as is.** The generator writes these cases so, though a validator, driver or server disagrees.
+  - A `format` is checked only where the validator is told to. ajv throws on one under its default or strict options without ajv-formats (`unknown format "uuid" ignored in schema`).
+  - @hyperjump checks no `format` until `@hyperjump/json-schema/formats` is imported and `setShouldValidateFormat(true)` is called.
+  - Python jsonschema checks no `format` without a `format_checker`.
+  - ajv-formats and @cfworker take a date-time with `+0900`, `+09`, a space for the `T` or `23:59:60Z`. @hyperjump and Python refuse these.
+  - ajv-formats and @cfworker take a `urn:uuid:` uuid. @hyperjump and Python refuse it.
+  - @cfworker takes the ipv4 `010.0.0.1`.
+  - Python's `re` lets a time or naive timestamp end in a newline.
+  - The naive pattern checks month and day ranges, not month lengths. So February 30 passes where Zod refuses it.
+  - `contentEncoding` is an annotation, so binary takes any string. That includes PostgreSQL's hex `bytea` and MySQL's `base64:type15:…`.
+  - It also includes Oracle's `RAW` and `BLOB`, which its `JSON_OBJECT` writes in hex (`"0102FF"`).
+  - A 64-bit integer has no bound. So the 2^63 − 1 that mysql2 rounds passes where Zod refuses it.
+  - Oracle's bare `NUMBER` and `NUMBER(*)` keep any scale but are an unbounded `integer`. So the `12.5` such a column holds, and its `JSON_OBJECT` writes, fails.
+  - `maxLength` counts code points. SQL Server `varchar(n)` and Oracle `BYTE` lengths count bytes.
+  - SQL Server `nvarchar(n)` and `nchar(n)` and Oracle `NVARCHAR2(n)` count UTF-16 units. SQLite counts nothing.
+  - A key named after an `Object.prototype` member mis-validates in ajv and @cfworker. @hyperjump and Python get it right.
+  - ajv by default takes an inherited member for a missing key: a `{}` one, or `__proto__` of any type. `ownProperties: true` stops this.
+  - ajv, with either setting, refuses a row holding `__proto__` in a table of at most nine columns. In a larger table it takes the row whatever the value, since ajv never validates a `__proto__` property.
+  - @cfworker throws (`Instances of "function" type are not supported`) on a row lacking a key named after one of its methods, whatever the key's type. Examples: `constructor`, `toString`, `valueOf`, `hasOwnProperty`, ….
+  - @cfworker takes a row lacking a `{}` `__proto__` key.
+  - A table key `$id` (a table named `$id` under `NameCase.none`) makes ajv throw (`id.replace is not a function`). It throws resolving any `#/$defs/<key>` of the whole text. @hyperjump, @cfworker and Python reach every def.
+  - A table key holding `#` is out of reach of `$ref` in @hyperjump. In @cfworker it is reached only through a raw `#`. `NameCase.none` alone keeps a `#`.
+  - A table key holding `?`, `$`, `&`, `+`, `,`, `:`, `;`, `=` or `@` is reached in @cfworker only through the raw character. @cfworker does not percent-decode these.
+  - A lone surrogate in a column name makes ajv, @cfworker and @hyperjump throw `URIError` compiling its schema.
+  - A lone surrogate in a table name leaves its def unaddressable, since no URI encodes it.
+  - A lone surrogate in either name makes @cfworker throw on every def of the whole text. ajv and @hyperjump reach the other defs.
+  - Drivers hand over PostgreSQL `bigint` as text.
+  - Drivers hand over a DATE as a JS `Date`, a day early once east of UTC.
+  - Drivers hand over binary, and mysql2's `BIT`, as Buffer JSON.
+  - mysql2 hands over `BOOLEAN` as `1`.
+  - Drivers hand over PostgreSQL's `interval`, `point` and `circle`, and the elements of an `interval[]`, as objects.
+  - Drivers hand over a `bit` or `varbit` array as text (`"{101}"`).
+  - mysql2 hands over its spatial types (`POINT`) as objects.
+  - Drivers hand over a NULL array element as null, which an array's items refuse.
+  - Drivers hand over a naive timestamp as the UTC instant. It passes, though its value moved.
+  - SQLite (node:sqlite), raw and through its `json_object`, gives a BOOLEAN as `1`.
+  - SQLite gives a `CURRENT_TIMESTAMP` or `datetime()` value with a space for the `T`.
+  - The servers' own JSON is PostgreSQL `row_to_json` (which PostgREST and Supabase build on), MySQL and MariaDB `JSON_OBJECT`, SQL Server `FOR JSON` and Oracle `JSON_OBJECT`.
+  - The servers' own JSON writes DECIMAL as a number. The owner kept DECIMAL a string.
+  - The servers' own JSON writes PostgreSQL's `oid` as a string.
+  - The servers' own JSON writes float `NaN` and `±Infinity` as strings, `infinity` dates, `24:00:00`, BC years and offsets with seconds. All of these fail.
+  - MySQL's and MariaDB's own JSON write a DATETIME or TIMESTAMP with a space, and a BOOLEAN as `1`.
+  - MySQL's own JSON writes a `BIT` as `base64:type16:…`.
+  - MariaDB's own JSON writes a `BIT` unquoted, which is no JSON.
+  - MariaDB's own JSON writes a character past U+FFFF as a broken `\uD83DDE00` escape.
+  - MySQL and MariaDB store the ENUM error value `''` outside strict mode.
+  - MySQL and MariaDB store a TIME below zero or past a day.
+  - A ZWJ, skin-tone or tag sequence, or U+FE0F after a text-default emoji, counts a column a code point. Prettier counts the sequence two. So such a line can break where Prettier keeps it, or the reverse.
+- **Measured** on 2026-10-10 with Node 24.16.0.
+  - The first corpus was 11,107 files, whole and per table: 21,892 row schemas.
+  - It held 297 type spellings: every name of the eight vendor lists and forms with arguments. Each ran under each database as NOT NULL, nullable and key columns.
+  - It held the five `data/*.sql` fixtures under each database and three name-case pairs. It held names, comments and line-width probes.
+  - Every file passed the 2020-12 metaschema in ajv 8.20.0 (`Ajv2020`), @hyperjump/json-schema 1.17.8 and Python jsonschema 4.25.1.
+  - Every file compiled under ajv's strict and default options with ajv-formats 3.0.1, and in @cfworker/json-schema 4.1.1.
+  - Each def was reached through `#/$defs/<key>`, a reserved character left raw for @cfworker.
+  - The exceptions were a key holding `#` and, in ajv, every def of a text holding a table key `$id`, as Written as is says.
+  - Prettier 3.9.9 changed only the opening blank line. The exceptions were 28 width probes holding one of the emoji sequences in Written as is.
+  - `textWidth` equals Prettier's `getStringWidth` on all 1,112,064 Unicode scalar values.
+  - 5,085 labelled values over the 883 distinct column schemas, and 9,792 whole rows, got their expected verdict. The validators were ajv with ajv-formats, @hyperjump and @cfworker with formats on, and Python with its format checker.
+  - Rows lacking a key named after one of ten `Object.prototype` members ran over twelve types, NOT NULL and nullable (240 schemas). They gave the verdicts Written as is names in ajv, @cfworker and @hyperjump. Python refused all 240 rows.
+  - Lone surrogates in a table or column name gave the verdicts Written as is names in ajv, @cfworker and @hyperjump.
+  - zod 4.6.5's `z.toJSONSchema` ran on the `zod.ts` schema of the same 9,282 tables. 69,042 of 85,020 columns were identical, 17,108 of them after the nullable form.
+  - The rest differed only by Zod's ±(2^53 − 1) on a 64-bit integer.
+  - They differed by Zod's patterns beside `uuid`, `date`, `date-time`, the IP formats and base64 (with `format: base64`).
+  - They differed by Zod's leap-aware naive timestamp pattern, and by `\d` where this generator writes `[0-9]`.
+  - They differed by Zod's recursive schema where this generator writes `{}`.
+  - They differed by the 72 lengths past 2^53 − 1 that `zod.ts` writes rounded or infinite.
+  - json-schema-to-typescript 16.0.0 typed each of those 85,020 keys as `typescript.ts` does. A type identity check ran on each key under TypeScript 5.9.3 and 7.0.2, strict.
+  - Rows of PostgreSQL 17.11 (pg 8.23.1) failed only as Written as is says, through the driver and the server's own JSON.
+  - So did rows of MySQL 8.4.11 and MariaDB 11.4.13 (mysql2 3.24.5), through the driver and the server's own JSON.
+  - So did rows of SQLite 3.53.0 (node:sqlite), raw and through `json_object`.
+  - So did Oracle AI Database 26ai Free (23.26.3)'s `JSON_OBJECT` of `NUMBER`, `NUMBER(*)`, `RAW` and `BLOB`.
+  - SQL Server 2022's own JSON, Oracle's decimals and both servers' length units were measured on 2026-10-09. They were not run again.
+  - On 2026-10-10 these cases gave the verdicts Written as is names: a table key `$id`, and keys holding `#`, `?`, `$`, `&`, `+`, `,`, `:`, `;`, `=` or `@`.
+  - So did a NOT NULL `__proto__` column beside 0 to 82 others.
+  - Those verdicts held in ajv (default and strict options, and `ownProperties: true`), @cfworker, @hyperjump and Python.
+  - A second corpus was 9,399 files, whole and per table: 18,324 row schemas.
+  - It held every vendor list type under each database as NOT NULL, nullable and key columns, and 83 names under all 16 name-case pairs.
+  - It held comments, empty tables and the five fixtures under five name-case pairs.
+  - Every file of it passed the metaschema in all three validators. Prettier changed each only by its opening blank line.
+  - ajv resolved every def but the 332 of the four texts holding a table key `$id`, and three of the text holding lone surrogates in its names.
+  - 187,019 rows of the types, fixtures, comments and empty tables got their expected verdict in ajv, @hyperjump and @cfworker.

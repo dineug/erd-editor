@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
-
 # vscode-webview
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-08-27 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -26,6 +26,7 @@ The bundle inside the VS Code webview iframe, the client half of `vuerd-vscode`.
 | `index.html` | Entry at the package root: the `{{extension-base-url}}` `<base>` and the `#loading` placeholder |
 | `vite.config.ts` | `base: './'`, the out-of-package `outDir` with `emptyOutDir`, `modulePreload: false`, the `worker` block, `sameOriginDependencyWorkers` and the local `stripCrossorigin` plugin, `run.tasks.build` |
 | `src/env.d.ts` | `@types/vscode-webview` (`acquireVsCodeApi`) and `vite/client` (`*.css`) |
+| `src/webview.css` | Body sizing and the `#loading` placeholder's style, imported first by `src/main.ts` |
 
 ## Rules
 
@@ -83,4 +84,6 @@ The bundle inside the VS Code webview iframe, the client half of `vuerd-vscode`.
 
 `core-js/stable`, imported at the top of `src/main.ts`; `@types/vscode-webview`.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-10-18 | Updated: 2026-10-18 -->
-
 # r-html-konva
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-10-18 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -9,8 +9,8 @@
 
 ## Making a Change
 
-1. **Read the files on both sides of the change** (root step 1). A change to what the adapter does with a `HostAdapter` call reads `packages/r-html/AGENTS.md` (Rules § Host adapter contract). A change a scene would see reads `packages/erd-editor/src/konva/AGENTS.md`, the scene's rules. A change to how the pragma compiles reads `packages/vite-plugin-r-html/AGENTS.md`.
-2. **Name a new konva module in `src/imports.test.ts`.** A shipped file that constructs a new `konva/lib/*` class adds its module to `RUNTIME_MODULES` there; one that names a module by type alone adds it to `TYPE_ONLY_MODULES`. The spec fails on any konva module its lists do not name.
+1. **Read the files on both sides of the change** (root step 1). A change to what the adapter does with a `HostAdapter` call reads `packages/r-html/AGENTS.md` (Rules § Host adapter contract). A change a scene would see reads `packages/erd-editor/src/konva/AGENTS.md`, the scene's rules, and `packages/grid/AGENTS.md`, the grid's. A change to how the pragma compiles reads `packages/vite-plugin-r-html/AGENTS.md`.
+2. **Name a new konva module in `src/imports.test.ts`.** A shipped file that imports a new `konva/lib/*` module as a value (a class it constructs or tests with `instanceof`, or a namespace object) adds it to `RUNTIME_MODULES` there; one that names a module by type alone adds it to `TYPE_ONLY_MODULES`. The spec fails on any konva module its lists do not name.
 3. **Run the package's `test` task** (root step 3), which runs `tsc --noEmit`, then the `unit` and `browser` projects:
 
    ```
@@ -45,6 +45,7 @@
 | `src/konvaUpstream.browser.test.ts`, `src/konvaId.browser.test.ts` | Konva behaviour the gate, the `zIndex` ban and the id convention rest on, pinned against the installed konva |
 | `vite.config.ts` | `defineLibraryConfig(import.meta.url, { dts, jsx: { konvaImportSource: '@/host' }, minify: false, preserveModules: true })` (root § Working In This Directory, Library builds) |
 | `vitest.config.ts` | `unit` (happy-dom) and `browser` (headless Chromium) projects, each with the JSX plugin against `@/host`; one root coverage block |
+| `tsconfig.json`, `tsconfig.build.json` | The package program (`@/*`, JSX against `@dineug/r-html`, preserved for the plugin, `node` types); the build program, without the specs and `*.test-d.ts` |
 
 ## Rules
 
@@ -56,7 +57,7 @@
 
 ### Drawing
 
-- **Keep `Reflect.set(Konva, 'DD', DD)` in `batchDraw.ts`.** Only konva's barrel sets `Konva.DD`, which `Konva.isDragging` reads, and nothing here imports the barrel. Without that line every stage pointer dispatch throws. `erd-editor`'s `src/konva/scene/renderScene.browser.test.tsx` pins it on a real scene.
+- **Keep `Reflect.set(Konva, 'DD', DD)` in `batchDraw.ts`.** Only konva's barrel sets `Konva.DD`, which `Konva.isDragging` reads, and nothing here imports the barrel. Without that line a Stage pointermove, pointerleave or pointerup throws before it dispatches. `erd-editor`'s `src/konva/scene/renderScene.browser.test.tsx` pins it on a real scene.
 - **`sideEffects: false` holds because every host export reaches `batchDraw.ts`.** `host.ts` imports the gate and registers its reconcile with `onBeforeFlush` at module level, so a bundler that keeps any export keeps the gate's top-level writes (`autoDrawEnabled` and `Konva.DD`). A new module that exports host behaviour without reaching `batchDraw.ts` would lose them in a consumer's build. No spec here can see that, because Vitest and the dev server do not tree-shake; a consumer's built `dist/` is where it shows.
 
 ### The ledger
@@ -90,4 +91,6 @@
 
 `konva` `^10.3.2` as a peer and a devDependency, through `konva/lib/*` only (Rules § Importing konva).
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

@@ -1,0 +1,139 @@
+# graphql.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `graphql.ts` writes one `type` per table, sorted by name.
+  - Before the types it writes a `scalar` line for each custom scalar a field uses. Each is declared once, and only when used (an owner decision of 2026-10-09).
+  - The custom scalars are `BigInt`, `Byte`, `Date`, `DateTime`, `Decimal` and `JSON`, the names graphql-scalars gives them.
+  - graphql-scalars has no `Decimal`. So a server serves one through the default identity serializer unless it writes its own.
+  - The one-table view (`formatTable`) is that type's block of the whole text. It comes after the scalars its own fields use.
+  - A table with no field is a braceless `type X`. It parses and builds. A server refuses an object type with no field until the table gets one. The importer skips it.
+- **Types.** They come from the shared classifier (`columnTypes.ts`), an owner decision of 2026-10-09. It reads a type by name before the shared vendor tables.
+  - A signed integer of up to 32 bits, an unsigned one of up to 16 bits, and MySQL's `MEDIUMINT UNSIGNED` are `Int`, since GraphQL's `Int` is 32 bits.
+  - `BIGINT`, `INT UNSIGNED` and wider, MySQL's `SERIAL`, and PostgreSQL's `oid`, `xid`, `cid` and `xid8` are `BigInt`.
+  - Every integer type of SQLite is `BigInt`. So is every Oracle and Snowflake integer type but a `NUMBER` of stated precision. Those store any integer in eight bytes or a NUMBER(38).
+  - A MySQL or MariaDB `BIT(2)` to `BIT(64)` is `BigInt` too. The classifier reads it as an unsigned 64-bit integer whatever its width.
+  - An Oracle or Snowflake `NUMBER` with no fraction is `Int` up to 9 digits and `BigInt` past them. A negative scale counts the zeros it adds: `NUMBER(7,-2)` is `Int`, `NUMBER(8,-2)` is `BigInt`.
+  - Oracle's bare `NUMBER` and `NUMBER(*)` keep any scale, so they are `Decimal`.
+  - Snowflake's bare `NUMBER` is a `NUMBER(38,0)`, so it is `BigInt`.
+  - Snowflake's bare `DECIMAL`, `NUMERIC` and `DEC` are the same type in Snowflake. They follow the vendor table and are `Decimal`.
+  - `numeric`, `decimal`, `dec`, MySQL's and MariaDB's `fixed`, SQL Server's `money` and `smallmoney`, and a NUMBER with a scale above 0 are `Decimal`.
+  - PostgreSQL's `money` is a `String`, since node-postgres hands it over as the session's currency text (`$1,234.56`).
+  - Floats are `Float`.
+  - A boolean is `Boolean`.
+  - A MySQL or MariaDB `BIT` or `BIT(1)` stays an `Int`, as `TINYINT(1)` does. mysql2 hands it over as a Buffer, which `Boolean` refuses as `Int` does. The mariadb connector's `true` is served by `Int` as 1.
+  - Binary types and SQL Server's `rowversion` and `timestamp` are `Byte`.
+  - `json` and `jsonb` on every database are `JSON`. So are the Snowflake and Databricks `VARIANT`, `OBJECT`, `ARRAY`, `MAP` and `STRUCT`.
+  - `date` is `Date`.
+  - Every timestamp and datetime type is `DateTime`, Oracle's `DATE` and SQL Server's `datetimeoffset` among them.
+  - A time of day, `timetz` and an interval stay `String` (an owner decision of 2026-10-09). graphql-scalars' `Time` refuses the `12:34:56` the drivers hand over. Its `Duration` refuses the object node-postgres builds.
+  - A PostgreSQL bit string, `pg_lsn`, `uuid`, `uniqueidentifier`, the spatial types and any type no rule names stay `String` too.
+  - A PostgreSQL array is a list per dimension with nullable items. `int[][]` gives `[[Int]]`, and `[[Int]]!` when NOT NULL.
+  - That holds only where node-postgres parses the array. `PARSED_ARRAY_TYPES` lists those element types under every name PostgreSQL accepts for each, `dec` among them. An interval array of any fields is parsed too.
+  - Any other array is a `String`, the text node-postgres hands over. A bit string's, an `xid`'s, an enum's and a range's array are such arrays, but not `numrange[]`.
+  - `numrange[]` and `money[]` are `[String]`, the lists of text node-postgres parses them into.
+- **Names.** Each name is repaired into a GraphQL Name.
+  - Every character a GraphQL Name cannot hold becomes `_`.
+  - A leading digit gets `_` before it. An empty name is `_`.
+  - A leading run of underscores becomes one, since GraphQL reserves `__` for introspection. `__typename` gives `_typename`.
+  - Where that leaves no ASCII letter or digit (a Hangul name), the description starts with the original name.
+  - A type name is numbered where a built-in scalar (`String`, `Int`, `Float`, `Boolean`, `ID`) already takes it. It is also numbered where a custom scalar the output declares takes it, or where another table took it after the name cases fold them together. Examples: `String2`, `Date2` where the document uses `Date`, `User2`.
+  - A table named after a custom scalar the output does not declare keeps its name.
+  - A table whose type name is `Query`, `Mutation` or `Subscription` keeps it. So it becomes the schema's root operation type.
+  - A server adds its own root fields to it with `extend type Query`. A second `type Query` fails (`There can be only one type named "Query".`).
+  - The importer leaves such a root table out. It skips root types, `PageInfo`, a name ending in `Connection` or `Edge`, and Apollo Federation's and Hasura's helper names (`isNoiseTypeName` in `schema-graphql-parser/parser.ts`).
+  - A column whose field name an earlier column of the table took is dropped.
+- **Keys and relations.** Key columns are `ID`, and foreign keys become relation fields.
+  - A primary key or a foreign key column is `ID`.
+  - A primary key is `ID!` with or without the NN flag (an owner decision of 2026-10-09). Any other NOT NULL column is `T!`.
+  - A foreign key outside the key leaves its field to the relationship.
+  - A relation field is named after the table it points at.
+  - The exception is where one table pair has several relationships, or a relationship returns to its own table. It is the condition `drizzle.ts` writes `relationName` under.
+  - There the single foreign key column names both sides, without a last word `id`. Words split as `isSingleWord` (`engine/modules/relationship/fkColumns.ts`) splits them. `buyer_id` gives `buyer` and the parent's `orderListByBuyer`.
+  - A composite key, or a name with no such word, keeps the table name instead (`parentEmployee` on a self relationship).
+  - So does a stem that keeps no ASCII letter or digit in the column name case, or one that sanitizes to a name opening with `__` (`회원No_id`; `__buyer_id` under NameCase none).
+  - A relation field whose name is taken is numbered (`user2`).
+  - A relationship outside that rule is dropped where another one outside it took its name.
+  - The importer pairs a singular field with the one reciprocal whose name ends in `by` and the field's name (`pairByName` in `schema-graphql-parser/convert.ts`). It does so before its other rules, the longer name first. It then tries once more with the digits a numbered name ends in dropped.
+  - So these documents import back with as many relationships. The exception is where numbering leaves names alike:
+    - several relationships of one pair that no foreign key names;
+    - two keys giving one name on a one and a many side (`buyer_id` beside `BuyerID`);
+    - a stem ending in a digit that numbering repeats (`buyer2_id` beside `buyer_id`, where the parent holds a column `orderListByBuyer`).
+- **Strings.** A table or column comment is a description in a block string.
+  - The description is laid over several lines where it holds a line break, or ends in a quote or a backslash.
+  - `"""` is written `\"""`.
+  - A lone surrogate is written U+FFFD, since GraphQL's source text cannot hold one.
+  - GraphQL's own block-string rules then drop a description's leading and trailing blank lines and its common indentation. They also read a CR or a CRLF as an LF. So those do not round trip.
+- **Importer read-back.** `schema-graphql-parser/dataType.ts` turns each scalar back into a column type.
+  - `BigInt` imports as `bigint` (Oracle `NUMBER(19)`).
+  - `DateTime` imports as the naive timestamp (`datetime2`, `TIMESTAMP_NTZ`).
+  - On Databricks `DateTime` imports as `TIMESTAMP`, which the classifier reads as an instant. Databricks documents `TIMESTAMP` as its session-time-zone type and `TIMESTAMP_NTZ` as its naive one (from the documentation, not run).
+  - `Date` imports as `date`.
+  - `JSON` imports as `jsonb`, `JSON` or `VARIANT` (SQLite `TEXT`).
+  - `Byte` imports as `bytea`, `BLOB`, `varbinary(max)` or `BINARY`.
+  - `Decimal` imports as `DECIMAL(38,18)` (SQL Server `decimal(38,18)`) on MySQL, MariaDB, SQL Server, Oracle, Databricks and Snowflake. Their bare DECIMAL holds no fraction: MySQL's is a DECIMAL(10,0) and rounds 12.5 to 13.
+  - 38 digits is the most SQL Server, Oracle, Databricks and Snowflake hold. 18 digits after the point leave 20 before it.
+  - `Decimal` imports as `numeric` on PostgreSQL and `DECIMAL` on SQLite, which keep any scale.
+  - A generated document imports back with the type of every field outside the key. The exceptions are where a database has no column for the scalar:
+    - `Int` comes back `BigInt` on Oracle, Snowflake and SQLite.
+    - `Date` comes back `DateTime` on Oracle.
+    - `JSON` comes back `String` on SQLite.
+    - A list comes back as its item, with a `list of X` comment.
+    - A zoned timestamp comes back naive, since `DateTime` imports as one: `timestamptz` a `timestamp`, `datetimeoffset` a `datetime2`, Snowflake's `TIMESTAMP_TZ` and `TIMESTAMP_LTZ` a `TIMESTAMP_NTZ`.
+    - A Databricks `TIMESTAMP_NTZ` comes back a `TIMESTAMP`.
+  - The importer keys a type on its first `ID` field alone (`resolvePrimaryKeyFields` in `schema-graphql-parser/convert.ts`). So a composite key's fields after the first come back as plain columns (`String!`).
+  - Where such a field is also a foreign key, no field comes back. The column then serves its relationship alone (sakila's `FilmActor.filmId`).
+  - The importer adds a relationship's foreign key column under the field's name and the parent's key. `language` toward `language_id` gives `languageLanguageId`.
+  - So a relation field the foreign key names (Keys and relations, above) comes back with the parent key's name in it (`languageLanguage`).
+  - Such a field keeps its name where the parent's key is `id`.
+  - It takes the table's name where that key has no word `id`. OKKY's self relationship `parent`, toward a key `code`, comes back `parentCategory`.
+- **Written as is.** A server refuses each of these or serves another value.
+  - A table with no field.
+  - A PostgreSQL interval, `point`, `circle`, `interval[]` and `point[]`. node-postgres hands them over as objects that `String` refuses.
+  - A MySQL or MariaDB `BIT` or `BIT(1)` through mysql2. It is a Buffer that `Int` refuses.
+  - A MySQL or MariaDB `BIT(2)` to `BIT(64)`, a `BigInt`. mysql2 and the mariadb connector hand it over as a Buffer. The default serializer writes that as `{"type":"Buffer","data":[5]}`, and graphql-scalars' `BigInt` refuses it.
+  - A MySQL or MariaDB spatial type, a `String`. mysql2 hands it over as an object or a list of them (`{ x: 1, y: 2 }` for a point; MariaDB's `MULTIPOINT` as null). The mariadb connector hands it over as a GeoJSON object. `String` refuses both.
+  - SQL Server's `geography`, `geometry` and `hierarchyid`. tedious hands them over as a Buffer that `String` refuses.
+  - Oracle's `INTERVAL` types, `CLOB`, `NCLOB` and `VECTOR`. By default oracledb hands them over as an IntervalDS or IntervalYM, a Lob and a Float32Array. `String` refuses all of them.
+  - Oracle's `BLOB`, a Lob. `Byte`'s default serializer passes it on, but no response can write it as JSON.
+  - SQL Server's `time` through tedious, a `Date` on 1970-01-01. `String` serves it as its epoch milliseconds (`45296000` for 12:34:56).
+  - A `date` through node-postgres or mysql2, a local-midnight `Date`. East of UTC it serves as the day before, unless the driver's date parser is replaced.
+  - A PostgreSQL numeric array (`numeric[]`, `dec[]`, `decimal[]`). node-postgres parses its items with `parseFloat`. So `[Decimal]` serves them rounded to a double (`12345678901234567890.123456789012345678` as `12345678901234567000`), and `NaN` as null. A numeric column's value stays exact text.
+  - A SQLite `JSON` column through node:sqlite, handed over as its text. `JSON` serves it as a string (`"{\"a\":1}"`), not an object.
+  - A SQLite `BLOB` through node:sqlite, a Uint8Array. The default serializer writes it as `{"0":1,"1":2}`. graphql-scalars' `Byte` refuses it (`Value is not an instance of Buffer`).
+  - A SQLite `DATETIME` through node:sqlite, written with a space for the `T`, as SQLite's `CURRENT_TIMESTAMP` and `datetime()` write it (`2026-10-09 12:34:56`). graphql-scalars' `DateTime` refuses it (`DateTime cannot represent an invalid date-time-string`).
+  - A `Decimal`, which no stock scalar validates.
+- **Measured.** On 2026-10-10, with graphql-js 16.14.2 and 17.0.2 (`buildSchema` and `validateSchema`).
+  - Types: the 274 names of the eight vendor tables and 155 other spellings. The spellings cover lengths, precision and scale, negative scales, UNSIGNED, ZEROFILL and SIGNED, arrays, ENUMs holding quotes and escapes, an empty and an unknown type. Each ran on all eight databases as a primary key without the NN flag, a NOT NULL and a nullable column.
+  - Names: 73 table and column names under all 16 pairs of name cases, with relationships. They cover every GraphQL keyword, built-in and custom scalar names, Hangul, emoji, spaces, a leading digit, the empty name and `__x`.
+  - Comments in those documents held CR, LF, CRLF, U+2028, U+2029, NEL, control characters, `"""`, a trailing quote or backslash and lone surrogates.
+  - Fixtures: the five `data/*.sql` fixtures on all eight databases.
+  - That made 4640 whole documents and 9656 one-table views. None failed on either version.
+  - Every view parsed on both versions and matched its block in the whole text. Each declared the scalars its fields use. Each built where it names no other table's type.
+  - Tables named `query`, `mutation` and `subscription` built as the three root types on both versions.
+  - `extend type Query { users: [User] }` added a field to the first. A second `type Query` failed.
+  - Eleven tables were named after root, Relay and Apollo Federation types. The importer left out the six whose type names it reads as root or Relay types (`Query`, `Mutation`, `Subscription`, `PageInfo`, `UserConnection`, `UserEdge`). It brought back the other five.
+  - Every type document imported back through `schemaGraphQLParserToSchemaJson` and generated again with the field types Importer read-back gives (3432 round trips).
+  - The 40 fixture round trips kept every relationship and the type of every field outside the key. Per database they differed as Importer read-back says: 35 composite-key fields came back `String!`, 8 were left to their relationship, and 16 relation fields were renamed.
+  - On MySQL 8.4.11 a `DECIMAL(10,2)` column went out as `Decimal!` and came back `DECIMAL(38,18)`. The editor's DDL of it kept 12.5, `12345678901234567890.123456789012345678` and `0.000000000000000001`. A bare `DECIMAL` (`decimal(10,0)`) stored 12.5 as 13.
+  - PostgreSQL 17.11 reads `dec(5,1)`, `dec` and `dec(5,1)[]` as `numeric(5,1)`, `numeric` and `numeric(5,1)[]`.
+  - SQLite 3.54.0 (and node:sqlite's 3.53.0) gives `DEC` the NUMERIC affinity `DECIMAL` has.
+  - Served through the generated SDL and the default serializers (TZ Asia/Seoul), pg 8.23.1 rows gave these results:
+    - `numeric`, `dec`, `dec[]` (whose items pg parses into numbers), `money` (`$1,234.56` as a `String`), `xid` (`"7"`), `bigint`, `jsonb`, `bytea`, `timestamptz`, `int[][]`, `bit(3)[]` and `xid[]` (each a `String` of its text) served.
+    - `interval`, `point`, `circle`, `interval[]` and `point[]` failed (`String cannot represent value: { days: 1, ... }`).
+    - A `date` served `2026-10-08T15:00:00.000Z` for 2026-10-09.
+  - mysql2 3.24.5, on MySQL 8.4.11 and MariaDB 11.4.13, hands `BIT(1)`, `BIT(5)` and `BIT(64)` over as Buffers.
+  - mysql2 hands `POINT` and `GEOMETRY` over as `{ x: 1, y: 2 }`. It hands `LINESTRING`, `POLYGON`, `MULTIPOINT` and `GEOMETRYCOLLECTION` over as lists of such objects, and a MariaDB `MULTIPOINT` as null.
+  - mysql2 hands a `DATE` over as the same local midnight.
+  - The mariadb connector 3.4.5 hands `BIT(1)` over as `true`, served as 1. It hands the wider BITs over as Buffers, and those six spatial types as GeoJSON objects.
+  - graphql-scalars 2.0.0's `BigInt` refuses such a Buffer (`Cannot convert [object Object] to a BigInt`).
+  - tedious 20.3.3 on SQL Server 2022 (16.0.4295.3) hands `geography`, `geometry` and `hierarchyid` over as Buffers.
+  - oracledb 6.10.0 (thin) on Oracle Database 23.26 Free hands its intervals over as IntervalDS and IntervalYM. It hands `CLOB`, `NCLOB` and `BLOB` over as Lobs, and `VECTOR` as a Float32Array.
+  - Each of the tedious and oracledb values failed through the SDL, as Written as is says.
+  - That tedious hands SQL Server's `time` over as a `Date` was measured on 2026-10-09 (SQL Server 2022, tedious 20.3.3). graphql-js serves such a `Date` through `String` as `45296000` for 12:34:56.
+  - pg 8.23.1's own parsers (pg-types 2.2.0, no server) read `{12345678901234567890.123456789012345678,0.000000000000000001,NaN}` as a `numeric[]` into `[12345678901234567000, 1e-18, NaN]`.
+  - `numeric(38,18)[]`, `dec[]` and `decimal[]`, all `[Decimal]`, served that as `[12345678901234567000,1e-18,null]` on both versions.
+  - The same parsers read the same value as a `numeric` into its exact text, served as is.
+  - node:sqlite (SQLite 3.53.0) rows of `JSON`, `DATETIME` (written and `CURRENT_TIMESTAMP`) and `BLOB` columns were served through the generated SDL. They were served by default on both versions, and with graphql-scalars 2.0.0's `JSON`, `DateTime` and `Byte` serializers on graphql-js 16. They gave what Written as is says.
+  - better-sqlite3 was not run.

@@ -1,0 +1,129 @@
+# jpa.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `jpa.ts` writes one Jakarta Persistence entity per table, with Lombok's `@Data` on it.
+  - It uses plain JPA annotations only, no Hibernate annotation. The referential-action rule in `src/utils/schema-sql/AGENTS.md` records why.
+  - Each column is a field, in the table's order. Foreign key columns are the exception: they become relation fields (Keys and relations, below).
+  - Names and types are `java.ts`'s except where this note says otherwise.
+  - A composite key adds an `@IdClass` holder, `XId implements Serializable`, before its entity.
+- **Types.** They are `java.ts`'s but for what follows.
+  - `timetz` is a `LocalTime`, since Hibernate moves an `OffsetTime` by the JVM's offset on the way in and out.
+  - An Oracle interval is a `String`, since Hibernate writes a `Duration` to an Oracle interval in no way.
+  - A PostgreSQL interval takes the `Duration` under `hibernate.type.preferred_duration_jdbc_type=INTERVAL_SECOND`.
+  - `@Lob` goes on Oracle `BLOB`, `CLOB` and `NCLOB` alone, since Hibernate reads them as a `byte[]` or `String` only under it. No other type takes `@Lob`.
+  - `columnDefinition` is written only where Hibernate's schema validation refuses the field without it:
+    - PostgreSQL `money`;
+    - a fixed `BINARY(n)` on MySQL, MariaDB and SQL Server, and MySQL's and MariaDB's `CHAR(n) BYTE`, as `"BINARY(16)"`;
+    - MySQL and MariaDB `TINYINT`, `SMALLINT` and `INT` UNSIGNED or ZEROFILL, by the name the driver reports (`"INT UNSIGNED"`).
+  - The reported name drops the display width. On MySQL it drops ZEROFILL too. MariaDB's keeps ZEROFILL, so on MariaDB the definition adds ` ZEROFILL`.
+  - YEAR never takes a `columnDefinition`, since it stays a YEAR under UNSIGNED or ZEROFILL.
+  - SQL Server `rowversion` and `timestamp` take `@Column(insertable = false, updatable = false)`, since the database writes them.
+- **Names.** Each name the annotations carry is a Java string with `"`, `\`, CR and LF escaped.
+  - `@Table(name = "...")` is written where the class name differs from the table name.
+  - `@Column(name = "...")` is written where the field name differs from the column name, key columns included.
+  - `@JoinColumn(name = "...")` carries the column name as written.
+  - This fits Hibernate's default physical naming (`PhysicalNamingStrategyStandardImpl`), which keeps every name as given.
+  - Spring Boot's default, `CamelCaseToUnderscoresNamingStrategy` (from Spring Boot's documentation), rewrites a name with a capital in it, a written one too.
+    - So `@Table(name = "userAccount")` looks for `user_account`.
+    - A field `createdAt` with no `@Column` name looks for `created_at`.
+    - A name with no capital (`member_info`, `small_n`) passes under either strategy.
+    - An application on Spring Boot sets `spring.jpa.hibernate.naming.physical-strategy` to `org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl`.
+  - A table name the shared reserved-word list holds (`DOCTRINE_RESERVED_WORDS`, in any letter case) is quoted inside the `@Table` name: `"\"user\""`. Hibernate writes it in the dialect's own quotes.
+  - It is quoted only where `settings.bracketType` quotes names, as the editor's DDL does.
+    - Under `BracketType.none` the DDL leaves the name bare, so the database folds its case.
+    - A quoted mapping would then find no table (`missing table [Member]` on PostgreSQL, ORA-00942 on Oracle).
+    - A name the database itself reserves cannot be created there at all under `BracketType.none`.
+  - Class and field names are `java.ts`'s (`toJavaClassName`, `toJavaFieldName`). Its note (`java-kotlin-scala.md`, Names) gives the reasons.
+    - A keyword gets `_` after it, and the field gets its `@Column` name (`class_`).
+    - A field `Class` is `Class_` with `@Column(name = "class")`.
+    - A field `java` is `java_` with `@Column(name = "java")`.
+  - Every relation field, `mappedBy` and `@IdClass` field goes through the same rule, so each side names the one field.
+- **Keys and relations.** `@Id` goes on a key column.
+  - `@GeneratedValue(strategy = GenerationType.IDENTITY)` is added where the key auto-increments. It matches the identity or AUTO_INCREMENT column the editor's DDL creates.
+  - An `@Id` takes no `nullable`, since a key takes no NULL.
+  - Any other NOT NULL column takes `nullable = false`.
+  - A foreign key column is no field of its own. The child holds a field of the parent's class instead:
+    - `@ManyToOne`, or `@OneToOne` for a one cardinality;
+    - with `@JoinColumn`, or `@JoinColumns` for a composite key;
+    - with `@Id` too where the foreign key is part of the key.
+  - The parent holds `@OneToMany(mappedBy = "...")` on a `List<X> xList = new ArrayList<>()`, or `@OneToOne(mappedBy = "...")`.
+- **Written as is, though Hibernate cannot use it.**
+  - A keyless table. Its `@Entity` without an `@Id` stops the persistence unit at boot.
+  - A foreign key to part of a composite key (`data/Magento2-sales.sql`). MySQL and PostgreSQL refuse it in the editor's DDL.
+  - An auto-increment column in a composite key. Hibernate 6.6 refuses it on insert (`Identity generation isn't supported for composite ids`).
+  - Hibernate 7.4 inserts that column on MySQL and PostgreSQL. It does not on SQLite, whose DDL writes no AUTOINCREMENT there.
+  - Three cases that repeat a field name (`already defined` in Magento2-sales, OKKY and sakila):
+    - two relationships of one table pair;
+    - a one-to-one relationship of a table to itself, whose owning and inverse fields both take the table's name;
+    - a column named like the field a relationship writes (`city` beside a foreign key to `city`).
+  - A PostgreSQL array of more than one dimension (`Integer[][]`). Hibernate refuses it at boot (`Nested arrays ... not supported`).
+  - A reserved column name, never quoted. A PostgreSQL insert into a column `order` fails.
+  - Under a quoting bracket type, every name but a reserved table name is left bare.
+    - A name with capitals that the DDL created quoted is then not found on PostgreSQL, which folds it down, or on Oracle, which folds it up.
+    - It is found when `hibernate.globally_quoted_identifiers=true` is set.
+  - The names `java.ts` writes as is (`java-kotlin-scala.md`, Written as is).
+  - A class named after an annotation or type the reader imports (`Entity`, `Table`, `Column`, `Id`, `List`, `ArrayList`, `Serializable`).
+  - The types below, each with its field type from Types, above.
+  - PostgreSQL: `json`, `jsonb`, `xml`, the network types (`inet`, `cidr`, `macaddr`, `macaddr8`), the geometric types (`point`, `line`, `lseg`, `box`, `path`, `polygon`, `circle`), every range and multirange, the year-month intervals (`interval year`, `interval month`, `interval year to month`), the bit strings, `tsvector`, `tsquery`, `jsonpath`, `tid`, `pg_lsn`, `pg_snapshot`, `txid_snapshot` and the `reg*` types.
+    - They fail validation (`found [json (Types#OTHER)]`, `found [xml (Types#SQLXML)]`).
+    - They write only with `stringtype=unspecified` in the JDBC URL. Without it a write fails (`column "c" is of type inet but expression is of type character varying`).
+    - `regclass` alone writes without it.
+  - PostgreSQL `cid`, `xid` and `xid8`. They fail validation and a write with or without `stringtype=unspecified` (`column "c" is of type xid but expression is of type bigint`).
+  - PostgreSQL `bpchar`, `char` and `character`. They fail validation alone.
+  - A PostgreSQL bare `interval` holding months. Hibernate reads it with the months dropped (`1 mon` as `PT0S`, `1 year 2 mons 3 days 04:05:06` as `PT76H5M6S`).
+  - A PostgreSQL `money` of 1,000 or more either side of zero. It writes, but pgjdbc cannot read it through its group separators (`Bad value for type BigDecimal : 1,234.56`).
+  - The PostgreSQL arrays `jsonb[]`, `interval[]` and `money[]`. They fail a write or a read even with `stringtype=unspecified` and `INTERVAL_SECOND`.
+    - `money[]` fails with `Bad value for type double : $12.34` whatever the value.
+  - MySQL and MariaDB `TINYINT(1)`. It fails validation alone (`found [bit (Types#BIT)], but expecting [tinyint]` on MySQL, `found [boolean]` on MariaDB).
+  - MySQL and MariaDB `BIT(n)` past one bit. It fails validation alone (`found [bit], but expecting [bigint]`).
+  - MySQL and MariaDB `YEAR`, and MariaDB's `INET4` and `INET6`. They fail validation alone.
+  - On Hibernate 6.6 alone, MySQL and MariaDB `CHAR`, and MySQL's `ENUM` and `SET`. They fail validation alone.
+  - The MySQL and MariaDB spatial types (`GEOMETRY`, `POINT`, `LINESTRING`, `POLYGON`, the `MULTI` ones, `GEOMETRYCOLLECTION` and `GEOMCOLLECTION`). They fail validation and a write (`Cannot get geometry object from data you send to the GEOMETRY field`).
+  - Oracle `CHAR`, `CHARACTER`, `NATIONAL CHAR`, `NATIONAL CHARACTER`, `NCHAR`, `NCLOB` and `JSON` (`found [json (Types#UNKNOWN(2016))]`). They fail validation alone.
+  - On Hibernate 6.6 alone, Oracle `BINARY_FLOAT` and `BINARY_DOUBLE`. They fail validation alone.
+  - Oracle `INTERVAL DAY TO SECOND` and `INTERVAL YEAR TO MONTH`. They fail validation and write, but read back in ojdbc's form (`+01 02:03:04.000000` as `1 2:3:4.0`, `+01-02` as `1-2`).
+  - Oracle `VECTOR`. It fails validation and reads `[1,2,3]` back as `[1.0E+000,2.0E+000,3.0E+000]`.
+  - Oracle `BFILE`, `ANYDATA` and `URIType`. They fail validation and a write (ORA-00932).
+  - Oracle `XMLType`. It fails validation and a round trip without Oracle's xdb library (`NoClassDefFoundError: oracle/xdb/XMLType`).
+  - Oracle `ROWID` and `UROWID`. They fail validation.
+  - An Oracle bare `NUMBER` holding a fraction. It is read with the fraction dropped (`1.5` as `1`).
+  - An Oracle bare `NUMBER` or integer type holding a value past a `Long`. Its read fails (ORA-17026).
+  - SQL Server `char`, `character`, `national char`, `national character`, `nchar` and `sql_variant`. They fail validation alone on 6.6 and 7.4.
+  - SQL Server `geometry` and `geography`. They fail validation and read back as the hex of their binary form (`POINT(1 2)` as `E6100000010C…`).
+  - SQL Server `hierarchyid`. It fails validation and reads `/1/` back as `58`.
+  - SQL Server `rowversion` and `timestamp`. They fail validation.
+  - SQLite, under Hibernate's community dialect: every integer type but `BIGINT`, a key included. It fails validation alone (`found [integer (Types#INTEGER)], but expecting [bigint]`).
+  - SQLite `BOOL`, `DATETIME`, `DEC` and `DECIMAL`. They fail validation alone.
+- **Measured** on 2026-10-10.
+  - Compile: javac 25.0.4 with Lombok 1.18.48 and jakarta.persistence-api 3.2.0 compiled the whole texts of the corpus that the Measured bullet of `java-kotlin-scala.md` lists. Every class loaded.
+  - Every one-table view is a slice of its whole text.
+  - The compile left out the repeated relation fields under Written as is: the fixtures', a one-to-one relationship of `employee` to itself, and a column `city` beside a foreign key to `city`.
+  - It also left out the names under Written as is.
+  - `-Xlint:all` warned only `[processing]`, since no processor claims the Jakarta annotations.
+  - It also warned `[serial]` on each `@IdClass` holder. The holder declares no `serialVersionUID`. Where a foreign key is part of the key, it holds the parent entity in a field, and that entity is not `Serializable`.
+  - Names: Hibernate 6.6.58 and 7.4.12, with Hibernate's default naming, validated, persisted and read back against the editor's DDL. The servers were PostgreSQL 17.11 (pgjdbc 42.7.8) and MySQL 8.4.11 (Connector/J 9.4.0).
+  - The cases were a table `class` with a column `class` (`Class` under the none case), and the relation, `mappedBy` and `@IdClass` fields named after it.
+  - A table the database reserves (`user`, `order`) and one only the list holds (`key`, `user`) ran too.
+  - Each ran under every column name case.
+  - Bracket types: they passed under `doubleQuote` on PostgreSQL and `backtick` on MySQL, but for PostgreSQL `doubleQuote` with a name in capitals (Written as is).
+  - Under `none` they passed without the reserved table, whose DDL fails there.
+  - Under `singleQuote`, under `backtick` on PostgreSQL and under `doubleQuote` on MySQL, the editor's DDL fails before any mapping.
+  - The naming strategies ran the same way on PostgreSQL, with a `userAccount` and a `member_info` table under the PascalCase and camelCase name cases.
+  - A table `java` with a column `java` beside `bytea` and `text[]` columns ran too. Its relation, `mappedBy` and `@IdClass` fields were named after it, all `java_` in classes holding a `byte[]`.
+  - It validated, persisted and read back the same way on PostgreSQL 17.11.
+  - Type limits: one table per type, holding an integer key and the column, in the editor's DDL under `BracketType.none`.
+  - The types were every type of the PostgreSQL, MySQL, MariaDB, Oracle, SQL Server and SQLite lists whose table that DDL creates there.
+  - Spellings with arguments ran too (`TINYINT(1)`, `BIT(64)`, `CHAR(10)`, `INTERVAL DAY(2) TO SECOND(6)`), and seventeen PostgreSQL arrays.
+  - Each entity was validated alone, then a row was persisted and found.
+  - The type limits ran on these servers and drivers:
+    - PostgreSQL 17.11 (pgjdbc 42.7.8), once as it comes and once with `stringtype=unspecified` and `INTERVAL_SECOND`;
+    - MySQL 8.4.11 (Connector/J 9.4.0);
+    - MariaDB 11.4.13 (MariaDB Connector/J 3.5.6);
+    - Oracle Database Free 23.26.3 (ojdbc11 23.9);
+    - SQL Server 2022 CU27 (mssql-jdbc 13.2);
+    - SQLite (sqlite-jdbc 3.53.4.0, `hibernate-community-dialects` of the same Hibernate release).
+  - The PostgreSQL intervals with months and the Oracle `NUMBER` values were inserted in SQL and read by Hibernate.
+  - The money values were persisted and read by Hibernate.
+  - Snowflake and Databricks were not run.

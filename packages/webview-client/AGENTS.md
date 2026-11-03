@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-09-06 | Updated: 2026-10-11 -->
-
 # webview-client
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-09-06 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -113,4 +113,6 @@
 
 None at runtime. `happy-dom` (a devDependency) is the spec's environment.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.

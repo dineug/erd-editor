@@ -1,0 +1,113 @@
+# typescript.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What it writes.** `typescript.ts` writes one `export interface` per table (owner decisions of 2026-10-09).
+  - Each interface is typed as the `z.infer` of the `zod.ts` schema of the same table.
+  - So it describes a row as an API sends it in JSON: a decimal as text, dates and times as ISO text, binary as base64, a JSON value as `unknown`.
+  - The whole text opens with a blank line. It writes the tables in `orderByNameASC` order, each followed by a blank line.
+  - It writes no import.
+  - A document with no table writes nothing.
+  - The one-table view is `formatTable`, as in the other plain generators.
+- **Types.** They come from `getJsonShape` (`jsonShape.ts`), the JSON shape that `zod.ts` and `jsonSchema.ts` read too.
+  - `getJsonShape` classes a type by its name through `columnTypes.ts`, not by the vendor lists' `primitiveType` alone.
+  - `BOOLEAN`, SQL Server's `bit`, and MySQL's and MariaDB's `BIT` and `BIT(1)` are `boolean`.
+  - `TINYINT(1)` and a longer `BIT(n)` stay a `number`.
+  - Every integer and float is a `number`.
+  - A 64-bit integer is a `number` too, exact only up to 2^53 − 1 included (an owner decision). That covers `BIGINT`, `BIGINT UNSIGNED`, `SERIAL`, and every Oracle, Snowflake and SQLite integer, Oracle's bare `NUMBER` among them.
+  - PostgreSQL's `oid`, MariaDB's bare `NUMBER` (a DOUBLE), and SQLite's `DECIMAL`, `NUMERIC` and `DEC` are a `number`.
+  - A decimal or money type on every database but SQLite is a `string` (an owner decision).
+  - Among those are Oracle's and Snowflake's `NUMBER` with a scale above 0, MariaDB's `NUMBER(p)` and Snowflake's `DECFLOAT`.
+  - A character type is a `string`. So is a uuid, SQL Server's `uniqueidentifier` and MariaDB's `UUID` included.
+  - A date, a time, and a timestamp with or without a zone are a `string`. So is an interval.
+  - Binary, a bit string and `pg_lsn` are a `string`.
+  - PostgreSQL's `xid`, `cid` and `xid8` are a `string`, since pg hands them over as text.
+  - A network or spatial type, a SET, and any type the classifier does not know are a `string`.
+  - JSON on every database is `unknown`.
+  - Snowflake's `VARIANT`, `OBJECT`, `ARRAY` and `MAP` are `unknown`. So are Databricks' `STRUCT`, `MAP`, `ARRAY`, `OBJECT` and `VARIANT`.
+  - Databricks' `VOID` is `null`.
+  - An ENUM is the union of its members as JSON string literals, each once, in their order (`"it's" | "say \"hi\""`).
+  - The spaces that end a member are dropped on MySQL and MariaDB, since those databases drop them. On PostgreSQL the union keeps them.
+  - A PostgreSQL array (`int[]`, `int[3]`, `integer ARRAY`) is one `[]` per dimension around its element type.
+  - An array's elements are never null.
+  - The element type goes in parentheses where it is a union of two members or more: `number[][]`, `("a" | "b")[]`, `"only"[]`.
+  - An array of a type no list names (`"mood"[]`) is a `string[]`.
+  - The interface and `z.infer` differ in two places only.
+    - A JSON column is `unknown` here, where `z.infer` gives Zod's `JSONType`. `JSONType` assigns to `unknown`, but not the reverse.
+    - A table with no column is `export interface X {` and `}`, which takes any object. `z.infer` gives `Record<string, never>`.
+  - A table named `as` or `z` keeps that name here. Zod's type gets `_` after it.
+- **Names.** Names follow the name cases.
+  - An interface named with a word an ES module refuses for one gets `_` after it (`class_`).
+  - Those words are the 56 of `RESERVED_TYPE_NAMES`: the reserved words, the strict mode ones (`let`, `yield`, `await` and `package` among them) and the predefined type names.
+  - The predefined type names are `any`, `unknown`, `never`, `number`, `bigint`, `boolean`, `string`, `symbol`, `object`, `undefined` and `void`.
+  - Only a lower-case name meets one of them, so no name under PascalCase does.
+  - Contextual keywords (`type`, `as`, `async`, `declare`, `global`, `infer`) compile as they are. So do global type names (`Number`, `Date`, `Record`).
+  - They shadow nothing the interfaces use, since every type the interfaces use is a keyword.
+  - A property key is written bare where TypeScript reads an identifier (`class`, `__proto__`, `$x`, `주소1`).
+  - A key is written as a JSON string where TypeScript reads no identifier (`"first name"`, `"2FaEnabled"`, `""`).
+  - TypeScript reads identifiers by Unicode 15.1. So a key holding a character that Unicode 16.0 or 17.0 added is quoted too (`NEWER_IDENTIFIER_RUNS`).
+  - `jsonShape.test.ts` checks `NEWER_IDENTIFIER_RUNS` against TypeScript's own scanner, for every code point of planes 0 to 3 and 14.
+  - Any other name that is no identifier is written as is, as in `php.ts` and `rust.ts`.
+  - A repeated name is written as is too, so that a compile error shows the repeat (an owner decision of 2026-10-09).
+  - A repeated interface name compiles, though (Written as is, below).
+- **Keys and nullability.** A primary key is `T`, its NOT NULL flag set or not (an owner decision of 2026-10-09; `../AGENTS.md`, A primary key column is NOT NULL).
+  - A NOT NULL column is `T` too. Any other column is `T | null`.
+  - `isNullableColumn` (`jsonShape.ts`) decides this. `zod.ts` reads it too.
+  - `unknown` and `null` get no `| null`, since they hold null already.
+- **Comments.** A comment is `//` lines, written by `zod.ts`'s `formatComment`, so the two generators stay alike.
+  - Each line of the comment gives one `//` line. Lines end at CR, LF, CRLF, U+2028 and U+2029 (`splitLines`, `utils.ts`).
+  - Each line's trailing white space is trimmed.
+  - The blank lines at either end are dropped. Each blank line inside is written `//`.
+  - So a blank comment writes nothing.
+  - A line TypeScript would read as a directive takes a backslash before its at sign (`../AGENTS.md`, No TypeScript directive in a comment).
+  - A table's comment sits above its interface.
+  - A column's comment sits above its property, indented two spaces.
+  - U+0085, NUL and `*/` stay in their line, since TypeScript ends a line comment at none of them.
+- **Written as is.** These stay in the output, though TypeScript refuses or merges them, or a value reaches code in a form the interface does not describe.
+  - **Names TypeScript refuses or merges.**
+    - An interface name that is no identifier, which the name cases can make. Examples are `3DModels`, PascalCase of `3d_models`, and `3d models` under no name case. TypeScript refuses it (TS1351, TS2427).
+    - A key a name case writes twice in one table (TS2300).
+    - A table name a name case writes twice. Its interfaces merge into one without an error, unless the same key has another type in each (TS2717).
+    - A key holding a character that a Unicode later than 17.0 adds, outside `NEWER_IDENTIFIER_RUNS`. A runtime that knows the character writes the key bare, and TypeScript then refuses it (TS1127). This lasts until `jsonShape.test.ts` fails on a Node that knows the character.
+  - **Driver values.** The interface stands for the JSON row, so a value that reaches code in another form does not fit it.
+    - pg hands over PostgreSQL's `bigint` as text, and tedious hands over SQL Server's `bigint` as text.
+    - mariadb hands over a 64-bit integer as a `BigInt`.
+    - tedious hands over SQL Server's decimal as a number.
+    - Drivers hand over a date or timestamp as a `Date`.
+    - Drivers hand over binary as a `Buffer`, and mysql2 its `BIT` too.
+    - mysql2 hands over a `BOOLEAN` as `1`.
+    - PostgreSQL's `interval` and `point` arrive as objects.
+    - PostgreSQL's `numeric[]` arrives as numbers, and its `int8[]` as text.
+    - An array of a bit string or of a user-defined type arrives as one text (`"{sad,ok}"`).
+    - A NULL array element arrives as null.
+  - **The servers' own JSON.** It comes from PostgreSQL's `row_to_json` (which PostgREST and Supabase build on), MySQL's and MariaDB's `JSON_OBJECT`, SQL Server's `FOR JSON` and Oracle's `JSON_OBJECT`.
+    - It writes a decimal as a number. The owner kept the decimal a string.
+    - It writes PostgreSQL's `oid` as text.
+    - It writes a float's `NaN` and `±Infinity` as text.
+    - MySQL and MariaDB write a `BOOLEAN` as `1`.
+    - MySQL writes a `BIT` as `"base64:type16:…"` text.
+    - MariaDB writes a `BIT` unquoted, which is no JSON.
+  - **Text in another form than the interface's.** Each passes as a `string`, though it is not the ISO and base64 text the interface stands for.
+    - MySQL's and MariaDB's DATETIME and TIMESTAMP with a space for the `T`.
+    - PostgreSQL's `infinity` and BC dates.
+    - PostgreSQL's `bytea` in hex.
+    - Oracle's `RAW` in hex.
+  - **The ENUM error value.** MySQL and MariaDB store the ENUM error value `''` outside strict mode. The union refuses it.
+- **Measured** on 2026-10-10 with Node 24.16.0.
+  - 168 whole texts and their 8,224 one-table views compiled with no error on TypeScript 5.9.3, 6.0.3 and 7.0.2.
+  - The compiler options were `strict`, `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `isolatedModules`, `isolatedDeclarations` and lib ES2022.
+  - The texts covered 252 type spellings: every name of the eight vendor lists, and forms with arguments.
+  - Each spelling was a NOT NULL column, a nullable column and a key column without the flag, under each database.
+  - The texts also covered the five `data/*.sql` fixtures, under each database and four name-case pairs.
+  - Each of the 8,224 interfaces was identical, by a type identity check, to the `z.infer` of the `zod.ts` schema of the same table. This held on all three compilers.
+  - That check used zod 4.6.5, with `unknown` read as `z.json()`'s type.
+  - Four altered interfaces each failed the check.
+  - Each of the 56 reserved names failed as an interface name and compiled with its `_`.
+  - Contextual keywords and global type names compiled as they are.
+  - Prettier 3.9.9 changed only the opening blank line of the 168 whole texts.
+  - Elsewhere, Prettier puts an empty interface's braces on one line.
+  - Elsewhere, Prettier breaks a line past 80 columns, such as a long ENUM union.
+  - Elsewhere, Prettier single-quotes a string holding a double quote.
+  - The driver values under Written as is come from runs on 2026-10-09 and 2026-10-10. The runs used pg 8.23.1 on PostgreSQL 17.11, mysql2 3.24.5 on MySQL 8.4.11 and MariaDB 11.4.13, the mariadb connector 3.5.4, and tedious 20.3.3 on SQL Server 2022.
+  - The servers' own JSON comes from runs on 2026-10-10. The servers were PostgreSQL 17.11, MySQL 8.4.11, MariaDB 11.4.13, SQL Server 2022 (16.0.4295.3) and Oracle AI Database 26ai Free (23.26.3).

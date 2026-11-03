@@ -1,0 +1,94 @@
+# java.ts, kotlin.ts and scala.ts
+
+**Parent context:** `../AGENTS.md`
+**Generated:** 2026-10-11 · **Updated:** 2026-11-03
+
+- **What they write.** Plain classes with no import or package line, as the other plain generators do.
+  - The reader adds `lombok.Data`, `java.math.BigDecimal`, `java.util.UUID` and the `java.time` types the text names. Scala's `Duration` needs no import (Types, below).
+  - The one-table view is `formatTable`.
+  - Java writes a Lombok `@Data public class` of `private` boxed fields.
+  - Kotlin writes `data class X(val a: T, val b: T? = null)` (an owner decision of 2026-10-09).
+  - Kotlin writes a table without columns as `class X`, since a data class needs a property.
+  - Scala writes a `case class X(` with no `@Data`.
+- **Types.** They come from the shared classifier (`columnTypes.ts`) through `getJvmType` in `java.ts`. Kotlin and Scala spell them their own way (`Int`, `ByteArray` / `Array[Byte]`).
+  - Integers take their width: `Byte`, `Short`, `Integer` and `Long`.
+  - An unsigned integer (UNSIGNED or ZEROFILL) takes the next wider type.
+  - MEDIUMINT UNSIGNED is an `Integer`, since it stops at 16777215, which an `Integer` holds.
+  - BIGINT UNSIGNED and SERIAL are a `Long` (an owner decision of 2026-10-09). A `Long` holds every key below 2^63, where `BigInteger` would retype every Laravel-style key.
+  - Oracle `INT`, `INTEGER` and `SMALLINT` (a `NUMBER(38)`) are a `Long`, as a bare `NUMBER` is. So are every Snowflake integer (a `NUMBER(38,0)`) and every SQLite integer.
+  - A `Long` holds 19 of the 38 digits Oracle's and Snowflake's integers take.
+  - SQL Server `tinyint` is a `Short`.
+  - On MySQL and MariaDB, `TINYINT(1)` is a `Byte`, `BIT(1)` a `Boolean` and `BIT(n)` past one bit a `Long`.
+  - On MySQL, MariaDB, PostgreSQL and SQL Server, `FLOAT(1)` to `FLOAT(24)` is a `Float` and `FLOAT(25)` to `FLOAT(53)` a `Double`.
+  - On Oracle, SQLite and Snowflake, every `FLOAT(n)` is a `Double`, as Oracle `REAL` is.
+  - On Databricks, every `FLOAT(n)` is a `Float`.
+  - Decimals, SQL Server and PostgreSQL money, and an Oracle or Snowflake `NUMBER(p,s)` with a scale are a `BigDecimal`. In Scala the bare `BigDecimal` names `scala.math.BigDecimal`, which needs no import.
+  - A bare `NUMBER` is a `Long`, but MariaDB's, a DOUBLE, is a `Double`.
+  - Binary types and SQL Server `rowversion` and `timestamp` are bytes (`byte[]`).
+  - `uuid`, `uniqueidentifier` and MariaDB's and Snowflake's `UUID` are a `UUID`.
+  - PostgreSQL `oid`, `cid`, `xid` and `xid8` are a `Long`.
+  - A boolean, SQL Server's `bit` among them, is a `Boolean`; `DATE` is a `LocalDate` (but Oracle's, below), `TIME` a `LocalTime`, and MySQL's and MariaDB's `YEAR` an `Integer`.
+  - JSON, the semi-structured, network, bit-string and spatial types, and every other type, are a `String`.
+  - The offset timestamps are an `OffsetDateTime`: `timestamptz`, `datetimeoffset`, Oracle's and Snowflake's WITH TIME ZONE, `TIMESTAMP_TZ`.
+  - `timetz` is an `OffsetTime`.
+  - The naive and local-zone timestamps are a `LocalDateTime`: MySQL `TIMESTAMP`, WITH LOCAL TIME ZONE, `TIMESTAMP_LTZ`, Databricks `TIMESTAMP`. Oracle `DATE` is a `LocalDateTime` too.
+  - A day-to-second interval is a `Duration`. So is a bare one (PostgreSQL `interval`, Databricks `INTERVAL`), whose months a `Duration` cannot hold.
+  - Scala alone writes `Duration` with its package, `java.time.Duration`. A bare one would resolve to, or clash with, the `scala.concurrent.duration.Duration` a Scala file often imports.
+  - `UUID` and `OffsetDateTime` stay bare in all three.
+  - A year-month interval is a `String`, since a `Duration` holds no months.
+  - A PostgreSQL array is one level a dimension: Java `T[]`, Kotlin `List<T>`, Scala `List[T]`.
+  - Lombok's `equals` compares Java's `T[]` by content. `jpa.ts` writes `T[]` too.
+  - Kotlin and Scala write a `List`, since a data class and a case class compare an `Array` by reference.
+- **Names.** Names follow the name cases.
+  - Java has no escape, so it puts `_` after a keyword or literal (`_` too).
+  - Java also puts `_` after `var`, `yield`, `record`, `sealed` and `permits` as a class name, since javac takes them as a field name but not as a class name.
+  - Java writes a field `Class` as `Class_`, since its Lombok getter would be the final `getClass`.
+  - Java writes a field `java` as `java_`. Otherwise it would hide the package of the `java.util.Arrays` calls Lombok writes for a `byte[]` or array field (`cannot find symbol … variable util … location: variable java`).
+  - A table `Class` stays `public class Class`.
+  - These Java rules are `toJavaFieldName` and `toJavaClassName`, which `jpa.ts` shares.
+  - Kotlin writes a hard keyword and a name of underscores alone (`_`, `__`) in backticks, since Kotlin reserves both and takes them as a name only in backticks.
+  - Scala writes a reserved word of Scala 2.13 or 3 in backticks, the only way it takes one as a name.
+  - Scala also writes a field ending in `_` in backticks. The lexer would read it with the colon after it as one name (`` `order_`: Int ``).
+  - Any other name that is no identifier, and a repeated one, is written as is.
+- **Keys.** A primary key without the NN flag is NOT NULL in Kotlin and Scala (an owner decision of 2026-10-09), since a primary key takes no NULL.
+  - Kotlin writes a NOT NULL or key column as a required `val a: T,`, and any other as `val b: T? = null,`.
+  - Scala writes `Option[T]` for a column that is neither a key nor NOT NULL, with no `= None`.
+- **Comments.** A comment is `//` lines, one a line, split at CR, LF, CRLF, U+2028 and U+2029 (`formatLineComment`, which `jpa.ts` shares).
+  - Its blank first and last lines are dropped. A blank inner line is a bare `//`.
+  - Java and JPA add a backslash to an odd run of backslashes before a `u` (`escapeUnicodeEscapes`). javac reads a Unicode escape even in a comment: it fails on a bad one (`C:\users`) and ends the comment at `\u000a`.
+  - Scala writes U+202A to U+202E and U+2066 to U+2069 as the text of their escape (`\u202B`), since Scala 2.13 refuses them even in a comment.
+  - Scala writes SUB (U+001A) as `\u001A`, since Scala 2.13 and 3 read it as the end of the file (`illegal character`). The importer reads SUB from a Databricks `'\Z'`.
+- **Layout.** Kotlin and Scala lay out a parameter list differently.
+  - Kotlin writes one parameter a line in four spaces, with a comma after each, as Kotlin's coding conventions lay out a class header.
+  - Scala writes two spaces, with no comma after the last field.
+- **Written as is.** The three generators write these unchanged.
+  - An empty table or column name (`public class  {`, `val : Int,`, `: Int`), which fails to compile.
+  - A name the name case empties (`_`, `__`, `$` under camelCase, PascalCase or snake_case), which fails to compile.
+  - A name opening on a digit or holding a space or a hyphen (`non-sealed` too), which fails to compile.
+  - A name holding `$`, which fails to compile in Kotlin, and in Scala 3 under `-Werror`.
+  - A repeated field, which fails to compile.
+  - A class named after a type or package the text or the reader's imports use (`Data`, `List`, `UUID`, `BigDecimal`, `Option`, `Array`, `java`, `lombok`). It breaks the class, or silently retypes the fields of that type (`Duration` in Java and Kotlin, `String`).
+  - In Scala, a field named after a member every case class has: `hashCode`, `toString`, `wait`, `notify`, `notifyAll`, `clone`, `finalize`, `productPrefix`, `productIterator`, `productElementNames`, `productArity` of any type but `Int`, and in Scala 2.13 `getClass`.
+  - In Scala, a class `_`, and in Scala 3 a field `_`.
+  - In Scala 2.13, a class `` `package` ``, which makes it the package object.
+  - In Scala 3, a field `_1` or `_2` out of its place.
+  - In Scala, a field named `java`, which hides the package of `java.time.Duration` from its own type and the fields after it.
+  - Two Java fields that differ only in the case of their first letter (`name`, `Name`). They share one Lombok getter, written for the first alone.
+  - Two such fields in Kotlin (`name` and `Name`, `uRL` and `URL`, `` `class` `` and `Class`). Their getters clash (`platform declaration clash`) and fail to compile.
+  - A binary column, which a data class and a case class compare by reference.
+  - A table of more columns than a constructor takes. The JVM counts a `Long` or `Double` twice against its 255 slots.
+  - So YOUNGCART5's `g5_shop_default` on Oracle, SQLite and Snowflake, where every integer is a `Long`, compiles in Kotlin and is refused when the JVM loads it. Scala refuses it on SQLite and Snowflake.
+- **Measured** on 2026-10-10.
+  - Compilers: javac 25.0.4 with Lombok 1.18.48 (`-proc:full -Xlint:all`), kotlinc 2.4.21 (`-Werror`), and Scala 3.10.0 and 2.13.18 (`-Werror`).
+  - Each text was compiled in a package of its own with the imports a reader adds. Then every class was loaded on the JVM.
+  - Types: every type of the eight vendor lists with seven argument variants and further spellings, 3,593 in all. Each was NOT NULL, nullable, a key without NN and an auto-increment key.
+  - Comments: CR, LF, CRLF, U+2028, U+2029, U+0085, backslash runs before `u`, bidirectional controls and every C0 control, SUB among them.
+  - SUB also came as a Databricks `COMMENT 'a\Zb'` read by the importer.
+  - The five `data/*.sql` fixtures, on every database.
+  - The types, comments and fixtures were compiled whole and per table. They compiled with no warning and loaded, but for the wide table under Written as is.
+  - Names: 164 names under the four name cases, as a class, key, NOT NULL, nullable and relation name. They were the keywords of the three languages, the members a class has, the types and packages the output names, and names that are no identifier.
+  - Under none and camelCase, the same names stood as a field beside a `bytea` and a `text[]` column, and as the parent of a child holding a `bytea` column.
+  - A field `java` also stood beside each binary type of the eight lists.
+  - Nine pairs of names that differ only in letter case ran too.
+  - The names failed only as Written as is lists.
+  - Scala's `java.time.Duration` field compiled to that type with `scala.concurrent.duration.Duration` imported, alone or beside `java.time.Duration`. There a bare `Duration` resolved to the Scala one or was refused as ambiguous.

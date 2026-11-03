@@ -1,7 +1,7 @@
-<!-- Parent: ../../AGENTS.md -->
-<!-- Generated: 2026-08-27 | Updated: 2026-10-11 -->
-
 # vscode-extension
+
+**Parent context:** `../../AGENTS.md`
+**Generated:** 2026-08-27 · **Updated:** 2026-11-03
 
 ## Purpose
 
@@ -36,12 +36,13 @@ Deltas from root § Making a Change.
 | `src/hub/index.ts` | The three layers `activate` composes. `registryLive`: the registry over `agent-hub-host`'s native realpath. `documentHubLive`: `agent-hub-host`'s `documentHubLayer` given this window's handlers, `vscodeHost`, the registry as its documents, `nodeHubServices(version)` and `agent-hub-host`'s `nativeFileSystemLayer`, the `FileSystem` the handlers and the hub's layer both require. `extensionLive`: `agent-hub-host`'s `withDocumentHub`, which builds the registry first and the hub on it, and logs a hub that fails to build instead of failing the runtime |
 | `src/hub/config.ts` | `isHubEnabled()` (Rules § Hub lifecycle) |
 | `src/hub/vscodeHost.ts` | `vscodeHost`, this window as the hub's `HubHost`: `ide` `vscode`, `isHubEnabled`, the file-scheme workspace folders (`fileFolders`, which `openDocument` spells its editor under too), trust and the setting as the enabled event, folder changes as the folder event. `registryDocuments`, the registry as its `HubDocuments` |
-| `src/hub/documentRegistry.ts` | `DocumentRegistry`: open documents keyed by real path, resolved on the effect `FileSystem` its `DocumentRegistry.layer` is given, those registered before that layer built resolved one at a time in arrival order. It holds their webviews (it owns `docToWebviewMap`), the ready set, joined peers, `observedVersion` and the active document. `deliverToPeer` / `injectToWebviews` are the only ways out |
+| `src/hub/documentRegistry.ts` | `DocumentRegistry`: open documents keyed by real path, resolved on the effect `FileSystem` its `DocumentRegistry.layer` is given, those registered before that layer built resolved one at a time in arrival order. It holds their webviews (it owns `docToWebviewMap`), the ready set, joined peers, `observedVersion` and the active document. `deliverToPeer` / `injectToWebviews` are the only ways an action batch leaves it; `unregister` sends each joined peer `documentClosed` itself |
 | `src/hub/handlers.ts` | `createDocumentHandler(registry, fs)`, the `HubHandler` (`listDocuments`, `openDocument`, `join`, `applyActions`, `leave`, `save`), and its `HubHandlerService` layer. `spelledUnder`, the workspace folder and the names below it that `openDocument` joins into the uri it opens (Rules § Agent requests). `agent-hub-host`'s `ERD_FILE_EXTENSIONS` (the custom editor selector, unit-asserted) builds `ERD_FILE_GLOB`, the activation glob, and `assertErdFile` refuses any other path with `badRequest`. Every refusal the Obsidian plugin answers alike comes from `agent-hub-host`'s `documentRules.ts` constructors; only the read-only view ones are this host's own |
 | `src/hub/readonlyUri.ts` | `READONLY_SCHEMES` and `isReadonlyUri`, the one read-only rule, used by `Editor.readonly` and the hub |
 | `src/erd-editor-provider.ts`, `src/erd-document.ts` | The `CustomEditorProvider`, which registers documents and panels with the `DocumentRegistry` and tracks the active panel. The `CustomDocument`, which owns the bytes and, in memory only, the runtime value its replicas last saved (`runtimeValue`, `seedValue`) |
 | `src/editor.ts` | Abstract `Editor`: the `Bridge`, `buildHtmlForWebview` (`{{extension-base-url}}`), `readonly` through `isReadonlyUri` |
 | `src/erd-editor.ts` | `ErdEditor`, every host-side command: initial value, save, replication broadcast, import/export dialogs, theme push and save, display language push and save |
+| `src/configuration.ts` | The theme and display language settings: `getTheme` / `saveTheme`, `getLocale` / `saveLocale`, and `getConfigurationScope`, the scope each write goes to (Rules § Theme and display language) |
 | `vite.config.ts` | CJS lib build to `dist/extension.js` (`ssr`, `ssr.noExternal: true`, `target: 'node22'`, `minify: true`, `sourcemap: false`, only `vscode` and builtins external) plus `run.tasks`. `publicDir: false`, since otherwise Vite copies `public/` into `dist/` and the VSIX ships the webview twice |
 | `tsconfig.unit.json` | The type gate over `src`, specs and the stub. Keep its `exclude: []`: inheriting the parent's typechecks zero specs and still exits 0 |
 | `.vscode-test.mjs` | The Extension Host runs (Testing Requirements § Extension Host suite) |
@@ -83,7 +84,7 @@ Deltas from root § Making a Change.
   - `rolldownOptions.output.minify` on top emits the same bytes (sha256 equal, measured 2026-09-23), so only the one option is set.
   - The reason is effect, decided 2026-09-23 while `@dineug/erd-editor-agent-hub` was the only thing pulling it in. Inlined, it grew the unminified bundle about sixfold, mostly its JSDoc, and minifying shrank the VSIX too.
   - A map of the minified bundle measured about 18 times the bundle. The hub has run on effect since.
-- **`.vscodeignore` keeps maps out structurally.** It holds `dist/**/*.map`. The build task's `tsc` step snapshots `dist/**` before `vp build` empties it. So a cache entry recorded while maps were on restores one beside the minified bundle on every later cache hit. `vsce` packs whatever sits in `dist/` (measured 2026-09-23: 17 files with such a map present).
+- **`.vscodeignore` keeps maps out structurally.** It holds `dist/**/*.map`. The build task's `tsc` step snapshots `dist/**` before `vp build` empties it. So a cache entry recorded while maps were on restores one beside the minified bundle on every later cache hit. Without that line `vsce` would pack whatever sits in `dist/`, the restored map included.
 - **Reproduce a shipped trace on a local build.** A stack trace from the Extension Host names `dist/extension.js` and a column on one of its few lines. Reproduce it with a local build that writes a map (Testing Requirements § Build and debugging) rather than read the shipped trace.
 
 ### Revisions and read-only views
@@ -128,7 +129,7 @@ Deltas from root § Making a Change.
 ### Document registry
 
 - **Registration is a queue the registry's layer drains.** `register` and `unregister` change what the editor side reads (`docToWebviewMap`, the entries) at once. They queue only their IO step: the native realpath of a new document, run on the `FileSystem` of `DocumentRegistry.layer` through a `FiberSet` of its scope.
-  - Steps queued before that layer built wait for it, then run one at a time in arrival order. Each runs after the IO of the one before it and never after its publish, so the lock takes that backlog in the order it came.
+  - Steps queued before that layer built wait for it, then run one at a time in arrival order. Each runs after the IO of the one before it, without waiting for its publish, so the lock takes that backlog in the order it came.
   - A step that comes later runs at once, on its own. So a realpath that hangs on a stalled mount holds up only its own document. Its editor does not open until the realpath returns, so it takes no edit its lock entry would guard.
   - Each step is followed by a publish, and the lock lists only paths a step resolved.
   - Closing the layer interrupts the steps in flight and settles the rest without IO.
@@ -139,7 +140,7 @@ Deltas from root § Making a Change.
   - So an agent resolving the file finds this window's lock before the editor takes an edit.
   - And a stalled task ahead of that rewrite holds no editor opening. `extension.test.ts` pins both.
 - **Keys are the native realpath's.** `registryLive` provides the registry layer with `agent-hub-host`'s `nativeFileSystemLayer`, as every other path the hub takes. So a folder VS Code hands over in NFC whose name the disk holds in NFD, or a differently cased path on macOS, is keyed as the disk spells it. That is also how the MCP server resolves it. `src/hub/nodeRegistry.test.ts` holds both spellings to the disk's.
-- **One way to peers, one into webviews.** Everything bound for a peer goes through `DocumentRegistry.deliverToPeer`: the join queue, then the two filters (a version at or below `snapshotVersion`, or no version at all). Everything an agent sends webviews goes through `injectToWebviews`: ready webviews only, with no exclusion.
+- **One way to peers, one into webviews.** Every action batch bound for a peer goes through `DocumentRegistry.deliverToPeer`: the join queue, then the two filters (a version at or below `snapshotVersion`, or no version at all). Everything an agent sends webviews goes through `injectToWebviews`: ready webviews only, with no exclusion.
   - Ready only, because a webview that has not sent `hostInitialCommand` would wipe an injected batch with its initial value.
   - Only batches queued before the snapshot is captured go through the filters. One queued between the capture and the timer that ends the window is not in the snapshot and goes out whole.
 
@@ -169,7 +170,7 @@ Deltas from root § Making a Change.
   - It then calls `dropRecipient` (`agent-hub-host`'s `joinWindow.ts`) for that webview. The closed replica's save never comes, so a pending change whose remaining replicas already saved settles right then, not at the next edit.
 - **A `changed` false save leaves the tab clean.** The replica sends a value after every change action, a change to a locked setting the file keeps nothing of included (a scroll, a zoom, a tab switch). It marks the one that left its value as it was (`packages/erd-editor/src/engine/AGENTS.md` § Values and `changed`).
   - `ErdEditor` calls `ErdDocument.update`, whose `onDidChangeContent` is the tab's dirty flag, only for `changed` true. So `content` keeps the bytes it had, the file's own after an open.
-  - The runtime value the save carries replaces `runtimeValue` all the same (next bullet). `onValueSaved` still runs for every save, since the hub's quiet wait counts it.
+  - The runtime value the save carries replaces `runtimeValue` all the same (Two forms of the document, below). `onValueSaved` still runs for every save, since the hub's quiet wait counts it.
   - The flag decides, not a byte comparison with `content`, because a file an older release or a hand edit wrote need not equal the replica's value.
   - A read-only view (`Editor.readonly`, a scheme of `READONLY_SCHEMES`: a revision, a snapshot or the disk side of a save conflict) skips `update` whatever `changed` says. Its webview's editor is readonly there and sends its replica no change (`packages/erd-editor/src/engine/AGENTS.md` § Actions and lists), so the skip guards a save that still arrives, keeping it from dirtying a tab no save can write back. It still reports to `onValueSaved` (`erd-editor.test.ts`).
   - The Extension Host suite (`agent-hub.test.ts`) pins it live on a file without the origin and on a new empty file. A peer's scroll and zoom leave the tab clean and the bytes as they were, and a table after them dirties it. The empty file's save writes a new document, every lock on, at origin 0,0 and zoom 1.
@@ -225,11 +226,12 @@ Deltas from root § Making a Change.
   - `linked-folder` (stable only) over a link, a junction on Windows, to a copy of `test/fixtures/workspace/` that `.vscode-test.mjs` makes afresh in the temp folder.
 - **Run it under `xvfb-run -a` on Linux.** `VSCODE_TEST_USER_DATA_DIR` shortens the IPC socket path.
 - **Import only `vscode` and node builtins.** That holds for the fake peers of `agent-hub.test.ts` too, because the host runs the emitted JS unbundled and `@/` does not resolve. `agent-hub.test.ts` speaks the hub's JSON lines by hand over `net` and restores the `sample.erd.json` it saves.
+- **`agent-hub.test.ts` gates the peer work.** It is one of the three completion gates of the peer work, with `erd-editor`'s `engine/peer-store.converge.test.ts` and `mcp-server`'s `scenarios.test.ts` (`packages/erd-editor/AGENTS.md`, Testing Requirements).
 - **Bump both hand-kept `PROTOCOL_VERSION` copies.** Both hand-written peers, `agent-hub.test.ts` and `linked/linked-folder.test.ts`, keep their own `PROTOCOL_VERSION`, because these specs cannot import `agent-hub`'s `HUB_PROTOCOL_VERSION`. A bump there must change both by hand. Otherwise the hub refuses every `hello` with the mismatch message, and only this suite, which runs outside `pnpm test`, shows it.
 - **Compare paths through `fs.realpathSync.native`.** The specs compare paths through `fs.realpathSync.native`, the realpath the hub keys by: the JS one keeps the drive-letter case and the 8.3 short names it is given. The one exception is `custom-editor.test.ts`'s git revision block, which resolves its scratch repository with the JS one and compares it with the git extension's `rootUri.fsPath`.
 - **`vscode.workspace.save(uri)` saves a custom document.** It saves a custom editor document and clears its dirty flag. Measured 2026-09-22 on VS Code 1.138.0: two tabs of one document went from dirty to clean within 1 ms of one call, and the disk held the new table. So the hub's save ladder ends at its first rung on stable.
 - **Replica round trip, measured in a real host.** Measured 2026-09-22: each of two webviews answered an injected batch with `hostSaveValueCommand` 209–239 ms later. `document.content` grew 900 → 1936 B, and the tab turned dirty at 256 ms. The `Tag.shared` batch never came back through `hostSaveReplicationCommand`.
-- **`agent-hub.test.ts` prints its timings.** It prints one `[agent-hub e2e] vscode <version> <spec>:` line per timed spec: `one peer` (`join`, `applyActions`, `applyToDirty`, `save`) and `two peers` (`applyToOtherPeer`). `applyToDirty` is the replica round trip that `join` and `save` wait on, about 210–225 ms on 1.138.0, against their 500 ms and 2 s caps.
+- **`agent-hub.test.ts` prints its timings.** It prints one `[agent-hub e2e] vscode <version> <spec>:` line per timed spec: `one peer` (`join`, `applyActions`, `applyToDirty`, `save`) and `two peers` (`applyToOtherPeer`). `applyToDirty` is the replica round trip that `join` and `save` wait on, about 210–225 ms on 1.138.0 (measured 2026-09-22), against their 500 ms and 2 s caps.
 
 ### Build and debugging
 
@@ -261,4 +263,6 @@ Deltas from root § Making a Change.
 - Effect imports follow root § Dependencies, External. `src/hub/imports.test.ts` holds all of `src/` and `test/` to them.
 - `@vscode/test-cli` and `@vscode/test-electron`, for the Extension Host suite.
 
-<!-- MANUAL: notes added below this line are preserved on regeneration -->
+## Manual Notes
+
+Notes under this heading are written by humans and preserved on regeneration.
