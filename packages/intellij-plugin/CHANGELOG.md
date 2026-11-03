@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-03
+
+### Changed
+
+- While the code generator language, a name case or the bracket type is locked, a change to it
+  shows only in the editor where you make it, as with the Name View lock. Other editors open on the
+  diagram keep their own, and the file still keeps the locked value.
+
+### Fixed
+
+- When you and a coding agent change the same name or field, or move or resize the same table,
+  memo or table group, at the same moment, your editor and the agent no longer end with different
+  results, with `@dineug/erd-editor-mcp` updated to this release. The same holds for two editors
+  open on one diagram.
+- Importing over the diagram, undoing an import or a coding agent replacing the diagram ends a
+  relationship you are drawing, where a click on a table could otherwise add a relationship from a
+  table no longer in the diagram.
+
 ## [1.2.2] - 2026-10-29
 
 ### Fixed
