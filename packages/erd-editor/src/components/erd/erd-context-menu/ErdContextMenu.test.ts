@@ -2129,9 +2129,11 @@ describe('ErdContextMenu / table groups', () => {
       expect(findItem(rootItems(), 'Delete').querySelector('svg')).toBeNull();
     });
 
-    it("selects the group's tables alone from Select tables", async () => {
+    it("selects the group's tables and memos from Select tables", async () => {
       seedGroups();
       app.store.dispatchSync(
+        addMemoAction({ id: 'note', ui: { x: 40, y: 300, zIndex: 7 } }),
+        changeMemoGroupAction({ id: 'note', value: GROUP_ID }),
         selectAction({
           [GROUP_ID]: SelectType.tableGroup,
           c: SelectType.table,
@@ -2144,6 +2146,7 @@ describe('ErdContextMenu / table groups', () => {
       expect(app.store.state.editor.selectedMap).toEqual({
         a: SelectType.table,
         b: SelectType.table,
+        note: SelectType.memo,
       });
       expect(onClose).toHaveBeenCalledTimes(1);
     });

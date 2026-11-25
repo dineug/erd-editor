@@ -330,7 +330,7 @@ describe('diffDocuments', () => {
     ]);
   });
 
-  it('marks a memo regrouped as M in an outline of both panes, by the group it moved to', () => {
+  it('marks a memo regrouped as M in an outline of both panes, by the group it moved to, and the group by its members', () => {
     const result = diff(
       {
         memos: [{ id: 'm', value: 'note' }],
@@ -342,9 +342,12 @@ describe('diffDocuments', () => {
       }
     );
 
-    expect(all(result)).toEqual(['memo M note']);
+    expect(all(result)).toEqual(['tableGroup M Billing', 'memo M note']);
     expect(result.entries.memos[0].changes).toEqual([
       { field: DiffField.tableGroup, before: '', after: 'Billing' },
+    ]);
+    expect(result.entries.tableGroups[0].changes).toEqual([
+      { field: DiffField.memos, before: '', after: '"note"' },
     ]);
     expect(flags(result.prev, 'm')).toEqual({ [ENTITY_PATH]: Diff.modify });
     expect(flags(result.next, 'm')).toEqual({ [ENTITY_PATH]: Diff.modify });
@@ -611,6 +614,33 @@ describe('diffDocuments', () => {
         tables: [
           { id: 't1', name: 't1', group: 'h2' },
           { id: 't2', name: 't2', group: 'h1' },
+        ],
+        groups: [
+          { id: 'h1', name: '' },
+          { id: 'h2', name: '' },
+        ],
+      }
+    );
+
+    expect(all(result)).toEqual([]);
+  });
+
+  it('pairs unnamed groups that hold memos alone by the memos they share', () => {
+    const result = diff(
+      {
+        memos: [
+          { id: 'm1', value: 'one', group: 'g1' },
+          { id: 'm2', value: 'two', group: 'g2' },
+        ],
+        groups: [
+          { id: 'g1', name: '' },
+          { id: 'g2', name: '' },
+        ],
+      },
+      {
+        memos: [
+          { id: 'm1', value: 'one', group: 'h2' },
+          { id: 'm2', value: 'two', group: 'h1' },
         ],
         groups: [
           { id: 'h1', name: '' },

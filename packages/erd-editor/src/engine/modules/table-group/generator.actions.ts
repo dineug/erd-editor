@@ -492,8 +492,8 @@ function raiseMembers(state: RootState, groupId: string) {
 }
 
 /**
- * Selects the group's member tables alone, the group itself left out, so what
- * a table command reaches next is its tables.
+ * Selects the group's member tables and shown member memos, the group itself
+ * left out, so what a table or memo command reaches next is its members.
  *
  * @example
  * store.dispatch(selectTableGroupTablesAction$('g1'));
@@ -502,12 +502,18 @@ export const selectTableGroupTablesAction$ = (id: string): GeneratorAction =>
   function* (state) {
     yield unselectAllAction$();
     yield selectAction(
-      Object.fromEntries(
-        getTableGroupMemberIds(state, id).map(tableId => [
+      Object.fromEntries([
+        ...getTableGroupMemberIds(state, id).map(tableId => [
           tableId,
           SelectType.table,
-        ])
-      )
+        ]),
+        ...(isMemoShown(state)
+          ? getTableGroupMemberMemoIds(state, id).map(memoId => [
+              memoId,
+              SelectType.memo,
+            ])
+          : []),
+      ])
     );
   };
 

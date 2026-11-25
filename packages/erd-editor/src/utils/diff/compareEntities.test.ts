@@ -20,7 +20,11 @@ function contextOf(prev: DiffSeed, next: DiffSeed): DiffContext {
   const prevState = diffStateOf(prev);
   const nextState = diffStateOf(next);
   const all = <
-    K extends 'tableEntities' | 'tableColumnEntities' | 'tableGroupEntities',
+    K extends
+      | 'tableEntities'
+      | 'tableColumnEntities'
+      | 'tableGroupEntities'
+      | 'memoEntities',
   >(
     key: K
   ) =>
@@ -35,6 +39,7 @@ function contextOf(prev: DiffSeed, next: DiffSeed): DiffContext {
     tables: pairEntities(...all('tableEntities')),
     columns: pairEntities(...all('tableColumnEntities')),
     tableGroups: pairEntities(...all('tableGroupEntities')),
+    memos: pairEntities(...all('memoEntities')),
   };
 }
 
@@ -273,5 +278,33 @@ describe('compareMemos and compareTableGroups', () => {
         ctx.next.collections.tableGroupEntities.g
       ).map(({ field }) => field)
     ).toEqual([DiffField.color, DiffField.position, DiffField.size]);
+  });
+
+  it("reads a group's memos apart from its tables, each memo by its quoted first line", () => {
+    const ctx = contextOf(
+      {
+        tables: [{ id: 't', name: 'orders', group: 'g' }],
+        memos: [{ id: 'm', value: 'Billing rules\nsecond line', group: 'g' }],
+        groups: [{ id: 'g', name: 'g' }],
+      },
+      {
+        tables: [{ id: 't', name: 'orders', group: 'g' }],
+        memos: [
+          { id: 'm', value: 'Billing rules\nsecond line' },
+          { id: 'n', value: '', group: 'g' },
+        ],
+        groups: [{ id: 'g', name: 'g' }],
+      }
+    );
+
+    expect(
+      compareTableGroups(
+        ctx,
+        ctx.prev.collections.tableGroupEntities.g,
+        ctx.next.collections.tableGroupEntities.g
+      )
+    ).toEqual([
+      { field: DiffField.memos, before: '"Billing rules"', after: '""' },
+    ]);
   });
 });

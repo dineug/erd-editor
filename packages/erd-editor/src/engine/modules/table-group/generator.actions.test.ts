@@ -934,6 +934,29 @@ describe('selectTableGroupTablesAction$', () => {
     });
   });
 
+  it("selects the group's memos with its tables, while memos are shown", () => {
+    store.dispatchSync(
+      addMemoAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 6 } }),
+      addMemoAction({ id: 'm2', ui: { x: 0, y: 0, zIndex: 7 } }),
+      changeMemoGroupAction({ id: 'm1', value: 'g1' }),
+      changeMemoGroupAction({ id: 'm2', value: 'g2' })
+    );
+
+    store.dispatchSync(selectTableGroupTablesAction$('g1'));
+    expect(store.state.editor.selectedMap).toEqual({
+      a: SelectType.table,
+      b: SelectType.table,
+      m1: SelectType.memo,
+    });
+
+    store.dispatchSync(hideMemos);
+    store.dispatchSync(selectTableGroupTablesAction$('g1'));
+    expect(store.state.editor.selectedMap).toEqual({
+      a: SelectType.table,
+      b: SelectType.table,
+    });
+  });
+
   it('leaves nothing selected for a group without tables, or one the document does not list', () => {
     store.dispatchSync(changeTableGroupAction({ id: 'c', value: '' }));
 

@@ -11,7 +11,10 @@ import type {
   TableGroup,
 } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { getTableGroupMemberIds } from '@/utils/tableGroup';
+import {
+  getTableGroupMemberIds,
+  getTableGroupMemberMemoIds,
+} from '@/utils/tableGroup';
 
 import { asNextId, type Pairing } from './pairEntities';
 import { type DiffChange, DiffField, type DiffValue } from './types';
@@ -23,7 +26,11 @@ export type DiffContext = {
   tables: Pairing;
   columns: Pairing;
   tableGroups: Pairing;
+  memos: Pairing;
 };
+
+/** The first line of a memo, the one a row and a group's member list show. */
+export const firstLine = (text: string) => text.split(/\r?\n/, 1)[0].trim();
 
 const point = (x: number, y: number) => `${Math.round(x)}, ${Math.round(y)}`;
 const size = (width: number, height: number) =>
@@ -269,39 +276,71 @@ export function compareMemos(
   ];
 }
 
-/** The tables a group holds, each as the current table it pairs with. */
+/** The tables and memos a group holds, each as the current one it pairs with. */
 export function groupMembersOf(
   ctx: DiffContext,
   group: TableGroup,
   side: 'prev' | 'next'
 ): string[] {
-  return getTableGroupMemberIds(ctx[side], group.id).map(id =>
-    asNextId(ctx.tables, id, side)
-  );
+  return [
+    ...getTableGroupMemberIds(ctx[side], group.id).map(id =>
+      asNextId(ctx.tables, id, side)
+    ),
+    ...getTableGroupMemberMemoIds(ctx[side], group.id).map(id =>
+      asNextId(ctx.memos, id, side)
+    ),
+  ];
 }
 
-const memberNames = (state: RootState, group: TableGroup) =>
+const byName = (a: string, b: string) =>
+  a.toLowerCase().localeCompare(b.toLowerCase());
+
+const pairedIds = (ids: string[], pairing: Pairing, side: 'prev' | 'next') =>
+  ids
+    .map(id => asNextId(pairing, id, side))
+    .sort()
+    .join(',');
+
+const memoLine = (state: RootState, id: string) =>
+  `"${firstLine(query(state.collections).collection('memoEntities').selectById(id)?.value ?? '')}"`;
+
+const tableNames = (state: RootState, group: TableGroup) =>
   getTableGroupMemberIds(state, group.id)
     .map(id => tableName(state, id))
-    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+    .sort(byName)
     .join(', ');
 
-/** Name, the tables it holds, its colour and the box it keeps; never its z-index. */
+/** A group's member memos by their quoted first lines. */
+const memoLines = (state: RootState, group: TableGroup) =>
+  getTableGroupMemberMemoIds(state, group.id)
+    .map(id => memoLine(state, id))
+    .sort(byName)
+    .join(', ');
+
+/** Name, the tables and the memos it holds, its colour and the box it keeps; never its z-index. */
 export function compareTableGroups(
   ctx: DiffContext,
   prev: TableGroup,
   next: TableGroup
 ): DiffChange[] {
-  const before = groupMembersOf(ctx, prev, 'prev').sort().join(',');
-  const after = groupMembersOf(ctx, next, 'next').sort().join(',');
+  const tableIds = (group: TableGroup, side: 'prev' | 'next') =>
+    pairedIds(getTableGroupMemberIds(ctx[side], group.id), ctx.tables, side);
+  const memoIds = (group: TableGroup, side: 'prev' | 'next') =>
+    pairedIds(getTableGroupMemberMemoIds(ctx[side], group.id), ctx.memos, side);
 
   return [
     ...changesOf([[DiffField.name, prev.name, next.name]]),
     ...changeShown(
       DiffField.members,
-      before === after,
-      memberNames(ctx.prev, prev),
-      memberNames(ctx.next, next)
+      tableIds(prev, 'prev') === tableIds(next, 'next'),
+      tableNames(ctx.prev, prev),
+      tableNames(ctx.next, next)
+    ),
+    ...changeShown(
+      DiffField.memos,
+      memoIds(prev, 'prev') === memoIds(next, 'next'),
+      memoLines(ctx.prev, prev),
+      memoLines(ctx.next, next)
     ),
     ...changesOf([
       [DiffField.color, prev.color, next.color],
