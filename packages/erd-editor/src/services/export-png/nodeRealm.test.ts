@@ -167,6 +167,20 @@ describe('installNodeRealm in a realm that has a document', () => {
     expect(hasForeignDocument()).toBe(true);
   });
 
+  it('calls the stub another copy of the package installed its own, and installs nothing', () => {
+    const copy = {
+      [Symbol.for('@dineug/erd-editor/node-realm')]: true,
+      body: null,
+      head: null,
+    };
+    Reflect.set(globalThis, 'document', copy);
+
+    installNodeRealm();
+
+    expect(globalOf('document')).toBe(copy);
+    expect(hasForeignDocument()).toBe(false);
+  });
+
   it('calls no document foreign where there is none', () => {
     expect(hasForeignDocument()).toBe(false);
   });

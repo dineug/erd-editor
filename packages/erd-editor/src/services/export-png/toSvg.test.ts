@@ -183,7 +183,7 @@ describe('what toSvg refuses before it draws', () => {
     await expect(toSvg('{ not json')).rejects.toThrow(SyntaxError);
   });
 
-  it('a realm whose document it did not install, a page’s, pointing to toImage', async () => {
+  it('a realm whose document no copy of the package installed, a page’s, pointing to toImage', async () => {
     const installed = Reflect.get(globalThis, 'document');
     Reflect.set(globalThis, 'document', {});
 

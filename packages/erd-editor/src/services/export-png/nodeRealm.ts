@@ -107,7 +107,11 @@ class NodeElementStub extends EventTarget {
 /** The answer every instanceof against Node and HTMLElement gets here: false, since nothing is a dom node. */
 class AbsentDomNode {}
 
+/** The mark of the stub document, the same in every copy of the package one process loads. */
+const NODE_REALM = Symbol.for('@dineug/erd-editor/node-realm');
+
 const documentStub = {
+  [NODE_REALM]: true,
   // Pretext lays a memo's emoji out in the page where there is one; both
   // null is how it learns there is none and keeps the canvas advance.
   body: null,
@@ -119,11 +123,11 @@ const documentStub = {
   },
 };
 
-/** Whether the realm has a document this module did not install, a page's or another stub's. */
+/** Whether the realm has a document no copy of this module installed, a page's or another stub's. */
 export function hasForeignDocument(): boolean {
   return (
     typeof document !== 'undefined' &&
-    (document as unknown) !== (documentStub as unknown)
+    Reflect.get(document, NODE_REALM) !== true
   );
 }
 
