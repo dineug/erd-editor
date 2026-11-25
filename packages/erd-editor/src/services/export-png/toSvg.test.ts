@@ -265,7 +265,7 @@ describe('what toSvg rejects once it draws', () => {
     // The container the scene mounts in is made in the middle of the drawing.
     realm.createElement = tagName => {
       if (tagName === 'div') {
-        console.error('erd-editor-mcp', 'a line of the process’s own');
+        console.error('[host]', 'a line of the process’s own');
         console.error(new Error('logged'), 'with what it was about');
       }
       return createElement(tagName);
@@ -274,7 +274,7 @@ describe('what toSvg rejects once it draws', () => {
     try {
       expect(await toSvg(SMALL)).toBe(small);
       expect(consoleErrors).toHaveBeenCalledWith(
-        'erd-editor-mcp',
+        '[host]',
         'a line of the process’s own'
       );
       expect(consoleErrors).toHaveBeenCalledWith(
