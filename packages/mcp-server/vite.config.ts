@@ -70,6 +70,9 @@ export default defineConfig({
         // whitespace of an es build; these two say what the lib block above means.
         entryFileNames: 'erd-editor-mcp.js',
         minify: true,
+        // The svg export loads its scene through import(), which this keeps in
+        // the one file, evaluated only when that import runs.
+        codeSplitting: false,
       },
     },
   },

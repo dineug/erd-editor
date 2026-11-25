@@ -18,11 +18,17 @@ import { HubDiscovery, type Resolution } from '@/hub/discovery';
 import { capitalize, hostWords } from '@/hub/host';
 import { FileAccess, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
-import { realPath, resolveDocumentPath, sessionKey } from '@/paths';
+import {
+  realPath,
+  resolveDocumentPath,
+  resolveSvgPath,
+  sessionKey,
+} from '@/paths';
 import {
   createEmptyDocument,
   listDiskDocuments,
   readFromDisk,
+  writeFileReplacing,
 } from '@/session/disk';
 import { openHeadlessSession } from '@/session/headless';
 import { type Line, makeLine } from '@/session/line';
@@ -39,6 +45,13 @@ import {
   type UndoOutcome,
 } from '@/session/types';
 import type { DocumentReader } from '@/tools/read';
+import {
+  documentJsonReader,
+  drawSvg,
+  oneExportAtATime,
+  type SvgOutcome,
+  type SvgRequest,
+} from '@/tools/svg';
 
 /** A session idle this long is closed; the next call opens a new one and reseeds. */
 export const IDLE_TTL_MS = 30 * 60 * 1000;
@@ -113,6 +126,14 @@ export type SessionManagerShape = {
     path: string,
     reader: DocumentReader
   ) => SessionCall<WithMode<ReadOutcome>>;
+  /**
+   * Draws a document as an svg, read as the read tools read it, then drawn
+   * and written outside its line, one export at a time in the process.
+   */
+  readonly exportSvg: (
+    path: string,
+    request: SvgRequest
+  ) => SessionCall<WithMode<SvgOutcome>>;
   readonly save: (path: string) => SessionCall<WithMode<SaveOutcome>>;
   readonly undo: (path: string) => SessionCall<WithMode<UndoOutcome>>;
   readonly redo: (path: string) => SessionCall<WithMode<UndoOutcome>>;
@@ -471,6 +492,48 @@ const make = Effect.gen(function* () {
       })
     );
 
+  const read = (input: string, reader: DocumentReader) =>
+    onDocument(input, (key, path) =>
+      Effect.gen(function* () {
+        const notes: Notes = [];
+        const resolution = yield* discovery.discover(path);
+        const session = yield* acquire(key, path, 'read', resolution, notes);
+        if (!session) {
+          const text = yield* withServices(readFromDisk(path, reader));
+          const mode: Mode =
+            resolution.kind === 'blocked' ? 'blocked' : 'headless';
+          return { text, notes, mode, path };
+        }
+        const outcome = yield* session.read(reader);
+        return {
+          text: outcome.text,
+          notes: [...notes, ...outcome.notes],
+          mode: session.mode,
+          path,
+        };
+      })
+    );
+
+  // The output is looked up before the document, holding the call's arrival
+  // as a document's path lookup does, so a refused one costs no drawing.
+  const exportSvg = (input: string, request: SvgRequest) =>
+    Effect.gen(function* () {
+      const output =
+        request.output === undefined
+          ? undefined
+          : yield* withServices(resolveSvgPath(request.output));
+      const { text, ...source } = yield* read(input, documentJsonReader);
+      return yield* oneExportAtATime(
+        Effect.gen(function* () {
+          const svg = yield* drawSvg(text, request);
+          if (output !== undefined) {
+            yield* withServices(writeFileReplacing(output, svg));
+          }
+          return { ...source, svg, output } satisfies WithMode<SvgOutcome>;
+        })
+      );
+    }).pipe(arrive, failOnDefect);
+
   const closeAll = Effect.suspend(() =>
     Effect.forEach(Array.from(sessions.keys()), drop, { discard: true })
   );
@@ -560,27 +623,8 @@ const make = Effect.gen(function* () {
     runBatch: (input, operations) =>
       write(input, session => session.runBatch(operations)),
 
-    read: (input, reader) =>
-      onDocument(input, (key, path) =>
-        Effect.gen(function* () {
-          const notes: Notes = [];
-          const resolution = yield* discovery.discover(path);
-          const session = yield* acquire(key, path, 'read', resolution, notes);
-          if (!session) {
-            const text = yield* withServices(readFromDisk(path, reader));
-            const mode: Mode =
-              resolution.kind === 'blocked' ? 'blocked' : 'headless';
-            return { text, notes, mode, path };
-          }
-          const outcome = yield* session.read(reader);
-          return {
-            text: outcome.text,
-            notes: [...notes, ...outcome.notes],
-            mode: session.mode,
-            path,
-          };
-        })
-      ),
+    read,
+    exportSvg,
 
     save: input => write(input, session => session.save),
     undo: input => write(input, session => session.undo),

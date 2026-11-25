@@ -12,8 +12,10 @@ import {
 import {
   DEFAULT_EXTENSION,
   isErdPath,
+  isSvgPath,
   realPath,
   resolveDocumentPath,
+  resolveSvgPath,
   sessionKey,
 } from '@/paths';
 
@@ -141,6 +143,85 @@ describe('document paths', () => {
 
     expect(await io.run(realPath('/locked/x.erd'))).toBe('/locked/x.erd');
     expect(await io.run(realPath('/'))).toBe('/');
+  });
+});
+
+describe('svg output paths', () => {
+  it('accepts .svg in any case, and nothing else', () => {
+    expect(['a.svg', 'A.SVG', 'docs/erd.Svg'].every(isSvgPath)).toBe(true);
+    expect(['a.svgz', 'a.png', 'svg'].some(isSvgPath)).toBe(false);
+  });
+
+  it('resolves against the working directory, through a symlinked folder, a file there or not', async () => {
+    const io = createMemoryHost({ cwd: '/work' });
+    io.mkdir('/work/docs');
+    io.put('/work/docs/old.svg', '<svg/>');
+    io.links.set('/work/pics', '/work/docs');
+
+    expect(await io.run(resolveSvgPath('docs/erd.svg'))).toBe(
+      '/work/docs/erd.svg'
+    );
+    expect(await io.run(resolveSvgPath('/work/pics/old.svg'))).toBe(
+      '/work/docs/old.svg'
+    );
+  });
+
+  it.each([
+    ['  ', 'invalidPath', 'output is empty'],
+    [
+      'erd.png',
+      'invalidPath',
+      '/work/erd.png is not an svg file; name a file ending in .svg',
+    ],
+    [
+      'missing/erd.svg',
+      'notFound',
+      'The folder of /work/missing/erd.svg does not exist; make it first, or name a file in a folder that does',
+    ],
+    [
+      'folder.svg',
+      'invalidPath',
+      '/work/folder.svg is a folder or another kind of entry, not a file; name an svg file',
+    ],
+  ])('refuses %j', async (input, code, message) => {
+    const io = createMemoryHost();
+    io.mkdir('/work/folder.svg');
+
+    await expect(io.run(resolveSvgPath(input))).rejects.toMatchObject({
+      code,
+      message,
+    });
+  });
+
+  it('refuses on win32 a name Windows does not store as written, and resolves it elsewhere', async () => {
+    const windows = createMemoryHost({ platform: 'win32' });
+    const linux = createMemoryHost({ platform: 'linux' });
+
+    await expect(
+      windows.run(resolveSvgPath('erd:v2.svg'))
+    ).rejects.toMatchObject({
+      code: 'invalidPath',
+      message: expect.stringMatching(
+        /^\/work\/erd:v2\.svg holds "erd:v2\.svg"/
+      ),
+    });
+    await expect(windows.run(resolveSvgPath('NUL.svg'))).rejects.toMatchObject({
+      code: 'invalidPath',
+    });
+    expect(await linux.run(resolveSvgPath('erd:v2.svg'))).toBe(
+      '/work/erd:v2.svg'
+    );
+  });
+
+  it('refuses on win32 a real path that meets such a name through a link', async () => {
+    const io = createMemoryHost({ platform: 'win32' });
+    io.mkdir('/work/sub.');
+    io.links.set('/work/j', '/work/sub.');
+
+    await expect(io.run(resolveSvgPath('j/erd.svg'))).rejects.toMatchObject({
+      code: 'invalidPath',
+      message: expect.stringMatching(/^\/work\/sub\.\/erd\.svg holds "sub\."/),
+    });
   });
 });
 

@@ -17,6 +17,7 @@ change your schema, and watch the change land on the canvas.
   agent joins as one more collaborator, and its undo reverts only its own edits
 - **Headless on disk** — with no editor around, the same tools edit the file itself
 - **Large schemas** — paged, searchable reads, and DDL of just the tables the agent needs
+- **SVG export** — draw a diagram as an SVG file for your documentation, unsaved edits included
 - **Self-contained** — one file with no runtime dependencies
 
 ## Install
@@ -95,11 +96,25 @@ Windows paths, Flatpak sandboxes, reconnecting and conflicts on disk are in
   narrow a larger read, and `erd_get` lists the ids it had no room for.
 - Have the agent edit through the tools rather than write the JSON file itself.
 
+## SVG export
+
+`erd_export_svg` draws a document as an SVG image, as the editor's Export image does, so the agent
+can keep the diagrams in your documentation up to date:
+
+- With `output`, it writes that `.svg` file, in a folder that exists, replacing a file already
+  there. Without it, the SVG text is the answer, for a diagram of up to 40,000 characters.
+- It draws light, with the canvas colour behind the diagram; `darkMode` and `background: false`
+  change that.
+- When an editor holds the document it draws what the editor shows, edits not yet saved included;
+  otherwise the file.
+- The server draws without the editor's fonts, so a table can come out a little wider than in the
+  editor. A large diagram takes a few seconds.
+
 ## Tools
 
 | Group | Tools |
 | --- | --- |
-| Session | `erd_list_documents`, `erd_open_document`, `erd_list`, `erd_get`, `erd_read`, `erd_list_checks`, `erd_save`, `erd_undo`, `erd_redo` |
+| Session | `erd_list_documents`, `erd_open_document`, `erd_list`, `erd_get`, `erd_read`, `erd_list_checks`, `erd_export_svg`, `erd_save`, `erd_undo`, `erd_redo` |
 | Tables | `erd_add_table`, `erd_remove_table`, `erd_change_table_name`, `erd_change_table_comment`, `erd_set_table_logical_name`, `erd_change_table_color`, `erd_move_table`, `erd_move_tables`, `erd_sort_tables` |
 | Columns | `erd_add_column`, `erd_remove_columns`, `erd_change_column_name`, `erd_change_column_data_type`, `erd_change_column_default`, `erd_change_column_comment`, `erd_set_column_logical_name`, `erd_set_column_domain`, `erd_set_column_primary_key`, `erd_set_column_unique`, `erd_set_column_not_null`, `erd_set_column_auto_increment`, `erd_move_column` |
 | Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type`, `erd_change_relationship_on_delete`, `erd_change_relationship_on_update` |

@@ -1,6 +1,6 @@
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import { type DocumentInfo, unsafeSegment } from '@dineug/erd-editor-agent-hub';
-import { Effect, FileSystem, Path } from 'effect';
+import { Effect, FileSystem, Path, Schedule } from 'effect';
 
 import {
   isPlatformReason,
@@ -8,6 +8,7 @@ import {
   SessionError,
   SessionErrorCode,
 } from '@/errors';
+import { FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import { isErdPath } from '@/paths';
 import type { DocumentReader } from '@/tools/read';
@@ -40,6 +41,22 @@ export const MAX_LIST_DEPTH = 8;
 export function isReadonlyMode(mode: number): boolean {
   return (mode & 0o200) === 0;
 }
+
+/**
+ * What Windows answers a rename over a file any process holds open: libuv's
+ * EPERM, which platform-node folds into Unknown, or EACCES or EBUSY. The tag
+ * alone decides, as in its twin, agent-hub-host's lock write.
+ */
+export const isBusyReplace = (error: unknown): boolean =>
+  isPlatformReason(error, 'Unknown') ||
+  isPlatformReason(error, 'PermissionDenied') ||
+  isPlatformReason(error, 'Busy');
+
+/** 10 ms doubling to 100 ms apart, for 2 s in all: a reader holds a file for milliseconds. */
+export const SWAP_RETRY = Schedule.min([
+  Schedule.exponential('10 millis'),
+  Schedule.spaced('100 millis'),
+]).pipe(Schedule.upTo({ duration: '2 seconds' }));
 
 /** The editor drops a byte order mark when it reads a file; so do the sessions. */
 export function stripBom(text: string): string {
@@ -119,6 +136,60 @@ export const readDocumentFile = Effect.fn('readDocumentFile')(function* (
   const text = stripBom(yield* fs.readFileString(path).pipe(orNotFound(path)));
   yield* assertDocumentText(path, text);
   return text;
+});
+
+/**
+ * Writes a file that is no document, such as an exported svg: a new one with
+ * an exclusive create, one already there through a temp file renamed over it,
+ * retried on Windows while another program holds it open. A read-only one is refused.
+ */
+export const writeFileReplacing = Effect.fn('writeFileReplacing')(function* (
+  path: string,
+  text: string
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const paths = yield* Path.Path;
+  const { stat } = yield* FileStats;
+  const { platform, randomId } = yield* ProcessInfo;
+
+  const created = yield* fs.writeFileString(path, text, { flag: 'wx' }).pipe(
+    Effect.as(true),
+    Effect.catch(error => {
+      if (isPlatformReason(error, 'AlreadyExists'))
+        return Effect.succeed(false);
+      return Effect.fail(
+        isPlatformReason(error, 'NotFound')
+          ? new SessionError('notFound', `The folder of ${path} does not exist`)
+          : error
+      );
+    })
+  );
+  if (created) return;
+
+  const { mode } = yield* stat(path);
+  if (isReadonlyMode(mode)) {
+    return yield* new SessionError(
+      'readonly',
+      `${path} is read-only, so it was not written; make it writable or name another file, then call again`
+    );
+  }
+  const temp = paths.join(
+    paths.dirname(path),
+    `.${paths.basename(path)}.${yield* randomId}.tmp`
+  );
+  // Each attempt renames anew, however the file system builds its effect.
+  const rename = Effect.suspend(() => fs.rename(temp, path));
+  yield* fs.writeFileString(temp, text, { mode }).pipe(
+    // Windows refuses a rename over a file another process has open.
+    Effect.andThen(
+      platform === 'win32'
+        ? rename.pipe(
+            Effect.retry({ schedule: SWAP_RETRY, while: isBusyReplace })
+          )
+        : rename
+    ),
+    Effect.onError(() => Effect.ignore(fs.remove(temp)))
+  );
 });
 
 /** Serializes the file on disk without keeping a session, for a window whose hub is off. */

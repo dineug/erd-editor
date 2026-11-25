@@ -13,6 +13,7 @@ import { MessageStdin } from '@/stdin';
 import { SERVER_INSTRUCTIONS } from '@/tools/copy';
 import { ToolHandlers } from '@/tools/handlers';
 import { registerReadTools } from '@/tools/read.tool';
+import { registerExportTool } from '@/tools/svg.tool';
 import { BatchToolkit, EditToolkit, SessionToolkit } from '@/tools/toolkit';
 
 import { version } from '../package.json';
@@ -63,6 +64,7 @@ export const ToolsLayer: Layer.Layer<
     );
     yield* McpServer.registerToolkit(SessionToolkit).pipe(inArrivalOrder);
     yield* registerReadTools.pipe(inArrivalOrder);
+    yield* registerExportTool.pipe(inArrivalOrder);
     yield* McpServer.registerToolkit(EditToolkit).pipe(inArrivalOrder);
     yield* McpServer.registerToolkit(BatchToolkit).pipe(inArrivalOrder);
   })

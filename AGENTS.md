@@ -84,7 +84,7 @@ A change to Markdown alone needs no check, except in three files a build reads: 
 ## Package Map
 
 - Build order follows workspace dependencies; the longest chain is `vuerd-vscode` → `vscode-webview` → `webview-client` → `replication-store-worker` → `erd-editor` → `grid` → `r-html-konva` → `r-html`.
-- `mcp-server` joins only the tail, at `erd-editor`. It also names `erd-editor-schema`, `r-html` and `uuid` itself, for the parser, the query layer and the serializers, the action types and the relationship id it mints. Its other dependency, `agent-hub`, depends on no workspace package; `effect` is its one peer.
+- `mcp-server` joins only the tail, at `erd-editor`, through its `peer.js` and, for `erd_export_svg`, its `svg.js`, whose Konva scene it inlines behind an `import()` it evaluates on the first export alone. It also names `erd-editor-schema`, `r-html` and `uuid` itself, for the parser, the query layer and the serializers, the action types and the relationship id it mints. Its other dependency, `agent-hub`, depends on no workspace package; `effect` is its one peer.
 - `r-html-konva` depends on `r-html` alone, with `konva` its one peer, and builds through `vite-plugin-r-html`. `erd-editor` lists it as a devDependency and inlines it.
 - `grid` depends on `r-html-konva`, `r-html` and `@chenglou/pretext`, with `konva` its one peer, and builds through `vite-plugin-r-html` too. It names all three in `dependencies`, so its `dist/` keeps them bare. `erd-editor` lists it as a devDependency and its Dictionary tab mounts it, so it ships inlined under `erd-editor`'s `dist/grid/dist/`, which only the Dictionary tab's module imports, and in its editor UMD build, never in `peer.js` or a worker; that devDependency is the edge that puts it in the chain above.
 - `erd-editor-yjs` names `erd-editor` as a peer (`workspace:^`) and a devDependency, beside its `yjs` and `y-protocols` peers, and inlines nothing: its shipping code takes all three for types alone. Nothing else in the workspace depends on it.
@@ -114,7 +114,7 @@ A change to Markdown alone needs no check, except in three files a build reads: 
 | `intellij-plugin` | `@dineug/erd-editor-intellij-plugin` | Kotlin/Gradle plugin and the hub's document side in Kotlin: one hub for every project an IDE process has open |
 | `obsidian-plugin` | `@dineug/erd-editor-obsidian-plugin` | Obsidian plugin, whose `dist/` is the plugin folder, and a vault window's hub document side, on `agent-hub-host` |
 | `app` | `@dineug/erd-editor-app` | React PWA at erd-editor.io, with `/gdrive`, its Google Drive editor, whose OAuth relay is the one Pages Function (`functions/`) |
-| `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, live through the hub of a VS Code or Obsidian window or a JetBrains IDE, or headless on the file; one ESM file with nothing external but node builtins |
+| `mcp-server` | `@dineug/erd-editor-mcp` | stdio MCP server for coding agents, live through the hub of a VS Code or Obsidian window or a JetBrains IDE, or headless on the file, which also draws a document's svg in its own process; one ESM file with nothing external but node builtins |
 
 ## For AI Agents
 

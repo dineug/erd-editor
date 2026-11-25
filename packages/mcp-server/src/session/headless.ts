@@ -5,16 +5,18 @@ import {
   PeerStoreErrorCode,
   type RevertResult,
 } from '@dineug/erd-editor/peer.js';
-import { Effect, FileSystem, Path, Schedule } from 'effect';
+import { Effect, FileSystem, Path } from 'effect';
 
 import { isPlatformReason, SessionError, SessionErrorCode } from '@/errors';
 import { FileAccess, type FileStat, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import {
   createEmptyDocument,
+  isBusyReplace,
   isReadonlyMode,
   orNotFound,
   readDocumentFile,
+  SWAP_RETRY,
 } from '@/session/disk';
 import {
   type DocumentSession,
@@ -46,22 +48,6 @@ export type HeadlessSessionOptions = {
 
 const sameStat = (a: FileStat, b: FileStat) =>
   a.size === b.size && a.mtimeMs === b.mtimeMs;
-
-/**
- * What Windows answers a rename over a file any process holds open: libuv's
- * EPERM, which platform-node folds into Unknown, or EACCES or EBUSY. The tag
- * alone decides, as in its twin, agent-hub-host's lock write.
- */
-const isBusyReplace = (error: unknown): boolean =>
-  isPlatformReason(error, 'Unknown') ||
-  isPlatformReason(error, 'PermissionDenied') ||
-  isPlatformReason(error, 'Busy');
-
-/** 10 ms doubling to 100 ms apart, for 2 s in all: a reader holds a file for milliseconds. */
-const SWAP_RETRY = Schedule.min([
-  Schedule.exponential('10 millis'),
-  Schedule.spaced('100 millis'),
-]).pipe(Schedule.upTo({ duration: '2 seconds' }));
 
 /** An exclusive create: a file already there is kept, a missing folder refused. */
 const createIfMissing = (fs: FileSystem.FileSystem, path: string) =>

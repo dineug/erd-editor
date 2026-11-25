@@ -5,7 +5,7 @@ import {
 import { Cause, Context, Effect, Schema } from 'effect';
 import { McpSchema, McpServer } from 'effect/ai';
 
-import { SessionManager } from '@/session/manager';
+import { SessionManager, type SessionManagerShape } from '@/session/manager';
 import { CHECK_LEVELS, CHECKS_TOOL } from '@/tools/checks';
 import { describeArg, describeTool } from '@/tools/copy';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
@@ -149,11 +149,11 @@ const INTERNAL_MESSAGE =
   'Tool execution failed due to an internal server error.';
 
 /**
- * Adds one read tool, which answers the document as plain text, not a JSON
- * body, so it is added by hand: arguments decode strictly to -32602, a refusal
- * becomes an isError result, and only a defect becomes an internal error.
+ * Adds one tool that answers plain text, not a JSON body, so it is added by
+ * hand: arguments decode strictly to -32602, a refusal becomes an isError
+ * result, and only a defect becomes an internal error.
  */
-const addReadTool = <
+export const addTextTool = <
   S extends Schema.Top & {
     readonly Type: { readonly path: string };
     readonly DecodingServices: never;
@@ -161,7 +161,11 @@ const addReadTool = <
 >(
   name: string,
   parameters: S,
-  toReader: (params: S['Type']) => Effect.Effect<DocumentReader, ToolError>
+  annotations: McpSchema.Tool['annotations'],
+  run: (
+    params: S['Type'],
+    sessions: SessionManagerShape
+  ) => Effect.Effect<McpSchema.CallToolResult, unknown>
 ) =>
   Effect.gen(function* () {
     const server = yield* McpServer.McpServer;
@@ -175,7 +179,7 @@ const addReadTool = <
         name,
         description: describeTool(name),
         inputSchema: toolInputSchema(name, parameters, true),
-        annotations: { readOnlyHint: true },
+        annotations,
       }),
       annotations: Context.empty(),
       handle: payload =>
@@ -187,13 +191,7 @@ const addReadTool = <
               })
           ),
           Effect.flatMap(params =>
-            answer(
-              sessions,
-              toReader(params).pipe(
-                Effect.flatMap(reader => sessions.read(params.path, reader)),
-                Effect.map(({ text, notes }) => textResult(text, notes))
-              )
-            ).pipe(
+            answer(sessions, run(params, sessions)).pipe(
               Effect.catch(refused => Effect.succeed(errorResult(refused)))
             )
           ),
@@ -209,6 +207,24 @@ const addReadTool = <
         ),
     });
   });
+
+/** One read tool: the reader its arguments pick renders the document as text. */
+const addReadTool = <
+  S extends Schema.Top & {
+    readonly Type: { readonly path: string };
+    readonly DecodingServices: never;
+  },
+>(
+  name: string,
+  parameters: S,
+  toReader: (params: S['Type']) => Effect.Effect<DocumentReader, ToolError>
+) =>
+  addTextTool(name, parameters, { readOnlyHint: true }, (params, sessions) =>
+    toReader(params).pipe(
+      Effect.flatMap(reader => sessions.read(params.path, reader)),
+      Effect.map(({ text, notes }) => textResult(text, notes))
+    )
+  );
 
 /** erd_read, erd_list, erd_get and erd_list_checks, in that order. */
 export const registerReadTools = Effect.gen(function* () {
