@@ -257,13 +257,13 @@
 - **`sceneHit` tells the parts of a group apart.** It answers `{ kind: 'tableGroup', part }`, the part `title`, `body` or `sash`, read off the kind its node carries.
   - The bar's and the body's fills are their hit areas. The name, line and ring listen to nothing.
   - A table, memo or connector over a group answers for itself.
-- **The title bar selects and carries the group.** A press selects (`selectTableGroupAction$`): the modifier adds, and a press inside the selection keeps it. It also raises the group's tables over every other table and memo (`src/engine/AGENTS.md`), so a drop leaves them where the drag drew them.
+- **The title bar selects and carries the group.** A press selects (`selectTableGroupAction$`): the modifier adds, and a press inside the selection keeps it. It also raises the group's tables and memos over every other table and memo (`src/engine/AGENTS.md`), so a drop leaves them where the drag drew them.
   - Past `CLICK_DRAG_MIN_MOVE` it carries the group through `useMoveEntity` (`TITLE_KINDS` as its `clickKinds`). `moveAllAction$` moves it and its members once.
   - It is never Alt duplicated.
   - A readonly editor's ERD tab reads `'read'`, so its press neither selects nor carries the group; a readonly store under `'edit'`, as a diff pane's is, makes it a selection alone (`canMove`).
 - **The bar's `x` removes the group** (`table-group-remove`, an owner decision of 2026-10-11). It stands `TABLE_GROUP_TITLE_PADDING` short of the bar's end at a table header's button size (`getTableGroupRemoveBox`, `canvas/table-group/titleLayout.ts`), and the name ends a header icon gap before it.
   - It shows while the pointer is over the frame or the body, as a table's buttons show over its card. The frame and the body are two nodes, so each writes its own hover into the links and the button reads either.
-  - A main click runs `removeTableGroupAction$` on that group alone and keeps its tables, as the menu's Delete does, in one undo entry.
+  - A main click runs `removeTableGroupAction$` on that group alone and keeps its tables and memos, as the menu's Delete does, in one undo entry.
   - It is `kind="icon"`, which `useMoveEntity`'s `blockedKinds` names, so a press on it selects the group and carries nothing.
   - A scene under `'read'` draws no `x`, and one that turns read under the pointer hands back the cursor the `x` took, since konva sends a node it takes away no leave. A readonly store under `'edit'` keeps it listening, painting nothing, asking for no cursor and removing nothing on a click, so konva still sends it the leave that hands back a cursor it took before readonly turned on.
 - **The body is canvas to the main button.** `ownsPress` (`hitTest.ts`) gives a group its bar and sashes, and its body only for another button. `handleDragSelect` in `Erd.tsx` and `DiffErdViewer.tsx` read it.
@@ -277,21 +277,21 @@
   - So peers hear one write, and one undo puts back the rect it began from.
   - A drag whose sash unmounts mid way, its groups hidden, its group removed or the editor turned readonly, ends writing nothing, as no reader saw where it would land.
 - **A document drag ends by judging group drops.** A drag that travelled `CLICK_DRAG_MIN_MOVE` from its press dispatches `dropTablesIntoGroupsAction$` with the boxes it held (`useMoveEntity`'s finalizer). A click, or a tremor short of that, sends nothing (`markEntityDragTravelled`).
-  - `getTableGroupDrops` judges each selected table no selected group carries. It puts the table in the topmost box that holds its centre without them, or in none.
+  - `getTableGroupDrops` judges each selected table, and each selected memo while memos show, that no selected group carries. It puts each in the topmost box that holds its centre without them, or in none.
   - The boxes judged include the box a group the drag leaves standing showed as it began. So a member grown past the stored rect stays through a nudge, and leaves once its centre is out of the box the reader saw.
   - It judges nothing while groups are hidden.
   - The moves and the membership undo as one entry while the release comes inside the 200 ms quiet period that closes the drag's `@@move` group.
   - A pointer resting longer before the release leaves the membership an entry of its own, as a paused drag already splits its moves.
-- **`TableGroupDropTarget.tsx` outlines where a drop lands.** It outlines each group a drop would land a table in. It draws the box the table is judged in, in `theme.focus`, in the drag layer. It draws nothing short of the click distance and nothing under a readonly store.
+- **`TableGroupDropTarget.tsx` outlines where a drop lands.** It outlines each group a drop would land a table or a memo in. It draws the box the table is judged in, in `theme.focus`, in the drag layer. It draws nothing short of the click distance and nothing under a readonly store.
 
 ### Table group commands
 
 - The color picker and Remove color, which the group, table and memo menus share: `src/components/primitives/AGENTS.md`.
 - **A right press raises the group menu** (`erd-context-menu/ErdContextMenu.tsx`, raised by `Erd.tsx`'s `handleContextmenu`). It works on the bar, the body or a sash.
   - Its rows are Select tables (`selectTableGroupTablesAction$`, its member tables alone), Rename, Color, Remove color while the selection holds a color, and Delete.
-  - Delete removes that group alone and keeps its tables (`removeTableGroupAction$`). It reads Delete selected while the group is one of two or more selected, as the memo's does.
+  - Delete removes that group alone and keeps its tables and memos (`removeTableGroupAction$`). It reads Delete selected while the group is one of two or more selected, as the memo's does.
   - A readonly editor raises no group menu, as it raises none for a relationship or a memo (`Erd.tsx`'s `handleContextmenu`), and the menu itself lists a readonly store no row, Select tables among them, since a reader selects by a jump alone (A readonly editor's context menu, under The canvas and its presses).
-- **The table menu adds two group rows.** They stand above its Delete. Group selected tables (`addTableGroupFromTablesAction$`) shows while the selection holds a table the document lists, with its chord. Remove from group (`setTableGroupAction$(ids, '')`) shows while a selected table is in a group.
+- **The table menu adds two group rows.** They stand above its Delete. Group selected tables (`addTableGroupFromTablesAction$`) shows while the selection holds a table the document lists, with its chord, and puts the selected memos in the group beside the tables. Remove from group (`setTableGroupAction$(ids, '')`) shows while a selected table is in a group.
 - **The canvas menu, the palette and the floating toolbar create groups.** The canvas menu adds New Table Group after New Memo. The palette (`src/components/quick-search/actions.tsx`) adds New Table Group and Group Selected Tables (with a table selected), on the ERD tab alone, each keeping its English as an alias. The floating toolbar adds New Table Group after New Table and New Memo, marked while the draw is armed.
 - **Two chords create groups** (`useErdShortcut.ts`). `addTableGroup` (`Alt+G`) arms the draw, and a second press disarms it, as the toolbar button does and a notation's chord and button do. `groupSelectedTables` (`T` then `G`, a sequence) runs Group selected tables. The menu and palette rows and the Shortcuts page show both.
 - **No creation under readonly or hidden groups.** None of these rows or buttons shows under a readonly store, and none, nor either chord, creates a group while groups are hidden.

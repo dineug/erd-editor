@@ -105,10 +105,15 @@ export function getContentRects(
     growTableGroupBox(groupBoxes, table, rect);
     return rect;
   });
+  const memoRects = memos.map(memo => {
+    const rect = getMemoRect(memo);
+    growTableGroupBox(groupBoxes, memo, rect);
+    return rect;
+  });
 
   return [
     ...tableRects,
-    ...memos.map(getMemoRect),
+    ...memoRects,
     ...groups.map(
       group => placedGroups.get(group.id) ?? groupBoxes.get(group.id)!
     ),

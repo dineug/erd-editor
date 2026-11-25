@@ -12,10 +12,7 @@ import { ColumnOption } from '@/constants/schema';
 import type { EngineContext } from '@/engine/context';
 import { GeneratorAction } from '@/engine/generator.actions';
 import { toPastedDomainId } from '@/engine/modules/dictionary/membership';
-import {
-  changeMemoColorAction,
-  moveMemoAction,
-} from '@/engine/modules/memo/atom.actions';
+import { changeMemoColorAction } from '@/engine/modules/memo/atom.actions';
 import { removeMemoAction$ } from '@/engine/modules/memo/generator.actions';
 import { ActionType as TableActionType } from '@/engine/modules/table/actions';
 import {
@@ -44,6 +41,7 @@ import {
 } from '@/engine/modules/table-column/generator.actions';
 import { changeTableGroupColorAction } from '@/engine/modules/table-group/atom.actions';
 import {
+  getCarriedMemoIds,
   getCarriedTableIds,
   removeTableGroupAction$,
   toMoveTableGroupActions,
@@ -161,16 +159,20 @@ export const initialLoadJsonAction$ = (value: string): GeneratorAction =>
   };
 
 /**
- * One drag of the selection: the document groups and tables it carries, read at its first step and
- * kept to its last, since steps summed per list would split if a peer changed a group's members, or
- * hid the groups and so took them out of the selection, midway.
+ * One drag of the selection: the document groups, tables and memos it carries, read at its first
+ * step and kept to its last, since steps summed per list would split if a peer changed a group's
+ * members, or hid the groups and so took them out of the selection, midway.
  */
-export type MoveAllGesture = { tableGroupIds?: string[]; tableIds?: string[] };
+export type MoveAllGesture = {
+  tableGroupIds?: string[];
+  tableIds?: string[];
+  memoIds?: string[];
+};
 
 /**
  * Moves the selection by a pointer step the scene's zoom scales, a selected
- * group carrying its members, each table once. From a view scene the step goes
- * to that view's own placement, which holds tables alone, the document's kept.
+ * group carrying its members, each table and memo once. From a view scene the
+ * step goes to that view's own placement, which holds tables alone, the document's kept.
  */
 export const moveAllAction$ = (
   movementX: number,
@@ -207,23 +209,18 @@ export const moveAllAction$ = (
       gesture.tableGroupIds,
       tableIds
     );
+    gesture.memoIds ??= getCarriedMemoIds(
+      state,
+      gesture.tableGroupIds,
+      memoIds
+    );
     yield toMoveTableGroupActions(
       gesture.tableGroupIds,
       gesture.tableIds,
       newMovementX,
-      newMovementY
+      newMovementY,
+      gesture.memoIds
     );
-
-    if (memoIds.length) {
-      yield attachActionTag(
-        Tag.drag,
-        moveMemoAction({
-          ids: memoIds,
-          movementX: newMovementX,
-          movementY: newMovementY,
-        })
-      );
-    }
   };
 
 export const removeSelectedAction$ = (): GeneratorAction =>
@@ -362,7 +359,7 @@ function roundPlacement(
 /**
  * What a duplicate or an append makes new entities from, the logical names,
  * derived flags and domain links included. Only an append names groups, each
- * with the copied tables it holds; a duplicate, like a paste, brings none.
+ * with the copied tables and memos it holds; a duplicate, like a paste, brings none.
  */
 function toDuplicateInput(
   state: RootState,
@@ -445,6 +442,9 @@ function toDuplicateInput(
         color: group.color,
         tableIds: tables
           .filter(table => table.groupId === group.id)
+          .map(({ id }) => id),
+        memoIds: memos
+          .filter(memo => memo.groupId === group.id)
           .map(({ id }) => id),
         ui: { ...group.ui },
       })),

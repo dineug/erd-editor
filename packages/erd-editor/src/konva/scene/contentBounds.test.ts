@@ -337,6 +337,22 @@ describe('getContentRects', () => {
     ]);
   });
 
+  it('grows a group box by its shown member memos, as getTableGroupRect does', () => {
+    const state = createState();
+    const memo = addMemo(state, 'm', 3_000, 3_000, 200, 100);
+    memo.groupId = 'g';
+    const group = addGroup(state, 'g', 0, 0);
+
+    const [, box] = getContentRects(state);
+    expect(box).toEqual(getTableGroupRect(state, group));
+    expect(right(box)).toBeGreaterThan(right(getMemoRect(memo)));
+
+    state.settings.show |= Show.hideMemo;
+    expect(getContentRects(state)).toEqual([
+      { x: 0, y: 0, width: 100, height: 100 },
+    ]);
+  });
+
   it('leaves a moved member out of its group box, which would hold where it stood', () => {
     const state = createState();
     const table = addTable(state, 't', 3_000, 3_000);

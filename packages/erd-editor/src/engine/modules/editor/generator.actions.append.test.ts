@@ -34,6 +34,7 @@ import {
 } from '@/engine/modules/index-column/atom.actions';
 import {
   addMemoAction,
+  changeMemoGroupAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -699,6 +700,40 @@ describe('appending table groups', () => {
     const [, emptyId, blogId] = doc.tableGroupIds;
     expect(collections.tableGroupEntities[emptyId].ui.zIndex).toBe(5);
     expect(collections.tableGroupEntities[blogId].ui.zIndex).toBe(6);
+  });
+
+  it('puts each member memo in its new group by its new id, a memo of no group in none', () => {
+    const source = createTestStore();
+    source.dispatchSync(
+      addTableAction({ id: 'users', ui: { x: 300, y: 200, zIndex: 2 } }),
+      changeTableNameAction({ id: 'users', value: 'users' }),
+      addMemoAction({ id: 'note', ui: { x: 300, y: 320, zIndex: 3 } }),
+      changeMemoValueAction({ id: 'note', value: 'member note' }),
+      addMemoAction({ id: 'loose', ui: { x: 900, y: 900, zIndex: 4 } }),
+      changeMemoValueAction({ id: 'loose', value: 'loose note' }),
+      addTableGroupAction({
+        id: 'blog',
+        ui: { x: 276, y: 176, width: 300, height: 300, zIndex: 5 },
+      }),
+      changeTableGroupNameAction({ id: 'blog', value: 'blog' }),
+      changeTableGroupAction({ id: 'users', value: 'blog' }),
+      changeMemoGroupAction({ id: 'note', value: 'blog' })
+    );
+    const store = createDiagram();
+
+    store.dispatchSync(appendSchemaJsonAction$(toJson(source.state)));
+
+    const blog = groupByName(store.state, 'blog');
+    const memoByValue = (value: string) =>
+      store.state.doc.memoIds
+        .map(id => store.state.collections.memoEntities[id])
+        .find(memo => memo.value === value)!;
+    expect(memoByValue('member note').id).not.toBe('note');
+    expect(memoByValue('member note').groupId).toBe(blog.id);
+    expect(memoByValue('loose note').groupId).toBe('');
+
+    store.undo();
+    expect(store.state.doc.memoIds).toEqual([]);
   });
 
   it('takes the groups and the memberships away with the rest on one undo', () => {

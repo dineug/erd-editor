@@ -1031,6 +1031,39 @@ describe('toCreateEntityActions — table groups', () => {
     expect(toTypes(actions)).toEqual(['tableGroup.add']);
   });
 
+  it('puts each new memo the group held in the new group, and no memo it did not bring', () => {
+    const input = createInput({
+      memos: [createClipboardMemo('m1'), createClipboardMemo('m2')],
+      tableGroups: [
+        {
+          sourceId: 'g1',
+          name: 'notes',
+          color: '',
+          tableIds: [],
+          memoIds: ['m1', 'gone'],
+          ui: { x: 0, y: 0, width: 600, height: 400, zIndex: 1 },
+        },
+      ],
+    });
+    const { actions, memoIds, tableGroupIds } = toCreateEntityActions(
+      input,
+      createPlacement([
+        ['m1', {}],
+        ['m2', {}],
+      ])
+    );
+
+    expect(filterActions(actions, 'memo.changeGroup')).toEqual([
+      {
+        type: 'memo.changeGroup',
+        payload: { id: memoIds[0], value: tableGroupIds[0] },
+      },
+    ]);
+    expect(toTypes(actions).indexOf('memo.changeGroup')).toBeGreaterThan(
+      toTypes(actions).indexOf('tableGroup.add')
+    );
+  });
+
   it('brings no group for an input without one, as a paste or a duplicate', () => {
     const { actions, tableGroupIds } = toCreateEntityActions(
       createInput({ tables: [createClipboardTable('t1')] }),
@@ -1039,6 +1072,7 @@ describe('toCreateEntityActions — table groups', () => {
 
     expect(tableGroupIds).toEqual([]);
     expect(toTypes(actions)).not.toContain('table.changeGroup');
+    expect(toTypes(actions)).not.toContain('memo.changeGroup');
   });
 });
 

@@ -31,8 +31,8 @@ function pipe(getActiveView: () => SceneView | null, passTags?: number[]) {
 }
 
 describe('ViewIgnoreActionTypes', () => {
-  it('names sixty-three edits, the readonly list less the two document replacements', () => {
-    expect(ViewIgnoreActionTypes).toHaveLength(63);
+  it('names sixty-four edits, the readonly list less the two document replacements', () => {
+    expect(ViewIgnoreActionTypes).toHaveLength(64);
     expect(new Set(ViewIgnoreActionTypes).size).toBe(
       ViewIgnoreActionTypes.length
     );

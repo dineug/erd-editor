@@ -174,8 +174,8 @@ describe('ChangeActionTypes', () => {
     ]);
   });
 
-  it('counts seventy-six change types, the Schema SQL scripts and the name view among them', () => {
-    expect(ChangeActionTypes).toHaveLength(76);
+  it('counts seventy-seven change types, the Schema SQL scripts and the name view among them', () => {
+    expect(ChangeActionTypes).toHaveLength(77);
     expect(ChangeActionTypes).toContain('settings.changeDDLScript');
     expect(ChangeActionTypes).toContain('settings.changeNameViewMode');
   });
@@ -228,6 +228,7 @@ describe('the table group changes', () => {
     'tableGroup.changeName',
     'tableGroup.changeColor',
     'table.changeGroup',
+    'memo.changeGroup',
   ];
 
   it('reach the file, the peers and the replica, and no readonly host or view makes one', () => {
@@ -346,8 +347,8 @@ describe('ReadonlyIgnoreActionTypes', () => {
     expect(ReadonlyIgnoreActionTypes).toContain('editor.loadJson');
   });
 
-  it('counts sixty-five, every view edit and the two document replacements', () => {
-    expect(ReadonlyIgnoreActionTypes).toHaveLength(65);
+  it('counts sixty-six, every view edit and the two document replacements', () => {
+    expect(ReadonlyIgnoreActionTypes).toHaveLength(66);
     expect(ReadonlyIgnoreActionTypes).toEqual([
       ...ViewIgnoreActionTypes,
       'editor.loadJson',
@@ -374,13 +375,13 @@ describe('EditStateOpenActionTypes', () => {
     ]);
   });
 
-  it('extends the readonly list to seventy for the editor, and leaves it sixty-five', () => {
+  it('extends the readonly list to seventy-one for the editor, and leaves it sixty-six', () => {
     const extended = new Set([
       ...ReadonlyIgnoreActionTypes,
       ...EditStateOpenActionTypes,
     ]);
 
-    expect(extended.size).toBe(70);
+    expect(extended.size).toBe(71);
     for (const type of EditStateOpenActionTypes) {
       expect(ReadonlyIgnoreActionTypes).not.toContain(type);
     }
@@ -544,6 +545,7 @@ describe('ViewIgnoreActionTypes', () => {
     'memo.changeValue',
     'memo.changeColor',
     'memo.resize',
+    'memo.changeGroup',
     'tableGroup.add',
     'tableGroup.move',
     'tableGroup.moveTo',
@@ -563,9 +565,9 @@ describe('ViewIgnoreActionTypes', () => {
     'settings.changeDDLScript',
   ];
 
-  it('names sixty-three edits of the document, in the order of the change types', () => {
+  it('names sixty-four edits of the document, in the order of the change types', () => {
     expect(ViewIgnoreActionTypes).toEqual(VIEW_IGNORED);
-    expect(ViewIgnoreActionTypes).toHaveLength(63);
+    expect(ViewIgnoreActionTypes).toHaveLength(64);
   });
 
   it('holds every change but the readonly passes and the two document replacements', () => {

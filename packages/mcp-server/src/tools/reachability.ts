@@ -18,6 +18,7 @@ export const NOT_EMITTED: ReadonlyArray<ActionType> = Object.freeze([
   'settings.changeLockSettings',
   'settings.changeNameViewMode',
   'memo.move',
+  'memo.changeGroup',
   'tableGroup.moveTo',
   'relationship.changeColumns',
   'table.sort',
@@ -62,6 +63,8 @@ export const EXCLUSION_REASONS: Readonly<Partial<Record<ActionType, string>>> =
       'Which names the diagram shows is each reader’s own while its lock holds, so a switch shows only on the store that made it, and once unlocked the user picks it in the editor; an agent edits the schema whatever the view.',
     'memo.move':
       'A relative drag step; memo.moveTo places a memo where the agent names.',
+    'memo.changeGroup':
+      'No tool puts a memo in a table group or takes it out yet; the user does it in the editor, by a drag, a drawn group or Group selected tables.',
     'tableGroup.moveTo':
       'Places a group alone and leaves its tables behind, which no editor gesture does; erd_move_table_group moves a group and its tables by one relative step, as a drag of its title bar does.',
     'relationship.changeColumns':
