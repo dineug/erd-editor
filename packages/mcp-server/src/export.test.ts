@@ -37,15 +37,16 @@ const actual = await vi.importActual<
 const DOCUMENT = '/work/shop.erd.json';
 const OUTPUT = '/work/docs/shop.svg';
 
-/** Twelve tables of eight columns, whose drawing runs past what one answer holds. */
-const LARGE_SQL = Array.from(
-  { length: 12 },
-  (_, table) =>
-    `CREATE TABLE table_${table} (${Array.from(
-      { length: 8 },
-      (_, column) => `column_${column}_of_table_${table} VARCHAR(255)`
-    ).join(', ')});`
-).join('\n');
+/**
+ * An svg of the given length, which a spec of the read bound has toSvg answer,
+ * since drawing a document that long took past five seconds on a CI runner.
+ */
+const svgOfLength = (length: number) => {
+  const head =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20">';
+  const tail = '</svg>';
+  return head + 'x'.repeat(length - head.length - tail.length) + tail;
+};
 
 let io: MemoryHost;
 let mcp: McpHarness;
@@ -257,26 +258,31 @@ describe('erd_export_svg answering the text', () => {
     expect(io.files.has(OUTPUT)).toBe(false);
   });
 
-  it('refuses a drawing past what one answer holds, naming output', async () => {
-    const large = documentFromSql(LARGE_SQL);
-    io.put(DOCUMENT, large);
+  it('answers a drawing of exactly what one answer holds, and refuses one past it, naming output', async () => {
     await connect();
-    const length = (await actual.toSvg(large)).length;
-    expect(length).toBeGreaterThan(40_000);
+    vi.mocked(toSvg).mockResolvedValueOnce(svgOfLength(40_000));
 
+    const fits = await mcp.call('erd_export_svg', { path: DOCUMENT });
+
+    expect(fits.isError).toBe(false);
+    expect(fits.texts[0]).toBe(svgOfLength(40_000));
+
+    const over = svgOfLength(40_001);
+    vi.mocked(toSvg).mockResolvedValue(over);
     const refused = await mcp.call('erd_export_svg', { path: DOCUMENT });
 
     expect(refused.isError).toBe(true);
     expect(refused.json.error).toEqual({
       code: 'tooLarge',
-      message: `this svg is ${length.toLocaleString('en-US')} characters, over the 40,000 one answer returns; pass output, a .svg path, to have it written to that file`,
+      message:
+        'this svg is 40,001 characters, over the 40,000 one answer returns; pass output, a .svg path, to have it written to that file',
     });
     const written = await mcp.ok('erd_export_svg', {
       path: DOCUMENT,
       output: OUTPUT,
     });
-    expect(io.read(OUTPUT)).toHaveLength(length);
-    expect(written.bytes).toBe(Buffer.byteLength(io.read(OUTPUT), 'utf8'));
+    expect(io.read(OUTPUT)).toBe(over);
+    expect(written.bytes).toBe(40_001);
   });
 });
 
