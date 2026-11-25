@@ -148,17 +148,18 @@ function toEntityReader(
 const INTERNAL_MESSAGE =
   'Tool execution failed due to an internal server error.';
 
+/** The arguments of a tool added by hand: a document's path among them, decoded with no service. */
+type TextToolParameters = Schema.Top & {
+  readonly Type: { readonly path: string };
+  readonly DecodingServices: never;
+};
+
 /**
  * Adds one tool that answers plain text, not a JSON body, so it is added by
  * hand: arguments decode strictly to -32602, a refusal becomes an isError
  * result, and only a defect becomes an internal error.
  */
-export const addTextTool = <
-  S extends Schema.Top & {
-    readonly Type: { readonly path: string };
-    readonly DecodingServices: never;
-  },
->(
+export const addTextTool = <S extends TextToolParameters>(
   name: string,
   parameters: S,
   annotations: McpSchema.Tool['annotations'],
@@ -209,12 +210,7 @@ export const addTextTool = <
   });
 
 /** One read tool: the reader its arguments pick renders the document as text. */
-const addReadTool = <
-  S extends Schema.Top & {
-    readonly Type: { readonly path: string };
-    readonly DecodingServices: never;
-  },
->(
+const addReadTool = <S extends TextToolParameters>(
   name: string,
   parameters: S,
   toReader: (params: S['Type']) => Effect.Effect<DocumentReader, ToolError>

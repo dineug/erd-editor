@@ -16,7 +16,7 @@ export const ERD_EXTENSIONS: readonly string[] = [
 export const DEFAULT_EXTENSION = '.erd.json';
 
 /** The extension of the file an svg export writes, in any case. */
-export const SVG_EXTENSION = '.svg';
+const SVG_EXTENSION = '.svg';
 
 export function isErdPath(path: string): boolean {
   const name = path.toLowerCase();
@@ -161,15 +161,14 @@ export const resolveSvgPath = Effect.fn('resolveSvgPath')(function* (
     );
   }
   // A link the climb stopped at leads nowhere, which the exclusive create refuses.
-  const link =
-    type === null
-      ? yield* fs.readLink(real).pipe(Effect.orElseSucceed(() => null))
-      : null;
-  if (link !== null) {
-    return yield* new SessionError(
-      SessionErrorCode.invalidPath,
-      `${real} is a link to ${link}, which leads to no file; name the file it should lead to as output, or another path`
-    );
+  if (type === null) {
+    const link = yield* Effect.orElseSucceed(fs.readLink(real), () => null);
+    if (link !== null) {
+      return yield* new SessionError(
+        SessionErrorCode.invalidPath,
+        `${real} is a link to ${link}, which leads to no file; name the file it should lead to as output, or another path`
+      );
+    }
   }
   return real;
 });
