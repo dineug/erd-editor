@@ -227,9 +227,11 @@ describe('the words on a table group', () => {
 describe('the words on a memo in a table group', () => {
   const OLDER =
     'An ERD Editor extension or plugin released before memos joined table groups ignores which group a memo is in and leaves it out when it saves, so the user should update it.';
-  const texts = [
-    describeTool('erd_set_memo_group'),
-    describeArg('erd_add_table_group', 'memoIds'),
+  // Each puts memos in groups: by memoIds or a drawn rect, or a document whose memos carry one.
+  const TOOLS = [
+    'erd_set_memo_group',
+    'erd_add_table_group',
+    'erd_import_json',
   ];
 
   it('reach every tool that takes memoIds to put memos in a group', () => {
@@ -240,15 +242,28 @@ describe('the words on a memo in a table group', () => {
     ).toEqual(['erd_add_table_group', 'erd_set_memo_group']);
   });
 
-  it('end on an editor released before memos joined groups dropping it, so the user updates it', () => {
-    for (const text of texts) {
-      expect(text.endsWith(OLDER), text).toBe(true);
-    }
+  it('end erd_set_memo_group on an editor released before memos joined groups dropping it', () => {
+    expect(describeTool('erd_set_memo_group').endsWith(` ${OLDER}`)).toBe(true);
+  });
+
+  it('warn before the group sentence on the tools that also add groups, the rect path included', () => {
+    expect(describeTool('erd_add_table_group')).toContain(
+      ` ${OLDER} An ERD Editor extension or plugin released before table groups ignores this edit`
+    );
+    expect(describeTool('erd_import_json')).toContain(
+      ` ${OLDER} An ERD Editor extension or plugin released before table groups drops every group`
+    );
+  });
+
+  it('say a hidden memo leaves the box as it is', () => {
+    expect(describeTool('erd_set_memo_group')).toContain(
+      "the group's box grows to hold it while memos are shown"
+    );
   });
 
   it('name no release, which the next one would make wrong', () => {
-    for (const text of texts) {
-      expect(text).not.toMatch(/\d+\.\d+/);
+    for (const name of TOOLS) {
+      expect(describeTool(name), name).not.toMatch(/\d+\.\d+/);
     }
   });
 });

@@ -394,7 +394,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
 
   erd_add_table_group: {
-    description: `Adds a table group, a named box drawn behind its tables and memos, and returns its id in createdIds. Pass tableIds to wrap those tables, and memoIds beside them for memos, each leaving any group it was in, or a rect (x, y, width and height), which takes in every table and shown memo in no group whose centre lies inside it, as drawing a group in the editor does. A table or memo is in one group at most. ${OLDER_EDITOR_GROUPS}`,
+    description: `Adds a table group, a named box drawn behind its tables and memos, and returns its id in createdIds. Pass tableIds to wrap those tables, and memoIds beside them for memos, each leaving any group it was in, or a rect (x, y, width and height), which takes in every table and shown memo in no group whose centre lies inside it, as drawing a group in the editor does. A table or memo is in one group at most. ${OLDER_EDITOR_MEMO_GROUPS} ${OLDER_EDITOR_GROUPS}`,
     args: {
       name: 'The group name; an empty string leaves it unnamed.',
       color:
@@ -406,7 +406,8 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
         'Height of the rect in pixels, at least 100, the title bar included.',
       tableIds:
         'Table ids, from erd_list, to put in the group instead of a rect; the rect becomes their bounds with padding around them.',
-      memoIds: `Memo ids, from erd_list, to put in the group beside the tableIds, its rect wrapping them too while memos are shown. ${OLDER_EDITOR_MEMO_GROUPS}`,
+      memoIds:
+        'Memo ids, from erd_list, to put in the group beside the tableIds, its rect wrapping them too while memos are shown.',
     },
   },
   erd_remove_table_group: {
@@ -440,7 +441,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
     },
   },
   erd_set_memo_group: {
-    description: `Puts memos in a table group, each leaving any group it was in, or with groupId null takes them out of their groups. A memo in a group moves with it, and the group's box grows to hold it. Memos already where they go are left alone. ${OLDER_EDITOR_MEMO_GROUPS}`,
+    description: `Puts memos in a table group, each leaving any group it was in, or with groupId null takes them out of their groups. A memo in a group moves with it, and the group's box grows to hold it while memos are shown. Memos already where they go are left alone. ${OLDER_EDITOR_MEMO_GROUPS}`,
     args: {
       memoIds: 'Memo ids, from erd_list.',
       groupId:
@@ -525,7 +526,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   ),
   erd_import_aml: importer('AML'),
   erd_import_json: {
-    description: `Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings; the tables bring their logical names and derived flags, but no column links a domain and none of the document's words, terms and domains is added. ${OLDER_EDITOR_GROUPS_IMPORT} ${OLDER_EDITOR_DICTIONARY}`,
+    description: `Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings; the tables bring their logical names and derived flags, but no column links a domain and none of the document's words, terms and domains is added. ${OLDER_EDITOR_MEMO_GROUPS} ${OLDER_EDITOR_GROUPS_IMPORT} ${OLDER_EDITOR_DICTIONARY}`,
     args: {
       value:
         'The .erd.json document text; empty gives an empty document, and is refused with mode append.',
