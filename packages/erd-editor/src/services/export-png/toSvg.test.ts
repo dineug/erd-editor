@@ -5,13 +5,20 @@ import { join } from 'node:path';
 
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 
+import { TABLE_BORDER } from '@/constants/layout';
 import { NameViewMode } from '@/constants/schema';
-import { createPeerStore, memoActions, memoActions$ } from '@/peer';
+import {
+  createPeerStore,
+  measureTableSize,
+  memoActions,
+  memoActions$,
+} from '@/peer';
 import {
   createPresetExportTheme,
   TRANSPARENT_BACKGROUND,
 } from '@/services/export-png/exportTheme';
 
+import { tableToWidth } from './nodeTextWidth';
 import { toSvg, type ToSvgOptions } from './toSvg';
 
 const fixture = (name: string) =>
@@ -85,6 +92,39 @@ describe('toSvg in a realm with no document', () => {
 
     expect(await Promise.all(values.map(value => toSvg(value)))).toEqual(alone);
   });
+
+  it.each([
+    ['embed-small.erd.json', () => SMALL],
+    ['bookstore.erd.json', () => BOOKSTORE],
+  ])(
+    'lays each table out in the room the width table gives, margin included: %s',
+    async (_, valueOf) => {
+      const peer = createPeerStore({ nickname: 'svg', presence: false });
+      peer.setInitialValue(valueOf());
+      const { state } = peer;
+      const tables = state.doc.tableIds.map(id => {
+        const table = state.collections.tableEntities[id]!;
+        const { width } = measureTableSize(table, state, tableToWidth);
+        return { at: `${table.ui.x} ${table.ui.y}`, width };
+      });
+      peer.destroy();
+
+      // A table opens a group at its point, which the origin writes no group
+      // for, with its body, one border narrower than the table.
+      const bodies = new Map(
+        [
+          ...(await toSvg(valueOf())).matchAll(
+            /(?:<g transform="translate\(([-\d.]+ [-\d.]+)\)">)?<rect transform="translate\(0\.5 0\.5\)" width="([\d.]+)"/g
+          ),
+        ].map(([, at = '0 0', width]) => [at, Number(width) + TABLE_BORDER])
+      );
+
+      expect(tables.length).toBeGreaterThan(3);
+      expect(tables.map(({ at }) => bodies.get(at))).toEqual(
+        tables.map(({ width }) => width)
+      );
+    }
+  );
 
   it('draws the table groups, a box and a title each', async () => {
     const svg = await toSvg(BOOKSTORE);
