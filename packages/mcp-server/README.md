@@ -105,7 +105,7 @@ can keep the diagrams in your documentation up to date:
   there. Without it, the SVG text is the answer, for a diagram of up to 40,000 characters.
 - It draws light, with the canvas colour behind the diagram; `darkMode` and `background: false`
   change that.
-- When an editor holds the document it draws what the editor shows, edits not yet saved included;
+- When an editor holds the document it draws what the editor holds, edits not yet saved included;
   otherwise the file.
 - The server draws without the editor's fonts, so a table can come out a little wider than in the
   editor. A large diagram takes a few seconds.

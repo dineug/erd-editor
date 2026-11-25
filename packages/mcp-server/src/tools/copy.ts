@@ -185,7 +185,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_export_svg: {
     description:
-      "Draws a document as an SVG image, as the Export image of the ERD editor does, to keep documentation up to date: light and with the canvas colour behind the diagram unless asked otherwise. When an editor serves the document it draws what that editor holds, edits not yet saved included, and the result's mode says so; otherwise the file. Text is measured without the editor's fonts, so a table may come out a little wider than the editor draws it. With output it writes that .svg file, replacing one already there, and answers its size; without, the SVG text is the answer, refused past 40,000 characters, where output is the way. A large document takes a few seconds.",
+      "Draws a document as an SVG image, as ERD Editor's Export image does, to keep documentation up to date: light and with the canvas colour behind the diagram unless asked otherwise. When an editor serves the document it draws what that editor holds, edits not yet saved included, and the result's mode says so; otherwise the file. Text is measured without the editor's fonts, so a table may come out a little wider than the editor draws it. With output it writes that .svg file, replacing one already there, and answers its size; without, the SVG text is the answer, refused past 40,000 characters, where output is the way. A large document takes a few seconds.",
     args: {
       output:
         'The .svg file to write, absolute or relative to the working directory, in a folder that exists; a file already there is replaced. Left out, the answer is the SVG text itself.',
