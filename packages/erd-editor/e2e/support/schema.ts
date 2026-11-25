@@ -141,6 +141,8 @@ export type MemoSeed = {
   width?: number;
   height?: number;
   color?: string;
+  /** The table group it is in; empty or absent for none. */
+  groupId?: string;
 };
 
 export type RelationshipSeed = {
@@ -416,6 +418,8 @@ export type IndexColumnEntity = {
 export type MemoEntity = {
   id: string;
   value: string;
+  /** The table group it is in, written while not empty, a removed group's id too. */
+  groupId?: string;
   ui: {
     x: number;
     y: number;
@@ -538,6 +542,7 @@ export function createSchema(seed: SchemaSeed = {}): ErdDocument {
         height: memo.height ?? MEMO_SIZE,
         color: memo.color ?? '',
       },
+      ...(memo.groupId === undefined ? {} : { groupId: memo.groupId }),
     };
   });
 

@@ -31,7 +31,9 @@ const COLOR =
 const OLDER_EDITOR_GROUPS =
   'An ERD Editor extension or plugin released before table groups ignores this edit and drops every group when it saves, so the user should update it.';
 const OLDER_EDITOR_GROUP_MOVE =
-  'An ERD Editor extension or plugin released before table groups moves only the tables of the group and drops every group when it saves, so the user should update it.';
+  'An ERD Editor extension or plugin released before table groups moves only the tables and memos of the group and drops every group when it saves, so the user should update it.';
+const OLDER_EDITOR_MEMO_GROUPS =
+  'An ERD Editor extension or plugin released before memos joined table groups ignores which group a memo is in and leaves it out when it saves, so the user should update it.';
 const OLDER_EDITOR_GROUPS_IMPORT =
   'An ERD Editor extension or plugin released before table groups drops every group when it saves, so the user should update it.';
 const OLDER_EDITOR_DICTIONARY =
@@ -141,7 +143,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_list: {
     description:
-      'Lists a document: its settings and counts, then a page of tables, each with its id, position and size on the ERD canvas (the width approximate, the height exact), with their indexes and relationships (each relationship once, with one of its tables) and, for a table in a table group or with a logical name, its groupId or logicalName; after the tables come the table groups, the memos, then the rows of the domain, term and word dictionaries, each with its name and what it gives a physical name or column. A small schema fits in one page. On a larger one, nextOffset and note say how to go on: query finds tables by a word, namesOnly lists every table name in a call or a few. Columns, comments, memo text, the tables of a group and every field of a dictionary row come from erd_get; the foreign keys a table holds, from erd_read sql with tableNames.',
+      'Lists a document: its settings and counts, then a page of tables, each with its id, position and size on the ERD canvas (the width approximate, the height exact), with their indexes and relationships (each relationship once, with one of its tables) and, for a table in a table group or with a logical name, its groupId or logicalName; after the tables come the table groups, the memos, each with its groupId when in a table group, then the rows of the domain, term and word dictionaries, each with its name and what it gives a physical name or column. A small schema fits in one page. On a larger one, nextOffset and note say how to go on: query finds tables by a word, namesOnly lists every table name in a call or a few. Columns, comments, memo text, the tables and memos of a group and every field of a dictionary row come from erd_get; the foreign keys a table holds, from erd_read sql with tableNames.',
     args: {
       query:
         'Words to look for inside table names, logical names and comments and column names, logical names and comments, in any case; tables whose names or logical names hold more of the words come first. Dictionary rows are not searched.',
@@ -155,7 +157,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_get: {
     description:
-      'Gives the entities named, in full: tables with their columns and size, relationships with their columns, indexes with their columns, memos with their text, table groups with their tables, and words, terms and domains with every field. Ids and names that name nothing live are listed in missing; ids one answer has no room for are listed in notReturned, to ask for again.',
+      'Gives the entities named, in full: tables with their columns and size, relationships with their columns, indexes with their columns, memos with their text and group, table groups with their tables and memos, and words, terms and domains with every field. Ids and names that name nothing live are listed in missing; ids one answer has no room for are listed in notReturned, to ask for again.',
     args: {
       tableIds: 'Table ids, from erd_list.',
       tableNames:
@@ -240,7 +242,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_sort_tables: {
     description:
-      "Arranges every table on the canvas automatically, as the editor sort command does: the tables of a table group stay together and the group's rect is fitted round them, which tables it holds unchanged.",
+      "Arranges every table on the canvas automatically, as the editor sort command does: the tables of a table group stay together, its memos laid out after them (while memos are hidden, they move with the tables, kept where they stood from them), and the group's rect is fitted round them, which tables and memos it holds unchanged. A memo in no group stays where it is.",
   },
 
   erd_add_column: {
@@ -392,11 +394,11 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
 
   erd_add_table_group: {
-    description: `Adds a table group, a named box drawn behind its tables, and returns its id in createdIds. Pass tableIds to wrap those tables, each leaving any group it was in, or a rect (x, y, width and height), which takes in every table in no group whose centre lies inside it, as drawing a group in the editor does. A table is in one group at most. ${OLDER_EDITOR_GROUPS}`,
+    description: `Adds a table group, a named box drawn behind its tables and memos, and returns its id in createdIds. Pass tableIds to wrap those tables, and memoIds beside them for memos, each leaving any group it was in, or a rect (x, y, width and height), which takes in every table and shown memo in no group whose centre lies inside it, as drawing a group in the editor does. A table or memo is in one group at most. ${OLDER_EDITOR_MEMO_GROUPS} ${OLDER_EDITOR_GROUPS}`,
     args: {
       name: 'The group name; an empty string leaves it unnamed.',
       color:
-        'CSS hex color for its box and the headers of its tables, as erd_change_table_group_color sets it; left out or empty, it has none.',
+        'CSS hex color for its box and the headers of its tables and memos, as erd_change_table_group_color sets it; left out or empty, it has none.',
       x: 'Left edge of the rect on the canvas, in pixels.',
       y: 'Top edge of the rect on the canvas, in pixels.',
       width: 'Width of the rect in pixels, at least 160.',
@@ -404,23 +406,25 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
         'Height of the rect in pixels, at least 100, the title bar included.',
       tableIds:
         'Table ids, from erd_list, to put in the group instead of a rect; the rect becomes their bounds with padding around them.',
+      memoIds:
+        'Memo ids, from erd_list, to put in the group beside the tableIds, its rect wrapping them too while memos are shown.',
     },
   },
   erd_remove_table_group: {
-    description: `Removes a table group; its tables stay where they are, in no group. ${OLDER_EDITOR_GROUPS}`,
+    description: `Removes a table group; its tables and memos stay where they are, in no group. ${OLDER_EDITOR_GROUPS}`,
   },
   erd_change_table_group_name: {
     description: `Renames a table group. ${OLDER_EDITOR_GROUPS}`,
     args: { value: 'The new name; an empty string leaves it unnamed.' },
   },
   erd_change_table_group_color: {
-    description: `Sets the color of a table group, which its box and the headers of its tables take. ${OLDER_EDITOR_GROUPS}`,
+    description: `Sets the color of a table group, which its box and the headers of its tables and memos take. ${OLDER_EDITOR_GROUPS}`,
   },
   erd_move_table_group: {
-    description: `Moves a table group so its rect starts at an absolute canvas position, its tables by the same step. Moving a table or a group never changes which tables a group holds. A move under 20 pixels in all makes no undo entry. ${OLDER_EDITOR_GROUP_MOVE}`,
+    description: `Moves a table group so its rect starts at an absolute canvas position, its tables and memos by the same step. Moving a table, a memo or a group never changes what a group holds. A move under 20 pixels in all makes no undo entry. ${OLDER_EDITOR_GROUP_MOVE}`,
   },
   erd_resize_table_group: {
-    description: `Sets the rect of a table group, its tables staying where they are; the editor draws the box grown to hold each of them. It is refused smaller than 160 by 100 or than the tables with their padding, naming the box the rect must hold. ${OLDER_EDITOR_GROUPS}`,
+    description: `Sets the rect of a table group, its tables and memos staying where they are; the editor draws the box grown to hold each of them. It is refused smaller than 160 by 100 or than the tables and shown memos with their padding, naming the box the rect must hold. ${OLDER_EDITOR_GROUPS}`,
     args: {
       x: 'New left edge in pixels; left out, it stays.',
       y: 'New top edge in pixels; left out, it stays.',
@@ -434,6 +438,14 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
       tableIds: 'Table ids, from erd_list.',
       groupId:
         'Table group id to put the tables in, from erd_list; null or an empty string takes them out of every group.',
+    },
+  },
+  erd_set_memo_group: {
+    description: `Puts memos in a table group, each leaving any group it was in, or with groupId null takes them out of their groups. A memo in a group moves with it, and the group's box grows to hold it while memos are shown. Memos already where they go are left alone. ${OLDER_EDITOR_MEMO_GROUPS}`,
+    args: {
+      memoIds: 'Memo ids, from erd_list.',
+      groupId:
+        'Table group id to put the memos in, from erd_list; null or an empty string takes them out of every group.',
     },
   },
 
@@ -514,7 +526,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   ),
   erd_import_aml: importer('AML'),
   erd_import_json: {
-    description: `Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings; the tables bring their logical names and derived flags, but no column links a domain and none of the document's words, terms and domains is added. ${OLDER_EDITOR_GROUPS_IMPORT} ${OLDER_EDITOR_DICTIONARY}`,
+    description: `Replaces the whole document, its settings included, with an erd-editor JSON document such as another .erd.json file: the settings and locks it holds take the place of this document's, and one without lockSettings turns every lock on and puts the view at the start of the canvas. To keep this document's settings, start from the text erd_read json gives. erd_undo restores the previous document. With mode append it instead adds that document's tables, relationships, indexes, memos and table groups as new ones below the diagram, apart as the file places them, and keeps this document's settings; the tables bring their logical names and derived flags, but no column links a domain and none of the document's words, terms and domains is added. ${OLDER_EDITOR_MEMO_GROUPS} ${OLDER_EDITOR_GROUPS_IMPORT} ${OLDER_EDITOR_DICTIONARY}`,
     args: {
       value:
         'The .erd.json document text; empty gives an empty document, and is refused with mode append.',

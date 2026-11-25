@@ -1,5 +1,5 @@
 import { query } from '@dineug/erd-editor-schema';
-import { groupBy, head, last, pick } from 'es-toolkit';
+import { groupBy, head, isString, last, pick } from 'es-toolkit';
 
 import { PushStreamHistory, PushUndoHistory } from '@/engine/history.actions';
 
@@ -7,6 +7,7 @@ import { ActionType } from './actions';
 import {
   addMemoAction,
   changeMemoColorAction,
+  changeMemoGroupAction,
   changeMemoValueAction,
   moveMemoAction,
   moveToMemoAction,
@@ -64,11 +65,28 @@ const moveToMemo: PushUndoHistory = (
   );
 };
 
+const changeMemoGroup: PushUndoHistory = (
+  undoActions,
+  { payload: { id, prevValue } }: ReturnType<typeof changeMemoGroupAction>,
+  { collections }
+) => {
+  const memo = query(collections).collection('memoEntities').selectById(id);
+  if (!memo) return;
+
+  undoActions.push(
+    changeMemoGroupAction({
+      id,
+      value: isString(prevValue) ? prevValue : memo.groupId,
+    })
+  );
+};
+
 export const memoPushUndoHistoryMap = {
   [ActionType.addMemo]: addMemo,
   [ActionType.removeMemo]: removeMemo,
   [ActionType.changeMemoValue]: changeMemoValue,
   [ActionType.moveToMemo]: moveToMemo,
+  [ActionType.changeMemoGroup]: changeMemoGroup,
 };
 
 const moveMemo: PushStreamHistory = (undoActions, redoActions, actions) => {

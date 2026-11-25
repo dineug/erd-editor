@@ -4,6 +4,10 @@ import { createTestAppContext } from '@/__test-utils__/index';
 import { AppContext } from '@/components/appContext';
 import { toPlacementActions } from '@/components/erd/automatic-table-placement/placementActions';
 import { TablePlacement } from '@/constants/tablePlacement';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
@@ -11,11 +15,11 @@ import {
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
-import { getTableRect, type Rect } from '@/konva/scene/metrics';
+import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
 import {
   createElkLayout,
   createElkLayoutRequest,
-  toTablePoints,
+  toPlacementPoints,
 } from '@/services/elk-layout';
 import type {
   ElkLayoutPoint,
@@ -159,7 +163,7 @@ describe('a placement of table groups through the worker', () => {
         const { store } = app;
         const request = createElkLayoutRequest(store.state, placement);
 
-        const points = toTablePoints(
+        const { tables: points } = toPlacementPoints(
           store.state,
           request,
           await createElkLayout(request)
@@ -201,6 +205,55 @@ describe('a placement of table groups through the worker', () => {
   }
 
   it(
+    "lays a group's memo out inside its box, beside its tables, clear of every other table",
+    async () => {
+      const app = createGroupedDocument();
+      const { store } = app;
+      store.dispatchSync(
+        addMemoAction({
+          id: 'note',
+          ui: { x: 0, y: 0, width: 300, height: 200, zIndex: 3 },
+        }),
+        changeMemoGroupAction({ id: 'note', value: 'accounts' })
+      );
+      const request = createElkLayoutRequest(store.state, TablePlacement.flow);
+
+      const { tables, memos } = toPlacementPoints(
+        store.state,
+        request,
+        await createElkLayout(request)
+      );
+      store.dispatchSync(
+        toPlacementActions(store.state, tables, 'document', memos)
+      );
+
+      const { collections, doc } = store.state;
+      const box = collections.tableGroupEntities['accounts'].ui;
+      const memo = getMemoRect(collections.memoEntities['note']);
+      const meets = (a: Rect, b: Rect) =>
+        a.x < b.x + b.width &&
+        b.x < a.x + a.width &&
+        a.y < b.y + b.height &&
+        b.y < a.y + a.height;
+
+      expect(memos.map(({ id }) => id)).toEqual(['note']);
+      expect(box.x <= memo.x && memo.x + memo.width <= box.x + box.width).toBe(
+        true
+      );
+      expect(
+        box.y <= memo.y && memo.y + memo.height <= box.y + box.height
+      ).toBe(true);
+      for (const id of doc.tableIds) {
+        expect(
+          meets(memo, getTableRect(store.state, collections.tableEntities[id])),
+          id
+        ).toBe(false);
+      }
+    },
+    TIMEOUT
+  );
+
+  it(
     'places the group a relationship reaches after the group it leaves, left to right',
     async () => {
       const { store } = createGroupedDocument();
@@ -212,7 +265,11 @@ describe('a placement of table groups through the worker', () => {
       store.dispatchSync(
         toPlacementActions(
           store.state,
-          toTablePoints(store.state, request, await createElkLayout(request))
+          toPlacementPoints(
+            store.state,
+            request,
+            await createElkLayout(request)
+          ).tables
         )
       );
 

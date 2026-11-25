@@ -124,7 +124,7 @@ export const memoTools: readonly ActionTool[] = [
     name: 'erd_move_memo',
     kind: 'atom',
     atomReason:
-      'No generator places one memo at a point: moveAllAction$ drags the selection by a relative step.',
+      'No generator places one memo at a point: moveAllAction$ drags the selection by a relative step, and sortTablesToMoveAction$ moves only the memos of the groups it places, with their tables.',
     actionTypes: ['memo.moveTo'],
     undoable: true,
     stream: false,

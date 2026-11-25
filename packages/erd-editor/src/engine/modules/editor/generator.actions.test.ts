@@ -51,6 +51,7 @@ import {
   loadSchemaGraphQLAction$,
   loadSchemaSQLAction$,
   moveAllAction$,
+  type MoveAllGesture,
   pasteEntitiesAction$,
   removeColorAllAction$,
   removeSelectedAction$,
@@ -79,6 +80,7 @@ import {
 import {
   addMemoAction,
   changeMemoColorAction,
+  changeMemoGroupAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
 import {
@@ -97,6 +99,7 @@ import {
   addTableAction,
   changeTableColorAction,
   changeTableCommentAction,
+  changeTableGroupAction,
   changeTableLogicalNameAction,
   changeTableNameAction,
   changeTableNameDerivedAction,
@@ -117,6 +120,7 @@ import {
   moveColumnAction,
   removeColumnAction,
 } from '@/engine/modules/table-column/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createRxStore, RxStore } from '@/engine/rx-store';
 import { createStore, Store } from '@/engine/store';
 import { Tag } from '@/engine/tag';
@@ -459,6 +463,52 @@ describe('moveAllAction$', () => {
     store.dispatchSync(selectAction({ m1: SelectType.memo }));
 
     expect(typesOf(store, moveAllAction$(1, 1))).toEqual(['memo.move']);
+  });
+
+  it('carries the member memos of a selected group, a memo selected beside it once', () => {
+    seedMemo(store, 'm1', 100, 100);
+    seedMemo(store, 'm2', 300, 100);
+    seedMemo(store, 'loose', 500, 100);
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 600, height: 400, zIndex: 1 },
+      }),
+      changeMemoGroupAction({ id: 'm1', value: 'g1' }),
+      changeMemoGroupAction({ id: 'm2', value: 'g1' }),
+      selectAction({ g1: SelectType.tableGroup, m1: SelectType.memo })
+    );
+
+    store.dispatchSync(moveAllAction$(10, 0));
+
+    expect(memoOf(store, 'm1').ui.x).toBe(110);
+    expect(memoOf(store, 'm2').ui.x).toBe(310);
+    expect(memoOf(store, 'loose').ui.x).toBe(500);
+  });
+
+  it('keeps the memos its first step carried to its last, whatever joins or leaves midway', () => {
+    seedMemo(store, 'member', 100, 100);
+    seedMemo(store, 'joiner', 300, 100);
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 600, height: 400, zIndex: 1 },
+      }),
+      changeMemoGroupAction({ id: 'member', value: 'g1' }),
+      selectAction({ g1: SelectType.tableGroup })
+    );
+    const gesture: MoveAllGesture = {};
+
+    store.dispatchSync(moveAllAction$(10, 0, 'document', gesture));
+    store.dispatchSync(
+      changeMemoGroupAction({ id: 'member', value: '' }),
+      changeMemoGroupAction({ id: 'joiner', value: 'g1' })
+    );
+    store.dispatchSync(moveAllAction$(10, 0, 'document', gesture));
+
+    expect(gesture.memoIds).toEqual(['member']);
+    expect(memoOf(store, 'member').ui.x).toBe(120);
+    expect(memoOf(store, 'joiner').ui.x).toBe(300);
   });
 
   it('ignores selection entries that are neither table nor memo', () => {
@@ -1748,6 +1798,29 @@ describe('pasteEntitiesAction$', () => {
     expect(store.state.doc.tableIds).toEqual(['t1']);
   });
 
+  it('pastes a copied member table and memo into no group, as a paste brings none', () => {
+    seedTable(store, 't1', 100, 100);
+    seedMemo(store, 'm1', 300, 100);
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 600, height: 400, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: 't1', value: 'g1' }),
+      changeMemoGroupAction({ id: 'm1', value: 'g1' }),
+      selectAction({ t1: SelectType.table, m1: SelectType.memo })
+    );
+
+    store.dispatchSync(
+      pasteEntitiesAction$(entitiesCopyToPayload(store.state)!, 1)
+    );
+
+    const [tableCopy] = addedIds(['t1'], store.state.doc.tableIds);
+    const [memoCopy] = addedIds(['m1'], store.state.doc.memoIds);
+    expect(tableOf(store, tableCopy).groupId).toBe('');
+    expect(memoOf(store, memoCopy).groupId).toBe('');
+  });
+
   it('creates new tables instead of merging into the selected one', () => {
     // AC-6.
     seedTable(store, 't1', 100, 100);
@@ -2140,6 +2213,34 @@ describe('duplicateAction$', () => {
         })
       )
     ).toEqual([]);
+  });
+
+  it('duplicates a member table and memo into no group, the copies standing apart from it', () => {
+    seedTable(store, 't1', 100, 100);
+    seedMemo(store, 'm1', 300, 100);
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 600, height: 400, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: 't1', value: 'g1' }),
+      changeMemoGroupAction({ id: 'm1', value: 'g1' })
+    );
+
+    store.dispatchSync(
+      duplicateAction$({
+        tableIds: ['t1'],
+        memoIds: ['m1'],
+        offset: { x: 50, y: 50 },
+        escapeCollision: true,
+      })
+    );
+
+    const [tableCopy] = addedIds(['t1'], store.state.doc.tableIds);
+    const [memoCopy] = addedIds(['m1'], store.state.doc.memoIds);
+    expect(tableOf(store, tableCopy).groupId).toBe('');
+    expect(memoOf(store, memoCopy).groupId).toBe('');
+    expect(memoOf(store, 'm1').groupId).toBe('g1');
   });
 
   it('adds a memo unselected while memos are hidden, as hidden memos never stay selected', () => {

@@ -13,6 +13,7 @@ export const ActionType = {
   changeMemoColor: 'memo.changeColor',
   resizeMemo: 'memo.resize',
   changeZIndex: 'memo.changeZIndex',
+  changeMemoGroup: 'memo.changeGroup',
 } as const;
 export type ActionType = ValuesType<typeof ActionType>;
 
@@ -60,6 +61,15 @@ export type ActionMap = {
   [ActionType.changeZIndex]: {
     id: string;
     zIndex: number;
+  };
+  [ActionType.changeMemoGroup]: {
+    id: string;
+    value: string;
+    /**
+     * The groupId the memo held, sent by a drop alone: its undo is written as
+     * the drag it ends closes, after the reducer has run, so it cannot read it.
+     */
+    prevValue?: string;
   };
 };
 

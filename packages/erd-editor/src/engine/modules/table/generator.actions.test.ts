@@ -1,7 +1,12 @@
 import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { START_ADD, START_X, START_Y } from '@/constants/layout';
+import {
+  START_ADD,
+  START_X,
+  START_Y,
+  TABLE_SORT_MARGIN,
+} from '@/constants/layout';
 import {
   ColumnOption,
   Database,
@@ -24,7 +29,10 @@ import {
 } from '@/engine/modules/editor/atom.actions';
 import { FocusType, SelectType } from '@/engine/modules/editor/state';
 import { addIndexAction } from '@/engine/modules/index/atom.actions';
-import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeDatabaseAction,
@@ -61,8 +69,15 @@ import {
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Column } from '@/internal-types';
+import {
+  getMemoRect,
+  getTableRect,
+  type Rect,
+  unionRect,
+} from '@/konva/scene/metrics';
 import { bHas } from '@/utils/bit';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
+import { getTableGroupRect, padRect } from '@/utils/tableGroup';
 
 const toWidth = (text: string) => text.length * 10;
 
@@ -1107,6 +1122,135 @@ describe('sortTablesToMoveAction$', () => {
         y: tableOf(sorted, id).ui.y,
       });
     }
+  });
+
+  /** seedGroups with note in g1 at 1000, 1200 and loose in no group at 5, 5. */
+  function seedMemos(target: Store) {
+    seedGroups(target);
+    target.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 1_000, y: 1_200, zIndex: 3 } }),
+      changeMemoGroupAction({ id: 'note', value: 'g1' }),
+      addMemoAction({ id: 'loose', ui: { x: 5, y: 5, zIndex: 3 } })
+    );
+  }
+
+  /** Where g1's tables, wide and narrow, start once the sort reducer has placed them. */
+  function sortedCorner() {
+    const sorted = createTestStore();
+    seedGroups(sorted);
+    sorted.dispatchSync(sortTableAction());
+    const ids = ['wide', 'narrow'];
+    return {
+      corner: {
+        x: Math.min(...ids.map(id => tableOf(sorted, id).ui.x)),
+        y: Math.min(...ids.map(id => tableOf(sorted, id).ui.y)),
+      },
+      rect: sorted.state.collections.tableGroupEntities.g1.ui,
+    };
+  }
+
+  it("gives a group's shown memo a cell after its tables in the group's rows, in the same dispatch, a loose one left", () => {
+    seedMemos(store);
+
+    expect(typesOf(store, sortTablesToMoveAction$())).toEqual([
+      'table.moveTo',
+      'table.moveTo',
+      'table.moveTo',
+      'memo.moveTo',
+      'tableGroup.resize',
+    ]);
+    store.dispatchSync(sortTablesToMoveAction$());
+
+    const { state } = store;
+    const { memoEntities, tableGroupEntities } = state.collections;
+    const narrow = getTableRect(state, tableOf(store, 'narrow'));
+    const wide = getTableRect(state, tableOf(store, 'wide'));
+    // narrow has fewer columns than wide, so the row reads narrow, wide, then the memo.
+    expect(memoEntities.note.ui).toMatchObject({
+      x: wide.x + wide.width + TABLE_SORT_MARGIN,
+      y: wide.y,
+    });
+    expect(memoEntities.loose.ui).toMatchObject({ x: 5, y: 5 });
+    expect(tableGroupEntities.g1.ui).toMatchObject(
+      padRect([narrow, wide, getMemoRect(memoEntities.note)].reduce(unionRect))
+    );
+  });
+
+  const overlaps = (a: Rect, b: Rect) =>
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height;
+
+  it('lands a memo that stood beside a column of member tables on none of them', () => {
+    seedTable(store, 't1', 0, 0);
+    seedTable(store, 't2', 0, 300);
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: -50, y: -80, width: 400, height: 500, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: 't1', value: 'g1' }),
+      changeTableGroupAction({ id: 't2', value: 'g1' }),
+      addMemoAction({ id: 'm1', ui: { x: 420, y: 0, zIndex: 3 } }),
+      changeMemoGroupAction({ id: 'm1', value: 'g1' })
+    );
+
+    store.dispatchSync(sortTablesToMoveAction$());
+
+    const { state } = store;
+    const memo = getMemoRect(state.collections.memoEntities.m1);
+    for (const id of ['t1', 't2']) {
+      expect(overlaps(memo, getTableRect(state, tableOf(store, id))), id).toBe(
+        false
+      );
+    }
+  });
+
+  it('keeps the box of a group with a memo clear of every other table, whichever side the memo stood', () => {
+    for (const memoX of [600, -400]) {
+      const target = createTestStore();
+      seedTable(target, 't0', 50, 50);
+      seedTable(target, 't1', 0, 0);
+      seedTable(target, 't2', 2_000, 0);
+      seedTable(target, 't3', 4_000, 0);
+      target.dispatchSync(
+        addTableGroupAction({
+          id: 'g1',
+          ui: { x: -50, y: -80, width: 400, height: 300, zIndex: 1 },
+        }),
+        changeTableGroupAction({ id: 't1', value: 'g1' }),
+        addMemoAction({ id: 'm1', ui: { x: memoX, y: 0, zIndex: 3 } }),
+        changeMemoGroupAction({ id: 'm1', value: 'g1' })
+      );
+
+      target.dispatchSync(sortTablesToMoveAction$());
+
+      const { state } = target;
+      const { tableEntities, tableGroupEntities } = state.collections;
+      const box = getTableGroupRect(state, tableGroupEntities.g1);
+      for (const id of ['t0', 't2', 't3']) {
+        expect(
+          overlaps(box, getTableRect(state, tableEntities[id])),
+          `${id} with the memo at ${memoX}`
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('moves a hidden memo with its group too, the rect fitted round the tables alone', () => {
+    seedMemos(store);
+    store.dispatchSync(changeShowAction({ show: Show.hideMemo, value: true }));
+    const { corner, rect } = sortedCorner();
+
+    store.dispatchSync(sortTablesToMoveAction$());
+
+    const { memoEntities, tableGroupEntities } = store.state.collections;
+    expect(memoEntities.note.ui).toMatchObject({
+      x: 1_000 + corner.x - 700,
+      y: 1_200 + corner.y - 700,
+    });
+    expect(tableGroupEntities.g1.ui).toEqual(rect);
   });
 
   it('measures on copies of the groups too, so a live group stays put until its resize lands', () => {

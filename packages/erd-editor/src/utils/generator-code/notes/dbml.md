@@ -20,6 +20,7 @@
   - A blank name becomes `group_1`, `group_2` and on. A taken name gets `_2`, `_3` and on.
   - Neither ever takes a name another group holds.
   - The blocks are sorted by the name written. So a text that is imported and exported again comes out the same.
+  - A `TableGroup` holds tables alone and DBML writes no memo, so a group's memos are left out and a group holding memos alone writes no block. A memo's membership does not come back through DBML.
 - **Importer read-back of colors.** The importer reads a `headercolor` back as written when it is `#rgb` or `#rrggbb`.
   - The tokenizer cuts `#3498DB` into a mark, a number and a name. The importer joins them while each touches the previous one (`Token.offset`).
   - It drops any other color, `#3498 DB` too.

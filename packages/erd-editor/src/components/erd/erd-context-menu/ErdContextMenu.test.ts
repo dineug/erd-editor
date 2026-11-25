@@ -55,6 +55,7 @@ import {
   focusColumnAction,
   focusTableAction,
   selectAction,
+  unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import {
   FocusType,
@@ -64,6 +65,7 @@ import {
 import {
   addMemoAction,
   changeMemoColorAction,
+  changeMemoGroupAction,
 } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
@@ -1980,6 +1982,125 @@ describe('ErdContextMenu / table groups', () => {
     });
   });
 
+  describe('on a memo', () => {
+    /** A memo in the first group and one in none, beside the groups' tables. */
+    function seedMemos() {
+      seedGroups();
+      app.store.dispatchSync(
+        addMemoAction({ id: 'note', ui: { x: 40, y: 300, zIndex: 7 } }),
+        addMemoAction({ id: 'stray', ui: { x: 400, y: 900, zIndex: 8 } }),
+        changeMemoGroupAction({ id: 'note', value: GROUP_ID })
+      );
+    }
+
+    const memoGroupOf = (memoId: string) =>
+      app.store.state.collections.memoEntities[memoId].groupId;
+
+    it('lists Group selected tables while a table is selected, and Remove from group while a selected memo is in a group, above Delete', async () => {
+      seedMemos();
+      app.store.dispatchSync(
+        selectAction({ loose: SelectType.table, note: SelectType.memo })
+      );
+      await mountMenu({ type: ErdContextMenuType.memo, memoId: 'note' });
+
+      expect(labelsOf(rootItems())).toEqual([
+        'Color',
+        'Group selected tablesTG',
+        'Remove from group',
+        'Delete selectedDelete',
+      ]);
+      mounted?.unmount();
+
+      app.store.dispatchSync(
+        unselectAllAction(),
+        selectAction({ note: SelectType.memo })
+      );
+      await mountMenu({ type: ErdContextMenuType.memo, memoId: 'note' });
+      expect(labelsOf(rootItems())).toEqual([
+        'Color',
+        'Remove from group',
+        'DeleteDelete',
+      ]);
+      mounted?.unmount();
+
+      app.store.dispatchSync(
+        unselectAllAction(),
+        selectAction({ stray: SelectType.memo })
+      );
+      await mountMenu({ type: ErdContextMenuType.memo, memoId: 'stray' });
+      expect(labelsOf(rootItems())).toEqual(['Color', 'DeleteDelete']);
+    });
+
+    it('groups the selected tables with the selected memos, and opens the new name', async () => {
+      seedMemos();
+      app.store.dispatchSync(
+        selectAction({ loose: SelectType.table, stray: SelectType.memo })
+      );
+      await mountMenu({ type: ErdContextMenuType.memo, memoId: 'stray' });
+
+      await click(findItem(rootItems(), 'Group selected tables'));
+
+      const id = app.store.state.doc.tableGroupIds[2];
+      expect(id).toBeDefined();
+      expect(groupOf('loose')).toBe(id);
+      expect(memoGroupOf('stray')).toBe(id);
+      expect(memoGroupOf('note')).toBe(GROUP_ID);
+      expect(app.store.state.editor.editTableGroupId).toBe(id);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('takes every selected table and memo out of its group in one dispatch, which one undo takes back', async () => {
+      seedMemos();
+      app.store.dispatchSync(
+        selectAction({ a: SelectType.table, note: SelectType.memo })
+      );
+      const before = app.store.history.size;
+      await mountMenu({ type: ErdContextMenuType.memo, memoId: 'note' });
+
+      await click(findItem(rootItems(), 'Remove from group'));
+
+      expect(groupOf('a')).toBe('');
+      expect(memoGroupOf('note')).toBe('');
+      expect(groupOf('b')).toBe(GROUP_ID);
+      expect(app.store.history.size).toBe(before + 1);
+      expect(onClose).toHaveBeenCalledTimes(1);
+
+      app.store.undo();
+      expect(groupOf('a')).toBe(GROUP_ID);
+      expect(memoGroupOf('note')).toBe(GROUP_ID);
+    });
+
+    it('offers Remove from group on a table while a selected memo beside it is in a group', async () => {
+      seedMemos();
+      app.store.dispatchSync(
+        selectAction({ loose: SelectType.table, note: SelectType.memo })
+      );
+      await mountMenu({ type: ErdContextMenuType.table, tableId: 'loose' });
+
+      await click(findItem(rootItems(), 'Remove from group'));
+
+      expect(memoGroupOf('note')).toBe('');
+      expect(groupOf('loose')).toBe('');
+    });
+
+    it('offers no group row to a readonly editor, and no grouping while groups are hidden', async () => {
+      seedMemos();
+      app.store.dispatchSync(
+        selectAction({ loose: SelectType.table, note: SelectType.memo })
+      );
+      locked = true;
+      await mountMenu({ type: ErdContextMenuType.memo, memoId: 'note' });
+      expect(rootItems()).toEqual([]);
+      mounted?.unmount();
+
+      locked = false;
+      hideGroups();
+      await mountMenu({ type: ErdContextMenuType.memo, memoId: 'note' });
+      expect(labelsOf(rootItems())).not.toContain('Group selected tablesTG');
+      expect(labelsOf(rootItems())).toContain('Remove from group');
+    });
+  });
+
   describe('on a group', () => {
     const mountGroupMenu = () =>
       mountMenu({
@@ -2008,9 +2129,11 @@ describe('ErdContextMenu / table groups', () => {
       expect(findItem(rootItems(), 'Delete').querySelector('svg')).toBeNull();
     });
 
-    it("selects the group's tables alone from Select tables", async () => {
+    it("selects the group's tables and memos from Select tables", async () => {
       seedGroups();
       app.store.dispatchSync(
+        addMemoAction({ id: 'note', ui: { x: 40, y: 300, zIndex: 7 } }),
+        changeMemoGroupAction({ id: 'note', value: GROUP_ID }),
         selectAction({
           [GROUP_ID]: SelectType.tableGroup,
           c: SelectType.table,
@@ -2023,6 +2146,7 @@ describe('ErdContextMenu / table groups', () => {
       expect(app.store.state.editor.selectedMap).toEqual({
         a: SelectType.table,
         b: SelectType.table,
+        note: SelectType.memo,
       });
       expect(onClose).toHaveBeenCalledTimes(1);
     });

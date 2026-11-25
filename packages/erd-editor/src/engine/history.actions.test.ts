@@ -80,6 +80,7 @@ describe('pushUndoHistoryMap / pushStreamHistoryMap', () => {
         'tableGroup.add',
         'tableGroup.resize',
         'table.changeGroup',
+        'memo.changeGroup',
         'table.changeLogicalName',
         'column.changeDomain',
         'dictionary.add',

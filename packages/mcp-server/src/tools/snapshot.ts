@@ -72,6 +72,8 @@ export type AgentSnapshotMemo = {
   id: string;
   value: string;
   color: string;
+  /** The table group it is in, '' for none. */
+  groupId: string;
   x: number;
   y: number;
   width: number;
@@ -119,6 +121,7 @@ export type AgentSnapshotTableGroup = {
   width: number;
   height: number;
   tableIds: string[];
+  memoIds: string[];
 };
 
 export type AgentSnapshotSettings = {
@@ -240,28 +243,49 @@ export function toSnapshotScripts({
 }
 
 /**
- * The group a table is in, '' for none: a groupId naming no group the document
- * lists reads as none, as the editor reads it.
+ * The group a table or a memo is in, '' for none: a groupId naming no group
+ * the document lists reads as none, as the editor reads it.
  */
 export const tableGroupIdOf = (
   { doc }: Pick<RootState, 'doc'>,
-  { groupId }: TableEntity
+  { groupId }: Pick<TableEntity | MemoEntity, 'groupId'>
 ): string => (groupId && doc.tableGroupIds.includes(groupId) ? groupId : '');
 
-/** The live tables of each listed group, in document order. */
-export function toTableGroupMembers(
-  state: Pick<RootState, 'doc' | 'collections'>
+/** The members of each listed group among the entities given, by id in their order. */
+function groupMembers(
+  state: Pick<RootState, 'doc'>,
+  entities: ReadonlyArray<Pick<TableEntity | MemoEntity, 'id' | 'groupId'>>
 ): Map<string, string[]> {
   const members = new Map<string, string[]>(
     state.doc.tableGroupIds.map(id => [id, []])
   );
-  for (const table of query(state.collections)
-    .collection('tableEntities')
-    .selectByIds(state.doc.tableIds)) {
-    members.get(tableGroupIdOf(state, table))?.push(table.id);
+  for (const entity of entities) {
+    members.get(tableGroupIdOf(state, entity))?.push(entity.id);
   }
   return members;
 }
+
+/** The live tables of each listed group, in document order. */
+export const toTableGroupMembers = (
+  state: Pick<RootState, 'doc' | 'collections'>
+): Map<string, string[]> =>
+  groupMembers(
+    state,
+    query(state.collections)
+      .collection('tableEntities')
+      .selectByIds(state.doc.tableIds)
+  );
+
+/** The live memos of each listed group, a hidden one too, in document order. */
+export const toTableGroupMemberMemos = (
+  state: Pick<RootState, 'doc' | 'collections'>
+): Map<string, string[]> =>
+  groupMembers(
+    state,
+    query(state.collections)
+      .collection('memoEntities')
+      .selectByIds(state.doc.memoIds)
+  );
 
 /**
  * The domains a document lists, those a link reads by: a removed domain keeps
@@ -369,15 +393,15 @@ export function toSnapshotIndex(
   };
 }
 
-export function toSnapshotMemo({
-  id,
-  value,
-  ui,
-}: MemoEntity): AgentSnapshotMemo {
+export function toSnapshotMemo(
+  { id, value, ui }: MemoEntity,
+  groupId: string
+): AgentSnapshotMemo {
   return {
     id,
     value,
     color: ui.color,
+    groupId,
     x: ui.x,
     y: ui.y,
     width: ui.width,
@@ -387,7 +411,8 @@ export function toSnapshotMemo({
 
 export function toSnapshotTableGroup(
   { id, name, color, ui }: TableGroupEntity,
-  tableIds: readonly string[]
+  tableIds: readonly string[],
+  memoIds: readonly string[]
 ): AgentSnapshotTableGroup {
   return {
     id,
@@ -398,6 +423,7 @@ export function toSnapshotTableGroup(
     width: ui.width,
     height: ui.height,
     tableIds: [...tableIds],
+    memoIds: [...memoIds],
   };
 }
 
@@ -484,6 +510,7 @@ export function toAgentSnapshot(state: RootState): AgentSnapshot {
   const { settings, doc, collections } = state;
   const select = query(collections);
   const members = toTableGroupMembers(state);
+  const memberMemos = toTableGroupMemberMemos(state);
   const domains = liveDomainIds(state);
 
   return {
@@ -499,11 +526,17 @@ export function toAgentSnapshot(state: RootState): AgentSnapshot {
     memos: select
       .collection('memoEntities')
       .selectByIds(doc.memoIds)
-      .map(toSnapshotMemo),
+      .map(memo => toSnapshotMemo(memo, tableGroupIdOf(state, memo))),
     tableGroups: select
       .collection('tableGroupEntities')
       .selectByIds(doc.tableGroupIds)
-      .map(group => toSnapshotTableGroup(group, members.get(group.id) ?? [])),
+      .map(group =>
+        toSnapshotTableGroup(
+          group,
+          members.get(group.id) ?? [],
+          memberMemos.get(group.id) ?? []
+        )
+      ),
     words: select
       .collection('wordEntities')
       .selectByIds(doc.wordIds)

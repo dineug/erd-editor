@@ -41,6 +41,7 @@ import {
 import { CanvasType, NameViewMode } from '@/constants/schema';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import { changeMemoGroupAction } from '@/engine/modules/memo/atom.actions';
 import {
   changeCanvasTypeAction,
   toNameViewModeAction,
@@ -247,6 +248,32 @@ describe('ExplorerPanel - rows', () => {
     ) as HTMLElement;
     expect(getComputedStyle(dot).backgroundColor).toBe('rgb(255, 0, 0)');
     expect(rowOf('g:empty').getAttribute('aria-expanded')).toBeNull();
+  });
+
+  it('writes a memo of a group under its tables by its first line and the memo glyph, and jumps to it', async () => {
+    await setup(seeded => {
+      seedExplorerDocument(seeded);
+      seeded.store.dispatchSync(
+        changeMemoGroupAction({ id: 'note', value: 'billing' })
+      );
+    });
+    explorerViewOf(app.store).expanded = {
+      'f:tableGroups': true,
+      'g:billing': true,
+    };
+    await settle();
+
+    const row = rowOf('g:billing/m:note');
+    expect(textOf(row)).toBe('Order states');
+    expect(
+      iconNameOf(row.querySelector('.tree-row > span:nth-child(2)')!)
+    ).toBe('sticky-note');
+
+    row.click();
+    await settle();
+    expect(app.store.state.editor.selectedMap).toEqual({
+      note: SelectType.memo,
+    });
   });
 
   it('writes an unnamed table as such, with the name in its tooltip (AC-T5)', async () => {

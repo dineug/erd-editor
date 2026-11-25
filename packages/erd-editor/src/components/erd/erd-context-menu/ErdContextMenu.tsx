@@ -55,6 +55,7 @@ import {
   addTableGroupFromTablesAction$,
   removeTableGroupAction$,
   selectTableGroupTablesAction$,
+  setMemoGroupAction$,
   setTableGroupAction$,
 } from '@/engine/modules/table-group/generator.actions';
 import type { RootState } from '@/engine/state';
@@ -69,7 +70,11 @@ import {
 import { importDiffJSON } from '@/utils/file/importFile';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
 import { isMemoShown } from '@/utils/memo';
-import { getTableGroupId, isTableGroupShown } from '@/utils/tableGroup';
+import {
+  getMemoGroupId,
+  getTableGroupId,
+  isTableGroupShown,
+} from '@/utils/tableGroup';
 
 import { createDatabaseMenus } from './menus/databaseMenus';
 import { createDrawRelationshipMenus } from './menus/drawRelationshipMenus';
@@ -142,6 +147,14 @@ type Removal = {
 const selectionRemoval: Removal = {
   labelKey: 'contextMenu.deleteSelected',
   action: removeSelectedAction$,
+};
+
+/** Which of the two group rows the table and memo menus show. */
+type TableGroupRows = { canGroup: boolean; canUngroup: boolean };
+
+const NO_TABLE_GROUP_ROWS: TableGroupRows = {
+  canGroup: false,
+  canUngroup: false,
 };
 
 /** Whether the table, memo or group a menu was raised over is one of two or more selected. */
@@ -414,11 +427,16 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     props.onClose();
   };
 
-  /** The selected tables leave whatever group each is in. */
+  /** The selected tables and memos leave whatever group each is in, in one dispatch. */
   const handleRemoveFromGroup = () => {
     const { store } = app.value;
-    const { tableIds } = getSelectTypeIds(store.state.editor.selectedMap);
-    store.dispatch(setTableGroupAction$(tableIds, ''));
+    const { tableIds, memoIds } = getSelectTypeIds(
+      store.state.editor.selectedMap
+    );
+    store.dispatch(
+      setTableGroupAction$(tableIds, ''),
+      setMemoGroupAction$(memoIds, '')
+    );
     props.onClose();
   };
 
@@ -486,24 +504,68 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
   });
 
   /**
-   * The group rows the table menu shows: Group selected tables over a selection
-   * holding a table, Remove from group while one of them is in a group. A
-   * readonly store shows neither, and hidden groups leave the first out.
+   * The group rows the table and memo menus show: Group selected tables over a selection holding a
+   * table, Remove from group while a selected table or memo is in a group. A readonly store shows
+   * neither, and hidden groups leave the first out.
    */
-  const getTableGroupRows = () => {
+  const getTableGroupRows = (): TableGroupRows => {
     const { store } = app.value;
     const { state } = store;
-    if (store.getReadonly()) return { canGroup: false, canUngroup: false };
+    if (store.getReadonly()) return NO_TABLE_GROUP_ROWS;
 
-    const { tableIds } = getSelectTypeIds(state.editor.selectedMap);
-    const tables = query(state.collections)
+    const { doc, collections, editor } = state;
+    const { tableIds, memoIds } = getSelectTypeIds(editor.selectedMap);
+    const tables = query(collections)
       .collection('tableEntities')
-      .selectByIds(tableIds.filter(id => state.doc.tableIds.includes(id)));
+      .selectByIds(tableIds.filter(id => doc.tableIds.includes(id)));
+    const memos = query(collections)
+      .collection('memoEntities')
+      .selectByIds(memoIds.filter(id => doc.memoIds.includes(id)));
 
     return {
       canGroup: tables.length !== 0 && isTableGroupShown(state),
-      canUngroup: tables.some(table => getTableGroupId(state, table) !== ''),
+      canUngroup:
+        tables.some(table => getTableGroupId(state, table) !== '') ||
+        memos.some(memo => getMemoGroupId(state, memo) !== ''),
     };
+  };
+
+  /** Group selected tables and Remove from group, each while getTableGroupRows shows it. */
+  const tableGroupItems = ({ canGroup, canUngroup }: TableGroupRows) => {
+    const { keyBindingMap } = app.value;
+    const { t } = i18n.value;
+
+    return (
+      <>
+        {canGroup ? (
+          <ContextMenu.Item
+            onClick={handleGroupSelectedTables}
+            children={
+              <ContextMenu.Menu
+                icon={<Icon name="group" size={14} />}
+                name={t('contextMenu.groupSelectedTables')}
+                right={
+                  <Kbd
+                    shortcut={keyBindingMap.groupSelectedTables[0]?.shortcut}
+                  />
+                }
+              />
+            }
+          />
+        ) : null}
+        {canUngroup ? (
+          <ContextMenu.Item
+            onClick={handleRemoveFromGroup}
+            children={
+              <ContextMenu.Menu
+                icon={<Icon name="ungroup" size={14} />}
+                name={t('contextMenu.removeFromGroup')}
+              />
+            }
+          />
+        ) : null}
+      </>
+    );
   };
 
   /** Table Properties, which a readonly reader opens to read. */
@@ -647,9 +709,10 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
     const keysSelection = getFocusedColumnIds(store.state).length > 1;
     const removeShortcut = keyBindingMap.removeSelection[0]?.shortcut;
     const tableGroupRows =
-      props.type === ErdContextMenuType.table
+      props.type === ErdContextMenuType.table ||
+      props.type === ErdContextMenuType.memo
         ? getTableGroupRows()
-        : { canGroup: false, canUngroup: false };
+        : NO_TABLE_GROUP_ROWS;
     const tableRederive =
       props.type === ErdContextMenuType.table && props.tableId && !readonly
         ? getTableRederive(props.tableId)
@@ -722,35 +785,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 }
               />
               {removeColorItem}
-              {tableGroupRows.canGroup ? (
-                <ContextMenu.Item
-                  onClick={handleGroupSelectedTables}
-                  children={
-                    <ContextMenu.Menu
-                      icon={<Icon name="group" size={14} />}
-                      name={t('contextMenu.groupSelectedTables')}
-                      right={
-                        <Kbd
-                          shortcut={
-                            keyBindingMap.groupSelectedTables[0]?.shortcut
-                          }
-                        />
-                      }
-                    />
-                  }
-                />
-              ) : null}
-              {tableGroupRows.canUngroup ? (
-                <ContextMenu.Item
-                  onClick={handleRemoveFromGroup}
-                  children={
-                    <ContextMenu.Menu
-                      icon={<Icon name="ungroup" size={14} />}
-                      name={t('contextMenu.removeFromGroup')}
-                    />
-                  }
-                />
-              ) : null}
+              {tableGroupItems(tableGroupRows)}
               <ContextMenu.Item
                 onClick={handleRemoveTable}
                 children={
@@ -777,6 +812,7 @@ const ErdContextMenu: FC<ErdContextMenuProps> = (props, ctx) => {
                 }
               />
               {removeColorItem}
+              {tableGroupItems(tableGroupRows)}
               <ContextMenu.Item
                 onClick={handleRemoveMemo}
                 children={

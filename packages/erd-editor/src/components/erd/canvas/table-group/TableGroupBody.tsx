@@ -12,20 +12,21 @@ import {
 import {
   getDrawnTableGroupRect,
   type TableGroupLinks,
+  type TableGroupMemberLists,
 } from '@/components/erd/canvas/table-group/tableGroupBox';
 import { useSceneInteraction } from '@/components/sceneInteractionContext';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
 import { TABLE_GROUP_TITLE_HEIGHT } from '@/constants/layout';
 import { selectTableGroupAction$ } from '@/engine/modules/table-group/generator.actions';
-import type { Table, TableGroup } from '@/internal-types';
+import type { TableGroup } from '@/internal-types';
 import { isMainButtonPress, isMultiTouch } from '@/utils/domEvent';
 import { getTableGroupColors } from '@/utils/tableGroup';
 
 export type TableGroupBodyProps = {
   group: TableGroup;
-  /** The group's member tables, read once for every group by TableGroups. */
-  members: ReadonlyArray<Table>;
+  /** The group's member tables and memos, read once for every group by TableGroups. */
+  members: TableGroupMemberLists;
   links: TableGroupLinks;
 };
 

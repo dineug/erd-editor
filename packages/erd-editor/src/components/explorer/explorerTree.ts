@@ -11,7 +11,11 @@ import {
   isTableLogicalName,
 } from '@/utils/find-replace';
 import { isMemoShown } from '@/utils/memo';
-import { getTableGroupMembers, isTableGroupShown } from '@/utils/tableGroup';
+import {
+  getTableGroupMemberMemos,
+  getTableGroupMembers,
+  isTableGroupShown,
+} from '@/utils/tableGroup';
 import { getTableIndexIds } from '@/utils/tableKeys';
 import { orderByNameASC } from '@/utils/tableName';
 
@@ -33,6 +37,8 @@ const groupRowId = (tableGroupId: string) => `g:${tableGroupId}`;
 const groupTableRowId = (tableGroupId: string, tableId: string) =>
   `${groupRowId(tableGroupId)}/${tableRowId(tableId)}`;
 const memoRowId = (memoId: string) => `m:${memoId}`;
+const groupMemoRowId = (tableGroupId: string, memoId: string) =>
+  `${groupRowId(tableGroupId)}/${memoRowId(memoId)}`;
 /** A search's row for one match in a comment or a memo, under the row of what holds it. */
 const excerptRowId = (parentId: string, { field, start }: FindMatch) =>
   `${parentId}/x:${field}:${start}`;
@@ -99,6 +105,7 @@ export type ExplorerNode =
       logicalName: string;
     }
   | { kind: 'memo'; memoId: string; text: string }
+  | { kind: 'groupMemo'; tableGroupId: string; memoId: string; text: string }
   /** One match in a comment or a memo, shown as the stretch of text around it. */
   | { kind: 'excerpt'; match: FindMatch };
 
@@ -259,16 +266,21 @@ const tableGroupData = (group: TableGroup): NodeOf<'tableGroup'> => ({
 function tableGroupNodes(state: RootState): ExplorerTreeNode[] {
   const { doc, collections } = state;
   const groupMembers = getTableGroupMembers(state);
+  // A hidden memo stays a member but shows under no group, as under no folder.
+  const groupMemos = isMemoShown(state)
+    ? getTableGroupMemberMemos(state)
+    : new Map<string, Memo[]>();
 
   return query(collections)
     .collection('tableGroupEntities')
     .selectByIds(doc.tableGroupIds)
     .sort(orderByNameASC)
     .map(group => {
-      // A member is a row that goes to its table, never a second copy of the
-      // table's own folders.
-      const members = () =>
-        [...(groupMembers.get(group.id) ?? [])]
+      // A member is a row that goes to its table or memo, never a second copy
+      // of the table's own folders: the tables by name, then the memos as the
+      // document has them.
+      const members = () => [
+        ...[...(groupMembers.get(group.id) ?? [])]
           .sort(orderByNameASC)
           .map(table =>
             leaf(groupTableRowId(group.id, table.id), {
@@ -278,11 +290,20 @@ function tableGroupNodes(state: RootState): ExplorerTreeNode[] {
               name: table.name,
               logicalName: table.logicalName,
             })
-          );
+          ),
+        ...(groupMemos.get(group.id) ?? []).map(memo =>
+          leaf(groupMemoRowId(group.id, memo.id), {
+            kind: 'groupMemo',
+            tableGroupId: group.id,
+            memoId: memo.id,
+            text: firstLine(memo.value),
+          })
+        ),
+      ];
 
       return {
         id: groupRowId(group.id),
-        hasChildren: groupMembers.has(group.id),
+        hasChildren: groupMembers.has(group.id) || groupMemos.has(group.id),
         children: members,
         data: tableGroupData(group),
       };

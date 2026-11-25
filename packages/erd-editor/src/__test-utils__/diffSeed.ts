@@ -15,6 +15,7 @@ import {
 import {
   addMemoAction,
   changeMemoColorAction,
+  changeMemoGroupAction,
   changeMemoValueAction,
   resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
@@ -103,6 +104,7 @@ export type MemoSeed = {
   width?: number;
   height?: number;
   color?: string;
+  group?: string;
 };
 
 export type GroupSeed = {
@@ -343,6 +345,9 @@ export function seedDiff(app: AppContext, seed: DiffSeed): void {
               prevColor: '',
             }),
           ]
+        : []),
+      ...(memo.group
+        ? [changeMemoGroupAction({ id: memo.id, value: memo.group })]
         : []),
     ]),
     ...(seed.removed ?? []).map(id => removeTableAction({ id })),

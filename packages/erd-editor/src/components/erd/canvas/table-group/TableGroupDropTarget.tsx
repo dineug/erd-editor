@@ -19,9 +19,9 @@ import type { Rect } from '@/konva/scene/metrics';
 export type TableGroupDropTargetProps = {};
 
 /**
- * The outline of each group a table drag would drop a table into, in the focus color, over the
- * static scene and under the dragged tables, in the box the drop is judged in; nothing where the
- * drop would put every table in none, nor short of the click distance, where it judges none.
+ * The outline of each group a drag would drop a table or a memo into, in the focus color, over the
+ * static scene and under what the drag carries, in the box the drop is judged in; nothing where the
+ * drop would put each in none, nor short of the click distance, where it judges none.
  */
 const TableGroupDropTarget: FC<TableGroupDropTargetProps> = (props, ctx) => {
   const app = useAppContext(ctx);

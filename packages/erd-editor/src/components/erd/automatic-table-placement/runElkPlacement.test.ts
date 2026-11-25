@@ -22,9 +22,15 @@ import { runElkPlacement } from '@/components/erd/automatic-table-placement/runE
 import { Open } from '@/constants/open';
 import { TablePlacement } from '@/constants/tablePlacement';
 import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
+import {
   addTableAction,
+  changeTableGroupAction,
   changeTableNameAction,
 } from '@/engine/modules/table/atom.actions';
+import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import type { I18n } from '@/i18n/translate';
 import type { ElkLayoutPoint } from '@/services/elk-layout';
 import { KeyBindingName } from '@/utils/keyboard-shortcut';
@@ -158,6 +164,32 @@ describe('runElkPlacement', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     const [first, second] = onChange.mock.calls[0][0];
     expect(second.x - first.x).toBe(600);
+  });
+
+  it('hands the memos laid out beside a group of tables over apart from them', async () => {
+    const app = createApp();
+    addTable(app, 't1');
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: 0, y: 0, width: 10, height: 10, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: 't1', value: 'g1' }),
+      addMemoAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 3 } }),
+      changeMemoGroupAction({ id: 'm1', value: 'g1' })
+    );
+    const onChange = vi.fn();
+    hoisted.elkLayout = async () => [
+      { id: 't1', x: 0, y: 0 },
+      { id: 'm1', x: 0, y: 300 },
+    ];
+
+    await runElkPlacement(app, TablePlacement.layeredHorizontal, onChange);
+
+    const [tables, memos] = onChange.mock.calls[0];
+    expect(tables.map(({ id }: ElkLayoutPoint) => id)).toEqual(['t1']);
+    expect(memos.map(({ id }: ElkLayoutPoint) => id)).toEqual(['m1']);
+    expect(memos[0].y - tables[0].y).toBe(300);
   });
 
   // The preview overlay is the simulation's, and opening it here is what put a

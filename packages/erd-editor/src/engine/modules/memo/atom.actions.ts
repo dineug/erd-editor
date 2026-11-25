@@ -190,6 +190,30 @@ const changeZIndex: ReducerType<typeof ActionType.changeZIndex> = (
   });
 };
 
+export const changeMemoGroupAction = createAction<
+  ActionMap[typeof ActionType.changeMemoGroup]
+>(ActionType.changeMemoGroup);
+
+/**
+ * Puts a memo in the group the value names, or in none for ''. One register
+ * per memo, so of two peers placing one memo the later write wins.
+ */
+const changeMemoGroup: ReducerType<typeof ActionType.changeMemoGroup> = (
+  { collections, lww },
+  { payload: { id, value }, version },
+  { clock }
+) => {
+  const safeVersion = version ?? clock.getVersion();
+  const collection = query(collections).collection('memoEntities');
+  collection.getOrCreate(id, id => createMemo({ id }));
+
+  collection.replaceOperator(lww, safeVersion, id, 'groupId', () => {
+    collection.updateOne(id, memo => {
+      memo.groupId = value;
+    });
+  });
+};
+
 export const memoReducers = {
   [ActionType.addMemo]: addMemo,
   [ActionType.moveMemo]: moveMemo,
@@ -199,6 +223,7 @@ export const memoReducers = {
   [ActionType.changeMemoColor]: changeMemoColor,
   [ActionType.resizeMemo]: resizeMemo,
   [ActionType.changeZIndex]: changeZIndex,
+  [ActionType.changeMemoGroup]: changeMemoGroup,
 };
 
 export const actions = {
@@ -210,4 +235,5 @@ export const actions = {
   changeMemoColorAction,
   resizeMemoAction,
   changeZIndexAction,
+  changeMemoGroupAction,
 };

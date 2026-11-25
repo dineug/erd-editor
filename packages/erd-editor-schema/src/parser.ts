@@ -48,6 +48,7 @@ export function toJson(schemaV3: ERDEditorSchemaV3) {
 
 const TABLE_DEFAULTS = { logicalName: '', groupId: '', nameDerived: false };
 const COLUMN_DEFAULTS = { logicalName: '', domainId: '' };
+const MEMO_DEFAULTS = { groupId: '' };
 
 const DICTIONARY_IDS = {
   wordEntities: 'wordIds',
@@ -70,7 +71,7 @@ function withoutDefaults(
 /**
  * The doc and collections with the newer fields written sparsely: the groups
  * and each dictionary with its order while either holds an entry, a removed
- * one too, and the table and column fields while off their defaults.
+ * one too, and the table, column and memo fields while off their defaults.
  */
 function withoutEmptyFields({
   doc,
@@ -96,6 +97,13 @@ function withoutEmptyFields({
     written.collections.tableColumnEntities = mapValues(
       collections.tableColumnEntities,
       column => withoutDefaults(column, COLUMN_DEFAULTS)
+    );
+  }
+
+  if (collections.memoEntities) {
+    written.collections.memoEntities = mapValues(
+      collections.memoEntities,
+      memo => withoutDefaults(memo, MEMO_DEFAULTS)
     );
   }
 

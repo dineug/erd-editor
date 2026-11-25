@@ -7,6 +7,7 @@ import { Memo } from '@/v3/schema/memo.entity';
 export const createMemo = (): Memo => ({
   id: '',
   value: '',
+  groupId: '',
   ui: {
     x: 200,
     y: 100,
@@ -32,6 +33,7 @@ export function createAndMergeMemoEntities(
 
     target.id = entryId(key, value);
     assignString('value');
+    assignString('groupId');
 
     uiAssignString('color');
     uiAssignNumber('x');

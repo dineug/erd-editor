@@ -28,6 +28,7 @@ import {
   compareTableGroups,
   compareTables,
   type DiffContext,
+  firstLine,
   foreignKeyPairsOf,
   foreignKeyText,
   groupMembersOf,
@@ -93,9 +94,6 @@ type Live = ReturnType<typeof liveOf>;
 type Named = { id: string; name: string; logicalName?: string };
 
 const named = (name: string) => (name.trim() ? name : null);
-
-/** The first line of a memo, the one a row shows. */
-const firstLine = (text: string) => text.split(/\r?\n/, 1)[0].trim();
 
 function statusOf(changes: DiffChange[]): DiffStatus | null {
   if (changes.some(({ field }) => field === DiffField.name)) {
@@ -389,10 +387,15 @@ export function diffDocuments(prev: RootState, next: RootState): DocumentDiff {
     return name && table ? `${table}|${name}` : null;
   };
 
+  const memos = pairEntities<Memo>(live.prev.memos, live.next.memos, [
+    memo => (memo.value ? memo.value : null),
+    memo => `${Math.round(memo.ui.x)},${Math.round(memo.ui.y)}`,
+  ]);
   const ctx: DiffContext = {
     prev,
     next,
     tables,
+    memos,
     columns: pairEntities(live.prev.columns, live.next.columns, [
       byTableAndName,
     ]),
@@ -429,11 +432,6 @@ export function diffDocuments(prev: RootState, next: RootState): DocumentDiff {
       },
     ]
   );
-  const memos = pairEntities<Memo>(live.prev.memos, live.next.memos, [
-    memo => (memo.value ? memo.value : null),
-    memo => `${Math.round(memo.ui.x)},${Math.round(memo.ui.y)}`,
-  ]);
-
   const tableEntries = listedByName(
     DiffKind.table,
     live.prev.tables,
@@ -455,7 +453,7 @@ export function diffDocuments(prev: RootState, next: RootState): DocumentDiff {
     live.prev.memos,
     live.next.memos,
     memos,
-    compareMemos,
+    (prevMemo, nextMemo) => compareMemos(ctx, prevMemo, nextMemo),
     memo => ({ id: memo.id, name: firstLine(memo.value) })
   );
 

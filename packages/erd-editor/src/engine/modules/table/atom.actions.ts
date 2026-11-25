@@ -9,12 +9,13 @@ import {
 } from '@/constants/layout';
 import { isOwnStep, POSITION_REGISTER } from '@/engine/geometryRegisters';
 import { RootState } from '@/engine/state';
-import { Table } from '@/internal-types';
+import { Memo, Table } from '@/internal-types';
 import { type Rect, unionRect } from '@/konva/scene/metrics';
 import { arrayHas } from '@/utils/arrayHas';
+import { calcMemoHeight, calcMemoWidth } from '@/utils/calcMemo';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { createTable } from '@/utils/collection/table.entity';
-import { getTableGroupId, padRect } from '@/utils/tableGroup';
+import { getMemoGroupId, getTableGroupId, padRect } from '@/utils/tableGroup';
 import { canvasSizeInRange, textInRange } from '@/utils/validation';
 
 import { ActionMap, ActionType, ReducerType } from './actions';
@@ -367,12 +368,25 @@ function groupCell(
   };
 }
 
+const memoCell = (memo: Memo): SortCell => ({
+  width: calcMemoWidth(memo),
+  height: calcMemoHeight(memo),
+  place: (x, y) => {
+    memo.ui.x = x;
+    memo.ui.y = y;
+  },
+});
+
 /**
- * The tables as the sort's cells: one in no group alone, and the members of a
- * group gathered in one cell where its first member comes, so a group stays
- * together. A document with no group gets one cell per table, as it always did.
+ * The tables as the sort's cells: one in no group alone, and the members of a group gathered in one
+ * cell where its first member comes, so a group stays together, each memo given after its group's
+ * tables. A document with no group gets one cell per table, as it always did.
  */
-function toSortCells(state: RootState, tables: Table[]): SortCell[] {
+function toSortCells(
+  state: RootState,
+  tables: Table[],
+  memos: Memo[]
+): { cells: SortCell[]; placedMemos: Memo[] } {
   const membersByGroup = new Map<string, SortCell[]>();
   const order: Array<SortCell | string> = [];
 
@@ -391,14 +405,33 @@ function toSortCells(state: RootState, tables: Table[]): SortCell[] {
     }
   });
 
-  return order.map(cell =>
+  const placedMemos: Memo[] = [];
+  memos.forEach(memo => {
+    // A memo of a group with no member table has no cell to join, so it stays.
+    const members = membersByGroup.get(getMemoGroupId(state, memo));
+    if (!members) return;
+
+    members.push(memoCell(memo));
+    placedMemos.push(memo);
+  });
+  const cells = order.map(cell =>
     typeof cell === 'string'
       ? groupCell(state, cell, membersByGroup.get(cell)!)
       : cell
   );
+
+  return { cells, placedMemos };
 }
 
-const sortTable: ReducerType<typeof ActionType.sortTable> = state => {
+/**
+ * Puts the tables in the sort's rows, fewest columns first, and each memo given in its group's cell
+ * after the group's tables, so the group's rect holds it; the memos it placed come back. The reducer
+ * gives none, since an older editor's table.sort replays it.
+ *
+ * @example
+ * const placed = sortTablesInRows(copy, shownMemoCopies);
+ */
+export function sortTablesInRows(state: RootState, memos: Memo[] = []): Memo[] {
   const { doc, collections } = state;
   const tables = query(collections)
     .collection('tableEntities')
@@ -406,12 +439,14 @@ const sortTable: ReducerType<typeof ActionType.sortTable> = state => {
 
   tables.sort((a, b) => a.columnIds.length - b.columnIds.length);
 
-  placeInRows(
-    toSortCells(state, tables),
-    TABLE_SORT_START,
-    sortWidth(state),
-    TABLE_SORT_START
-  );
+  const { cells, placedMemos } = toSortCells(state, tables, memos);
+  placeInRows(cells, TABLE_SORT_START, sortWidth(state), TABLE_SORT_START);
+
+  return placedMemos;
+}
+
+const sortTable: ReducerType<typeof ActionType.sortTable> = state => {
+  sortTablesInRows(state);
 };
 
 export const tableReducers = {

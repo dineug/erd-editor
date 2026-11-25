@@ -44,6 +44,10 @@ import {
   unselectAllAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
 import { changeCanvasTypeAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -371,14 +375,22 @@ describe('the group menu', () => {
     }
   });
 
-  it("selects the group's tables alone from Select tables", async () => {
+  it("selects the group's tables and shown memos alone from Select tables", async () => {
     const editor = await mountEditor();
+    // Under the member table and left of the point the press lands on.
+    editor.app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 120, y: 290, zIndex: 6 } }),
+      changeMemoGroupAction({ id: 'note', value: 'g1' }),
+      addMemoAction({ id: 'loose', ui: { x: 700, y: 400, zIndex: 7 } })
+    );
+    await settle();
 
     await rightPress(editor, bodyOf(editor, 'g1'));
     await pickRow(editor, 'Select tables');
 
     expect(stateOf(editor).editor.selectedMap).toEqual({
       member: SelectType.table,
+      note: SelectType.memo,
     });
     expect(isMenuOpen(editor)).toBe(false);
   });

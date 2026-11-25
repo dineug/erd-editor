@@ -239,7 +239,12 @@ const FULL = toDocumentJson(
           },
         },
         memoEntities: {
-          m1: { id: 'm1', value: 'note', ui: { color: '#ffcd00' } },
+          m1: {
+            id: 'm1',
+            value: 'note',
+            groupId: 'g1',
+            ui: { color: '#ffcd00' },
+          },
         },
         tableGroupEntities: {
           g1: { id: 'g1', name: 'billing', color: '#30a46c' },

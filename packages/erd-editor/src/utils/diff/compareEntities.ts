@@ -11,7 +11,13 @@ import type {
   TableGroup,
 } from '@/internal-types';
 import { bHas } from '@/utils/bit';
-import { getTableGroupMemberIds } from '@/utils/tableGroup';
+import {
+  getMemberMemos,
+  getMemoGroupId,
+  getTableGroupId,
+  getTableGroupMemberIds,
+  getTableGroupMemberMemoIds,
+} from '@/utils/tableGroup';
 
 import { asNextId, type Pairing } from './pairEntities';
 import { type DiffChange, DiffField, type DiffValue } from './types';
@@ -23,7 +29,11 @@ export type DiffContext = {
   tables: Pairing;
   columns: Pairing;
   tableGroups: Pairing;
+  memos: Pairing;
 };
+
+/** The first line of a memo, the one a row and a group's member list show. */
+export const firstLine = (text: string) => text.split(/\r?\n/, 1)[0].trim();
 
 const point = (x: number, y: number) => `${Math.round(x)}, ${Math.round(y)}`;
 const size = (width: number, height: number) =>
@@ -55,17 +65,32 @@ const tableName = (state: RootState, id: string) =>
   query(state.collections).collection('tableEntities').selectById(id)?.name ??
   '';
 
-/** The group a table is in, or none for an id the document lists no group by. */
-const groupOf = (state: RootState, table: Table) =>
-  table.groupId && state.doc.tableGroupIds.includes(table.groupId)
-    ? table.groupId
-    : '';
-
 const groupName = (state: RootState, id: string) =>
   id
     ? (query(state.collections).collection('tableGroupEntities').selectById(id)
         ?.name ?? '')
     : '';
+
+/**
+ * A move from one group to another, each named as its document lists it ('' for none), as paired,
+ * shown by the groups' names.
+ */
+function groupChange(
+  ctx: DiffContext,
+  prevGroup: string,
+  nextGroup: string
+): DiffChange[] {
+  const pairedGroup = prevGroup
+    ? asNextId(ctx.tableGroups, prevGroup, 'prev')
+    : '';
+
+  return changeShown(
+    DiffField.tableGroup,
+    pairedGroup === nextGroup,
+    groupName(ctx.prev, prevGroup),
+    groupName(ctx.next, nextGroup)
+  );
+}
 
 /** Name, comment, the group it is in, where it stands and its colour; never its z-index or the widths its text gives it. */
 export function compareTables(
@@ -73,22 +98,15 @@ export function compareTables(
   prev: Table,
   next: Table
 ): DiffChange[] {
-  const prevGroup = groupOf(ctx.prev, prev);
-  const nextGroup = groupOf(ctx.next, next);
-  const pairedGroup = prevGroup
-    ? asNextId(ctx.tableGroups, prevGroup, 'prev')
-    : '';
-
   return [
     ...changesOf([
       [DiffField.name, prev.name, next.name],
       [DiffField.comment, prev.comment, next.comment],
     ]),
-    ...changeShown(
-      DiffField.tableGroup,
-      pairedGroup === nextGroup,
-      groupName(ctx.prev, prevGroup),
-      groupName(ctx.next, nextGroup)
+    ...groupChange(
+      ctx,
+      getTableGroupId(ctx.prev, prev),
+      getTableGroupId(ctx.next, next)
     ),
     ...changesOf([
       [
@@ -237,57 +255,97 @@ export function compareForeignKeys(
   ];
 }
 
-/** What it says, where it stands, its size and its colour; never its z-index. */
-export function compareMemos(prev: Memo, next: Memo): DiffChange[] {
-  return changesOf([
-    [DiffField.value, prev.value, next.value],
-    [
-      DiffField.position,
-      point(prev.ui.x, prev.ui.y),
-      point(next.ui.x, next.ui.y),
-    ],
-    [
-      DiffField.size,
-      size(prev.ui.width, prev.ui.height),
-      size(next.ui.width, next.ui.height),
-    ],
-    [DiffField.color, prev.ui.color, next.ui.color],
-  ]);
+/** What it says, the group it is in, where it stands, its size and its colour; never its z-index. */
+export function compareMemos(
+  ctx: DiffContext,
+  prev: Memo,
+  next: Memo
+): DiffChange[] {
+  return [
+    ...changesOf([[DiffField.value, prev.value, next.value]]),
+    ...groupChange(
+      ctx,
+      getMemoGroupId(ctx.prev, prev),
+      getMemoGroupId(ctx.next, next)
+    ),
+    ...changesOf([
+      [
+        DiffField.position,
+        point(prev.ui.x, prev.ui.y),
+        point(next.ui.x, next.ui.y),
+      ],
+      [
+        DiffField.size,
+        size(prev.ui.width, prev.ui.height),
+        size(next.ui.width, next.ui.height),
+      ],
+      [DiffField.color, prev.ui.color, next.ui.color],
+    ]),
+  ];
 }
 
-/** The tables a group holds, each as the current table it pairs with. */
+/** The tables and memos a group holds, each as the current one it pairs with. */
 export function groupMembersOf(
   ctx: DiffContext,
   group: TableGroup,
   side: 'prev' | 'next'
 ): string[] {
-  return getTableGroupMemberIds(ctx[side], group.id).map(id =>
-    asNextId(ctx.tables, id, side)
-  );
+  return [
+    ...getTableGroupMemberIds(ctx[side], group.id).map(id =>
+      asNextId(ctx.tables, id, side)
+    ),
+    ...getTableGroupMemberMemoIds(ctx[side], group.id).map(id =>
+      asNextId(ctx.memos, id, side)
+    ),
+  ];
 }
 
-const memberNames = (state: RootState, group: TableGroup) =>
+const byName = (a: string, b: string) =>
+  a.toLowerCase().localeCompare(b.toLowerCase());
+
+const pairedIds = (ids: string[], pairing: Pairing, side: 'prev' | 'next') =>
+  ids
+    .map(id => asNextId(pairing, id, side))
+    .sort()
+    .join(',');
+
+const tableNames = (state: RootState, group: TableGroup) =>
   getTableGroupMemberIds(state, group.id)
     .map(id => tableName(state, id))
-    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+    .sort(byName)
     .join(', ');
 
-/** Name, the tables it holds, its colour and the box it keeps; never its z-index. */
+/** A group's member memos by their quoted first lines. */
+const memoLines = (state: RootState, group: TableGroup) =>
+  getMemberMemos(state, group.id)
+    .map(({ value }) => `"${firstLine(value)}"`)
+    .sort(byName)
+    .join(', ');
+
+/** Name, the tables and the memos it holds, its colour and the box it keeps; never its z-index. */
 export function compareTableGroups(
   ctx: DiffContext,
   prev: TableGroup,
   next: TableGroup
 ): DiffChange[] {
-  const before = groupMembersOf(ctx, prev, 'prev').sort().join(',');
-  const after = groupMembersOf(ctx, next, 'next').sort().join(',');
+  const tableIds = (group: TableGroup, side: 'prev' | 'next') =>
+    pairedIds(getTableGroupMemberIds(ctx[side], group.id), ctx.tables, side);
+  const memoIds = (group: TableGroup, side: 'prev' | 'next') =>
+    pairedIds(getTableGroupMemberMemoIds(ctx[side], group.id), ctx.memos, side);
 
   return [
     ...changesOf([[DiffField.name, prev.name, next.name]]),
     ...changeShown(
       DiffField.members,
-      before === after,
-      memberNames(ctx.prev, prev),
-      memberNames(ctx.next, next)
+      tableIds(prev, 'prev') === tableIds(next, 'next'),
+      tableNames(ctx.prev, prev),
+      tableNames(ctx.next, next)
+    ),
+    ...changeShown(
+      DiffField.memos,
+      memoIds(prev, 'prev') === memoIds(next, 'next'),
+      memoLines(ctx.prev, prev),
+      memoLines(ctx.next, next)
     ),
     ...changesOf([
       [DiffField.color, prev.color, next.color],

@@ -43,7 +43,10 @@ import {
   viewOpenAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
-import { addMemoAction } from '@/engine/modules/memo/atom.actions';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   changeShowAction,
@@ -60,7 +63,10 @@ import {
   changeColumnNameAction,
   changeColumnPrimaryKeyAction,
 } from '@/engine/modules/table-column/atom.actions';
-import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
+import {
+  addTableGroupAction,
+  removeTableGroupAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { Point } from '@/internal-types';
 import { renderScene } from '@/konva/scene/renderScene';
@@ -685,6 +691,55 @@ describe('the canvas scene', () => {
     expect(stage.findOne('.table-header-band')?.getAttr('fill')).toBe(
       '#3b82f6'
     );
+  });
+
+  it("paints a member memo's band in its group's color, and none once the group is gone", async () => {
+    const { app, stage } = await mountScene();
+
+    seedGroup(app, 'g1', 1);
+    app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 100, y: 100, zIndex: 2 } }),
+      addMemoAction({ id: 'loose', ui: { x: 600, y: 100, zIndex: 3 } }),
+      changeMemoGroupAction({ id: 'note', value: 'g1' })
+    );
+    await flush();
+
+    const bandOf = (id: string) =>
+      stage.findOne<Container>(`#memo-${id}`)!.findOne('.memo-header-band');
+    expect(bandOf('note')?.getAttr('fill')).toBe('#3b82f6');
+    expect(bandOf('loose')).toBeUndefined();
+
+    app.store.dispatchSync(removeTableGroupAction({ id: 'g1' }));
+    await flush();
+    expect(bandOf('note')).toBeUndefined();
+  });
+
+  it("lifts a selected group's member memos into the drag layer, a hidden one nowhere", async () => {
+    const { app, stage } = await mountScene();
+
+    seedGroup(app, 'g1', 1);
+    app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 100, y: 100, zIndex: 2 } }),
+      addMemoAction({ id: 'loose', ui: { x: 600, y: 100, zIndex: 3 } }),
+      changeMemoGroupAction({ id: 'note', value: 'g1' }),
+      selectAction({ g1: SelectType.tableGroup })
+    );
+    beginEntityDrag(app.store.state);
+    await flush();
+
+    const layerOf = (id: string) =>
+      stage.findOne(`#memo-${id}`)?.getLayer()?.name();
+    expect(layerOf('note')).toBe('drag-entity');
+    expect(layerOf('loose')).toBe('scene');
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await flush();
+    expect(stage.findOne('#memo-note')).toBeUndefined();
+
+    endEntityDrag(app.store.state);
+    await flush();
   });
 
   it('renders the draw relationship preview only once a start point exists', async () => {

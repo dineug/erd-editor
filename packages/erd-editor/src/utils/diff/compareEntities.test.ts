@@ -20,7 +20,11 @@ function contextOf(prev: DiffSeed, next: DiffSeed): DiffContext {
   const prevState = diffStateOf(prev);
   const nextState = diffStateOf(next);
   const all = <
-    K extends 'tableEntities' | 'tableColumnEntities' | 'tableGroupEntities',
+    K extends
+      | 'tableEntities'
+      | 'tableColumnEntities'
+      | 'tableGroupEntities'
+      | 'memoEntities',
   >(
     key: K
   ) =>
@@ -35,6 +39,7 @@ function contextOf(prev: DiffSeed, next: DiffSeed): DiffContext {
     tables: pairEntities(...all('tableEntities')),
     columns: pairEntities(...all('tableColumnEntities')),
     tableGroups: pairEntities(...all('tableGroupEntities')),
+    memos: pairEntities(...all('memoEntities')),
   };
 }
 
@@ -198,6 +203,55 @@ describe('compareForeignKeys', () => {
 });
 
 describe('compareMemos and compareTableGroups', () => {
+  it('reads a memo moved from one group to another by the groups it is in, a group no longer listed as none', () => {
+    const ctx = contextOf(
+      {
+        memos: [
+          { id: 'm', value: 'note', group: 'g' },
+          { id: 'n', value: 'gone', group: 'g' },
+        ],
+        groups: [{ id: 'g', name: 'Billing' }],
+      },
+      {
+        memos: [
+          { id: 'm', value: 'note', group: 'h' },
+          { id: 'n', value: 'gone', group: 'g' },
+        ],
+        groups: [{ id: 'h', name: 'Sales' }],
+      }
+    );
+    const memo = (side: 'prev' | 'next', id: string) =>
+      ctx[side].collections.memoEntities[id];
+
+    expect(compareMemos(ctx, memo('prev', 'm'), memo('next', 'm'))).toEqual([
+      { field: DiffField.tableGroup, before: 'Billing', after: 'Sales' },
+    ]);
+    expect(compareMemos(ctx, memo('prev', 'n'), memo('next', 'n'))).toEqual([
+      { field: DiffField.tableGroup, before: 'Billing', after: '' },
+    ]);
+  });
+
+  it('reads no change for a memo that stays in the group its renamed group pairs with', () => {
+    const ctx = contextOf(
+      {
+        memos: [{ id: 'm', value: 'note', group: 'g' }],
+        groups: [{ id: 'g', name: 'Billing' }],
+      },
+      {
+        memos: [{ id: 'm', value: 'note', group: 'g' }],
+        groups: [{ id: 'g', name: 'Invoices' }],
+      }
+    );
+
+    expect(
+      compareMemos(
+        ctx,
+        ctx.prev.collections.memoEntities.m,
+        ctx.next.collections.memoEntities.m
+      )
+    ).toEqual([]);
+  });
+
   it('reads a memo recoloured, and a group recoloured, moved and grown', () => {
     const ctx = contextOf(
       {
@@ -212,6 +266,7 @@ describe('compareMemos and compareTableGroups', () => {
 
     expect(
       compareMemos(
+        ctx,
         ctx.prev.collections.memoEntities.m,
         ctx.next.collections.memoEntities.m
       )
@@ -223,5 +278,76 @@ describe('compareMemos and compareTableGroups', () => {
         ctx.next.collections.tableGroupEntities.g
       ).map(({ field }) => field)
     ).toEqual([DiffField.color, DiffField.position, DiffField.size]);
+  });
+
+  it("reads a group's memos apart from its tables, each memo by its quoted first line", () => {
+    const ctx = contextOf(
+      {
+        tables: [{ id: 't', name: 'orders', group: 'g' }],
+        memos: [{ id: 'm', value: 'Billing rules\nsecond line', group: 'g' }],
+        groups: [{ id: 'g', name: 'g' }],
+      },
+      {
+        tables: [{ id: 't', name: 'orders', group: 'g' }],
+        memos: [
+          { id: 'm', value: 'Billing rules\nsecond line' },
+          { id: 'n', value: '', group: 'g' },
+        ],
+        groups: [{ id: 'g', name: 'g' }],
+      }
+    );
+
+    expect(
+      compareTableGroups(
+        ctx,
+        ctx.prev.collections.tableGroupEntities.g,
+        ctx.next.collections.tableGroupEntities.g
+      )
+    ).toEqual([
+      { field: DiffField.memos, before: '"Billing rules"', after: '""' },
+    ]);
+  });
+
+  it("lists a group's tables and memos by name, whatever case they start in", () => {
+    const ctx = contextOf(
+      {
+        tables: [
+          { id: 't', name: 'orders', group: 'g' },
+          { id: 'u', name: 'Accounts', group: 'g' },
+        ],
+        memos: [
+          { id: 'm', value: 'zeta', group: 'g' },
+          { id: 'n', value: 'Alpha', group: 'g' },
+        ],
+        groups: [{ id: 'g', name: 'g' }],
+      },
+      {
+        tables: [
+          { id: 't', name: 'orders', group: 'g' },
+          { id: 'u', name: 'Accounts', group: 'g' },
+          { id: 'v', name: 'billing', group: 'g' },
+        ],
+        memos: [
+          { id: 'm', value: 'zeta' },
+          { id: 'n', value: 'Alpha', group: 'g' },
+        ],
+        groups: [{ id: 'g', name: 'g' }],
+      }
+    );
+
+    expect(
+      compareTableGroups(
+        ctx,
+        ctx.prev.collections.tableGroupEntities.g,
+        ctx.next.collections.tableGroupEntities.g
+      )
+    ).toEqual([
+      {
+        field: DiffField.members,
+        before: 'Accounts, orders',
+        after: 'Accounts, billing, orders',
+      },
+      { field: DiffField.memos, before: '"Alpha", "zeta"', after: '"Alpha"' },
+    ]);
   });
 });

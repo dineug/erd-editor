@@ -6,6 +6,7 @@ import { ActionType } from '@/engine/modules/memo/actions';
 import {
   addMemoAction,
   changeMemoColorAction,
+  changeMemoGroupAction,
   changeMemoValueAction,
   moveMemoAction,
   moveToMemoAction,
@@ -33,13 +34,14 @@ beforeEach(() => {
 });
 
 describe('memoPushUndoHistoryMap', () => {
-  it('registers undo builders only for add, remove, changeValue and moveTo', () => {
+  it('registers undo builders only for add, remove, changeValue, moveTo and changeGroup', () => {
     expect(Object.keys(memoPushUndoHistoryMap).sort()).toEqual(
       [
         ActionType.addMemo,
         ActionType.removeMemo,
         ActionType.changeMemoValue,
         ActionType.moveToMemo,
+        ActionType.changeMemoGroup,
       ].sort()
     );
   });
@@ -152,6 +154,52 @@ describe('memoPushUndoHistoryMap', () => {
       memoPushUndoHistoryMap[ActionType.moveToMemo](
         undoActions,
         moveToMemoAction({ id: 'ghost', x: 1, y: 1 }),
+        store.state
+      );
+
+      expect(undoActions).toEqual([]);
+    });
+  });
+
+  describe('changeMemoGroup', () => {
+    it('undoes with the group the memo was in', () => {
+      store.dispatchSync(
+        addMemoAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 2 } }),
+        changeMemoGroupAction({ id: 'm1', value: 'g1' })
+      );
+
+      memoPushUndoHistoryMap[ActionType.changeMemoGroup](
+        undoActions,
+        changeMemoGroupAction({ id: 'm1', value: '' }),
+        store.state
+      );
+
+      expect(undoActions).toEqual([
+        changeMemoGroupAction({ id: 'm1', value: 'g1' }),
+      ]);
+    });
+
+    it('undoes a drop with the group it carries, the state read after its reducer', () => {
+      store.dispatchSync(
+        addMemoAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 2 } }),
+        changeMemoGroupAction({ id: 'm1', value: 'g2' })
+      );
+
+      memoPushUndoHistoryMap[ActionType.changeMemoGroup](
+        undoActions,
+        changeMemoGroupAction({ id: 'm1', value: 'g2', prevValue: 'g1' }),
+        store.state
+      );
+
+      expect(undoActions).toEqual([
+        changeMemoGroupAction({ id: 'm1', value: 'g1' }),
+      ]);
+    });
+
+    it('pushes nothing when the memo is unknown', () => {
+      memoPushUndoHistoryMap[ActionType.changeMemoGroup](
+        undoActions,
+        changeMemoGroupAction({ id: 'ghost', value: 'g1' }),
         store.state
       );
 

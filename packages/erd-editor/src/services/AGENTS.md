@@ -19,7 +19,7 @@
 | File | Description |
 | --- | --- |
 | `elk-layout/index.ts` | `createElkLayout`, over one worker connection kept for the session; a host with no shared worker is refused; `SLOW_LAYOUT_MS` |
-| `elk-layout/elkGraph.ts` | `createElkLayoutRequest`, `toHints`, `toTablePoints`, `toViewPoints` |
+| `elk-layout/elkGraph.ts` | `createElkLayoutRequest`, `toHints`, `toPlacementPoints` (a document's tables and memos apart), `toViewPoints` |
 | `elk-layout/elkLayoutService.ts` | `ElkLayoutService`, which runs in the worker; `toElkGraph`, `containerOf`, `portsByNode` |
 | `elk-layout/elkLayoutOptions.ts` | The ELK options per placement, `keepsTableGroups`, `GROUP_NODE_OPTIONS`, the compound nodes' options |
 | `elk-layout/elkWorkerRealm.ts` | The `document` stub ELK's bundle looks for in a realm with no document |
@@ -39,7 +39,7 @@
 | `shiki/graphqlGrammar.ts` | `@shikijs/langs/graphql`'s grammar without its `embeddedLangs` (rules in `src/components/generator-code/AGENTS.md`) |
 | `src/workers/<worker>.spawn.ts` | The one place each SharedWorker is constructed, a module per worker |
 | `src/components/erd/automatic-table-placement/` | The force simulation (`forceGroupBoxes`, `GROUP_BOX_GAP`) and `toPlacementActions` |
-| `src/utils/tableGroup.ts` | `getTableGroupWraps`, a group's padded bounds |
+| `src/utils/tableGroup.ts` | `getTableGroupWraps`, a group's padded bounds; `getTableGroupMemoMoves`, where a member memo rides |
 
 ## Rules
 
@@ -47,28 +47,33 @@
 
 - **Automatic placement keeps table groups together.** It is an owner decision, held in `elk-layout/`, `src/components/erd/automatic-table-placement/` and the grid `sortTable`. It holds whether the groups are shown or hidden, since membership is data and the Show bit only draws.
 - **Each group's members go in a group node.** Every ELK placement does this but the views' preset, which `keepsTableGroups` leaves out because a view draws no group. The node has `kind: 'tableGroup'`, and its `elk.padding` is the box the editor draws.
+  - A group's shown memos go in its node too, after its tables, as leaves marked `memo` at the size they draw (`withMemberMemos`), which ELK packs beside the tables since nothing joins them. Only a group holding a table gets a node, so a group holding memos alone stays where it is, as a memo in no group does.
+  - `toPlacementPoints` hands the memos' points apart from the tables', and `runElkPlacement` hands both to `toPlacementActions`. `toViewPoints` hands tables alone.
 - **Group nodes repeat the placement's own options.** Inside a compound node ELK falls back to its default spacing otherwise.
 - **Groups joined across borders share a `component` node.** Each set of groups and tables that relationships join across a group border goes inside one. It carries `elk.hierarchyHandling: INCLUDE_CHILDREN`, which is what makes ELK read an edge between two groups.
 - **Keep `elk.hierarchyHandling` off the root.** On the root it switches off `elk.separateConnectedComponents` and stacks every table nothing joins in the first layer (measured 2026-10-10 with elkjs 0.12.0). The packing case of `elkLayoutService.test.ts` guards this.
 - **Each edge goes in its deepest common node.** `toElkGraph` hands it to the deepest node holding both ends (`containerOf`). So a document with no group gets the flat graph it always did.
-- **The bounds count each group's padded box.** `toTablePoints` and `toViewPoints` count it, so a placed import's group starts at `TABLE_SORT_START`.
+- **The bounds count each group's padded box.** `toPlacementPoints` and `toViewPoints` count it, memos included, so a placed import's group starts at `TABLE_SORT_START`.
 
 ### Force Simulation and Grid
 
-- **Force simulation moves a group as one box.** This holds for a group with members, which stay where they stand inside it. The preview draws the box where it goes.
+- **Force simulation moves a group as one box.** This holds for a group with member tables, whose tables and memos stay where they stand inside it. The box is sized by the tables and the shown memos; a hidden memo rides along and sizes none of it. The preview draws the box where it goes.
 - **A group box stays `GROUP_BOX_GAP` clear.** `forceGroupBoxes` holds it that far from every other group's box and table. It needs the gap because a circle sized for a table lets a group several members wide run into a neighbour. There a member's centre would join it to the other group on its next drag.
 - **A group's `forceCollide` circle fits inside its box.** It is the circle inside the box, so it claims no room past it. A table keeps its circle, so a document with no group lands where it always did.
 - **The preview's run lasts as long as the preview.** Apply, Cancel, the stop key and the simulation's own end close it, its toast with it. Anything else that takes the preview away, the editor turning readonly or going, ends the run as it unmounts (`src/components/erd/automatic-table-placement/AutomaticTablePlacement.tsx`): the toast closes and the simulation stops, so no placement nobody applied lands later. A tab switch takes nothing away, since the ERD tab stays mounted behind the other tab, so the preview and its run go on. `AutomaticTablePlacement.test.ts` beside it and `src/components/erd/Erd.browser.test.tsx` pin it.
-- **`sortTable` gives a group's members their own rows.** The rows sit inside one cell, where the group's first member comes. They wrap so the box fits the sort width (`canvasSizeInRange(doc.tableIds.length * 100)`). The reducer writes the group's rect.
+- **`sortTable` gives a group's members their own rows.** The rows sit inside one cell, where the group's first member comes. They wrap so the box fits the sort width (`canvasSizeInRange(doc.tableIds.length * 100)`). The reducer writes the group's rect. `sortTablesToMoveAction$` adds the group's shown memos to those rows, each after its tables (`sortTablesInRows`).
 
 ### Where a Group Lands
 
-- **A group lands at its members' padded bounds.** This holds for each group with members, whatever placed them (`getTableGroupWraps`, DOM-free, in the peer graph). It lands in the dispatch that moves the tables:
+- **A group lands at its members' padded bounds.** This holds for each group with member tables, whatever placed them, its shown memos counted (`getTableGroupWraps`, DOM-free, in the peer graph). It lands in the dispatch that moves the tables:
   - `toPlacementActions` for Auto Layout and the preview's Apply, with the scroll, so it is one undo;
   - `toLandingJson` for a placed replace;
   - `toSchemaAppend` for an append the grid or Flow lays out; a json file's append keeps its own placement and moves each group's stored rect with the block (`toAppendTableGroups`);
   - the sort reducer itself for a grid, on a copy whose points travel as values (`sortTablesToMoveAction$`, `withGridPoints`).
-- **No placement changes membership.** A group with no member keeps its rect.
+- **No placement changes membership.** A group with no member table keeps its rect, and its memos stay. No layout keeps a table out of that rect, an empty group's or one holding memos alone.
+- **A group's memos ride with its tables.** A memo no layout placed, which is every memo but the shown ones ELK and the grid sort lay out, keeps where it stood from the corner of its group's tables (`getTableGroupMemoMoves`), hidden ones too, since membership is data. It moves as a `memo.moveTo` in the dispatch that moves the tables, and the content rect the view centres on reads it there (`getContentRectAfter`). A memo in no group stays where it is.
+  - The force simulation carries the memos itself, which lands each where that rule puts it, so its Apply hands over the tables alone.
+  - The grid sort's reducer places no memo, since an older editor's `table.sort` still replays it: `sortTablesToMoveAction$` gives each shown member memo a cell after its group's tables, so the rows leave room for it, and moves a hidden one by that rule (`src/engine/AGENTS.md`, A replicated sort).
 - How an import is placed before it lands, as a placed replace or as an append (`toSchemaAppend`): `src/utils/AGENTS.md`.
 - The peer graph, which `getTableGroupWraps` belongs to: `src/peer/AGENTS.md`.
 

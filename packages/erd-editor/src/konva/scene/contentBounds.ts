@@ -19,7 +19,7 @@ import {
 
 export { unionRect } from '@/konva/scene/metrics';
 
-/** A table and the point it is about to be moved to, named before the move is dispatched. */
+/** A table or a memo and the point it is about to be moved to, named before the move is dispatched. */
 export type TableMove = { id: string; x: number; y: number };
 
 /**
@@ -59,15 +59,16 @@ export function getSceneContentRect(
 }
 
 /**
- * One box per table, memo and group the source shows, each table at the point
- * named for it and each group named at its rect. The reader that asks which
- * entity is nearest needs them apart, and the box below folds them together.
+ * One box per table, memo and group the source shows, each table and memo at the point named for
+ * it in moves or memoMoves and each group named at its rect. The reader that asks which entity is
+ * nearest needs them apart, and the box below folds them together.
  */
 export function getContentRects(
   state: RootState,
   moves: ReadonlyArray<TableMove> = [],
   source: GeometrySource = 'document',
-  groupRects: ReadonlyArray<TableGroupWrap> = []
+  groupRects: ReadonlyArray<TableGroupWrap> = [],
+  memoMoves: ReadonlyArray<TableMove> = []
 ): Rect[] {
   const { collections, doc } = state;
   // The document's two lists read directly: the third getVisibleIds carries,
@@ -76,6 +77,7 @@ export function getContentRects(
     source === 'document' ? doc : getVisibleIds(state, source);
   const shownMemoIds = isMemoShown(state) ? memoIds : [];
   const moved = new Map(moves.map(move => [move.id, move]));
+  const movedMemos = new Map(memoMoves.map(move => [move.id, move]));
   // Only the document lists groups, so a group's members are read at the
   // document's geometry, the one the walk over the tables below takes there.
   const groups =
@@ -105,10 +107,18 @@ export function getContentRects(
     growTableGroupBox(groupBoxes, table, rect);
     return rect;
   });
+  const memoRects = memos.map(memo => {
+    const rect = getMemoRect(memo);
+    const move = movedMemos.get(memo.id);
+    if (move) return { ...rect, x: move.x, y: move.y };
+
+    growTableGroupBox(groupBoxes, memo, rect);
+    return rect;
+  });
 
   return [
     ...tableRects,
-    ...memos.map(getMemoRect),
+    ...memoRects,
     ...groups.map(
       group => placedGroups.get(group.id) ?? groupBoxes.get(group.id)!
     ),
@@ -116,17 +126,18 @@ export function getContentRects(
 }
 
 /**
- * The content rect as it will stand once each table named is at its point and
- * each group named at its rect. A placement centres the view on where they land
- * in the dispatch that moves them, so it needs the box before any reducer ran.
+ * The content rect as it will stand once each table and memo named is at its point and each group
+ * named at its rect. A placement centres the view on where they land in the dispatch that moves
+ * them, so it needs the box before any reducer ran.
  */
 export function getContentRectAfter(
   state: RootState,
   moves: ReadonlyArray<TableMove>,
   source: GeometrySource = 'document',
-  groupRects: ReadonlyArray<TableGroupWrap> = []
+  groupRects: ReadonlyArray<TableGroupWrap> = [],
+  memoMoves: ReadonlyArray<TableMove> = []
 ): Rect | null {
-  const boxes = getContentRects(state, moves, source, groupRects);
+  const boxes = getContentRects(state, moves, source, groupRects, memoMoves);
 
   return boxes.length ? boxes.reduce(unionRect) : null;
 }

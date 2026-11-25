@@ -198,9 +198,9 @@ describe('the words on a table group', () => {
   ];
   const OLDER =
     'An ERD Editor extension or plugin released before table groups ignores this edit and drops every group when it saves, so the user should update it.';
-  // A group move also sends table.move, which an older editor still applies.
+  // A group move also sends table.move and memo.move, which an older editor still applies.
   const OLDER_MOVE =
-    'An ERD Editor extension or plugin released before table groups moves only the tables of the group and drops every group when it saves, so the user should update it.';
+    'An ERD Editor extension or plugin released before table groups moves only the tables and memos of the group and drops every group when it saves, so the user should update it.';
 
   it('reach every group tool the registry has', () => {
     expect(
@@ -220,6 +220,50 @@ describe('the words on a table group', () => {
   it('name no release, which the next one would make wrong', () => {
     for (const name of GROUP_TOOLS) {
       expect(describeTool(name)).not.toMatch(/\d+\.\d+/);
+    }
+  });
+});
+
+describe('the words on a memo in a table group', () => {
+  const OLDER =
+    'An ERD Editor extension or plugin released before memos joined table groups ignores which group a memo is in and leaves it out when it saves, so the user should update it.';
+  // Each puts memos in groups: by memoIds or a drawn rect, or a document whose memos carry one.
+  const TOOLS = [
+    'erd_set_memo_group',
+    'erd_add_table_group',
+    'erd_import_json',
+  ];
+
+  it('reach every tool that takes memoIds to put memos in a group', () => {
+    expect(
+      actionTools
+        .filter(({ args }) => args.some(({ name }) => name === 'memoIds'))
+        .map(({ name }) => name)
+    ).toEqual(['erd_add_table_group', 'erd_set_memo_group']);
+  });
+
+  it('end erd_set_memo_group on an editor released before memos joined groups dropping it', () => {
+    expect(describeTool('erd_set_memo_group').endsWith(` ${OLDER}`)).toBe(true);
+  });
+
+  it('warn before the group sentence on the tools that also add groups, the rect path included', () => {
+    expect(describeTool('erd_add_table_group')).toContain(
+      ` ${OLDER} An ERD Editor extension or plugin released before table groups ignores this edit`
+    );
+    expect(describeTool('erd_import_json')).toContain(
+      ` ${OLDER} An ERD Editor extension or plugin released before table groups drops every group`
+    );
+  });
+
+  it('say a hidden memo leaves the box as it is', () => {
+    expect(describeTool('erd_set_memo_group')).toContain(
+      "the group's box grows to hold it while memos are shown"
+    );
+  });
+
+  it('name no release, which the next one would make wrong', () => {
+    for (const name of TOOLS) {
+      expect(describeTool(name), name).not.toMatch(/\d+\.\d+/);
     }
   });
 });

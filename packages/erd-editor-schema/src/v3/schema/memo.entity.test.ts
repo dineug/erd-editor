@@ -20,10 +20,12 @@ describe('v3/schema/memo.entity', () => {
     const memo: Memo = {
       id: 'memo-1',
       value: 'remember me',
+      groupId: 'group-1',
       ui,
     };
 
     expect(memo.value).toBe('remember me');
+    expect(memo.groupId).toBe('group-1');
     expect(memo.ui.width).toBe(memo.ui.height);
     expect(memo.ui.color).toBe('#00ff00');
   });
@@ -32,6 +34,7 @@ describe('v3/schema/memo.entity', () => {
     const memo: Memo = {
       id: 'memo-2',
       value: '',
+      groupId: '',
       ui: { x: 0, y: 0, width: 127, height: 127, zIndex: 1, color: '' },
     };
 
@@ -50,6 +53,7 @@ describe('v3/schema/memo.entity', () => {
     const build = (id: string, value: string): Memo => ({
       id,
       value,
+      groupId: '',
       ui: { x: 0, y: 0, width: 127, height: 127, zIndex: 1, color: '' },
     });
     const memoEntities: Record<string, Memo> = {

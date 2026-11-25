@@ -24,6 +24,7 @@ import {
 import {
   getDrawnTableGroupRect,
   type TableGroupLinks,
+  type TableGroupMemberLists,
 } from '@/components/erd/canvas/table-group/tableGroupBox';
 import { openTableGroupNameEditor } from '@/components/erd/canvas/table-group/tableGroupNameEditor';
 import TableGroupSash from '@/components/erd/canvas/table-group/TableGroupSash';
@@ -41,7 +42,7 @@ import { useThemeContext } from '@/components/themeContext';
 import { TABLE_GROUP_TITLE_HEIGHT } from '@/constants/layout';
 import { SelectType } from '@/engine/modules/editor/state';
 import { removeTableGroupAction$ } from '@/engine/modules/table-group/generator.actions';
-import type { Table, TableGroup } from '@/internal-types';
+import type { TableGroup } from '@/internal-types';
 import type { Rect } from '@/konva/scene/metrics';
 import type { Theme } from '@/themes/tokens';
 import {
@@ -62,8 +63,8 @@ const BLOCKED_KINDS = ['icon'];
 
 export type TableGroupProps = {
   group: TableGroup;
-  /** The group's member tables, read once for every group by TableGroups. */
-  members: ReadonlyArray<Table>;
+  /** The group's member tables and memos, read once for every group by TableGroups. */
+  members: TableGroupMemberLists;
   links: TableGroupLinks;
 };
 

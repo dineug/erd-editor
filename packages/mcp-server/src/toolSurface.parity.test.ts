@@ -49,6 +49,7 @@ const ADDED_TOOLS: readonly string[] = [
   'erd_set_column_domain',
   'erd_set_column_logical_name',
   'erd_set_ddl_script',
+  'erd_set_memo_group',
   'erd_set_table_group',
   'erd_set_table_logical_name',
   'erd_update_domain',
@@ -147,9 +148,9 @@ const recorded = () =>
 const kept = () => fixture.filter(({ name }) => !REMOVED_TOOLS.includes(name));
 
 describe('the tool surface against the SDK-based server recording', () => {
-  it('holds the 59 recorded tools less the 10 removed, and the 28 added since', () => {
+  it('holds the 59 recorded tools less the 10 removed, and the 29 added since', () => {
     expect(fixture).toHaveLength(59);
-    expect(tools).toHaveLength(77);
+    expect(tools).toHaveLength(78);
     expect(namesIn(fixture, ADDED_TOOLS)).toEqual([]);
     expect(namesIn(live, ADDED_TOOLS)).toEqual(ADDED_TOOLS);
     expect(namesIn(fixture, REMOVED_TOOLS)).toEqual(REMOVED_TOOLS);
@@ -201,7 +202,7 @@ describe('the tool surface against the SDK-based server recording', () => {
         hasOutputSchema: !PLAIN_TEXT_TOOLS.has(name),
       }))
     );
-    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(73);
+    expect(live.filter(tool => tool.hasOutputSchema)).toHaveLength(74);
   });
 
   it('takes an object for its arguments, in every tool', () => {

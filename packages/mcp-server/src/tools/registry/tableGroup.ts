@@ -10,7 +10,7 @@ import {
 import { query } from '@dineug/erd-editor-schema';
 
 import type { ActionTool, ToolArg, ToolArgValues } from '@/tools/registry';
-import { toTableGroupMembers } from '@/tools/snapshot';
+import { toTableGroupMemberMemos, toTableGroupMembers } from '@/tools/snapshot';
 
 const GROUP_ID: ToolArg = {
   name: 'groupId',
@@ -21,6 +21,18 @@ const GROUP_ID: ToolArg = {
 const TABLE_IDS: ToolArg = {
   name: 'tableIds',
   kind: { type: 'entityIdList', entity: 'table' },
+  required: true,
+};
+
+const MEMO_IDS: ToolArg = {
+  name: 'memoIds',
+  kind: { type: 'entityIdList', entity: 'memo' },
+  required: true,
+};
+
+const GROUP_ID_OR_NONE: ToolArg = {
+  name: 'groupId',
+  kind: { type: 'entityId', entity: 'tableGroup', orNone: true },
   required: true,
 };
 
@@ -43,9 +55,15 @@ const MIN_SIZE = `width must be at least ${TABLE_GROUP_MIN_WIDTH} and height at 
 const isTooSmall = ({ width, height }: { width: number; height: number }) =>
   width < TABLE_GROUP_MIN_WIDTH || height < TABLE_GROUP_MIN_HEIGHT;
 
-/** A new group takes tableIds or a whole rect, never both, and a rect no smaller than the editor draws. */
+/**
+ * A new group takes tableIds, memoIds beside them, or a whole rect, never both,
+ * and a rect no smaller than the editor draws.
+ */
 function refineAdd(args: ToolArgValues): string | undefined {
   const given = RECT_ARGS.filter(name => args[name] !== undefined);
+  if (args.memoIds && !args.tableIds) {
+    return 'memoIds come with tableIds, the tables the group wraps; for memos alone pass a rect round them, or erd_set_memo_group to put them in a group';
+  }
   if (args.tableIds) {
     return given.length
       ? `pass tableIds or a rect (x, y, width, height), not both; ${given.join(', ')} came with tableIds`
@@ -72,8 +90,8 @@ const resizedRect = (
 
 /**
  * A resize as the editor's sash allows it: no smaller than the least a group
- * takes, nor than its tables' bounds with the padding around them, which the
- * sash stops at; the message names the box the rect must hold.
+ * takes, nor than its tables' and shown memos' bounds with the padding around
+ * them, which the sash stops at; the message names the box the rect must hold.
  */
 function refineResize(
   args: ToolArgValues,
@@ -86,7 +104,8 @@ function refineResize(
 
   const box = getTablesGroupRect(
     state,
-    toTableGroupMembers(state).get(args.groupId) ?? []
+    toTableGroupMembers(state).get(args.groupId) ?? [],
+    toTableGroupMemberMemos(state).get(args.groupId) ?? []
   );
   if (
     !box ||
@@ -97,7 +116,7 @@ function refineResize(
   ) {
     return undefined;
   }
-  return `the rect must hold the group's tables with their padding: x at most ${Math.floor(box.x)}, y at most ${Math.floor(box.y)}, x + width at least ${Math.ceil(box.x + box.width)} and y + height at least ${Math.ceil(box.y + box.height)}`;
+  return `the rect must hold the group's tables and shown memos with their padding: x at most ${Math.floor(box.x)}, y at most ${Math.floor(box.y)}, x + width at least ${Math.ceil(box.x + box.width)} and y + height at least ${Math.ceil(box.y + box.height)}`;
 }
 
 /** The stream handler needs the color it replaces, which only the state knows. */
@@ -114,9 +133,9 @@ const changeTableGroupColorAction$ = (
   };
 
 /**
- * Moves a group to a point by the step the editor's drag takes, its tables by
- * the same step, which the peer sends as the points they end at; a group
- * already there sends nothing.
+ * Moves a group to a point by the step the editor's drag takes, its tables and
+ * memos by the same step, which the peer sends as the points they end at; a
+ * group already there sends nothing.
  */
 const moveTableGroupToAction$ = (
   id: string,
@@ -164,25 +183,28 @@ export const tableGroupTools: readonly ActionTool[] = [
       'tableGroup.add',
       'tableGroup.changeName',
       'table.changeGroup',
+      'memo.changeGroup',
     ],
     undoable: true,
     stream: false,
     expectedBatches: 1,
     expectedHistory: 1,
-    snapshotPaths: ['tableGroups', 'tables'],
+    snapshotPaths: ['tableGroups', 'tables', 'memos'],
     args: [
       { name: 'name', kind: { type: 'string' }, required: true },
       { name: 'color', kind: { type: 'string' }, required: false },
       ...RECT_ARGS.map(name => numberArg(name, false)),
       { ...TABLE_IDS, required: false },
+      { ...MEMO_IDS, required: false },
     ],
     refine: refineAdd,
-    toActions: ({ name, color, tableIds, x, y, width, height }) => [
+    toActions: ({ name, color, tableIds, memoIds, x, y, width, height }) => [
       tableIds
-        ? tableGroupActions$.addTableGroupFromTablesAction$(tableIds, {
-            name,
-            color,
-          })
+        ? tableGroupActions$.addTableGroupFromTablesAction$(
+            tableIds,
+            { name, color },
+            memoIds ?? []
+          )
         : tableGroupActions$.addTableGroupAction$(
             { x, y, width, height },
             { name, color }
@@ -192,12 +214,12 @@ export const tableGroupTools: readonly ActionTool[] = [
   {
     name: 'erd_remove_table_group',
     kind: 'generator',
-    actionTypes: ['table.changeGroup', 'tableGroup.remove'],
+    actionTypes: ['table.changeGroup', 'memo.changeGroup', 'tableGroup.remove'],
     undoable: true,
     stream: false,
     expectedBatches: 1,
     expectedHistory: 1,
-    snapshotPaths: ['tableGroups', 'tables'],
+    snapshotPaths: ['tableGroups', 'tables', 'memos'],
     args: [GROUP_ID],
     toActions: ({ groupId }) => [
       tableGroupActions$.removeTableGroupAction$(groupId),
@@ -244,14 +266,14 @@ export const tableGroupTools: readonly ActionTool[] = [
   {
     name: 'erd_move_table_group',
     kind: 'generator',
-    actionTypes: ['tableGroup.move', 'table.move'],
+    actionTypes: ['tableGroup.move', 'table.move', 'memo.move'],
     undoable: true,
     stream: true,
     // A group already at the point sends nothing, and the history keeps no
     // entry for a move shorter than its threshold, 20 pixels in all.
     expectedBatches: { min: 0, max: 1 },
     expectedHistory: { min: 0, max: 1 },
-    snapshotPaths: [...groupPath('x', 'y'), 'tables'],
+    snapshotPaths: [...groupPath('x', 'y'), 'tables', 'memos'],
     args: [GROUP_ID, numberArg('x'), numberArg('y')],
     toActions: ({ groupId, x, y }) => [moveTableGroupToAction$(groupId, x, y)],
   },
@@ -287,16 +309,24 @@ export const tableGroupTools: readonly ActionTool[] = [
     expectedBatches: { min: 0, max: 1 },
     expectedHistory: { min: 0, max: 1 },
     snapshotPaths: ['tables', 'tableGroups'],
-    args: [
-      TABLE_IDS,
-      {
-        name: 'groupId',
-        kind: { type: 'entityId', entity: 'tableGroup', orNone: true },
-        required: true,
-      },
-    ],
+    args: [TABLE_IDS, GROUP_ID_OR_NONE],
     toActions: ({ tableIds, groupId }) => [
       tableGroupActions$.setTableGroupAction$(tableIds, groupId),
+    ],
+  },
+  {
+    name: 'erd_set_memo_group',
+    kind: 'generator',
+    actionTypes: ['memo.changeGroup'],
+    undoable: true,
+    stream: false,
+    // Memos already where they go send nothing.
+    expectedBatches: { min: 0, max: 1 },
+    expectedHistory: { min: 0, max: 1 },
+    snapshotPaths: ['memos', 'tableGroups'],
+    args: [MEMO_IDS, GROUP_ID_OR_NONE],
+    toActions: ({ memoIds, groupId }) => [
+      tableGroupActions$.setMemoGroupAction$(memoIds, groupId),
     ],
   },
 ];

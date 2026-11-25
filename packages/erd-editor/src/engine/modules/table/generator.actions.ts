@@ -20,6 +20,7 @@ import { SelectType } from '@/engine/modules/editor/state';
 import { isTableFocusType } from '@/engine/modules/editor/utils/focus';
 import { isDomainInTypeCell } from '@/engine/modules/editor/utils/nameView';
 import { removeIndexAction } from '@/engine/modules/index/atom.actions';
+import { moveToMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   addRelationshipAction,
   removeRelationshipAction,
@@ -47,10 +48,10 @@ import { Column } from '@/internal-types';
 import { nextPoint, nextZIndex } from '@/utils';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
+import { isMemoShown } from '@/utils/memo';
 import { getShowColumnOrder } from '@/utils/table-clipboard';
-import { getTableGroupId } from '@/utils/tableGroup';
+import { getTableGroupId, getTableGroupMemoMoves } from '@/utils/tableGroup';
 
-import { ActionType } from './actions';
 import {
   addTableAction,
   changeTableNameAction,
@@ -58,7 +59,7 @@ import {
   changeZIndexAction,
   moveToTableAction,
   removeTableAction,
-  tableReducers,
+  sortTablesInRows,
 } from './atom.actions';
 
 export const addTableAction$ = (): GeneratorAction =>
@@ -521,12 +522,12 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
   };
 
 /**
- * Runs the engine's sort on copies of the live tables and groups, then places
- * each table and each group with members where it found them. A replayed
- * table.sort measures each replica's own text; placed points agree everywhere.
+ * Runs the engine's sort on copies of the live tables, groups and shown memos, then places each
+ * table, each group with members and each memo it gave a cell where it found them; a hidden memo
+ * rides with its tables. A replayed table.sort measures each replica's own text; placed points agree.
  */
 export const sortTablesToMoveAction$ = (): GeneratorAction =>
-  function* (state, context) {
+  function* (state) {
     const { doc, collections } = state;
     const copies = query(collections)
       .collection('tableEntities')
@@ -536,6 +537,14 @@ export const sortTablesToMoveAction$ = (): GeneratorAction =>
       .collection('tableGroupEntities')
       .selectByIds(doc.tableGroupIds)
       .map(group => ({ ...group, ui: { ...group.ui } }));
+    const memosShown = isMemoShown(state);
+    // A shown memo takes a cell beside its group's tables; a hidden one sizes no box.
+    const memos = memosShown
+      ? query(collections)
+          .collection('memoEntities')
+          .selectByIds(doc.memoIds)
+          .map(memo => ({ ...memo, ui: { ...memo.ui } }))
+      : [];
     const sorted: RootState = {
       ...state,
       collections: {
@@ -549,17 +558,19 @@ export const sortTablesToMoveAction$ = (): GeneratorAction =>
       },
     };
 
-    tableReducers[ActionType.sortTable](
-      sorted,
-      { type: ActionType.sortTable, payload: undefined },
-      context
-    );
+    const placedMemos = sortTablesInRows(sorted, memos);
 
     const placedGroupIds = new Set(
       copies.map(table => getTableGroupId(sorted, table))
     );
+    const points = copies.map(({ id, ui: { x, y } }) => ({ id, x, y }));
+    // A hidden member memo took no cell, so it rides by its tables' corner.
+    const memoMoves = memosShown
+      ? placedMemos.map(({ id, ui: { x, y } }) => ({ id, x, y }))
+      : getTableGroupMemoMoves(state, points);
 
-    yield copies.map(({ id, ui: { x, y } }) => moveToTableAction({ id, x, y }));
+    yield points.map(point => moveToTableAction(point));
+    yield memoMoves.map(point => moveToMemoAction(point));
     yield groups
       .filter(({ id }) => placedGroupIds.has(id))
       .map(({ id, ui: { x, y, width, height } }) =>

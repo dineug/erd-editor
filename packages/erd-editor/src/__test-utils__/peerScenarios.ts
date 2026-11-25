@@ -118,6 +118,7 @@ import {
   addTableGroupAction$,
   moveTableGroupAction$,
   removeTableGroupAction$,
+  setMemoGroupAction$,
   setTableGroupAction$,
 } from '@/engine/modules/table-group/generator.actions';
 import type {
@@ -665,6 +666,8 @@ export const SEED_SCENARIOS: Readonly<Record<string, () => PeerScenario>> = {
     ]),
   setTableGroup: () =>
     edit('setTableGroup', [setTableGroupAction$([SEED.orders], SEED.group)]),
+  setMemoGroup: () =>
+    edit('setMemoGroup', [setMemoGroupAction$([SEED.memo], SEED.group)]),
 
   addWord: () =>
     edit('addWord', [

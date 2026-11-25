@@ -194,8 +194,8 @@ export const TABLE_GROUP_TITLE_PADDING = 8;
 export const TABLE_GROUP_TITLE_FONT_WEIGHT = 'bold';
 
 /**
- * The line a table drag outlines the group its drop would join with, twice
- * the box's own line so it reads apart from the selection.
+ * The line a drag outlines the group its drop would join a table or a memo
+ * with, twice the box's own line so it reads apart from the selection.
  */
 export const TABLE_GROUP_DROP_WIDTH = 2;
 

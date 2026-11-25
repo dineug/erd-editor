@@ -183,13 +183,13 @@ export const tableTools: readonly ActionTool[] = [
   {
     name: 'erd_sort_tables',
     kind: 'generator',
-    actionTypes: ['table.moveTo', 'tableGroup.resize'],
+    actionTypes: ['table.moveTo', 'memo.moveTo', 'tableGroup.resize'],
     undoable: true,
     stream: false,
     // A document with no live table leaves nothing to place and sends nothing.
     expectedBatches: { min: 0, max: 1 },
     expectedHistory: { min: 0, max: 1 },
-    snapshotPaths: ['tables', 'tableGroups'],
+    snapshotPaths: ['tables', 'memos', 'tableGroups'],
     args: [],
     toActions: () => [tableActions$.sortTablesToMoveAction$()],
   },
