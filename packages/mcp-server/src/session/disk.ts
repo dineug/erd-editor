@@ -47,16 +47,58 @@ export function isReadonlyMode(mode: number): boolean {
  * EPERM, which platform-node folds into Unknown, or EACCES or EBUSY. The tag
  * alone decides, as in its twin, agent-hub-host's lock write.
  */
-export const isBusyReplace = (error: unknown): boolean =>
+const isBusyReplace = (error: unknown): boolean =>
   isPlatformReason(error, 'Unknown') ||
   isPlatformReason(error, 'PermissionDenied') ||
   isPlatformReason(error, 'Busy');
 
 /** 10 ms doubling to 100 ms apart, for 2 s in all: a reader holds a file for milliseconds. */
-export const SWAP_RETRY = Schedule.min([
+const SWAP_RETRY = Schedule.min([
   Schedule.exponential('10 millis'),
   Schedule.spaced('100 millis'),
 ]).pipe(Schedule.upTo({ duration: '2 seconds' }));
+
+/**
+ * A swap as the platform runs it: Windows refuses a rename over a file another
+ * process has open, so there it is retried on SWAP_RETRY while isBusyReplace.
+ */
+export const retryHeldSwap = <A, E, R>(
+  platform: string,
+  swap: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> =>
+  platform === 'win32'
+    ? swap.pipe(Effect.retry({ schedule: SWAP_RETRY, while: isBusyReplace }))
+    : swap;
+
+/** The temp file a swap writes beside path and renames over it, hidden and named for one call. */
+export const swapTempPath = (
+  paths: Path.Path,
+  path: string,
+  id: string
+): string =>
+  paths.join(paths.dirname(path), `.${paths.basename(path)}.${id}.tmp`);
+
+/**
+ * An exclusive create of path holding text: true once written, false where a
+ * file is already there, which it keeps; a missing folder is notFound.
+ */
+export const createExclusive = (
+  fs: FileSystem.FileSystem,
+  path: string,
+  text: string
+) =>
+  fs.writeFileString(path, text, { flag: 'wx' }).pipe(
+    Effect.as(true),
+    Effect.catch(error => {
+      if (isPlatformReason(error, 'AlreadyExists'))
+        return Effect.succeed(false);
+      return Effect.fail(
+        isPlatformReason(error, 'NotFound')
+          ? new SessionError('notFound', `The folder of ${path} does not exist`)
+          : error
+      );
+    })
+  );
 
 /** The editor drops a byte order mark when it reads a file; so do the sessions. */
 export function stripBom(text: string): string {
@@ -152,19 +194,7 @@ export const writeFileReplacing = Effect.fn('writeFileReplacing')(function* (
   const { stat } = yield* FileStats;
   const { platform, randomId } = yield* ProcessInfo;
 
-  const created = yield* fs.writeFileString(path, text, { flag: 'wx' }).pipe(
-    Effect.as(true),
-    Effect.catch(error => {
-      if (isPlatformReason(error, 'AlreadyExists'))
-        return Effect.succeed(false);
-      return Effect.fail(
-        isPlatformReason(error, 'NotFound')
-          ? new SessionError('notFound', `The folder of ${path} does not exist`)
-          : error
-      );
-    })
-  );
-  if (created) return;
+  if (yield* createExclusive(fs, path, text)) return;
 
   const { mode } = yield* stat(path).pipe(
     Effect.mapError(error =>
@@ -182,23 +212,13 @@ export const writeFileReplacing = Effect.fn('writeFileReplacing')(function* (
       `${path} is read-only, so it was not written; make it writable or name another file, then call again`
     );
   }
-  const temp = paths.join(
-    paths.dirname(path),
-    `.${paths.basename(path)}.${yield* randomId}.tmp`
-  );
+  const temp = swapTempPath(paths, path, yield* randomId);
   // Each attempt renames anew, however the file system builds its effect.
   const rename = Effect.suspend(() => fs.rename(temp, path));
   yield* fs.writeFileString(temp, text, { mode }).pipe(
     // A new file's mode passes through the umask, which drops a group's write bit.
     Effect.andThen(Effect.suspend(() => fs.chmod(temp, mode))),
-    // Windows refuses a rename over a file another process has open.
-    Effect.andThen(
-      platform === 'win32'
-        ? rename.pipe(
-            Effect.retry({ schedule: SWAP_RETRY, while: isBusyReplace })
-          )
-        : rename
-    ),
+    Effect.andThen(retryHeldSwap(platform, rename)),
     Effect.onError(() => Effect.ignore(fs.remove(temp)))
   );
 });

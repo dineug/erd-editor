@@ -7,16 +7,17 @@ import {
 } from '@dineug/erd-editor/peer.js';
 import { Effect, FileSystem, Path } from 'effect';
 
-import { isPlatformReason, SessionError, SessionErrorCode } from '@/errors';
+import { SessionError, SessionErrorCode } from '@/errors';
 import { FileAccess, type FileStat, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import {
   createEmptyDocument,
-  isBusyReplace,
+  createExclusive,
   isReadonlyMode,
   orNotFound,
   readDocumentFile,
-  SWAP_RETRY,
+  retryHeldSwap,
+  swapTempPath,
 } from '@/session/disk';
 import {
   type DocumentSession,
@@ -49,19 +50,6 @@ export type HeadlessSessionOptions = {
 const sameStat = (a: FileStat, b: FileStat) =>
   a.size === b.size && a.mtimeMs === b.mtimeMs;
 
-/** An exclusive create: a file already there is kept, a missing folder refused. */
-const createIfMissing = (fs: FileSystem.FileSystem, path: string) =>
-  fs.writeFileString(path, createEmptyDocument(), { flag: 'wx' }).pipe(
-    Effect.catch(error => {
-      if (isPlatformReason(error, 'AlreadyExists')) return Effect.void;
-      return Effect.fail(
-        isPlatformReason(error, 'NotFound')
-          ? new SessionError('notFound', `The folder of ${path} does not exist`)
-          : error
-      );
-    })
-  );
-
 /**
  * Edits the file with no editor in between: each call loads what is on disk
  * if it changed, runs on a peer that sends no presence, and replaces the file,
@@ -78,7 +66,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
   const access = yield* FileAccess;
   const paths = yield* Path.Path;
   const { platform, randomId } = yield* ProcessInfo;
-  if (create) yield* createIfMissing(fs, path);
+  if (create) yield* createExclusive(fs, path, createEmptyDocument());
 
   const peer: PeerStore = createPeerStore({ nickname, presence: false });
   const run = <A>(evaluate: () => A) =>
@@ -125,10 +113,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
     // it derives there too are never saved.
     yield* Effect.yieldNow;
     const text = peer.value;
-    const temp = paths.join(
-      paths.dirname(path),
-      `.${paths.basename(path)}.${yield* randomId}.tmp`
-    );
+    const temp = swapTempPath(paths, path, yield* randomId);
     const removeTemp = Effect.ignore(fs.remove(temp));
     const refuse = (error: SessionError) =>
       removeTemp.pipe(
@@ -174,12 +159,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
         return inPlace;
       });
 
-      // Windows refuses a rename over a file another process has open.
-      loaded = yield* platform === 'win32'
-        ? swap.pipe(
-            Effect.retry({ schedule: SWAP_RETRY, while: isBusyReplace })
-          )
-        : swap;
+      loaded = yield* retryHeldSwap(platform, swap);
     }).pipe(
       Effect.catch(error =>
         (error instanceof SessionError
