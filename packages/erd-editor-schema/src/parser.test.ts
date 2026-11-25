@@ -501,11 +501,19 @@ describe('the table groups toJson writes', () => {
   const source = {
     version: '3.0.0',
     settings: { show: SchemaV3Constants.Show.hideTableGroup },
-    doc: { tableIds: ['t1', 't2'], tableGroupIds: ['g1'] },
+    doc: {
+      tableIds: ['t1', 't2'],
+      memoIds: ['m1', 'm2'],
+      tableGroupIds: ['g1'],
+    },
     collections: {
       tableEntities: {
         t1: { id: 't1', name: 'invoice', groupId: 'g1' },
         t2: { id: 't2', name: 'member' },
+      },
+      memoEntities: {
+        m1: { id: 'm1', value: 'due monthly', groupId: 'g1' },
+        m2: { id: 'm2', value: 'loose' },
       },
       tableGroupEntities: {
         g1: {
@@ -527,6 +535,14 @@ describe('the table groups toJson writes', () => {
     );
     expect(json.collections.tableEntities.t1.groupId).toBe('g1');
     expect(json.collections.tableEntities.t2).not.toHaveProperty('groupId');
+    expect(Object.keys(json.collections.memoEntities.m1)).toEqual([
+      'id',
+      'value',
+      'groupId',
+      'ui',
+    ]);
+    expect(json.collections.memoEntities.m1.groupId).toBe('g1');
+    expect(json.collections.memoEntities.m2).not.toHaveProperty('groupId');
     expect(json.settings.show).toBe(SchemaV3Constants.Show.hideTableGroup);
   });
 
@@ -540,8 +556,11 @@ describe('the table groups toJson writes', () => {
     const schema = parser(
       JSON.stringify({
         ...source,
-        doc: { tableIds: ['t1'] },
-        collections: { tableEntities: { t1: { id: 't1', name: 'member' } } },
+        doc: { tableIds: ['t1'], memoIds: ['m1'] },
+        collections: {
+          tableEntities: { t1: { id: 't1', name: 'member' } },
+          memoEntities: { m1: { id: 'm1', value: 'loose' } },
+        },
       })
     );
     const json = JSON.parse(toJson(schema));
@@ -549,6 +568,7 @@ describe('the table groups toJson writes', () => {
     expect(json.doc).not.toHaveProperty('tableGroupIds');
     expect(json.collections).not.toHaveProperty('tableGroupEntities');
     expect(json.collections.tableEntities.t1).not.toHaveProperty('groupId');
+    expect(json.collections.memoEntities.m1).not.toHaveProperty('groupId');
     expect(JSON.parse(toJson(createSchema())).doc).toEqual({
       tableIds: [],
       relationshipIds: [],
@@ -577,6 +597,7 @@ describe('the table groups toJson writes', () => {
           doc: { tableIds: ['t1'] },
           collections: {
             tableEntities: { t1: { id: 't1', name: 'member' } },
+            memoEntities: { m1: { id: 'm1', value: 'loose' } },
           },
         })
       )
@@ -600,19 +621,21 @@ describe('the table groups toJson writes', () => {
     }
   });
 
-  it('keeps the groupId of a table naming a group no document lists', () => {
+  it('keeps the groupId of a table or a memo naming a group no document lists', () => {
     const schema = parser(
       JSON.stringify({
         ...source,
-        doc: { tableIds: ['t1'] },
+        doc: { tableIds: ['t1'], memoIds: ['m1'] },
         collections: {
           tableEntities: { t1: { id: 't1', name: 'member', groupId: 'g9' } },
+          memoEntities: { m1: { id: 'm1', groupId: 'g9' } },
         },
       })
     );
     const json = JSON.parse(toJson(schema));
 
     expect(json.collections.tableEntities.t1.groupId).toBe('g9');
+    expect(json.collections.memoEntities.m1.groupId).toBe('g9');
     expect(json.doc).not.toHaveProperty('tableGroupIds');
   });
 

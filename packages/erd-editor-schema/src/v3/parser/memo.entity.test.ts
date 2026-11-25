@@ -11,6 +11,7 @@ describe('createMemo', () => {
 
     expect(memo.id).toBe('');
     expect(memo.value).toBe('');
+    expect(memo.groupId).toBe('');
     expect(memo.ui).toEqual({
       x: 200,
       y: 100,
@@ -63,11 +64,12 @@ describe('createAndMergeMemoEntities', () => {
     expect(entities.memo1.value).toBe('hello');
   });
 
-  it('merges every ui field', () => {
+  it('merges every field', () => {
     const entities = createAndMergeMemoEntities({
       memo1: {
         id: 'memo1',
         value: 'note',
+        groupId: 'g1',
         ui: {
           x: 1,
           y: 2,
@@ -82,8 +84,17 @@ describe('createAndMergeMemoEntities', () => {
     expect(entities.memo1).toEqual({
       id: 'memo1',
       value: 'note',
+      groupId: 'g1',
       ui: { x: 1, y: 2, zIndex: 3, width: 4, height: 5, color: '#fff' },
     });
+  });
+
+  it('keeps a group id naming no group as saved, for the readers to judge', () => {
+    const entities = createAndMergeMemoEntities({
+      key: { id: 'm1', groupId: 'gone' },
+    });
+
+    expect(entities.m1.groupId).toBe('gone');
   });
 
   it('keeps defaults for wrongly typed fields', () => {
@@ -91,6 +102,7 @@ describe('createAndMergeMemoEntities', () => {
       memo1: {
         id: 'memo1',
         value: 42 as any,
+        groupId: 7 as any,
         ui: {
           x: '1' as any,
           color: 1 as any,
@@ -101,6 +113,7 @@ describe('createAndMergeMemoEntities', () => {
 
     const memo = entities.memo1;
     expect(memo.value).toBe('');
+    expect(memo.groupId).toBe('');
     expect(memo.ui.x).toBe(200);
     expect(memo.ui.color).toBe('');
     expect(memo.ui.height).toBe(100);

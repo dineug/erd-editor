@@ -410,6 +410,10 @@
           "value": {
             "type": "string"
           },
+          "groupId": {
+            "description": "Id of the table group in doc.tableGroupIds the memo belongs to; absent means none",
+            "type": "string"
+          },
           "ui": {
             "type": "object",
             "properties": {
@@ -438,7 +442,7 @@
       }
     },
     "tableGroupEntities": {
-      "description": "Named, coloured rectangles drawn behind tables; a table joins one through its groupId. Written while a group exists; absent means none",
+      "description": "Named, coloured rectangles drawn behind tables and memos; a table or a memo joins one through its groupId. Written while a group exists; absent means none",
       "type": "object",
       "additionalProperties": {
         "type": "object",

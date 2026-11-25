@@ -61,6 +61,7 @@ type DocumentIndex = Omit<Index, 'name' | 'seqIndexColumnIds'> & {
 
 type DocumentMemo = Pick<Memo, 'id'> & {
   value?: string;
+  groupId?: string;
   ui: Omit<MemoUI, 'zIndex' | 'color'> & { color?: string };
 };
 
@@ -332,6 +333,7 @@ export function toDocument(schema: ERDEditorSchemaV3): ERDEditorDocumentV3 {
     return {
       id: memo.id,
       ...textField('value', memo.value),
+      ...(keptGroups.has(memo.groupId) ? { groupId: memo.groupId } : {}),
       ui: {
         x: ui.x,
         y: ui.y,

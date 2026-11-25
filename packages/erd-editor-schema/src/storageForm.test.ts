@@ -716,8 +716,37 @@ describe('the live entities toDocument keeps', () => {
     expect(collections.tableEntities.tb).not.toHaveProperty('groupId');
   });
 
+  it("writes a memo's groupId only while it names a kept group", () => {
+    const schema = legacy();
+
+    expect(toDocument(schema).collections.memoEntities.m1).not.toHaveProperty(
+      'groupId'
+    );
+
+    for (const removedOrUnknown of ['g2', 'g9']) {
+      schema.collections.memoEntities.m1.groupId = removedOrUnknown;
+      expect(
+        toDocument(schema).collections.memoEntities.m1,
+        removedOrUnknown
+      ).not.toHaveProperty('groupId');
+    }
+
+    schema.collections.memoEntities.m1.groupId = 'g1';
+    expect(toDocument(schema).collections.memoEntities.m1.groupId).toBe('g1');
+  });
+
+  it("writes the same bytes for a memo's membership parsed back", () => {
+    const schema = legacy();
+    schema.collections.memoEntities.m1.groupId = 'g1';
+    const json = toDocumentJson(schema);
+
+    expect(parser(json).collections.memoEntities.m1.groupId).toBe('g1');
+    expect(toDocumentJson(parser(json))).toBe(json);
+  });
+
   it('writes no group key once the last group is removed', () => {
     const schema = legacy();
+    schema.collections.memoEntities.m1.groupId = 'g1';
     schema.doc.tableGroupIds = [];
 
     const json = JSON.parse(toDocumentJson(schema));
@@ -730,6 +759,7 @@ describe('the live entities toDocument keeps', () => {
     ]);
     expect(json.collections).not.toHaveProperty('tableGroupEntities');
     expect(json.collections.tableEntities.ta).not.toHaveProperty('groupId');
+    expect(json.collections.memoEntities.m1).not.toHaveProperty('groupId');
   });
 
   it('writes an empty document as its settings and an empty doc', () => {
@@ -880,8 +910,9 @@ describe('the order toDocumentJson writes', () => {
     ]);
   });
 
-  it('writes the newer table and column fields in schema order beside a kept group', () => {
+  it('writes the newer table, column and memo fields in schema order beside a kept group', () => {
     const schema = legacy();
+    schema.collections.memoEntities.m1.groupId = 'g1';
     Object.assign(schema.collections.tableEntities.ta, {
       logicalName: 'Member',
       comment: 'members',
@@ -920,6 +951,12 @@ describe('the order toDocumentJson writes', () => {
       'options',
       'logicalName',
       'domainId',
+    ]);
+    expect(Object.keys(collections.memoEntities.m1)).toEqual([
+      'id',
+      'value',
+      'groupId',
+      'ui',
     ]);
   });
 
