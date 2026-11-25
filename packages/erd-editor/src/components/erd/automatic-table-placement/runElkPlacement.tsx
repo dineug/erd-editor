@@ -5,15 +5,15 @@ import {
   createElkLayoutRequest,
   type ElkLayoutPoint,
   type ElkPlacement,
-  toTablePoints,
+  toPlacementPoints,
 } from '@/services/elk-layout';
 
 import { layoutByElk, type LayoutByElkOptions } from './elkPlacement';
 
 /**
- * Places every table by ELK and hands the layout straight over. No preview
- * overlay: one layout arrives at once, there is nothing to weigh before it
- * lands, and a single undo puts every table back.
+ * Places every table by ELK, and the shown memos of each group beside its
+ * tables, and hands the layout straight over. No preview overlay: one layout
+ * arrives at once, and a single undo puts every table and memo back.
  *
  * @example
  * runElkPlacement(app.value, placement, handleChange, { signal });
@@ -21,7 +21,7 @@ import { layoutByElk, type LayoutByElkOptions } from './elkPlacement';
 export async function runElkPlacement(
   app: AppContext,
   placement: ElkPlacement,
-  onChange: (tables: ElkLayoutPoint[]) => void,
+  onChange: (tables: ElkLayoutPoint[], memos: ElkLayoutPoint[]) => void,
   { signal }: Pick<LayoutByElkOptions, 'signal'> = {}
 ): Promise<void> {
   const { store, emitter } = app;
@@ -40,7 +40,12 @@ export async function runElkPlacement(
   // A large schema can outlast the patience of whoever asked for it, and a
   // layout nobody is waiting for any more is dropped rather than applied.
   if (answer.status === 'placed') {
-    onChange(toTablePoints(store.state, request, answer.points));
+    const { tables, memos } = toPlacementPoints(
+      store.state,
+      request,
+      answer.points
+    );
+    onChange(tables, memos);
     return;
   }
   if (answer.status === 'cancelled') return;

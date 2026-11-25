@@ -6,7 +6,10 @@ import { renderKonva } from '@dineug/r-html-konva';
 import type { Stage } from 'konva/lib/Stage';
 
 import { useAppContext } from '@/components/appContext';
-import { createTableGroupMemberLists } from '@/components/erd/canvas/table-group/tableGroupBox';
+import {
+  createTableGroupMemberLists,
+  NO_TABLE_GROUP_MEMBERS,
+} from '@/components/erd/canvas/table-group/tableGroupBox';
 import Memo from '@/components/erd/minimap/memo/Memo';
 import {
   getMinimapLayout,
@@ -52,8 +55,11 @@ const MinimapScene: FC<MinimapSceneProps> = (props, ctx) => {
             .selectByIds(tableGroupIds)
             .sort(byZIndex)
         : [];
-    // One walk over the tables for every group's members, and none with no group.
-    const membersOf = groups.length ? memberLists(store.state) : () => [];
+    // One walk over the tables and one over the memos for every group's
+    // members, and none with no group.
+    const membersOf = groups.length
+      ? memberLists(store.state)
+      : () => NO_TABLE_GROUP_MEMBERS;
 
     const stack = stackTablesAndMemos(
       query(collections).collection('tableEntities').selectByIds(tableIds),

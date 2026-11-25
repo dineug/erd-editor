@@ -26,6 +26,7 @@ import {
 import { drag$ } from '@/utils/globalEventObservable';
 import {
   getTableGroupMemberIds,
+  getTableGroupMemberMemoIds,
   getTablesGroupRect,
   isTableGroupShown,
 } from '@/utils/tableGroup';
@@ -73,9 +74,9 @@ const CURSORS: Record<TableGroupSashPosition, string> = {
 const POSITIONS = Object.values(TableGroupSashPosition);
 
 /**
- * The box a sash drag leaves, the edges it grabs moved by the drag in scene
- * units: never smaller than the minimum, nor than the members' padded box,
- * which the edge stops at however far past it the pointer goes.
+ * The box a sash drag leaves, the edges it grabs moved by the drag in scene units: never smaller
+ * than the minimum, nor than the padded box of the member tables and shown memos, which the edge
+ * stops at however far past it the pointer goes.
  */
 export function resizeTableGroupRect(
   start: Rect,
@@ -168,9 +169,11 @@ const TableGroupSash: FC<TableGroupSashProps> = (props, ctx) => {
     const { store } = app.value;
     const { id } = props.group;
     const start = { ...props.box };
+    // The member tables and the shown member memos, which the edge stops at.
     const members = getTablesGroupRect(
       store.state,
-      getTableGroupMemberIds(store.state, id)
+      getTableGroupMemberIds(store.state, id),
+      getTableGroupMemberMemoIds(store.state, id)
     );
     const { zoomLevel } = store.state.settings;
     const origin = pointerOf(event);

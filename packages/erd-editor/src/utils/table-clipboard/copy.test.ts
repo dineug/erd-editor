@@ -820,7 +820,7 @@ describe('entitiesCopyToPayload', () => {
     expect(entitiesCopyToPayload(state)).toBeNull();
   });
 
-  it('carries no table group: a member keeps no groupId and a selected group stays behind', () => {
+  it('carries no table group: a member table or memo keeps no groupId and a selected group stays behind', () => {
     const { state } = createEntitiesState({
       selectedMap: { ...ALL_SELECTED, 'group-1': SelectType.tableGroup },
     });
@@ -830,10 +830,12 @@ describe('entitiesCopyToPayload', () => {
     });
     state.doc.tableGroupIds.push('group-1');
     state.collections.tableEntities['table-1'].groupId = 'group-1';
+    state.collections.memoEntities['memo-1'].groupId = 'group-1';
 
     const payload = entitiesCopyToPayload(state);
 
     expect(payload?.tables).toHaveLength(2);
+    expect(payload?.memos).toHaveLength(2);
     expect(JSON.stringify(payload)).not.toMatch(/group|billing/i);
   });
 

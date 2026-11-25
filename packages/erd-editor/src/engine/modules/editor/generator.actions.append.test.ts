@@ -34,6 +34,7 @@ import {
 } from '@/engine/modules/index-column/atom.actions';
 import {
   addMemoAction,
+  changeMemoGroupAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -701,6 +702,40 @@ describe('appending table groups', () => {
     expect(collections.tableGroupEntities[blogId].ui.zIndex).toBe(6);
   });
 
+  it('puts each member memo in its new group by its new id, a memo of no group in none', () => {
+    const source = createTestStore();
+    source.dispatchSync(
+      addTableAction({ id: 'users', ui: { x: 300, y: 200, zIndex: 2 } }),
+      changeTableNameAction({ id: 'users', value: 'users' }),
+      addMemoAction({ id: 'note', ui: { x: 300, y: 320, zIndex: 3 } }),
+      changeMemoValueAction({ id: 'note', value: 'member note' }),
+      addMemoAction({ id: 'loose', ui: { x: 900, y: 900, zIndex: 4 } }),
+      changeMemoValueAction({ id: 'loose', value: 'loose note' }),
+      addTableGroupAction({
+        id: 'blog',
+        ui: { x: 276, y: 176, width: 300, height: 300, zIndex: 5 },
+      }),
+      changeTableGroupNameAction({ id: 'blog', value: 'blog' }),
+      changeTableGroupAction({ id: 'users', value: 'blog' }),
+      changeMemoGroupAction({ id: 'note', value: 'blog' })
+    );
+    const store = createDiagram();
+
+    store.dispatchSync(appendSchemaJsonAction$(toJson(source.state)));
+
+    const blog = groupByName(store.state, 'blog');
+    const memoByValue = (value: string) =>
+      store.state.doc.memoIds
+        .map(id => store.state.collections.memoEntities[id])
+        .find(memo => memo.value === value)!;
+    expect(memoByValue('member note').id).not.toBe('note');
+    expect(memoByValue('member note').groupId).toBe(blog.id);
+    expect(memoByValue('loose note').groupId).toBe('');
+
+    store.undo();
+    expect(store.state.doc.memoIds).toEqual([]);
+  });
+
   it('takes the groups and the memberships away with the rest on one undo', () => {
     const store = createDiagram();
 
@@ -782,6 +817,58 @@ describe('appending table groups', () => {
     );
     expect(tags.ui.x).toBeGreaterThan(blog.ui.x + blog.ui.width);
     expect(tags.ui.y).toBe(corner.y);
+  });
+
+  it('carries a member memo with its group in the grid, kept off its tables corner, the group wrapped round it', () => {
+    const source = createTestStore();
+    source.dispatchSync(
+      addTableAction({ id: 'users', ui: { x: 300, y: 200, zIndex: 2 } }),
+      changeTableNameAction({ id: 'users', value: 'users' }),
+      addTableAction({ id: 'posts', ui: { x: 800, y: 200, zIndex: 3 } }),
+      changeTableNameAction({ id: 'posts', value: 'posts' }),
+      addMemoAction({ id: 'note', ui: { x: 300, y: 50, zIndex: 4 } }),
+      changeMemoValueAction({ id: 'note', value: 'member note' }),
+      addMemoAction({ id: 'loose', ui: { x: 900, y: 900, zIndex: 5 } }),
+      changeMemoValueAction({ id: 'loose', value: 'loose note' }),
+      addTableGroupAction({
+        id: 'blog',
+        ui: { x: 276, y: 0, width: 900, height: 400, zIndex: 6 },
+      }),
+      changeTableGroupNameAction({ id: 'blog', value: 'blog' }),
+      changeTableGroupAction({ id: 'users', value: 'blog' }),
+      changeTableGroupAction({ id: 'posts', value: 'blog' }),
+      changeMemoGroupAction({ id: 'note', value: 'blog' })
+    );
+    const store = createDiagram();
+    const corner = appendCorner(store.state);
+
+    store.dispatchSync(appendSchemaJsonAction$(toJson(source.state), 'grid'));
+
+    const { doc, collections } = store.state;
+    const memoByValue = (value: string) =>
+      doc.memoIds
+        .map(id => collections.memoEntities[id])
+        .find(memo => memo.value === value)!;
+    const users = tableByName(store.state, 'users');
+    const posts = tableByName(store.state, 'posts');
+    const note = memoByValue('member note');
+    const tables = {
+      x: Math.min(users.ui.x, posts.ui.x),
+      y: Math.min(users.ui.y, posts.ui.y),
+    };
+    // The file holds it 150 above its tables' corner, which the grid moves.
+    expect(note.ui).toMatchObject({ x: tables.x, y: tables.y - 150 });
+    expect(groupByName(store.state, 'blog').ui).toMatchObject({
+      ...padRect(
+        [
+          getTableRect(store.state, users),
+          getTableRect(store.state, posts),
+          getMemoRect(note),
+        ].reduce(unionRect)
+      ),
+      x: corner.x,
+      y: corner.y,
+    });
   });
 
   it('brings no group from a document without one', () => {

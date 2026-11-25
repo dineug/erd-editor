@@ -180,6 +180,7 @@ export const ChangeActionTypes: ReadonlyArray<ActionType> = [
   'memo.changeValue',
   'memo.changeColor',
   'memo.resize',
+  'memo.changeGroup',
   // tableGroup
   'tableGroup.add',
   'tableGroup.move',
@@ -359,6 +360,7 @@ export const ViewIgnoreActionTypes: ReadonlyArray<ActionType> = [
   'memo.changeValue',
   'memo.changeColor',
   'memo.resize',
+  'memo.changeGroup',
   // tableGroup
   'tableGroup.add',
   'tableGroup.move',

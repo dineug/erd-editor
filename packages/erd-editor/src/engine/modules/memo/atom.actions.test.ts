@@ -9,6 +9,7 @@ import { POSITION_REGISTER, SIZE_REGISTER } from '@/engine/geometryRegisters';
 import {
   addMemoAction,
   changeMemoColorAction,
+  changeMemoGroupAction,
   changeMemoValueAction,
   changeZIndexAction,
   moveMemoAction,
@@ -321,6 +322,57 @@ describe('changeMemoValue', () => {
 
     expect(memoOf(store, 'm1').value).toBe('new');
     expect(lwwOf(store, 'm1')[3]).toEqual({ value: 5 });
+  });
+});
+
+describe('changeMemoGroup', () => {
+  it('sets the group under the "groupId" LWW path, apart from the other fields', () => {
+    store.dispatchSync(
+      addMemoAction({ id: 'm1', ui: { x: 0, y: 0, zIndex: 2 } })
+    );
+
+    store.dispatchSync(
+      at(changeMemoValueAction({ id: 'm1', value: 'note' }), 9),
+      at(changeMemoGroupAction({ id: 'm1', value: 'g1' }), 3)
+    );
+
+    expect(memoOf(store, 'm1').groupId).toBe('g1');
+    expect(lwwOf(store, 'm1')[3]).toEqual({ value: 9, groupId: 3 });
+  });
+
+  it('keeps the newer placement whatever order two writes arrive in', () => {
+    store.dispatchSync(
+      at(changeMemoGroupAction({ id: 'a', value: 'newer' }), 8),
+      at(changeMemoGroupAction({ id: 'a', value: 'older' }), 5),
+      at(changeMemoGroupAction({ id: 'b', value: 'older' }), 5),
+      at(changeMemoGroupAction({ id: 'b', value: 'newer' }), 8)
+    );
+
+    expect(memoOf(store, 'a').groupId).toBe('newer');
+    expect(memoOf(store, 'b').groupId).toBe('newer');
+  });
+
+  it('applies a write at the same version, the later one landing', () => {
+    store.dispatchSync(at(changeMemoGroupAction({ id: 'm1', value: 'g1' }), 4));
+    store.dispatchSync(at(changeMemoGroupAction({ id: 'm1', value: 'g2' }), 4));
+
+    expect(memoOf(store, 'm1').groupId).toBe('g2');
+  });
+
+  it('takes a memo out of its group with an empty id', () => {
+    store.dispatchSync(changeMemoGroupAction({ id: 'm1', value: 'g1' }));
+
+    store.dispatchSync(changeMemoGroupAction({ id: 'm1', value: '' }));
+
+    expect(memoOf(store, 'm1').groupId).toBe('');
+  });
+
+  it('creates the entity when it is missing, at the clock version, listing nothing', () => {
+    store.dispatchSync(changeMemoGroupAction({ id: 'ghost', value: 'g1' }));
+
+    expect(memoOf(store, 'ghost').groupId).toBe('g1');
+    expect(store.state.doc.memoIds).toEqual([]);
+    expect(Object.keys(lwwOf(store, 'ghost')[3])).toEqual(['groupId']);
   });
 });
 

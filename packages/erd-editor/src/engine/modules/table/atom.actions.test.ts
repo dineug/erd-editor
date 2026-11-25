@@ -11,6 +11,10 @@ import { Clock } from '@/engine/clock';
 import type { ReplicaEngineContext } from '@/engine/context';
 import { POSITION_REGISTER } from '@/engine/geometryRegisters';
 import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
+import {
   addTableAction,
   changeTableColorAction,
   changeTableCommentAction,
@@ -755,6 +759,28 @@ describe('table/atom.actions sortTable', () => {
     expect(table(TABLE_C).ui).toMatchObject({
       x: 50 + group.ui.width + TABLE_SORT_MARGIN,
       y: 50,
+    });
+  });
+
+  it("places no memo, a group's either, so an older editor's table.sort replays as it did", () => {
+    seedGroupForSort();
+    store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 3_000, y: 3_000, zIndex: 3 } }),
+      changeMemoGroupAction({ id: 'note', value: 'g' })
+    );
+    const a = sizeOf(TABLE_A);
+    const b = sizeOf(TABLE_B);
+
+    store.dispatchSync(sortTableAction());
+
+    expect(store.state.collections.memoEntities['note'].ui).toMatchObject({
+      x: 3_000,
+      y: 3_000,
+    });
+    expect(store.state.collections.tableGroupEntities['g'].ui).toMatchObject({
+      x: 50,
+      y: 50,
+      width: b.width + TABLE_SORT_MARGIN + a.width + P * 2,
     });
   });
 

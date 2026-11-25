@@ -810,6 +810,33 @@ describe('createSharedStore absolute geometry', () => {
     ]);
   });
 
+  it('sends where a member memo a group drag carries ends, in the batch of its group and tables', () => {
+    const fixture = makeSeen();
+    fixture.store.dispatchSync(
+      addMemoAction({ id: 'm1', ui: { x: 300, y: 200, zIndex: 2 } })
+    );
+    vi.advanceTimersByTime(400);
+    fixture.reset();
+
+    fixture.store.dispatchSync(
+      toMoveTableGroupActions(['g1'], ['t1'], 40, 0, ['m1'])
+    );
+    fixture.store.dispatchSync(
+      toMoveTableGroupActions(['g1'], ['t1'], 40, 0, ['m1'])
+    );
+    vi.advanceTimersByTime(200);
+
+    expect(fixture.seen).toHaveLength(1);
+    expect(
+      fixture.seen[0].map(({ type, payload, tags }) => [type, payload, tags])
+    ).toEqual(
+      expect.arrayContaining([
+        ['memo.moveTo', { id: 'm1', x: 380, y: 200 }, Tag.shared],
+        ['tableGroup.moveTo', { id: 'g1', x: 240, y: 40 }, Tag.shared],
+      ])
+    );
+  });
+
   it('answers a join only after the drag it holds has left, so the versions the answer carries stand on a point sent', () => {
     const fixture = makeSeen();
 

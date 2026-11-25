@@ -7,6 +7,11 @@ import {
   getScrollToCenter,
   getViewTransform,
 } from '@/components/erd/minimap/minimapGeometry';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+  moveToMemoAction,
+} from '@/engine/modules/memo/atom.actions';
 import { scrollToAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -16,7 +21,7 @@ import {
 } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { getTableRect, unionRect } from '@/konva/scene/metrics';
+import { getMemoRect, getTableRect, unionRect } from '@/konva/scene/metrics';
 import { padRect } from '@/utils/tableGroup';
 
 const contexts: AppContext[] = [];
@@ -120,5 +125,82 @@ describe('toPlacementActions', () => {
     contexts.push(app);
 
     expect(toPlacementActions(app.store.state, [])).toEqual([]);
+  });
+});
+
+describe('toPlacementActions with member memos', () => {
+  /** createApp's document, with note in g1 at 100, 400 and loose in no group. */
+  function createMemoApp(): AppContext {
+    const app = createApp();
+    app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 100, y: 400, zIndex: 3 } }),
+      changeMemoGroupAction({ id: 'note', value: 'g1' }),
+      addMemoAction({ id: 'loose', ui: { x: 2_000, y: 0, zIndex: 3 } })
+    );
+    return app;
+  }
+
+  const memoMoves = (actions: ReturnType<typeof toPlacementActions>) =>
+    actions.filter(({ type }) => type === 'memo.moveTo');
+
+  it('moves a member memo the layout did not place by the shift of its tables corner, a loose one left', () => {
+    const { store } = createMemoApp();
+
+    // users and posts start at 0, 0 and 400, 0, and their corner lands at 1000, 1000.
+    expect(memoMoves(toPlacementActions(store.state, POINTS))).toEqual([
+      moveToMemoAction({ id: 'note', x: 1_100, y: 1_400 }),
+    ]);
+  });
+
+  it('moves a memo the layout placed to its point, and rides no memo twice', () => {
+    const { store } = createMemoApp();
+    const placed = [{ id: 'note', x: 50, y: 60 }];
+
+    expect(
+      memoMoves(toPlacementActions(store.state, POINTS, 'document', placed))
+    ).toEqual([moveToMemoAction({ id: 'note', x: 50, y: 60 })]);
+  });
+
+  it('wraps the group round its memo where it lands, centres on it and undoes it with the tables', () => {
+    const { store } = createMemoApp();
+    const { collections } = store.state;
+    const at = (x: number, y: number) => ({
+      ...getMemoRect(collections.memoEntities['note']),
+      x,
+      y,
+    });
+    const table = (id: string, x: number, y: number) => ({
+      ...getTableRect(store.state, collections.tableEntities[id]),
+      x,
+      y,
+    });
+    const cursor = store.history.cursor;
+
+    const actions = toPlacementActions(store.state, POINTS);
+    store.dispatchSync(actions.slice(0, -1));
+    const content = getContentRect(store.state)!;
+    const origin = getScrollToCenter(getViewTransform(store.state), {
+      x: content.x + content.width / 2,
+      y: content.y + content.height / 2,
+    });
+
+    expect(collections.tableGroupEntities['g1'].ui).toMatchObject(
+      padRect(
+        [
+          table('users', 1_000, 1_000),
+          table('posts', 1_000, 1_400),
+          at(1_100, 1_400),
+        ].reduce(unionRect)
+      )
+    );
+    expect(actions.at(-1)).toEqual(
+      scrollToAction({ originX: origin.x, originY: origin.y })
+    );
+    expect(store.history.cursor).toBe(cursor + 1);
+    store.undo();
+    expect(collections.memoEntities['note'].ui).toMatchObject({
+      x: 100,
+      y: 400,
+    });
   });
 });

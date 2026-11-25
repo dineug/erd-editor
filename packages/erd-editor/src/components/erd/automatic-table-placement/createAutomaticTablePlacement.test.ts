@@ -15,6 +15,11 @@ import {
   GROUP_BOX_GAP,
   placementProgress,
 } from '@/components/erd/automatic-table-placement/createAutomaticTablePlacement';
+import { Show } from '@/constants/schema';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
@@ -25,7 +30,7 @@ import { addColumnAction } from '@/engine/modules/table-column/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { RootState } from '@/engine/state';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { type Rect, unionRect } from '@/konva/scene/metrics';
+import { getMemoRect, type Rect, unionRect } from '@/konva/scene/metrics';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { findTableGroupAt, getTableCenter, padRect } from '@/utils/tableGroup';
 
@@ -436,6 +441,89 @@ describe('createAutomaticTablePlacement with table groups', () => {
     expect(state.collections.tableEntities['t3'].ui).toMatchObject({
       x: left + 600 - box.x,
       y: top + 400 - box.y,
+    });
+  });
+
+  function addMemo(
+    app: AppContext,
+    id: string,
+    groupId: string,
+    ui: { x: number; y: number }
+  ) {
+    app.store.dispatchSync(
+      addMemoAction({ id, ui: { ...ui, zIndex: 3 } }),
+      changeMemoGroupAction({ id, value: groupId })
+    );
+  }
+
+  const tick = (simulation: Simulation) =>
+    (simulation.on('tick') as (this: unknown) => void).call(simulation);
+
+  it("carries a group's memos as members, its box sized by them, a memo of no group left where it is", () => {
+    const app = createApp();
+    addTable(app, 't1', 'users', { x: 100, y: 100 });
+    addGroup(app, 'g1', ['t1']);
+    addMemo(app, 'm1', 'g1', { x: 600, y: 400 });
+    addMemo(app, 'loose', '', { x: -50, y: -50 });
+    const state = app.store.state;
+    const { memoEntities } = state.collections;
+    const box = padRect(
+      unionRect(rectOf(state, 't1'), getMemoRect(memoEntities['m1']))
+    );
+
+    const simulation = create(state);
+    const nodes = simulation.nodes() as any[];
+    nodes[0].x = 5_000;
+    nodes[0].y = 6_000;
+    tick(simulation);
+
+    const left = 5_000 - box.width / 2;
+    const top = 6_000 - box.height / 2;
+    expect(nodes.map(node => node.id)).toEqual(['g1']);
+    expect(nodes[0]).toMatchObject({ width: box.width, height: box.height });
+    expect(memoEntities['m1'].ui).toMatchObject({
+      x: left + 600 - box.x,
+      y: top + 400 - box.y,
+    });
+    expect(memoEntities['loose'].ui).toMatchObject({ x: -50, y: -50 });
+  });
+
+  it('carries a hidden memo with its group, sizing none of the box', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users', { x: 100, y: 100 });
+    addGroup(app, 'g1', ['t1']);
+    addMemo(app, 'm1', 'g1', { x: 600, y: 400 });
+    const state = app.store.state;
+    state.settings.show |= Show.hideMemo;
+    const box = padRect(rectOf(state, 't1'));
+
+    const simulation = create(state);
+    const [node] = simulation.nodes() as any[];
+    node.x = 5_000;
+    node.y = 6_000;
+    tick(simulation);
+
+    expect(node).toMatchObject({ width: box.width, height: box.height });
+    expect(state.collections.memoEntities['m1'].ui).toMatchObject({
+      x: 5_000 - box.width / 2 + 600 - box.x,
+      y: 6_000 - box.height / 2 + 400 - box.y,
+    });
+  });
+
+  it('leaves a group holding memos alone out of the simulation, its memos where they stand', () => {
+    const app = createApp();
+    addTable(app, 't1', 'users');
+    addGroup(app, 'memos', []);
+    addMemo(app, 'm1', 'memos', { x: 600, y: 400 });
+    const state = app.store.state;
+
+    const simulation = create(state);
+    tick(simulation);
+
+    expect((simulation.nodes() as any[]).map(node => node.id)).toEqual(['t1']);
+    expect(state.collections.memoEntities['m1'].ui).toMatchObject({
+      x: 600,
+      y: 400,
     });
   });
 

@@ -122,6 +122,7 @@ describe('the document list', () => {
         width: 560,
         height: 300,
         tableCount: 1,
+        memoCount: 1,
       },
     ]);
     expect(list.relationships).toEqual([
@@ -136,10 +137,16 @@ describe('the document list', () => {
       { id: SEED.index, tableId: SEED.orders, name: '', unique: false },
     ]);
     expect(list.memos).toEqual([
-      expect.objectContaining({ id: SEED.memo, x: 900, y: 100 }),
+      expect.objectContaining({
+        id: SEED.memo,
+        groupId: SEED.group,
+        x: 120,
+        y: 190,
+      }),
     ]);
     expect(Object.keys(list.memos[0])).toEqual([
       'id',
+      'groupId',
       'x',
       'y',
       'width',
@@ -306,6 +313,19 @@ describe('the document list', () => {
     expect(list.memos).toEqual([]);
   });
 
+  it('gives a memo its groupId only while it is in a listed group, and each group its memo count', () => {
+    const peer = seeded();
+    runTool(peer, 'erd_set_memo_group', {
+      memoIds: [SEED.memo],
+      groupId: null,
+    });
+
+    const list = toDocumentList(peer.state);
+
+    expect(Object.keys(list.memos[0])).not.toContain('groupId');
+    expect(list.tableGroups[0]).toMatchObject({ tableCount: 1, memoCount: 0 });
+  });
+
   it('lists and counts only the relationships and indexes the file form keeps', () => {
     const { peer, orphans, kept } = createCrossedRemovalPeer();
     peers.push(peer);
@@ -459,15 +479,19 @@ describe('the entity details', () => {
     ).toBe('');
   });
 
-  it('gives a table group with its tables as the snapshot does, and a removed one as missing', () => {
+  it('gives a table group with its tables and memos as the snapshot does, and a removed one as missing', () => {
     const peer = seeded();
     const snapshot = toAgentSnapshot(peer.state);
 
     expect(
       toEntityDetails(peer.state, { tableGroupIds: [SEED.group] })
     ).toEqual({ tableGroups: snapshot.tableGroups });
+    expect(snapshot.tableGroups[0].memoIds).toEqual([SEED.memo]);
     expect(
       toEntityDetails(peer.state, { tableIds: [SEED.users] }).tables![0].groupId
+    ).toBe(SEED.group);
+    expect(
+      toEntityDetails(peer.state, { memoIds: [SEED.memo] }).memos![0].groupId
     ).toBe(SEED.group);
 
     runTool(peer, 'erd_remove_table_group', { groupId: SEED.group });

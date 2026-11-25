@@ -13,6 +13,7 @@ import {
 } from '@/engine/modules/index-column/atom.actions';
 import {
   addMemoAction,
+  changeMemoGroupAction,
   changeMemoValueAction,
 } from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
@@ -54,13 +55,15 @@ import {
 
 /**
  * A table group a document brings, its rect where it lands and the source ids
- * of the tables it holds, which no clipboard payload carries.
+ * of the tables and memos it holds, which no clipboard payload carries.
  */
 export type CreateEntityTableGroup = {
   sourceId: string;
   name: string;
   color: string;
   tableIds: string[];
+  /** The source ids of the memos it holds, none when left out. */
+  memoIds?: string[];
   ui: { x: number; y: number; width: number; height: number; zIndex: number };
 };
 
@@ -120,6 +123,7 @@ export function toCreateEntityActions(
   );
   const tableIdBySourceId = new Map<string, string>();
   const columnIdBySourceId = new Map<string, string>();
+  const memoIdBySourceId = new Map<string, string>();
 
   for (const table of tables) {
     const point = placement.get(table.sourceId);
@@ -292,6 +296,7 @@ export function toCreateEntityActions(
 
     const memoId = uuid25();
     memoIds.push(memoId);
+    memoIdBySourceId.set(memo.sourceId, memoId);
 
     actions.push(
       addMemoAction({
@@ -334,6 +339,13 @@ export function toCreateEntityActions(
       actions.push(
         changeTableGroupAction({ id: tableId, value: tableGroupId })
       );
+    }
+
+    for (const sourceMemoId of group.memoIds ?? []) {
+      const memoId = memoIdBySourceId.get(sourceMemoId);
+      if (!memoId) continue;
+
+      actions.push(changeMemoGroupAction({ id: memoId, value: tableGroupId }));
     }
   }
 

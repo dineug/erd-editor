@@ -7,7 +7,7 @@ describe('memo/actions', () => {
   it('namespaces every action type under "memo."', () => {
     const types = Object.values(ActionType);
 
-    expect(types.length).toBe(8);
+    expect(types.length).toBe(9);
     for (const type of types) {
       expect(type.startsWith('memo.')).toBe(true);
     }
@@ -23,6 +23,7 @@ describe('memo/actions', () => {
       changeMemoColor: 'memo.changeColor',
       resizeMemo: 'memo.resize',
       changeZIndex: 'memo.changeZIndex',
+      changeMemoGroup: 'memo.changeGroup',
     });
   });
 

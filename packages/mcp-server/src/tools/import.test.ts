@@ -13,10 +13,12 @@ import { APPEND_SCENARIOS, TOOL_SCENARIOS } from '@/__test-utils__/scenarios';
 import {
   createImportValue,
   createPeerSession,
+  createSeedValue,
   type PeerSession,
   SEED,
 } from '@/__test-utils__/seed';
 import { ToolError, ToolErrorCode } from '@/tools/errors';
+import { toolByName } from '@/tools/registry';
 import { runTool } from '@/tools/run';
 
 const sessions: PeerSession[] = [];
@@ -416,6 +418,37 @@ describe('an import with mode append adds to the document on both sides', () => 
       agent.state.collections.tableEntities[agent.state.doc.tableIds[3]];
     expect(added.ui.y).toBeGreaterThan(lowest);
     expect(added.ui.x).toBe(tableGroupEntities[SEED.group].ui.x);
+  });
+
+  it('erd_import_json puts the memos of a group the document holds in that group’s copy on both sides', async () => {
+    const session = open();
+    await quiet();
+    const { agent, other } = session;
+
+    const run = runTool(agent, 'erd_import_json', {
+      value: createSeedValue(),
+      mode: 'append',
+    });
+    await quiet();
+
+    const { doc, collections } = agent.state;
+    const groupId = doc.tableGroupIds.at(-1)!;
+    const memoId = doc.memoIds.at(-1)!;
+    const types = run.actions.map(({ type }) => type);
+    expect(run.mismatch).toBeUndefined();
+    expect(types).toContain('memo.changeGroup');
+    expect(
+      types.filter(
+        type =>
+          !toolByName
+            .get('erd_import_json')!
+            .actionTypes.includes(type as never)
+      )
+    ).toEqual([]);
+    expect(groupId).not.toBe(SEED.group);
+    expect(collections.memoEntities[memoId].groupId).toBe(groupId);
+    expect(collections.memoEntities[SEED.memo].groupId).toBe(SEED.group);
+    expect(JSON.parse(other.value)).toEqual(JSON.parse(agent.value));
   });
 
   it('takes the append away on both sides with one undo', async () => {

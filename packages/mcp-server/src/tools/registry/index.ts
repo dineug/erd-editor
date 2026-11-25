@@ -46,7 +46,7 @@ export type ToolArgKind =
       orNone?: boolean;
     }
   | { type: 'entityIdList'; entity: 'column'; parentArg: string }
-  | { type: 'entityIdList'; entity: 'table'; parentArg?: undefined }
+  | { type: 'entityIdList'; entity: 'table' | 'memo'; parentArg?: undefined }
   | { type: 'tablePositions' };
 
 /** One entry of a table positions argument: a live table, named once in the list. */

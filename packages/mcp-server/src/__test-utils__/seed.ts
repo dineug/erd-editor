@@ -70,17 +70,21 @@ function buildValue(...actions: AnyAction[][]): string {
   }
 }
 
-/** A group named and placed, with the tables given as its members. */
+/** A group named and placed, with the tables and memos given as its members. */
 const group = (
   id: string,
   name: string,
   ui: { x: number; y: number; width: number; height: number },
-  tableIds: string[]
+  tableIds: string[],
+  memoIds: string[] = []
 ): AnyAction[] => [
   tableGroupActions.addTableGroupAction({ id, ui: { ...ui, zIndex: 1 } }),
   tableGroupActions.changeTableGroupNameAction({ id, value: name }),
   ...tableIds.map(tableId =>
     tableActions.changeTableGroupAction({ id: tableId, value: id })
+  ),
+  ...memoIds.map(memoId =>
+    memoActions.changeMemoGroupAction({ id: memoId, value: id })
   ),
 ];
 
@@ -138,8 +142,8 @@ const dictionaries = (): AnyAction[] => [
 
 /**
  * Two related tables, an empty one, a two column index, a memo, a group of
- * the first table and the dictionaries above: every entity an edit can name,
- * and one relationship and index for a removal to cascade into.
+ * the first table and the memo, and the dictionaries above: every entity an
+ * edit can name, and one relationship and index for a removal to cascade into.
  */
 export function createSeedValue(): string {
   return buildValue(
@@ -191,12 +195,16 @@ export function createSeedValue(): string {
       }),
       memoActions.addMemoAction({
         id: SEED.memo,
-        ui: { x: 900, y: 100, zIndex: 5 },
+        ui: { x: 120, y: 190, zIndex: 5 },
       }),
     ],
-    group(SEED.group, 'accounts', { x: 40, y: 20, width: 560, height: 300 }, [
-      SEED.users,
-    ]),
+    group(
+      SEED.group,
+      'accounts',
+      { x: 40, y: 20, width: 560, height: 300 },
+      [SEED.users],
+      [SEED.memo]
+    ),
     dictionaries()
   );
 }

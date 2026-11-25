@@ -120,7 +120,7 @@ can keep the diagrams in your documentation up to date:
 | Relationships | `erd_add_relationship`, `erd_link_columns`, `erd_remove_relationship`, `erd_change_relationship_type`, `erd_change_relationship_on_delete`, `erd_change_relationship_on_update` |
 | Indexes | `erd_add_index`, `erd_remove_index`, `erd_change_index_name`, `erd_set_index_unique`, `erd_add_index_column`, `erd_remove_index_column`, `erd_move_index_column`, `erd_set_index_column_order` |
 | Memos | `erd_add_memo`, `erd_remove_memo`, `erd_change_memo_value`, `erd_change_memo_color`, `erd_move_memo`, `erd_resize_memo` |
-| Table groups | `erd_add_table_group`, `erd_remove_table_group`, `erd_change_table_group_name`, `erd_change_table_group_color`, `erd_move_table_group`, `erd_resize_table_group`, `erd_set_table_group` |
+| Table groups | `erd_add_table_group`, `erd_remove_table_group`, `erd_change_table_group_name`, `erd_change_table_group_color`, `erd_move_table_group`, `erd_resize_table_group`, `erd_set_table_group`, `erd_set_memo_group` |
 | Dictionaries | `erd_add_word`, `erd_update_word`, `erd_remove_word`, `erd_add_term`, `erd_update_term`, `erd_remove_term`, `erd_add_domain`, `erd_update_domain`, `erd_remove_domain`, `erd_derive_physical_names` |
 | Settings | `erd_set_database`, `erd_set_database_name`, `erd_set_ddl_script` |
 | Import | `erd_import_sql`, `erd_import_graphql`, `erd_import_dbml`, `erd_import_aml`, `erd_import_json` |

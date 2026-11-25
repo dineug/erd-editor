@@ -36,6 +36,7 @@ export function targetOf(node: ExplorerNode): ErdTarget | null {
     case 'tableGroup':
       return { kind: 'tableGroup', tableGroupId: node.tableGroupId };
     case 'memo':
+    case 'groupMemo':
       return { kind: 'memo', memoId: node.memoId };
     case 'excerpt':
       return toErdTarget(node.match);

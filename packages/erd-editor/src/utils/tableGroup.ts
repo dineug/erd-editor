@@ -6,33 +6,55 @@ import {
 } from '@/constants/layout';
 import { Show } from '@/constants/schema';
 import { RootState } from '@/engine/state';
-import { Point, Table, TableGroup } from '@/internal-types';
-import { getTableRect, type Rect, unionRect } from '@/konva/scene/metrics';
+import { Memo, Point, Table, TableGroup } from '@/internal-types';
+import {
+  getMemoRect,
+  getTableRect,
+  type Rect,
+  unionRect,
+} from '@/konva/scene/metrics';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { contrastTextColor } from '@/utils/contrastText';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { isMemoShown } from '@/utils/memo';
 import { toOpaqueHex } from '@/utils/tableColor';
 
 export type TableGroupRectOptions = {
   /** Tables the box leaves out though they are members, the ones a drag holds. */
   excludeTableIds?: ReadonlyArray<string>;
+  /** Memos the box leaves out though they are members, the ones a drag holds. */
+  excludeMemoIds?: ReadonlyArray<string>;
 };
 
 /** A group's box options, and the members it is read from when the caller holds them. */
 export type TableGroupMemberOptions = TableGroupRectOptions & {
   /** The group's member tables, which spares a walk over every table of the document. */
   members?: ReadonlyArray<Table>;
+  /** The group's member memos, which spares a walk over every memo of the document. */
+  memberMemos?: ReadonlyArray<Memo>;
 };
+
+/** What a table and a memo share as members of a group: the id of the group they saved. */
+type GroupMember = Pick<Table | Memo, 'groupId'>;
+
+const listedGroupId = ({ doc }: RootState, { groupId }: GroupMember) =>
+  groupId && doc.tableGroupIds.includes(groupId) ? groupId : '';
 
 /**
  * The group a table is in, or '' for none: a groupId naming no group the
  * document lists reads as none, whatever the table saved.
  */
-export function getTableGroupId({ doc }: RootState, table: Table): string {
-  return table.groupId && doc.tableGroupIds.includes(table.groupId)
-    ? table.groupId
-    : '';
+export function getTableGroupId(state: RootState, table: Table): string {
+  return listedGroupId(state, table);
+}
+
+/**
+ * The group a memo is in, or '' for none, read as a table's is: a groupId
+ * naming no group the document lists reads as none, whatever the memo saved.
+ */
+export function getMemoGroupId(state: RootState, memo: Memo): string {
+  return listedGroupId(state, memo);
 }
 
 function getMemberTables(state: RootState, groupId: string): Table[] {
@@ -53,6 +75,29 @@ export function getTableGroupMemberIds(
   return getMemberTables(state, groupId).map(({ id }) => id);
 }
 
+/** The memos a group holds, in document order, hidden ones too; none for a group the document does not list. */
+export function getMemberMemos(state: RootState, groupId: string): Memo[] {
+  const { doc, collections } = state;
+  if (!groupId || !doc.tableGroupIds.includes(groupId)) return [];
+
+  return query(collections)
+    .collection('memoEntities')
+    .selectByIds(doc.memoIds)
+    .filter(memo => memo.groupId === groupId);
+}
+
+/**
+ * The ids of the memos a group holds, in document order, hidden ones too,
+ * since membership is data and the Show bit only changes the drawing; none for
+ * a group the document does not list.
+ */
+export function getTableGroupMemberMemoIds(
+  state: RootState,
+  groupId: string
+): string[] {
+  return getMemberMemos(state, groupId).map(({ id }) => id);
+}
+
 /**
  * A rect grown by the padding on every side and by the title bar on top too,
  * so the bar a group draws along the top of its box clears what it holds.
@@ -70,8 +115,8 @@ export function padRect(rect: Rect, padding = TABLE_GROUP_PADDING): Rect {
 
 /**
  * The box a group is drawn and hit in: its stored rect united with each member
- * table's rect and the padding around it, title bar included, so a member that
- * grows never sticks out and nothing is written for it.
+ * table's and shown member memo's rect and the padding around it, title bar
+ * included, so a member that grows never sticks out and nothing is written for it.
  *
  * @example
  * const box = getTableGroupRect(state, group, { excludeTableIds: dragged });
@@ -81,24 +126,34 @@ export function getTableGroupRect(
   group: TableGroup,
   {
     excludeTableIds = [],
+    excludeMemoIds = [],
     members = getMemberTables(state, group.id),
+    memberMemos,
   }: TableGroupMemberOptions = {}
 ): Rect {
   const { x, y, width, height } = group.ui;
-  const excluded = new Set(excludeTableIds);
+  const excluded = new Set([...excludeTableIds, ...excludeMemoIds]);
+  const memos = isMemoShown(state)
+    ? (memberMemos ?? getMemberMemos(state, group.id))
+    : [];
 
-  return members
-    .filter(table => !excluded.has(table.id))
-    .reduce<Rect>(
-      (rect, table) => unionRect(rect, padRect(getTableRect(state, table))),
-      { x, y, width, height }
-    );
+  return [
+    ...members
+      .filter(table => !excluded.has(table.id))
+      .map(table => getTableRect(state, table)),
+    ...memos.filter(memo => !excluded.has(memo.id)).map(getMemoRect),
+  ].reduce<Rect>((rect, member) => unionRect(rect, padRect(member)), {
+    x,
+    y,
+    width,
+    height,
+  });
 }
 
 /**
  * Each group's box seeded at its stored rect, keyed by id, for one walk over
- * the tables to grow with growTableGroupBox: every box out of one pass, where
- * a box apiece walks every table once per group.
+ * the tables and the shown memos to grow with growTableGroupBox: every box out
+ * of one pass, where a box apiece walks every member once per group.
  */
 export function seedTableGroupBoxes(
   groups: ReadonlyArray<TableGroup>
@@ -112,28 +167,29 @@ export function seedTableGroupBoxes(
 }
 
 /**
- * Grows the box of the group a table names by the table's rect and padding; a
- * table naming no seeded group, a removed one among them, grows none.
+ * Grows the box of the group a table or a memo names by its rect and padding;
+ * one naming no seeded group, a removed one among them, grows none.
  */
 export function growTableGroupBox(
   boxes: Map<string, Rect>,
-  table: Table,
+  { groupId }: GroupMember,
   rect: Rect
 ): void {
-  const box = table.groupId ? boxes.get(table.groupId) : undefined;
-  if (box) boxes.set(table.groupId, unionRect(box, padRect(rect)));
+  const box = groupId ? boxes.get(groupId) : undefined;
+  if (box) boxes.set(groupId, unionRect(box, padRect(rect)));
 }
 
 /**
  * The box of every group the document lists, keyed by id, each as
- * getTableGroupRect reads it, out of one walk over the tables.
+ * getTableGroupRect reads it, out of one walk over the tables and one over the
+ * memos while they are shown.
  *
  * @example
  * const boxes = getTableGroupRects(state, { excludeTableIds: dragged });
  */
 export function getTableGroupRects(
   state: RootState,
-  { excludeTableIds = [] }: TableGroupRectOptions = {}
+  { excludeTableIds = [], excludeMemoIds = [] }: TableGroupRectOptions = {}
 ): Map<string, Rect> {
   const { doc, collections } = state;
   const boxes = seedTableGroupBoxes(
@@ -143,7 +199,7 @@ export function getTableGroupRects(
   );
   if (!boxes.size) return boxes;
 
-  const excluded = new Set(excludeTableIds);
+  const excluded = new Set([...excludeTableIds, ...excludeMemoIds]);
   query(collections)
     .collection('tableEntities')
     .selectByIds(doc.tableIds)
@@ -151,8 +207,34 @@ export function getTableGroupRects(
       if (excluded.has(table.id)) return;
       growTableGroupBox(boxes, table, getTableRect(state, table));
     });
+  if (!isMemoShown(state)) return boxes;
+
+  query(collections)
+    .collection('memoEntities')
+    .selectByIds(doc.memoIds)
+    .forEach(memo => {
+      if (excluded.has(memo.id)) return;
+      growTableGroupBox(boxes, memo, getMemoRect(memo));
+    });
 
   return boxes;
+}
+
+/** The entities given, keyed by the listed group each is in and kept in their order; the rest left out. */
+function byListedGroup<T extends GroupMember>(
+  listed: ReadonlySet<string>,
+  entities: ReadonlyArray<T>
+): Map<string, T[]> {
+  const members = new Map<string, T[]>();
+
+  entities.forEach(entity => {
+    if (!listed.has(entity.groupId)) return;
+
+    const list = members.get(entity.groupId);
+    list ? list.push(entity) : members.set(entity.groupId, [entity]);
+  });
+
+  return members;
 }
 
 /**
@@ -163,35 +245,55 @@ export function getTableGroupRects(
 export function getTableGroupMembers(state: RootState): Map<string, Table[]> {
   const { doc, collections } = state;
   const listed = new Set(doc.tableGroupIds);
-  const members = new Map<string, Table[]>();
-  if (!listed.size) return members;
+  if (!listed.size) return new Map();
 
-  query(collections)
-    .collection('tableEntities')
-    .selectByIds(doc.tableIds)
-    .forEach(table => {
-      if (!listed.has(table.groupId)) return;
-
-      const list = members.get(table.groupId);
-      list ? list.push(table) : members.set(table.groupId, [table]);
-    });
-
-  return members;
+  return byListedGroup(
+    listed,
+    query(collections).collection('tableEntities').selectByIds(doc.tableIds)
+  );
 }
 
 /**
- * The rect a group made from tables takes: their bounds and the padding around
- * them, or null for no table the document lists.
+ * The member memos of every group the document lists, keyed by id, each list
+ * in document order, hidden memos too, out of one walk over the memos; a group
+ * with no member memo is left out.
+ */
+export function getTableGroupMemberMemos(
+  state: RootState
+): Map<string, Memo[]> {
+  const { doc, collections } = state;
+  const listed = new Set(doc.tableGroupIds);
+  if (!listed.size) return new Map();
+
+  return byListedGroup(
+    listed,
+    query(collections).collection('memoEntities').selectByIds(doc.memoIds)
+  );
+}
+
+/**
+ * The rect a group made from tables and memos takes: the bounds of the tables
+ * and of the memos while they are shown, and the padding around them, or null
+ * for none of them the document lists.
  */
 export function getTablesGroupRect(
   state: RootState,
-  tableIds: ReadonlyArray<string>
+  tableIds: ReadonlyArray<string>,
+  memoIds: ReadonlyArray<string> = []
 ): Rect | null {
   const { doc, collections } = state;
-  const rects = query(collections)
-    .collection('tableEntities')
-    .selectByIds(tableIds.filter(arrayHas(doc.tableIds)))
-    .map(table => getTableRect(state, table));
+  const rects = [
+    ...query(collections)
+      .collection('tableEntities')
+      .selectByIds(tableIds.filter(arrayHas(doc.tableIds)))
+      .map(table => getTableRect(state, table)),
+    ...(isMemoShown(state)
+      ? query(collections)
+          .collection('memoEntities')
+          .selectByIds(memoIds.filter(arrayHas(doc.memoIds)))
+          .map(getMemoRect)
+      : []),
+  ];
 
   return rects.length ? padRect(rects.reduce(unionRect)) : null;
 }
@@ -199,17 +301,43 @@ export function getTablesGroupRect(
 /** A group and the rect a placement gives it. */
 export type TableGroupWrap = Rect & { id: string };
 
+/** An entity, a table or a memo, and the point a placement puts it at. */
+export type PlacedPoint = Point & { id: string };
+
 /**
- * The rect each listed group with a member takes once every table named stands
- * at its point: its members' bounds and the padding, what an automatic
- * placement writes. A group with no member keeps its rect and is left out.
+ * Grows each box by the shown memos of its group, a memo named in memoPoints
+ * at its point, so the rect a placement writes holds what the group draws once
+ * its memos land. A hidden memo grows none, as it grows no drawn box.
+ */
+export function growTableGroupBoxesByMemos(
+  state: RootState,
+  boxes: Map<string, Rect>,
+  memoPoints: ReadonlyArray<PlacedPoint> = []
+): void {
+  if (!boxes.size || !isMemoShown(state)) return;
+
+  const placed = new Map(memoPoints.map(point => [point.id, point]));
+  query(state.collections)
+    .collection('memoEntities')
+    .selectByIds(state.doc.memoIds)
+    .forEach(memo => {
+      const { x, y } = placed.get(memo.id) ?? memo.ui;
+      growTableGroupBox(boxes, memo, { ...getMemoRect(memo), x, y });
+    });
+}
+
+/**
+ * The rect each listed group with a member table takes once every table and memo named stands at
+ * its point: its member tables' and shown member memos' bounds and the padding, what an automatic
+ * placement writes. A group with no member table keeps its rect and is left out.
  *
  * @example
  * const resizes = getTableGroupWraps(state, points).map(resizeTableGroupAction);
  */
 export function getTableGroupWraps(
   state: RootState,
-  points: ReadonlyArray<Point & { id: string }> = []
+  points: ReadonlyArray<PlacedPoint> = [],
+  memoPoints: ReadonlyArray<PlacedPoint> = []
 ): TableGroupWrap[] {
   const { doc, collections } = state;
   const placed = new Map(points.map(point => [point.id, point]));
@@ -228,16 +356,94 @@ export function getTableGroupWraps(
       rects ? rects.push(rect) : rectsByGroup.set(groupId, [rect]);
     });
 
-  return doc.tableGroupIds.flatMap(id => {
-    const rects = rectsByGroup.get(id);
-    return rects ? [{ ...padRect(rects.reduce(unionRect)), id }] : [];
-  });
+  const boxes = new Map(
+    doc.tableGroupIds.flatMap((id): Array<[string, Rect]> => {
+      const rects = rectsByGroup.get(id);
+      return rects ? [[id, padRect(rects.reduce(unionRect))]] : [];
+    })
+  );
+  growTableGroupBoxesByMemos(state, boxes, memoPoints);
+
+  return [...boxes].map(([id, rect]) => ({ ...rect, id }));
 }
+
+/**
+ * How far the corner of a group's member tables moves, their least x and least
+ * y, from the points they stand at to the points they go to; null for no
+ * table. A member memo rides by it, kept where it stood from that corner.
+ */
+export function getCornerShift(
+  from: ReadonlyArray<Point>,
+  to: ReadonlyArray<Point>
+): Point | null {
+  if (!from.length || !to.length) return null;
+
+  return {
+    x: Math.min(...to.map(({ x }) => x)) - Math.min(...from.map(({ x }) => x)),
+    y: Math.min(...to.map(({ y }) => y)) - Math.min(...from.map(({ y }) => y)),
+  };
+}
+
+/**
+ * Where each member memo of a group whose member tables move to the points
+ * named goes, hidden ones too: it rides by the shift of their corner. A memo in
+ * placedMemoIds, one of a group with no member table and a zero shift are left out.
+ *
+ * @example
+ * const memoMoves = getTableGroupMemoMoves(state, tablePoints);
+ */
+export function getTableGroupMemoMoves(
+  state: RootState,
+  points: ReadonlyArray<PlacedPoint>,
+  placedMemoIds: ReadonlyArray<string> = []
+): PlacedPoint[] {
+  const { doc, collections } = state;
+  const placed = new Map(points.map(point => [point.id, point]));
+  const corners = new Map<string, { from: Point[]; to: Point[] }>();
+
+  query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .forEach(table => {
+      const groupId = getTableGroupId(state, table);
+      if (!groupId) return;
+
+      const corner = corners.get(groupId) ?? { from: [], to: [] };
+      corner.from.push(table.ui);
+      corner.to.push(placed.get(table.id) ?? table.ui);
+      corners.set(groupId, corner);
+    });
+  if (!corners.size) return [];
+
+  const shifts = new Map(
+    [...corners].map(([id, { from, to }]) => [id, getCornerShift(from, to)!])
+  );
+  const skipped = new Set(placedMemoIds);
+
+  return query(collections)
+    .collection('memoEntities')
+    .selectByIds(doc.memoIds)
+    .flatMap(memo => {
+      const shift = shifts.get(memo.groupId);
+      if (!shift || skipped.has(memo.id) || (!shift.x && !shift.y)) return [];
+
+      return [{ id: memo.id, x: memo.ui.x + shift.x, y: memo.ui.y + shift.y }];
+    });
+}
+
+const centerOf = ({ x, y, width, height }: Rect): Point => ({
+  x: x + width / 2,
+  y: y + height / 2,
+});
 
 /** The centre of a table's box, the point every membership test reads. */
 export function getTableCenter(state: RootState, table: Table): Point {
-  const { x, y, width, height } = getTableRect(state, table);
-  return { x: x + width / 2, y: y + height / 2 };
+  return centerOf(getTableRect(state, table));
+}
+
+/** The centre of a memo's box, which a membership test reads as it reads a table's. */
+export function getMemoCenter(memo: Memo): Point {
+  return centerOf(getMemoRect(memo));
 }
 
 /** Whether the point lies in the rect, its edges included. */
@@ -351,6 +557,23 @@ export function getTableHeaderTint(
   if (source !== 'document' || !isTableGroupShown(state)) return null;
 
   return getTableGroupTint(state, getTableGroupId(state, table), source);
+}
+
+/**
+ * The colors a member memo's header band takes from its group, decided as a
+ * member table's header is (getTableHeaderTint), or null where it keeps its own.
+ *
+ * @example
+ * const tint = getMemoHeaderTint(state, memo, source);
+ */
+export function getMemoHeaderTint(
+  state: RootState,
+  memo: Memo,
+  source: GeometrySource = 'document'
+): TableGroupColors | null {
+  if (source !== 'document' || !isTableGroupShown(state)) return null;
+
+  return getTableGroupTint(state, getMemoGroupId(state, memo), source);
 }
 
 /**

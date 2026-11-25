@@ -35,6 +35,7 @@ export const DiffField = {
   size: 'size',
   color: 'color',
   members: 'members',
+  memos: 'memos',
   columns: 'columns',
   relationshipType: 'relationshipType',
   onDelete: 'onDelete',

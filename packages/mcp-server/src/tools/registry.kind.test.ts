@@ -176,6 +176,10 @@ const CENSUS: Census = {
     tableGroupActions$.setTableGroupAction$([SEED.orders], SEED.group),
     tableGroupActions$.setTableGroupAction$([SEED.users], ''),
   ],
+  setMemoGroupAction$: () => [
+    tableGroupActions$.setMemoGroupAction$([SEED.memo], SEED.group),
+    tableGroupActions$.setMemoGroupAction$([SEED.memo], ''),
+  ],
   dropTablesIntoGroupsAction$: () => [
     tableGroupActions$.dropTablesIntoGroupsAction$(),
   ],

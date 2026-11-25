@@ -146,6 +146,7 @@ export const importTools: readonly ActionTool[] = [
       'memo.add',
       'memo.changeValue',
       ...GROUP_APPEND_TYPES,
+      'memo.changeGroup',
     ],
     undoable: true,
     stream: false,

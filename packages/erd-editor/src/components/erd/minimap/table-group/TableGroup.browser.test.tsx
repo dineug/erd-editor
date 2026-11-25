@@ -13,16 +13,28 @@ import {
 } from '@/components/erd/canvas/entityDrag';
 import { MINIMAP_MARK_MIN } from '@/components/erd/minimap/minimapGeometry';
 import TableGroup from '@/components/erd/minimap/table-group/TableGroup';
+import { Show } from '@/constants/schema';
 import { selectAction } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableGroupAction,
   moveTableAction,
 } from '@/engine/modules/table/atom.actions';
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
+import { getMemoRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
-import { getTableGroupMembers, getTableGroupRect } from '@/utils/tableGroup';
+import {
+  getTableGroupMemberMemos,
+  getTableGroupMembers,
+  getTableGroupRect,
+  padRect,
+} from '@/utils/tableGroup';
 
 const GROUP_ID = 'group-1';
 const THEME = createTestTheme();
@@ -57,7 +69,11 @@ async function mountGroup(
       <k-layer name="scene">
         <TableGroup
           group={group}
-          members={getTableGroupMembers(app.store.state).get(GROUP_ID) ?? []}
+          members={{
+            tables: getTableGroupMembers(app.store.state).get(GROUP_ID) ?? [],
+            memos:
+              getTableGroupMemberMemos(app.store.state).get(GROUP_ID) ?? [],
+          }}
           ratio={ratio}
         />
       </k-layer>
@@ -121,6 +137,38 @@ describe('the minimap table group box', () => {
 
     expect(rect.width).toBeGreaterThan(500);
     expect(box.attrs).toMatchObject(rect);
+  });
+
+  it('reaches over its shown member memos, and no hidden one, as the canvas box does', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      addMemoAction({ id: 'm1', ui: { x: 900, y: 700, zIndex: 2 } }),
+      changeMemoGroupAction({ id: 'm1', value: GROUP_ID })
+    );
+    const stage = await mountGroup('#3b82f6', app);
+    const memo = padRect(
+      getMemoRect(app.store.state.collections.memoEntities.m1)
+    );
+
+    expect(boxOf(stage).attrs).toMatchObject({
+      x: 30,
+      y: 40,
+      width: memo.x + memo.width - 30,
+      height: memo.y + memo.height - 40,
+    });
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await flush();
+    await whenDrawn();
+
+    expect(boxOf(stage).attrs).toMatchObject({
+      x: 30,
+      y: 40,
+      width: 500,
+      height: 300,
+    });
   });
 
   it('holds the box it showed as a drag began, as the canvas box does', async () => {

@@ -417,6 +417,7 @@ const ExplorerPanel: FC<ExplorerPanelProps> = (props, ctx) => {
           </>
         );
       case 'memo':
+      case 'groupMemo':
         return (
           <>
             <span class={styles.rowIcon}>

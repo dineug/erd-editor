@@ -28,6 +28,7 @@ import type { Theme } from '@/themes/tokens';
 import { createMemo } from '@/utils/collection/memo.entity';
 import { createRelationship } from '@/utils/collection/relationship.entity';
 import { getRouteBBox } from '@/utils/draw-relationship';
+import { padRect } from '@/utils/tableGroup';
 
 const toWidth = (text: string) => text.length * 7 + 2;
 
@@ -37,6 +38,7 @@ type MemoSeed = {
   y: number;
   width: number;
   height: number;
+  groupId?: string;
 };
 
 type RelationshipSeed = {
@@ -165,11 +167,12 @@ function createDoc({
           }
         : {}),
       memoEntities: Object.fromEntries(
-        memos.map(({ id, x, y, width, height }) => [
+        memos.map(({ id, x, y, width, height, groupId }) => [
           id,
           {
             id,
             value: '',
+            ...(groupId ? { groupId } : {}),
             ui: { x, y, width, height, zIndex: 2, color: '#ff0000' },
           },
         ])
@@ -393,6 +396,49 @@ describe('the groups of an exported document', () => {
     expect(drawn.band).toBe('#1e3a8a');
     expect(drawn.name).toBe('#ffffff');
     expect(drawn.x).toBe(GROUP.x - EXPORT_MARGIN);
+  });
+
+  it('reaches the box over a member memo and wears the group color on its header band', async () => {
+    const memo: MemoSeed = {
+      ...DEFAULT_MEMO,
+      x: 600,
+      y: 400,
+      groupId: GROUP.id,
+    };
+    const scene = await renderDocumentScene({
+      doc: createDoc({ memos: [memo], groups: [GROUP] }),
+      theme,
+      toWidth,
+    });
+
+    try {
+      const padded = padRect(
+        getMemoRect(
+          createMemo({
+            ui: {
+              x: memo.x,
+              y: memo.y,
+              width: memo.width,
+              height: memo.height,
+            },
+          })
+        )
+      );
+      const frame = scene.stage.findOne<Container>('.table-group')!;
+      const border = frame.findOne('.table-group-border')!;
+
+      expect({ x: frame.x(), y: frame.y() }).toEqual({
+        x: GROUP.x,
+        y: GROUP.y,
+      });
+      expect(border.width() + 1).toBe(padded.x + padded.width - GROUP.x);
+      expect(border.height() + 1).toBe(padded.y + padded.height - GROUP.y);
+      expect(scene.stage.findOne('.memo-header-band')?.getAttr('fill')).toBe(
+        GROUP.color
+      );
+    } finally {
+      scene.destroy();
+    }
   });
 
   it('draws no group, no tint and no room for one while the document hides them', async () => {

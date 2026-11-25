@@ -32,6 +32,7 @@ import {
   toSnapshotTableGroup,
   toSnapshotTerm,
   toSnapshotWord,
+  toTableGroupMemberMemos,
   toTableGroupMembers,
 } from '@/tools/snapshot';
 
@@ -68,13 +69,15 @@ export type ListedIndex = {
 
 export type ListedMemo = {
   id: string;
+  /** The table group it is in, left out for none. */
+  groupId?: string;
   x: number;
   y: number;
   width: number;
   height: number;
 };
 
-/** A table group by its stored rect, with how many tables it holds. */
+/** A table group by its stored rect, with how many tables and memos it holds. */
 export type ListedTableGroup = {
   id: string;
   name: string;
@@ -84,6 +87,7 @@ export type ListedTableGroup = {
   width: number;
   height: number;
   tableCount: number;
+  memoCount: number;
 };
 
 /** A word by what a composed name takes of it. */
@@ -328,12 +332,13 @@ const toListedIndex = ({
   unique,
 }: IndexEntity): ListedIndex => ({ id, tableId, name, unique });
 
-const toListedMemo = ({ id, ui }: MemoEntity): ListedMemo => ({
-  id,
-  x: ui.x,
-  y: ui.y,
-  width: ui.width,
-  height: ui.height,
+const toListedMemo = (memo: MemoEntity, groupId: string): ListedMemo => ({
+  id: memo.id,
+  ...(groupId ? { groupId } : {}),
+  x: memo.ui.x,
+  y: memo.ui.y,
+  width: memo.ui.width,
+  height: memo.ui.height,
 });
 
 const toListedWord = ({ id, name, abbreviation }: WordEntity): ListedWord => ({
@@ -360,7 +365,8 @@ const toListedDomain = ({
 
 const toListedTableGroup = (
   { id, name, color, ui }: TableGroupEntity,
-  tableCount: number
+  tableCount: number,
+  memoCount: number
 ): ListedTableGroup => ({
   id,
   name,
@@ -370,6 +376,7 @@ const toListedTableGroup = (
   width: ui.width,
   height: ui.height,
   tableCount,
+  memoCount,
 });
 
 /** Items joined as a sentence lists them: a, b and c. */
@@ -474,6 +481,7 @@ export function toDocumentList(
   const relationships = liveRelationships(state);
   const indexes = liveIndexes(state);
   const members = toTableGroupMembers(state);
+  const memberMemos = toTableGroupMemberMemos(state);
   // The dictionaries list in the order their sheets show them.
   const words = select
     .collection('wordEntities')
@@ -498,11 +506,18 @@ export function toDocumentList(
       .collection('tableGroupEntities')
       .selectByIds(doc.tableGroupIds)
       .map(group =>
-        toListedTableGroup(group, members.get(group.id)?.length ?? 0)
+        toListedTableGroup(
+          group,
+          members.get(group.id)?.length ?? 0,
+          memberMemos.get(group.id)?.length ?? 0
+        )
       )
   );
   const memos = section('memo', () =>
-    select.collection('memoEntities').selectByIds(doc.memoIds).map(toListedMemo)
+    select
+      .collection('memoEntities')
+      .selectByIds(doc.memoIds)
+      .map(memo => toListedMemo(memo, tableGroupIdOf(state, memo)))
   );
   const listedDomains = section('domain', () => domains.map(toListedDomain));
   const listedTerms = section('term', () => {
@@ -892,11 +907,20 @@ export function toEntityDetails(
   if (indexes) {
     details.indexes = fit(indexes, index => toSnapshotIndex(select, index));
   }
-  if (memos) details.memos = fit(memos, toSnapshotMemo);
+  if (memos) {
+    details.memos = fit(memos, memo =>
+      toSnapshotMemo(memo, tableGroupIdOf(state, memo))
+    );
+  }
   if (tableGroups) {
     const members = toTableGroupMembers(state);
+    const memberMemos = toTableGroupMemberMemos(state);
     details.tableGroups = fit(tableGroups, group =>
-      toSnapshotTableGroup(group, members.get(group.id) ?? [])
+      toSnapshotTableGroup(
+        group,
+        members.get(group.id) ?? [],
+        memberMemos.get(group.id) ?? []
+      )
     );
   }
   if (words) details.words = fit(words, toSnapshotWord);

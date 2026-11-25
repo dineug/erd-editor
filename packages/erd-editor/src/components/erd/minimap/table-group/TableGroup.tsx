@@ -3,11 +3,14 @@
 import { FC } from '@dineug/r-html';
 
 import { useAppContext } from '@/components/appContext';
-import { getDrawnTableGroupRect } from '@/components/erd/canvas/table-group/tableGroupBox';
+import {
+  getDrawnTableGroupRect,
+  type TableGroupMemberLists,
+} from '@/components/erd/canvas/table-group/tableGroupBox';
 import { getMinimapMarkRect } from '@/components/erd/minimap/minimapGeometry';
 import { useSceneSource } from '@/components/sceneSourceContext';
 import { useThemeContext } from '@/components/themeContext';
-import type { Table, TableGroup } from '@/internal-types';
+import type { TableGroup } from '@/internal-types';
 import { getTableGroupColors } from '@/utils/tableGroup';
 
 /**
@@ -18,8 +21,8 @@ const FILL_OPACITY = 0.4;
 
 export type TableGroupProps = {
   group: TableGroup;
-  /** The group's member tables, read once for every group by the minimap scene. */
-  members: ReadonlyArray<Table>;
+  /** The group's member tables and memos, read once for every group by the minimap scene. */
+  members: TableGroupMemberLists;
   /** Thumbnail pixels per scene unit, which is what the box is floored at. */
   ratio: number;
 };

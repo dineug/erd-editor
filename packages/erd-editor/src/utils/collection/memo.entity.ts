@@ -9,6 +9,7 @@ export const createMemo = (value?: DeepPartial<Memo>): Memo =>
     {
       id: uuid25(),
       value: '',
+      groupId: '',
       ui: {
         x: 200,
         y: 100,

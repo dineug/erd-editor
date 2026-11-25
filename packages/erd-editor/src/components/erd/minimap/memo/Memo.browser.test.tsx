@@ -29,6 +29,7 @@ afterEach(async () => {
 const createMemo = (ui: Partial<MemoType['ui']> = {}): MemoType => ({
   id: 'memo-1',
   value: 'note',
+  groupId: '',
   ui: {
     x: 30,
     y: 40,

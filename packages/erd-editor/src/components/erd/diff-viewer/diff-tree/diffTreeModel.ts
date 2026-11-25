@@ -195,6 +195,7 @@ const FIELD_LABEL = {
   [DiffField.size]: 'explorer.diff.field.size',
   [DiffField.color]: 'explorer.diff.field.color',
   [DiffField.members]: 'explorer.diff.field.members',
+  [DiffField.memos]: 'explorer.folder.memos',
   [DiffField.columns]: 'explorer.diff.field.columns',
   [DiffField.relationshipType]: 'explorer.diff.field.relationshipType',
   [DiffField.value]: 'explorer.diff.field.value',
