@@ -101,7 +101,7 @@
 - **Answer the text only when it fits one read.** Without `output` the svg comes as a read's text, its `mode` and notes in a second block, refused past `MAX_READ_CHARS` with `tooLarge`, whose message names `output`. Never as an embedded resource: Claude Code sets a large one aside with a prefix line, so the saved file is no svg (owner decision, 2026-11-25). With `output` the answer is JSON: `mode`, `path`, `output`, `bytes` (UTF-8), the `width` and `height` of the root element, and notes.
 - **Widths are the table's, not a font's.** `toSvg` measures off `erd-editor`'s width table with its 1.15 margin, so a table comes out a little wider than an editor draws it, which the description says (`packages/erd-editor/src/services/AGENTS.md`, The Node Realm). The realm's globals, `document` among them, stay for the life of the process.
 - **A drawing `toSvg` rejects writes nothing.** The call answers `internal` with its message, which names a hook's error r-html caught as the scene drew too (same file, The Export from Outside), and the next export draws.
-- `export.test.ts` pins the file and text answers, the switches, the replace, the refusals, the Windows retry, a live drawing with unsaved edits from both sides, the `hub: false` read, the drawing outside the line and one at a time; `paths.test.ts` the output paths.
+- `export.test.ts` pins the file and text answers, the switches, the replace, the refusals, the Windows retry, a live drawing with unsaved edits from both sides, the `hub: false` read, the drawing outside the line and one at a time, a cancel as it draws, which still writes the file, and as it waits, which draws nothing; `paths.test.ts` the output paths.
 
 ### Batches
 

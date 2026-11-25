@@ -139,6 +139,25 @@ describe('erd_export_svg to a file', () => {
     expect(io.files.get(OUTPUT)!.mode).toBe(0o664);
   });
 
+  it('counts the bytes it wrote in UTF-8, past the characters of a name outside ASCII', async () => {
+    const json = JSON.parse(shop);
+    Object.values<{ name: string }>(json.collections.tableEntities).find(
+      table => table.name === 'users'
+    )!.name = '회원';
+    io.put(DOCUMENT, JSON.stringify(json));
+    await connect();
+
+    const result = await mcp.ok('erd_export_svg', {
+      path: DOCUMENT,
+      output: OUTPUT,
+    });
+
+    const svg = io.read(OUTPUT);
+    expect(svg).toContain('>회원<');
+    expect(result.bytes).toBe(Buffer.byteLength(svg, 'utf8'));
+    expect(result.bytes).toBeGreaterThan(svg.length);
+  });
+
   it('refuses a read-only file already there, leaving it as it was', async () => {
     io.put(OUTPUT, '<svg/>', 0o444);
     await connect();
@@ -371,6 +390,73 @@ describe('erd_export_svg beside other calls', () => {
     const answers = await Promise.all([first, second]);
     expect(answers.map(({ isError }) => isError)).toEqual([false, false]);
     expect(events).toEqual(['start', 'end', 'start', 'end']);
+  });
+
+  /** Sends a tools/call without waiting for it, so the spec can cancel it. */
+  const start = (id: number, args: Record<string, unknown>) =>
+    mcp.stdio.send({
+      jsonrpc: '2.0',
+      id,
+      method: 'tools/call',
+      params: { name: 'erd_export_svg', arguments: args },
+    });
+
+  /** The responses the server sent to the request of this id. */
+  const answersTo = (id: number) => {
+    const answers: unknown[] = [];
+    mcp.stdio.onLine(message => {
+      if (message.id === id) answers.push(message);
+    });
+    return answers;
+  };
+
+  it('draws and writes to the end an export the client cancelled once it drew, leaving no temp file', async () => {
+    io.put(OUTPUT, '<svg/>');
+    await connect();
+    const { events, release } = holdDrawings();
+    const answers = answersTo(910);
+
+    start(910, { path: DOCUMENT, output: OUTPUT });
+    try {
+      await vi.waitFor(() => expect(events).toEqual(['start']));
+      mcp.notify('notifications/cancelled', { requestId: 910, reason: 'user' });
+      await settle(20);
+    } finally {
+      release();
+    }
+    await vi.waitFor(() => expect(io.read(OUTPUT)).not.toBe('<svg/>'));
+
+    expect(io.read(OUTPUT)).toBe(await actual.toSvg(shop));
+    expect([...io.files.keys()].filter(path => path.endsWith('.tmp'))).toEqual(
+      []
+    );
+    expect(events).toEqual(['start', 'end']);
+    expect(answers).toEqual([]);
+  });
+
+  it('never draws an export the client cancelled as it waited for its turn', async () => {
+    io.put('/work/other.erd.json', shop);
+    await connect();
+    const { events, release } = holdDrawings();
+    const answers = answersTo(911);
+
+    const first = mcp.call('erd_export_svg', { path: DOCUMENT });
+    try {
+      await vi.waitFor(() => expect(events).toEqual(['start']));
+      start(911, { path: '/work/other.erd.json', output: OUTPUT });
+      await settle(20);
+      mcp.notify('notifications/cancelled', { requestId: 911, reason: 'user' });
+      await settle(20);
+    } finally {
+      release();
+    }
+
+    expect((await first).isError).toBe(false);
+    await settle(20);
+    await mcp.ok('erd_read', { path: DOCUMENT, format: 'scripts' });
+    expect(events).toEqual(['start', 'end']);
+    expect(io.files.has(OUTPUT)).toBe(false);
+    expect(answers).toEqual([]);
   });
 });
 
