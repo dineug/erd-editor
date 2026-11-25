@@ -72,6 +72,15 @@ export function evaluateInHappyDom(file, { global, script, scenario } = {}) {
     errors: [error],
   });
 
+  return runRealmChild(args, failed, 'evaluation');
+}
+
+/**
+ * Runs node with args in a child and resolves to the JSON its last line of
+ * output holds, or to what failed makes of why there is none: a child that
+ * outlasts REALM_TIMEOUT_MS is killed, and what names the run in that why.
+ */
+export function runRealmChild(args, failed, what) {
   return new Promise(resolve => {
     const child = spawn(process.execPath, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -90,7 +99,7 @@ export function evaluateInHappyDom(file, { global, script, scenario } = {}) {
       if (timedOut) {
         resolve(
           failed(
-            `the evaluation had not settled after ${REALM_TIMEOUT_MS / 1000} s and was killed`
+            `the ${what} had not settled after ${REALM_TIMEOUT_MS / 1000} s and was killed`
           )
         );
         return;
@@ -99,9 +108,7 @@ export function evaluateInHappyDom(file, { global, script, scenario } = {}) {
       try {
         resolve(JSON.parse(last));
       } catch {
-        resolve(
-          failed(`the evaluation exited ${code}: ${stderr.slice(-800)}`)
-        );
+        resolve(failed(`the ${what} exited ${code}: ${stderr.slice(-800)}`));
       }
     });
   });
