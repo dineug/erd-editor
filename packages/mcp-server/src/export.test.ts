@@ -129,6 +129,16 @@ describe('erd_export_svg to a file', () => {
     expect(io.files.get(OUTPUT)!.mode).toBe(0o600);
   });
 
+  it('keeps a group’s write bit on the file it replaces, which the umask takes from the temp file', async () => {
+    io.put(OUTPUT, '<svg/>', 0o664);
+    await connect();
+
+    await mcp.ok('erd_export_svg', { path: DOCUMENT, output: OUTPUT });
+
+    expect(io.read(OUTPUT)).toBe(await actual.toSvg(shop));
+    expect(io.files.get(OUTPUT)!.mode).toBe(0o664);
+  });
+
   it('refuses a read-only file already there, leaving it as it was', async () => {
     io.put(OUTPUT, '<svg/>', 0o444);
     await connect();
@@ -175,6 +185,23 @@ describe('erd_export_svg to a file', () => {
       expect(mcp.manager.paths()).toEqual([]);
     }
   );
+
+  it('refuses an output that is a link to no file before reading or drawing anything', async () => {
+    io.links.set(OUTPUT, '/work/build/shop.svg');
+    await connect();
+
+    const refused = await mcp.call('erd_export_svg', {
+      path: DOCUMENT,
+      output: OUTPUT,
+    });
+
+    expect(refused.json.error).toEqual({
+      code: 'invalidPath',
+      message: `${OUTPUT} is a link to /work/build/shop.svg, which leads to no file; name the file it should lead to as output, or another path`,
+    });
+    expect(toSvg).not.toHaveBeenCalled();
+    expect(io.links.get(OUTPUT)).toBe('/work/build/shop.svg');
+  });
 
   it('retries the rename on Windows while another program holds the file open', async () => {
     const win = createMemoryHost({ platform: 'win32' });
@@ -369,6 +396,19 @@ describe('erd_export_svg when the drawing fails', () => {
 });
 
 describe('writeFileReplacing', () => {
+  it('refuses as notFound an entry the create meets that leads to no file, a link made since the lookup say', async () => {
+    io.links.set(OUTPUT, '/work/docs/missing.svg');
+    io.calls.writeFileString = path =>
+      Effect.fail(fsError('AlreadyExists', 'writeFile', path));
+
+    await expect(
+      io.run(writeFileReplacing(OUTPUT, '<svg/>'))
+    ).rejects.toMatchObject({
+      code: 'notFound',
+      message: `${OUTPUT} is there but leads to no file, a link to a missing one say, so it was not written; name another file`,
+    });
+  });
+
   it('refuses a folder gone before the write as notFound', async () => {
     await expect(
       io.run(writeFileReplacing('/gone/shop.svg', '<svg/>'))

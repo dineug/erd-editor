@@ -183,6 +183,30 @@ describe('svg output paths', () => {
     );
   });
 
+  it('refuses a link that leads to no file, whether its folder is there or not', async () => {
+    const io = createMemoryHost({ cwd: '/work' });
+    io.mkdir('/work/docs');
+    io.links.set('/work/docs/erd.svg', '/work/build/erd.svg');
+    io.links.set('/work/docs/later.svg', '/work/docs/v2.svg');
+
+    await expect(io.run(resolveSvgPath('docs/erd.svg'))).rejects.toMatchObject({
+      code: 'invalidPath',
+      message:
+        '/work/docs/erd.svg is a link to /work/build/erd.svg, which leads to no file; name the file it should lead to as output, or another path',
+    });
+    await expect(
+      io.run(resolveSvgPath('docs/later.svg'))
+    ).rejects.toMatchObject({
+      code: 'invalidPath',
+      message: expect.stringMatching(
+        /^\/work\/docs\/later\.svg is a link to \/work\/docs\/v2\.svg,/
+      ),
+    });
+    expect(await io.run(resolveSvgPath('docs/v2.svg'))).toBe(
+      '/work/docs/v2.svg'
+    );
+  });
+
   it.each([
     ['  ', 'invalidPath', 'output is empty'],
     [

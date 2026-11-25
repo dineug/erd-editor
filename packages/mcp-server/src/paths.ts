@@ -109,7 +109,7 @@ export const resolveDocumentPath = Effect.fn('resolveDocumentPath')(function* (
 /**
  * The absolute real path of the svg file an export writes, resolved as a
  * document's is. Its folder must exist; a name or a link target that is not
- * .svg, one Windows alters, or one naming a folder is refused.
+ * .svg, one Windows alters, one naming a folder or a link to nothing is refused.
  */
 export const resolveSvgPath = Effect.fn('resolveSvgPath')(function* (
   input: string
@@ -158,6 +158,17 @@ export const resolveSvgPath = Effect.fn('resolveSvgPath')(function* (
     return yield* new SessionError(
       SessionErrorCode.invalidPath,
       `${real} is a folder or another kind of entry, not a file; name an svg file`
+    );
+  }
+  // A link the climb stopped at leads nowhere, which the exclusive create refuses.
+  const link =
+    type === null
+      ? yield* fs.readLink(real).pipe(Effect.orElseSucceed(() => null))
+      : null;
+  if (link !== null) {
+    return yield* new SessionError(
+      SessionErrorCode.invalidPath,
+      `${real} is a link to ${link}, which leads to no file; name the file it should lead to as output, or another path`
     );
   }
   return real;

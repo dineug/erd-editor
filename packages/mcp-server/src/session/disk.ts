@@ -166,7 +166,16 @@ export const writeFileReplacing = Effect.fn('writeFileReplacing')(function* (
   );
   if (created) return;
 
-  const { mode } = yield* stat(path);
+  const { mode } = yield* stat(path).pipe(
+    Effect.mapError(error =>
+      isPlatformReason(error, 'NotFound')
+        ? new SessionError(
+            'notFound',
+            `${path} is there but leads to no file, a link to a missing one say, so it was not written; name another file`
+          )
+        : error
+    )
+  );
   if (isReadonlyMode(mode)) {
     return yield* new SessionError(
       'readonly',
@@ -180,6 +189,8 @@ export const writeFileReplacing = Effect.fn('writeFileReplacing')(function* (
   // Each attempt renames anew, however the file system builds its effect.
   const rename = Effect.suspend(() => fs.rename(temp, path));
   yield* fs.writeFileString(temp, text, { mode }).pipe(
+    // A new file's mode passes through the umask, which drops a group's write bit.
+    Effect.andThen(Effect.suspend(() => fs.chmod(temp, mode))),
     // Windows refuses a rename over a file another process has open.
     Effect.andThen(
       platform === 'win32'

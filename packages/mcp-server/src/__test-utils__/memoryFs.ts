@@ -12,6 +12,9 @@ import {
 
 export type MemoryFile = { data: string; mtimeMs: number; mode: number };
 
+/** The bits a new file loses whatever mode its write asks for, as a 022 umask takes them. */
+const UMASK = 0o022;
+
 /** The permission bits a file gets when nothing asks for others: 0o666 under a 022 umask. */
 export const DEFAULT_MODE = 0o644;
 
@@ -62,6 +65,10 @@ export type MemoryFsCalls = {
     to: string
   ) => Effect.Effect<void, PlatformError.PlatformError>;
   remove: (path: string) => Effect.Effect<void, PlatformError.PlatformError>;
+  chmod: (
+    path: string,
+    mode: number
+  ) => Effect.Effect<void, PlatformError.PlatformError>;
   stat: (
     path: string
   ) => Effect.Effect<FileSystem.File.Info, PlatformError.PlatformError>;
@@ -167,7 +174,11 @@ export function createMemoryFs(): MemoryFs {
           return Effect.fail(fsError('AlreadyExists', 'writeFile', path));
         }
         writes.push(path);
-        put(path, data, options?.mode);
+        put(
+          path,
+          data,
+          options?.mode === undefined ? undefined : options.mode & ~UMASK
+        );
         return Effect.void;
       }),
     // A rename moves the file itself: its size, mtime and mode go with it.
@@ -186,6 +197,14 @@ export function createMemoryFs(): MemoryFs {
           ? Effect.void
           : Effect.fail(fsError('NotFound', 'remove', path))
       ),
+    // A chmod sets the bits as given, past the umask a create goes through.
+    chmod: (path, mode) =>
+      Effect.suspend(() => {
+        const file = files.get(resolve(path));
+        if (!file) return Effect.fail(fsError('NotFound', 'chmod', path));
+        file.mode = mode & 0o777;
+        return Effect.void;
+      }),
     stat: path =>
       Effect.suspend(() => {
         state.beforeStat?.(path);
@@ -255,6 +274,7 @@ export function createMemoryFs(): MemoryFs {
           calls.writeFileString(path, data, options),
         rename: (from, to) => calls.rename(from, to),
         remove: path => calls.remove(path),
+        chmod: (path, mode) => calls.chmod(path, mode),
         stat: path => calls.stat(path),
         readDirectory: path => calls.readDirectory(path),
         realPath: path => calls.realPath(path),
