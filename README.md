@@ -20,8 +20,8 @@ JetBrains IDEs and Obsidian, inside your own app, and in your coding agent's han
 
 ## Features
 
-- **Design** — tables, columns, memos and table groups, four relationship cardinalities, ON DELETE
-  and ON UPDATE, alternate keys, Auto Layout
+- **Design** — tables, columns, memos and table groups that hold tables and memos, four
+  relationship cardinalities, ON DELETE and ON UPDATE, alternate keys, Auto Layout
 - **Naming standards** — logical and physical names, physical names and data types derived from
   word, term and domain dictionaries, which have their own tab with CSV import and export and checks
 - **Import** — SQL DDL, GraphQL SDL, DBML and AML, replacing the diagram or adding to it
