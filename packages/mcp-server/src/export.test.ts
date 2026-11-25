@@ -300,11 +300,17 @@ describe('erd_export_svg on an editor', () => {
       tableId: tableNamed(snapshot, 'users').id,
       value: 'members',
     });
+    const relayed = io.taken(
+      ({ method, params }) =>
+        method === 'actions' &&
+        params.path === DOCUMENT &&
+        JSON.stringify(params).includes('purchases')
+    );
     runTool(hub.webview(DOCUMENT), 'erd_change_table_name', {
       tableId: tableNamed(snapshot, 'orders').id,
       value: 'purchases',
     });
-    await settle();
+    await relayed;
 
     const result = await mcp.call('erd_export_svg', { path: DOCUMENT });
     expect(JSON.parse(result.texts[1])).toEqual({ mode: 'live' });
@@ -426,7 +432,7 @@ describe('erd_export_svg beside other calls', () => {
     try {
       await vi.waitFor(() => expect(events).toEqual(['start']));
       mcp.notify('notifications/cancelled', { requestId: 910, reason: 'user' });
-      await settle(20);
+      await mcp.request('ping');
     } finally {
       release();
     }
@@ -450,9 +456,9 @@ describe('erd_export_svg beside other calls', () => {
     try {
       await vi.waitFor(() => expect(events).toEqual(['start']));
       start(911, { path: '/work/other.erd.json', output: OUTPUT });
-      await settle(20);
+      await mcp.request('ping');
       mcp.notify('notifications/cancelled', { requestId: 911, reason: 'user' });
-      await settle(20);
+      await mcp.request('ping');
     } finally {
       release();
     }
