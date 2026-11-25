@@ -75,7 +75,7 @@
 ### Reactivity
 
 - **Await `nextTick()` before reading the host.** Updates are batched through `observable/scheduler.ts`, so a host read right after a state write still sees the old tree.
-- **A callback that throws is logged, never rethrown.** A lifecycle hook, an observer, a `nextTick` callback and a reducer all run through `safeCallback` (`helpers/fn.ts`), which logs what they throw with `console.error` and returns. A listener `onCaughtError` adds hears each such error too, until the function it returned is called, and one that throws is logged while the rest still hear. `src/helpers/fn.caughtError.test.ts` and `src/index.test.ts` pin it.
+- **A callback that throws is logged, never rethrown.** A lifecycle hook, an observer, a `nextTick` callback and a reducer all run through `safeCallback` (`helpers/fn.ts`), which logs what they throw with `console.error` and returns. A listener `onCaughtError` adds hears each such error too, until the function it returned is called, and one that throws is logged while the rest still hear. `erd-editor`'s `toSvg` rejects a drawing with it rather than patch the console (`packages/erd-editor/src/services/AGENTS.md`, The Export from Outside). `src/helpers/fn.caughtError.test.ts` and `src/index.test.ts` pin it.
 
 ### Parts and lifecycle hooks
 

@@ -1,4 +1,5 @@
 import { parser } from '@dineug/erd-editor-schema';
+import { onCaughtError } from '@dineug/r-html';
 import { isString } from 'es-toolkit';
 
 import { toLoadValue } from '@/utils/loadValue';
@@ -65,7 +66,7 @@ export async function toSvg(
   const { renderDocumentSvg } = await import('./renderSvg');
 
   const svg = Promise.resolve(lastDrawing).then(() =>
-    rejectingLoggedErrors(() =>
+    rejectingCaughtErrors(() =>
       renderDocumentSvg({
         doc,
         theme: createPresetExportTheme({ darkMode, background }),
@@ -78,30 +79,26 @@ export async function toSvg(
 }
 
 /**
- * Runs a drawing and rejects with the first error r-html logged meanwhile: a
- * hook that throws is logged, one Error alone, never thrown, and the svg would
- * come out without what it draws. Every line still reaches the log.
+ * Runs a drawing and rejects with the first error r-html caught meanwhile: it
+ * logs what a hook or an effect throws rather than throwing it, and the svg
+ * would come out without what that one draws. The console is left as it is.
  */
-async function rejectingLoggedErrors(
+async function rejectingCaughtErrors(
   draw: () => Promise<string>
 ): Promise<string> {
-  const log = console.error;
-  const thrown: Error[] = [];
-  console.error = (...args: unknown[]) => {
-    if (args.length === 1 && args[0] instanceof Error) thrown.push(args[0]);
-    Reflect.apply(log, console, args);
-  };
+  const caught: unknown[] = [];
+  const off = onCaughtError(error => caught.push(error));
 
   try {
     const svg = await draw();
-    const [first] = thrown;
-    if (first) {
-      throw new Error(`toSvg: the scene threw as it drew: ${first.message}`, {
+    if (caught.length) {
+      const [first] = caught;
+      throw new Error(`toSvg: the scene threw as it drew: ${String(first)}`, {
         cause: first,
       });
     }
     return svg;
   } finally {
-    console.error = log;
+    off();
   }
 }

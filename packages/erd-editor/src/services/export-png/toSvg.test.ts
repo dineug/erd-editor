@@ -285,22 +285,17 @@ describe('what toSvg rejects once it draws', () => {
     expect(await toSvg(SMALL)).toBe(small);
   });
 
-  it('no other line logged as it draws, which reaches the log alone', async () => {
-    const realm = Reflect.get(globalThis, 'document') as {
-      createElement: (tagName: string) => unknown;
-    };
-    const { createElement } = realm;
-    // The container the scene mounts in is made in the middle of the drawing.
-    realm.createElement = tagName => {
-      if (tagName === 'div') {
-        console.error('[host]', 'a line of the process’s own');
-        console.error(new Error('logged'), 'with what it was about');
-      }
-      return createElement(tagName);
-    };
+  it('no line the host logs as it draws, one Error alone too, which reaches the log alone', async () => {
+    const failed = new Error('a request of the host failed');
 
     try {
-      expect(await toSvg(SMALL)).toBe(small);
+      expect(
+        await drawingWith(() => {
+          console.error('[host]', 'a line of the process’s own');
+          console.error(new Error('logged'), 'with what it was about');
+          console.error(failed);
+        })
+      ).toBe(small);
       expect(consoleErrors).toHaveBeenCalledWith(
         '[host]',
         'a line of the process’s own'
@@ -309,9 +304,63 @@ describe('what toSvg rejects once it draws', () => {
         expect.any(Error),
         'with what it was about'
       );
+      expect(consoleErrors).toHaveBeenCalledWith(failed);
     } finally {
-      realm.createElement = createElement;
       consoleErrors.mockClear();
     }
   });
+
+  it('no error a peer’s subscriber threw as it drew, which the peer logs', async () => {
+    const peer = createPeerStore({ nickname: 'svg', presence: false });
+    const closed = new Error('the hub socket closed');
+    peer.subscribe(() => {
+      throw closed;
+    });
+
+    try {
+      expect(
+        await drawingWith(() =>
+          peer.dispatch([tableActions$.addTableAction$()])
+        )
+      ).toBe(small);
+      expect(consoleErrors).toHaveBeenCalledWith(closed);
+    } finally {
+      peer.destroy();
+      consoleErrors.mockClear();
+    }
+  });
+
+  it('nothing of the console, which keeps what the host set as it drew', async () => {
+    const spy = console.error;
+    const hostLog = vi.fn();
+
+    try {
+      expect(
+        await drawingWith(() => {
+          console.error = hostLog;
+        })
+      ).toBe(small);
+      expect(console.error).toBe(hostLog);
+    } finally {
+      console.error = spy;
+    }
+  });
 });
+
+/** Draws the small fixture, running side as the scene makes the container it mounts in, mid-drawing. */
+async function drawingWith(side: () => void): Promise<string> {
+  const realm = Reflect.get(globalThis, 'document') as {
+    createElement: (tagName: string) => unknown;
+  };
+  const { createElement } = realm;
+  realm.createElement = tagName => {
+    if (tagName === 'div') side();
+    return createElement(tagName);
+  };
+
+  try {
+    return await toSvg(SMALL);
+  } finally {
+    realm.createElement = createElement;
+  }
+}
