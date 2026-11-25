@@ -7,6 +7,7 @@ export type {
   DiagnosticCode,
   DiagnosticSeverity,
 } from '@/css';
+export { onCaughtError } from '@/helpers/fn';
 export { observable, observer, watch } from '@/observable';
 export { nextTick } from '@/observable/scheduler';
 export { reduxDevtools } from '@/reduxDevtools';

@@ -84,7 +84,9 @@ Every name below comes from `src/index.ts`.
 - **Reactivity** — `observable(state, { shallow })`, `observer(fn)` (returns an unsubscribe) and
   `watch(proxy)`, which returns `{ subscribe }`: its observer receives the name of each property
   that changed, once per tick. Await `nextTick(() => {})`, which runs its required callback after
-  the queued renders, before reading the DOM back.
+  the queued renders, before reading the DOM back. An observer, a hook, a `nextTick` callback or a
+  reducer that throws is logged with `console.error`, never rethrown, and `onCaughtError(listener)`
+  hands the listener each such error too, until the function it returns is called.
 - **Components** — `FC<Props, Ctx>` returns a render closure and receives a `ctx` carrying `host`,
   `parentElement` and `dispatchEvent`. Lifecycle hooks: `onBeforeMount`, `onMounted`,
   `onUnmounted`, `onBeforeFirstUpdate`, `onFirstUpdated`, `onBeforeUpdate`, `onUpdated`.
