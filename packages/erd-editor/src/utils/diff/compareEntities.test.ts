@@ -307,4 +307,47 @@ describe('compareMemos and compareTableGroups', () => {
       { field: DiffField.memos, before: '"Billing rules"', after: '""' },
     ]);
   });
+
+  it("lists a group's tables and memos by name, whatever case they start in", () => {
+    const ctx = contextOf(
+      {
+        tables: [
+          { id: 't', name: 'orders', group: 'g' },
+          { id: 'u', name: 'Accounts', group: 'g' },
+        ],
+        memos: [
+          { id: 'm', value: 'zeta', group: 'g' },
+          { id: 'n', value: 'Alpha', group: 'g' },
+        ],
+        groups: [{ id: 'g', name: 'g' }],
+      },
+      {
+        tables: [
+          { id: 't', name: 'orders', group: 'g' },
+          { id: 'u', name: 'Accounts', group: 'g' },
+          { id: 'v', name: 'billing', group: 'g' },
+        ],
+        memos: [
+          { id: 'm', value: 'zeta' },
+          { id: 'n', value: 'Alpha', group: 'g' },
+        ],
+        groups: [{ id: 'g', name: 'g' }],
+      }
+    );
+
+    expect(
+      compareTableGroups(
+        ctx,
+        ctx.prev.collections.tableGroupEntities.g,
+        ctx.next.collections.tableGroupEntities.g
+      )
+    ).toEqual([
+      {
+        field: DiffField.members,
+        before: 'Accounts, orders',
+        after: 'Accounts, billing, orders',
+      },
+      { field: DiffField.memos, before: '"Alpha", "zeta"', after: '"Alpha"' },
+    ]);
+  });
 });

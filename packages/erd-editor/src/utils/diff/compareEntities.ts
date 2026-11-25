@@ -12,6 +12,7 @@ import type {
 } from '@/internal-types';
 import { bHas } from '@/utils/bit';
 import {
+  getMemberMemos,
   getTableGroupMemberIds,
   getTableGroupMemberMemoIds,
 } from '@/utils/tableGroup';
@@ -301,9 +302,6 @@ const pairedIds = (ids: string[], pairing: Pairing, side: 'prev' | 'next') =>
     .sort()
     .join(',');
 
-const memoLine = (state: RootState, id: string) =>
-  `"${firstLine(query(state.collections).collection('memoEntities').selectById(id)?.value ?? '')}"`;
-
 const tableNames = (state: RootState, group: TableGroup) =>
   getTableGroupMemberIds(state, group.id)
     .map(id => tableName(state, id))
@@ -312,8 +310,8 @@ const tableNames = (state: RootState, group: TableGroup) =>
 
 /** A group's member memos by their quoted first lines. */
 const memoLines = (state: RootState, group: TableGroup) =>
-  getTableGroupMemberMemoIds(state, group.id)
-    .map(id => memoLine(state, id))
+  getMemberMemos(state, group.id)
+    .map(({ value }) => `"${firstLine(value)}"`)
     .sort(byName)
     .join(', ');
 

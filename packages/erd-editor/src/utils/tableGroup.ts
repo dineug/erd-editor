@@ -75,7 +75,8 @@ export function getTableGroupMemberIds(
   return getMemberTables(state, groupId).map(({ id }) => id);
 }
 
-function getMemberMemos(state: RootState, groupId: string): Memo[] {
+/** The memos a group holds, in document order, hidden ones too; none for a group the document does not list. */
+export function getMemberMemos(state: RootState, groupId: string): Memo[] {
   const { doc, collections } = state;
   if (!groupId || !doc.tableGroupIds.includes(groupId)) return [];
 
