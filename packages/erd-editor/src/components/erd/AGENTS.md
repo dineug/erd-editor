@@ -287,7 +287,7 @@
   - It judges nothing while groups are hidden.
   - The moves and the membership undo as one entry while the release comes inside the 200 ms quiet period that closes the drag's `@@move` group.
   - A pointer resting longer before the release leaves the membership an entry of its own, as a paused drag already splits its moves.
-- **`TableGroupDropTarget.tsx` outlines where a drop lands.** It outlines each group a drop would land a table or a memo in. It draws the box the table is judged in, in `theme.focus`, in the drag layer. It draws nothing short of the click distance and nothing under a readonly store.
+- **`TableGroupDropTarget.tsx` outlines where a drop lands.** It outlines each group a drop would land a table or a memo in. It draws the box the table or memo is judged in, in `theme.focus`, in the drag layer. It draws nothing short of the click distance and nothing under a readonly store.
 
 ### Table group commands
 

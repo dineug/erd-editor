@@ -96,7 +96,7 @@
 - `pinch.ts` (`createPinch`, which Graph mode drives on its own view, and `isPinchWheel`): `src/components/erd/AGENTS.md`.
 - `validation.ts` (`canvasSizeInRange`, where `sortTableAction` wraps its rows): `src/components/erd/AGENTS.md`.
 - `stageCursor.ts`, `domEvent.ts` and `globalEventObservable.ts` in the middle-button pan (`holdStageCursor`, `preventMiddleLift`, `middlePanPress$`): `src/components/erd/AGENTS.md`.
-- `contrastText.ts` (black or white text on a member table's header band, which takes its group's color): `src/components/erd/AGENTS.md`.
+- `contrastText.ts` (black or white text on a member table's header band and a member memo's band, which take their group's color): `src/components/erd/AGENTS.md`.
 - `tableColor.ts` (`toOpaqueHex`, the first reading the color picker's `resolveColor` tries): `src/components/primitives/AGENTS.md`.
 - `tableGroup.ts` (the DOM-free table-group helpers, inside the peer graph): `src/engine/AGENTS.md`.
 - `file/exportFile.ts` (how Save file and every export name the file): `src/components/generator-code/AGENTS.md`.

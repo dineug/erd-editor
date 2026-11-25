@@ -236,7 +236,7 @@
 - **Five paths select a group** (`SelectType.tableGroup`): a press, a jump, adding a group, an append's landing and a marquee that encloses its whole box.
   - A press (`selectTableGroupAction$`) raises the group among groups by `nextTableGroupZIndex`. `tableGroup.changeZIndex` is in no list, as `memo.changeZIndex` is in none.
   - The same press raises the group's tables and memos over every other table and memo, in their own order, a table first on a tie, with `table.changeZIndex` and `memo.changeZIndex`, as a press on a table raises it, and sends none once they stand there. Otherwise a group drag draws them in the drag layer over the rest and its drop puts them back under it.
-  - A jump (`showErdTargetAction$`; `src/components/erd/AGENTS.md`, The jump rule) selects it alone through `selectTableGroupAction$`, so it raises the group and its tables as a press does.
+  - A jump (`showErdTargetAction$`; `src/components/erd/AGENTS.md`, The jump rule) selects it alone through `selectTableGroupAction$`, so it raises the group and its tables and memos as a press does.
   - Adding a group selects it alone.
   - A marquee in the document takes a shown group only once it encloses the group's whole drawn box, edges included (`takenTableGroups` in `dragSelectAction$`, an owner decision of 2026-10-11). A centre rule, which tables and memos follow, would take a group with every marquee drawn inside it to pick a few of its tables, and the drag or Delete after it would reach the whole group.
   - Select all never takes a group. Delete (`removeSelectedAction$`, and `getRemovableColumns` reading a selected group as a selection beside the table) and the color picker reach it.
