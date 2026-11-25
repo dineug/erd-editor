@@ -35,6 +35,8 @@
 | `export-png/exportPngService.ts`, `exportPng.shared-worker.ts` | `ExportPngService`, which draws off the thread that asked, and the worker's entry |
 | `export-png/renderPng.ts`, `renderSvg.ts`, `sceneSvg.ts` | The png and the svg; the svg's rules are in `src/components/export-image/AGENTS.md` |
 | `export-png/textWidth.ts` | `createOffscreenToWidth` and the font probe strings both realms measure |
+| `export-png/nodeRealm.ts` | `installNodeRealm`, the document, canvas, `Node` and `HTMLElement` the export scene is drawn on where a realm has no document, and `hasForeignDocument` (The Node Realm) |
+| `export-png/nodeTextWidth.ts` | The width table: `measureTableText`, what a canvas would measure, read off it, and `tableToWidth`, the room a table reserves, off it with `TO_WIDTH_MARGIN` (The Node Realm) |
 | `shiki/index.ts` | `getShikiService`: spawns the worker on the first code panel that asks, keeps it for the session, answers `null` on a host with none |
 | `shiki/shikiService.ts`, `shiki.shared-worker.ts` | `ShikiService.codeToHtml` over the grammars `constants/language.ts` maps onto, and the worker's entry |
 | `shiki/graphqlGrammar.ts` | `@shikijs/langs/graphql`'s grammar without its `embeddedLangs` (rules in `src/components/generator-code/AGENTS.md`) |
@@ -89,6 +91,14 @@
 - The Export image dialog, its options, preview, toasts and the svg writer: `src/components/export-image/AGENTS.md`.
 - Scene code counting twice in `pnpm size`, since this worker builds its own app context: the package file (Testing Requirements).
 
+### The Node Realm
+
+- **A realm with no document draws on stubs installed when asked.** `installNodeRealm` (`export-png/nodeRealm.ts`) installs a `document`, an `OffscreenCanvas`, `Node` and `HTMLElement` when it is called, never as its module loads, so the package's `sideEffects` names no entry for it. It installs nothing where a document exists, a page's or another stub's, and each of the three constructors only where the realm lacks it, so a second call adds nothing. `nodeRealm.test.ts` pins it.
+- **What its document builds.** `createElement('canvas')` gives the stub canvas, whose one 2d context measures off the width table and draws nothing, and any other tag an event target with text content, which r-html's style sheets and konva's container take. Every `instanceof Node` or `HTMLElement` answers false.
+- **Its `body` and `head` are `null`.** Pretext lays an emoji out in the page wherever a document exists, and both `null` is how it learns there is no page: it keeps the canvas advance, so a memo holding an emoji keeps its body.
+- **Text is measured off a table, not a font engine.** `export-png/nodeTextWidth.ts` holds the ASCII advances of the text face, regular and bold, read with a canvas's `measureText` at 12 px in Playwright's Chromium 151 on macOS (2026-11-25), in the stack `styles/fonts.styles.ts` names. It is read at 12 px, the size the scene draws at, since the system face's optical sizes move an advance by up to 0.09 em at 24 px. The code face takes 0.602 em a character, and the face boxes are 1 and 0.25 em, 0.917 and 0.25 em for the code face. A wide East Asian character takes 1 em (Chromium gave Hangul and Han 0.865 em), an emoji 1.25 em, as Chromium gave, once per grapheme, an accented letter its base letter's advance, and any other the mean of its weight's row. Measure it again when that stack changes.
+- **`tableToWidth` adds 15%, konva's measure none.** The room a table reserves is the table's advance at 12 px times `TO_WIDTH_MARGIN`, 1.15, rounded, plus `utils/text.ts`'s two px, an owner decision (2026-11-25): a reader's machine sets the text in its own face, which the table never measured. Konva measures the same table with no margin, so it never cuts a line the room was made for. Measured 2026-11-25 on macOS, no single-line text of five documents (`data/embed-small.erd.json`, `bookstore.erd.json`, `test.json`, `YOUNGCART5.sql`, `sakila.sql`; 8,343 texts) ran past its room in Chromium at 1.0 or 1.15, since the table is that machine's face; Windows' and Linux's faces are unmeasured. `nodeTextWidth.test.ts` holds the tables of the first three, where the editor placed them, to no overlap, which `defaultToWidth`'s 10 px a character breaks (2, 1 and 30 pairs, measured 2026-11-25).
+
 ### The Export from Outside
 
 - **`toImage` takes the dialog's options and no other.** It is the package root's export, a png `Blob` or an svg string drawn from a document's text, with `format`, `background`, `darkMode` and `scale`, the Export image dialog's three controls, an owner decision (2026-10-27). It opens as the dialog does, background on and 2x, but light, so a document draws alike on every machine. It names no palette, language or name view, so it draws the preset of the element's own slate and indigo, its own words in English and the name view the document holds.
@@ -117,6 +127,7 @@
 - `export-png/realm.test.ts`: the two realms an export falls through, worker then main thread, and the language and the name view every request carries.
 - `export-png/renderSvg.browser.test.ts`: the svg in the language it is asked in, and English when asked in none; in the name view it is asked in, and the document's when asked in none; no check marked.
 - `export-png/worker.browser.test.ts`: a document saved zoomed out exports at 100% in the worker and on the main thread.
+- `export-png/nodeRealm.test.ts` and `nodeTextWidth.test.ts` open with `// @vitest-environment node`, since the realm they stand for has no document.
 - Each `*.browser.test.ts` here runs in real Chromium, in the package's `browser` project.
 
 ## Manual Notes
