@@ -25,9 +25,9 @@ export type ToSvgOptions = {
 let lastDrawing: Promise<unknown> | undefined;
 
 /**
- * Draws a document as an svg where there is no document, in Node say, at 100%
- * and in toImage's preset, measuring text off a width table rather than a font
- * engine. A page draws with toImage instead; this one refuses a realm that has a document.
+ * Draws a document as an svg at 100% in toImage's preset, text measured off a width table, where
+ * there is no document, in Node say, and refuses a page, which draws with toImage. Its first call
+ * installs a document, OffscreenCanvas, Node and HTMLElement on globalThis for the process's life.
  *
  * @example
  * const svg = await toSvg(value, { darkMode: true });
