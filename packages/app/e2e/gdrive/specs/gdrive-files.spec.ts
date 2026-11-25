@@ -126,13 +126,15 @@ test.describe('the Drive list', () => {
 
     for (const { name, table } of files) {
       await app.openFile(name);
+      // openFile can return on the last file's canvas, and the viewer shows Loading until the
+      // new file is ready; the title changes in the commit that mounts its editor, so wait for it.
       await expect(app.page).toHaveTitle(`${name} · ERD Editor`);
-      // The last file's canvas stays until the new one mounts: read its tables.
       await expect
         .poll(async () => tableNames(await app.editorValue()))
         .toEqual([table]);
     }
     await app.openFile('b.vuerd');
+    await expect(app.page).toHaveTitle('b.vuerd · ERD Editor');
     await expect
       .poll(async () => tableNames(await app.editorValue()))
       .toEqual(['beta']);
