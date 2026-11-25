@@ -13,6 +13,8 @@ import type {
 import { bHas } from '@/utils/bit';
 import {
   getMemberMemos,
+  getMemoGroupId,
+  getTableGroupId,
   getTableGroupMemberIds,
   getTableGroupMemberMemoIds,
 } from '@/utils/tableGroup';
@@ -63,24 +65,21 @@ const tableName = (state: RootState, id: string) =>
   query(state.collections).collection('tableEntities').selectById(id)?.name ??
   '';
 
-/** The group a table or a memo is in, or none for an id the document lists no group by. */
-const groupOf = (state: RootState, { groupId }: Table | Memo) =>
-  groupId && state.doc.tableGroupIds.includes(groupId) ? groupId : '';
-
 const groupName = (state: RootState, id: string) =>
   id
     ? (query(state.collections).collection('tableGroupEntities').selectById(id)
         ?.name ?? '')
     : '';
 
-/** A move from one group to another, as paired, named by the groups' names. */
+/**
+ * A move from one group to another, each named as its document lists it ('' for none), as paired,
+ * shown by the groups' names.
+ */
 function groupChange(
   ctx: DiffContext,
-  prev: Table | Memo,
-  next: Table | Memo
+  prevGroup: string,
+  nextGroup: string
 ): DiffChange[] {
-  const prevGroup = groupOf(ctx.prev, prev);
-  const nextGroup = groupOf(ctx.next, next);
   const pairedGroup = prevGroup
     ? asNextId(ctx.tableGroups, prevGroup, 'prev')
     : '';
@@ -104,7 +103,11 @@ export function compareTables(
       [DiffField.name, prev.name, next.name],
       [DiffField.comment, prev.comment, next.comment],
     ]),
-    ...groupChange(ctx, prev, next),
+    ...groupChange(
+      ctx,
+      getTableGroupId(ctx.prev, prev),
+      getTableGroupId(ctx.next, next)
+    ),
     ...changesOf([
       [
         DiffField.position,
@@ -260,7 +263,11 @@ export function compareMemos(
 ): DiffChange[] {
   return [
     ...changesOf([[DiffField.value, prev.value, next.value]]),
-    ...groupChange(ctx, prev, next),
+    ...groupChange(
+      ctx,
+      getMemoGroupId(ctx.prev, prev),
+      getMemoGroupId(ctx.next, next)
+    ),
     ...changesOf([
       [
         DiffField.position,

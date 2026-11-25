@@ -172,10 +172,9 @@ export function seedTableGroupBoxes(
  */
 export function growTableGroupBox(
   boxes: Map<string, Rect>,
-  member: GroupMember,
+  { groupId }: GroupMember,
   rect: Rect
 ): void {
-  const { groupId } = member;
   const box = groupId ? boxes.get(groupId) : undefined;
   if (box) boxes.set(groupId, unionRect(box, padRect(rect)));
 }
@@ -221,6 +220,23 @@ export function getTableGroupRects(
   return boxes;
 }
 
+/** The entities given, keyed by the listed group each is in and kept in their order; the rest left out. */
+function byListedGroup<T extends GroupMember>(
+  listed: ReadonlySet<string>,
+  entities: ReadonlyArray<T>
+): Map<string, T[]> {
+  const members = new Map<string, T[]>();
+
+  entities.forEach(entity => {
+    if (!listed.has(entity.groupId)) return;
+
+    const list = members.get(entity.groupId);
+    list ? list.push(entity) : members.set(entity.groupId, [entity]);
+  });
+
+  return members;
+}
+
 /**
  * The member tables of every group the document lists, keyed by id, each list
  * in document order, out of one walk over the tables; a group with no member
@@ -229,20 +245,12 @@ export function getTableGroupRects(
 export function getTableGroupMembers(state: RootState): Map<string, Table[]> {
   const { doc, collections } = state;
   const listed = new Set(doc.tableGroupIds);
-  const members = new Map<string, Table[]>();
-  if (!listed.size) return members;
+  if (!listed.size) return new Map();
 
-  query(collections)
-    .collection('tableEntities')
-    .selectByIds(doc.tableIds)
-    .forEach(table => {
-      if (!listed.has(table.groupId)) return;
-
-      const list = members.get(table.groupId);
-      list ? list.push(table) : members.set(table.groupId, [table]);
-    });
-
-  return members;
+  return byListedGroup(
+    listed,
+    query(collections).collection('tableEntities').selectByIds(doc.tableIds)
+  );
 }
 
 /**
@@ -255,20 +263,12 @@ export function getTableGroupMemberMemos(
 ): Map<string, Memo[]> {
   const { doc, collections } = state;
   const listed = new Set(doc.tableGroupIds);
-  const members = new Map<string, Memo[]>();
-  if (!listed.size) return members;
+  if (!listed.size) return new Map();
 
-  query(collections)
-    .collection('memoEntities')
-    .selectByIds(doc.memoIds)
-    .forEach(memo => {
-      if (!listed.has(memo.groupId)) return;
-
-      const list = members.get(memo.groupId);
-      list ? list.push(memo) : members.set(memo.groupId, [memo]);
-    });
-
-  return members;
+  return byListedGroup(
+    listed,
+    query(collections).collection('memoEntities').selectByIds(doc.memoIds)
+  );
 }
 
 /**

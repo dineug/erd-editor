@@ -808,14 +808,12 @@ function toAppendTableGroups(
       .collection('tableGroupEntities')
       .selectByIds(state.doc.tableGroupIds)
   );
+  const rectsOf = (ids: string[], rects: Map<string, Rect>) =>
+    ids.map(id => rects.get(id)).filter((rect): rect is Rect => Boolean(rect));
 
   return [...tableGroups]
     .sort((a, b) => a.ui.zIndex - b.ui.zIndex)
     .map((group, index) => {
-      const rectsOf = (ids: string[], rects: Map<string, Rect>) =>
-        ids
-          .map(id => rects.get(id))
-          .filter((rect): rect is Rect => Boolean(rect));
       const members = rectsOf(group.tableIds, memberRects.tables);
       const { x, y, width, height } =
         layout === 'file' || !members.length
