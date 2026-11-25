@@ -1,7 +1,12 @@
 import { AnyAction, compositionActionsFlat } from '@dineug/r-html';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
-import { START_ADD, START_X, START_Y } from '@/constants/layout';
+import {
+  START_ADD,
+  START_X,
+  START_Y,
+  TABLE_SORT_MARGIN,
+} from '@/constants/layout';
 import {
   ColumnOption,
   Database,
@@ -64,10 +69,15 @@ import {
 import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { createStore, Store } from '@/engine/store';
 import { Column } from '@/internal-types';
-import { getMemoRect, unionRect } from '@/konva/scene/metrics';
+import {
+  getMemoRect,
+  getTableRect,
+  type Rect,
+  unionRect,
+} from '@/konva/scene/metrics';
 import { bHas } from '@/utils/bit';
 import { createColumn } from '@/utils/collection/tableColumn.entity';
-import { padRect } from '@/utils/tableGroup';
+import { getTableGroupRect, padRect } from '@/utils/tableGroup';
 
 const toWidth = (text: string) => text.length * 10;
 
@@ -1139,9 +1149,8 @@ describe('sortTablesToMoveAction$', () => {
     };
   }
 
-  it("moves a group's memo by the shift of its tables' corner in the same dispatch, a loose one left", () => {
+  it("gives a group's shown memo a cell after its tables in the group's rows, in the same dispatch, a loose one left", () => {
     seedMemos(store);
-    const { corner, rect } = sortedCorner();
 
     expect(typesOf(store, sortTablesToMoveAction$())).toEqual([
       'table.moveTo',
@@ -1152,19 +1161,81 @@ describe('sortTablesToMoveAction$', () => {
     ]);
     store.dispatchSync(sortTablesToMoveAction$());
 
-    const { memoEntities, tableGroupEntities } = store.state.collections;
-    // wide and narrow started at 900, 900 and 700, 700, so their corner was 700, 700.
+    const { state } = store;
+    const { memoEntities, tableGroupEntities } = state.collections;
+    const narrow = getTableRect(state, tableOf(store, 'narrow'));
+    const wide = getTableRect(state, tableOf(store, 'wide'));
+    // narrow has fewer columns than wide, so the row reads narrow, wide, then the memo.
     expect(memoEntities.note.ui).toMatchObject({
-      x: 1_000 + corner.x - 700,
-      y: 1_200 + corner.y - 700,
+      x: wide.x + wide.width + TABLE_SORT_MARGIN,
+      y: wide.y,
     });
     expect(memoEntities.loose.ui).toMatchObject({ x: 5, y: 5 });
     expect(tableGroupEntities.g1.ui).toMatchObject(
-      unionRect(
-        { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-        padRect(getMemoRect(memoEntities.note))
-      )
+      padRect([narrow, wide, getMemoRect(memoEntities.note)].reduce(unionRect))
     );
+  });
+
+  const overlaps = (a: Rect, b: Rect) =>
+    a.x < b.x + b.width &&
+    b.x < a.x + a.width &&
+    a.y < b.y + b.height &&
+    b.y < a.y + a.height;
+
+  it('lands a memo that stood beside a column of member tables on none of them', () => {
+    seedTable(store, 't1', 0, 0);
+    seedTable(store, 't2', 0, 300);
+    store.dispatchSync(
+      addTableGroupAction({
+        id: 'g1',
+        ui: { x: -50, y: -80, width: 400, height: 500, zIndex: 1 },
+      }),
+      changeTableGroupAction({ id: 't1', value: 'g1' }),
+      changeTableGroupAction({ id: 't2', value: 'g1' }),
+      addMemoAction({ id: 'm1', ui: { x: 420, y: 0, zIndex: 3 } }),
+      changeMemoGroupAction({ id: 'm1', value: 'g1' })
+    );
+
+    store.dispatchSync(sortTablesToMoveAction$());
+
+    const { state } = store;
+    const memo = getMemoRect(state.collections.memoEntities.m1);
+    for (const id of ['t1', 't2']) {
+      expect(overlaps(memo, getTableRect(state, tableOf(store, id))), id).toBe(
+        false
+      );
+    }
+  });
+
+  it('keeps the box of a group with a memo clear of every other table, whichever side the memo stood', () => {
+    for (const memoX of [600, -400]) {
+      const target = createTestStore();
+      seedTable(target, 't0', 50, 50);
+      seedTable(target, 't1', 0, 0);
+      seedTable(target, 't2', 2_000, 0);
+      seedTable(target, 't3', 4_000, 0);
+      target.dispatchSync(
+        addTableGroupAction({
+          id: 'g1',
+          ui: { x: -50, y: -80, width: 400, height: 300, zIndex: 1 },
+        }),
+        changeTableGroupAction({ id: 't1', value: 'g1' }),
+        addMemoAction({ id: 'm1', ui: { x: memoX, y: 0, zIndex: 3 } }),
+        changeMemoGroupAction({ id: 'm1', value: 'g1' })
+      );
+
+      target.dispatchSync(sortTablesToMoveAction$());
+
+      const { state } = target;
+      const { tableEntities, tableGroupEntities } = state.collections;
+      const box = getTableGroupRect(state, tableGroupEntities.g1);
+      for (const id of ['t0', 't2', 't3']) {
+        expect(
+          overlaps(box, getTableRect(state, tableEntities[id])),
+          `${id} with the memo at ${memoX}`
+        ).toBe(false);
+      }
+    }
   });
 
   it('moves a hidden memo with its group too, the rect fitted round the tables alone', () => {

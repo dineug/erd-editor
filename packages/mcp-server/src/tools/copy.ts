@@ -242,7 +242,7 @@ export const TOOL_COPY: Readonly<Record<string, ToolCopy>> = {
   },
   erd_sort_tables: {
     description:
-      "Arranges every table on the canvas automatically, as the editor sort command does: the tables of a table group stay together, the group's memos move with them, kept where they stood from the tables, and the group's rect is fitted round them, which tables and memos it holds unchanged. A memo in no group stays where it is.",
+      "Arranges every table on the canvas automatically, as the editor sort command does: the tables of a table group stay together, its memos laid out after them (while memos are hidden, they move with the tables, kept where they stood from them), and the group's rect is fitted round them, which tables and memos it holds unchanged. A memo in no group stays where it is.",
   },
 
   erd_add_column: {
