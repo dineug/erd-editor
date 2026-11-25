@@ -12,6 +12,7 @@ import {
   measureTableSize,
   memoActions,
   memoActions$,
+  tableActions$,
 } from '@/peer';
 import {
   createPresetExportTheme,
@@ -91,6 +92,33 @@ describe('toSvg in a realm with no document', () => {
     for (const value of values) alone.push(await toSvg(value));
 
     expect(await Promise.all(values.map(value => toSvg(value)))).toEqual(alone);
+  });
+
+  it('draws as it draws alone while peers load and edit documents beside it', async () => {
+    const alone = await toSvg(BOOKSTORE);
+    const editing = createPeerStore({ nickname: 'svg', presence: false });
+    editing.setInitialValue(BOOKSTORE);
+    let sorts = 0;
+    const drawing = toSvg(BOOKSTORE);
+    // Set before the scene's own wait for its load to settle, so each one
+    // sorts twice, a load and an edit, while the scene's routes are read.
+    const beside = [4, 8, 12, 16, 20, 24, 28, 31].map(ms =>
+      setTimeout(() => {
+        const loading = createPeerStore({ nickname: 'svg', presence: false });
+        loading.setInitialValue(SMALL);
+        loading.destroy();
+        editing.dispatch([tableActions$.addTableAction$()]);
+        sorts += 1;
+      }, ms)
+    );
+
+    try {
+      expect(await drawing).toBe(alone);
+    } finally {
+      beside.forEach(clearTimeout);
+      editing.destroy();
+    }
+    expect(sorts).toBe(beside.length);
   });
 
   it.each([

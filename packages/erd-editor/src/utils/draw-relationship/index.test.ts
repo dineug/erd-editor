@@ -341,6 +341,20 @@ describe('getRouteBBox across the two channels', () => {
     expect(getRouteBBox(relationship)).toEqual(routed);
   });
 
+  /** A store that routes nothing, a peer's, opens no epoch, so it retires no route of a store that draws. */
+  it('keeps the document box on its route while another store sorts without routing', () => {
+    const { state, relationship } = createScene();
+    relationshipSort(state);
+    const routed = getRouteBBox(relationship);
+    const peer = createScene();
+
+    relationshipSort(peer.state, 'document', { route: false });
+    relationshipSort(peer.state, 'document', { route: false });
+
+    expect(getRoute(peer.relationship)).toBeUndefined();
+    expect(getRouteBBox(relationship)).toEqual(routed);
+  });
+
   /** The view box is the two turning points, the view anchors and the curve's own reach. */
   it('builds a view box from the turning points and the view anchors, inside the view bounds', () => {
     const { state, relationship } = createScene();
