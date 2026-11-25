@@ -166,6 +166,23 @@ describe('svg output paths', () => {
     );
   });
 
+  it('refuses a link named .svg that leads to another kind of file, and follows one to an svg', async () => {
+    const io = createMemoryHost({ cwd: '/work' });
+    io.put('/work/shop.erd.json', '{}');
+    io.put('/work/docs/v2.svg', '<svg/>');
+    io.links.set('/work/out.svg', '/work/shop.erd.json');
+    io.links.set('/work/latest.svg', '/work/docs/v2.svg');
+
+    await expect(io.run(resolveSvgPath('out.svg'))).rejects.toMatchObject({
+      code: 'invalidPath',
+      message:
+        '/work/out.svg leads to /work/shop.erd.json, which is not an svg file; name a file ending in .svg, or a link to one',
+    });
+    expect(await io.run(resolveSvgPath('latest.svg'))).toBe(
+      '/work/docs/v2.svg'
+    );
+  });
+
   it.each([
     ['  ', 'invalidPath', 'output is empty'],
     [

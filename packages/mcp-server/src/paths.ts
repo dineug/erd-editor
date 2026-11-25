@@ -108,8 +108,8 @@ export const resolveDocumentPath = Effect.fn('resolveDocumentPath')(function* (
 
 /**
  * The absolute real path of the svg file an export writes, resolved as a
- * document's is. Its folder must exist; a name that is not .svg, one Windows
- * alters, or one naming a folder is refused.
+ * document's is. Its folder must exist; a name or a link target that is not
+ * .svg, one Windows alters, or one naming a folder is refused.
  */
 export const resolveSvgPath = Effect.fn('resolveSvgPath')(function* (
   input: string
@@ -134,6 +134,13 @@ export const resolveSvgPath = Effect.fn('resolveSvgPath')(function* (
   yield* refuseUnsafeName(absolute, platform);
   const real = yield* realPath(absolute);
   yield* refuseUnsafeName(real, platform);
+  // A rename lands on the link's target, which may be a document.
+  if (!isSvgPath(real)) {
+    return yield* new SessionError(
+      SessionErrorCode.invalidPath,
+      `${absolute} leads to ${real}, which is not an svg file; name a file ending in ${SVG_EXTENSION}, or a link to one`
+    );
+  }
 
   const typeOf = (path: string) =>
     fs.stat(path).pipe(
