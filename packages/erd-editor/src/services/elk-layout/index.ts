@@ -10,7 +10,7 @@ export {
   createElkLayoutRequest,
   type ElkLayoutPoint,
   type ElkLayoutRequest,
-  toTablePoints,
+  toPlacementPoints,
   toViewPoints,
 } from './elkGraph';
 export { type ElkPlacement, isElkPlacement } from './elkLayoutOptions';

@@ -20,6 +20,7 @@ import { SelectType } from '@/engine/modules/editor/state';
 import { isTableFocusType } from '@/engine/modules/editor/utils/focus';
 import { isDomainInTypeCell } from '@/engine/modules/editor/utils/nameView';
 import { removeIndexAction } from '@/engine/modules/index/atom.actions';
+import { moveToMemoAction } from '@/engine/modules/memo/atom.actions';
 import {
   addRelationshipAction,
   removeRelationshipAction,
@@ -48,7 +49,11 @@ import { nextPoint, nextZIndex } from '@/utils';
 import { arrayHas } from '@/utils/arrayHas';
 import { bHas } from '@/utils/bit';
 import { getShowColumnOrder } from '@/utils/table-clipboard';
-import { getTableGroupId } from '@/utils/tableGroup';
+import {
+  getTableGroupId,
+  getTableGroupMemoMoves,
+  growTableGroupBoxesByMemos,
+} from '@/utils/tableGroup';
 
 import { ActionType } from './actions';
 import {
@@ -521,8 +526,8 @@ export const pasteTableAction$ = (columns: Column[]): GeneratorAction =>
   };
 
 /**
- * Runs the engine's sort on copies of the live tables and groups, then places
- * each table and each group with members where it found them. A replayed
+ * Runs the engine's sort on copies of the live tables and groups, then places each table and each
+ * group with members where it found them, a group's memos riding with its tables. A replayed
  * table.sort measures each replica's own text; placed points agree everywhere.
  */
 export const sortTablesToMoveAction$ = (): GeneratorAction =>
@@ -558,13 +563,25 @@ export const sortTablesToMoveAction$ = (): GeneratorAction =>
     const placedGroupIds = new Set(
       copies.map(table => getTableGroupId(sorted, table))
     );
+    const points = copies.map(({ id, ui: { x, y } }) => ({ id, x, y }));
+    // The reducer, which an older editor's table.sort still replays, places
+    // no memo, so a member memo rides by its tables' corner here instead.
+    const memoMoves = getTableGroupMemoMoves(state, points);
+    const rects = new Map(
+      groups
+        .filter(({ id }) => placedGroupIds.has(id))
+        .map(({ id, ui: { x, y, width, height } }) => [
+          id,
+          { x, y, width, height },
+        ])
+    );
+    growTableGroupBoxesByMemos(state, rects, memoMoves);
 
-    yield copies.map(({ id, ui: { x, y } }) => moveToTableAction({ id, x, y }));
-    yield groups
-      .filter(({ id }) => placedGroupIds.has(id))
-      .map(({ id, ui: { x, y, width, height } }) =>
-        resizeTableGroupAction({ id, x, y, width, height })
-      );
+    yield points.map(point => moveToTableAction(point));
+    yield memoMoves.map(point => moveToMemoAction(point));
+    yield [...rects].map(([id, rect]) =>
+      resizeTableGroupAction({ id, ...rect })
+    );
   };
 
 /**

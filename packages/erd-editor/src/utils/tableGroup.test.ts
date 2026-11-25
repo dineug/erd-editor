@@ -15,6 +15,7 @@ import { createTableGroup } from '@/utils/collection/tableGroup.entity';
 import {
   findTableGroupAt,
   findTableGroupsAt,
+  getCornerShift,
   getMemoCenter,
   getMemoGroupId,
   getMemoHeaderTint,
@@ -25,12 +26,14 @@ import {
   getTableGroupMemberMemoIds,
   getTableGroupMemberMemos,
   getTableGroupMembers,
+  getTableGroupMemoMoves,
   getTableGroupRect,
   getTableGroupRects,
   getTableGroupTint,
   getTableGroupWraps,
   getTableHeaderTint,
   getTablesGroupRect,
+  growTableGroupBoxesByMemos,
   isPointInRect,
   isTableGroupShown,
   nextTableGroupZIndex,
@@ -514,6 +517,145 @@ describe('getTableGroupWraps', () => {
     addTable(state, 'b', 500, 100, 'g2');
 
     expect(getTableGroupWraps(state).map(({ id }) => id)).toEqual(['g2', 'g1']);
+  });
+
+  it('wraps a group round its shown memos too, a named memo at its point', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 10, height: 10 });
+    addGroup(state, 'memos', { x: -500, y: -500, width: 10, height: 10 });
+    const a = getTableRect(state, addTable(state, 'a', 100, 100, 'g1'));
+    const memo = getMemoRect(addMemo(state, 'm1', 900, 900, 'g1'));
+    addMemo(state, 'alone', 0, 0, 'memos');
+    addMemo(state, 'loose', -3_000, -3_000);
+
+    expect(getTableGroupWraps(state)).toEqual([
+      { id: 'g1', ...padRect(unionRect(a, memo)) },
+    ]);
+    expect(
+      getTableGroupWraps(state, [], [{ id: 'm1', x: 400, y: -200 }])
+    ).toEqual([
+      { id: 'g1', ...padRect(unionRect(a, { ...memo, x: 400, y: -200 })) },
+    ]);
+  });
+
+  it('wraps a group round its tables alone while memos are hidden', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 10, height: 10 });
+    const a = getTableRect(state, addTable(state, 'a', 100, 100, 'g1'));
+    addMemo(state, 'm1', 900, 900, 'g1');
+    hideMemos(state);
+
+    expect(
+      getTableGroupWraps(state, [], [{ id: 'm1', x: 400, y: -200 }])
+    ).toEqual([{ id: 'g1', ...padRect(a) }]);
+  });
+});
+
+describe('growTableGroupBoxesByMemos', () => {
+  it('grows only the boxes handed, by the shown memos of each group', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 10, height: 10 });
+    addGroup(state, 'g2', { x: 0, y: 0, width: 10, height: 10 });
+    const memo = getMemoRect(addMemo(state, 'm1', 300, 300, 'g1'));
+    addMemo(state, 'm2', 600, 600, 'g2');
+    const boxes = new Map([['g1', { x: 0, y: 0, width: 10, height: 10 }]]);
+
+    growTableGroupBoxesByMemos(state, boxes);
+
+    expect([...boxes]).toEqual([
+      ['g1', unionRect({ x: 0, y: 0, width: 10, height: 10 }, padRect(memo))],
+    ]);
+  });
+
+  it('grows nothing with no box or while memos are hidden', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 10, height: 10 });
+    addMemo(state, 'm1', 300, 300, 'g1');
+    const empty = new Map();
+    const boxes = new Map([['g1', { x: 0, y: 0, width: 10, height: 10 }]]);
+    hideMemos(state);
+
+    growTableGroupBoxesByMemos(state, empty);
+    growTableGroupBoxesByMemos(state, boxes);
+
+    expect(empty.size).toBe(0);
+    expect(boxes.get('g1')).toEqual({ x: 0, y: 0, width: 10, height: 10 });
+  });
+});
+
+describe('getCornerShift', () => {
+  it('shifts by how far the least x and the least y move, each read on its own', () => {
+    expect(
+      getCornerShift(
+        [
+          { x: 100, y: 300 },
+          { x: 400, y: 50 },
+        ],
+        [
+          { x: 0, y: 900 },
+          { x: 900, y: 0 },
+        ]
+      )
+    ).toEqual({ x: -100, y: -50 });
+  });
+
+  it('has no shift for no point', () => {
+    expect(getCornerShift([], [])).toBeNull();
+    expect(getCornerShift([{ x: 1, y: 1 }], [])).toBeNull();
+  });
+});
+
+describe('getTableGroupMemoMoves', () => {
+  it('moves each member memo by the shift of its group tables corner, hidden ones too', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 10, height: 10 });
+    addTable(state, 'a', 100, 100, 'g1');
+    addTable(state, 'b', 300, 50, 'g1');
+    addMemo(state, 'm1', 500, 500, 'g1');
+    addMemo(state, 'loose', 0, 0);
+    hideMemos(state);
+
+    expect(
+      getTableGroupMemoMoves(state, [
+        { id: 'a', x: 1_100, y: 1_100 },
+        { id: 'b', x: 1_300, y: 1_050 },
+      ])
+    ).toEqual([{ id: 'm1', x: 1_500, y: 1_500 }]);
+  });
+
+  it('reads a member table no point names where it stands', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 10, height: 10 });
+    addTable(state, 'a', 100, 100, 'g1');
+    addTable(state, 'b', 300, 50, 'g1');
+    addMemo(state, 'm1', 500, 500, 'g1');
+
+    expect(
+      getTableGroupMemoMoves(state, [{ id: 'a', x: 1_100, y: 1_100 }])
+    ).toEqual([{ id: 'm1', x: 700, y: 500 }]);
+  });
+
+  it('leaves out a memo placed already, a group with no member table, a removed group and no shift', () => {
+    const state = createState();
+    addGroup(state, 'g1', { x: 0, y: 0, width: 10, height: 10 });
+    addGroup(state, 'still', { x: 0, y: 0, width: 10, height: 10 });
+    addGroup(state, 'memos', { x: 0, y: 0, width: 10, height: 10 });
+    addGroup(state, 'removed', { x: 0, y: 0, width: 10, height: 10 });
+    state.doc.tableGroupIds = ['g1', 'still', 'memos'];
+    addTable(state, 'a', 100, 100, 'g1');
+    addTable(state, 'b', 400, 400, 'still');
+    addTable(state, 'c', 700, 700, 'removed');
+    addMemo(state, 'placed', 0, 0, 'g1');
+    addMemo(state, 'stays', 0, 0, 'still');
+    addMemo(state, 'alone', 0, 0, 'memos');
+    addMemo(state, 'stale', 0, 0, 'removed');
+    const points = [
+      { id: 'a', x: 900, y: 900 },
+      { id: 'c', x: 0, y: 0 },
+    ];
+
+    expect(getTableGroupMemoMoves(state, points, ['placed'])).toEqual([]);
+    expect(getTableGroupMemoMoves(createState(), points)).toEqual([]);
   });
 });
 

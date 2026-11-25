@@ -300,17 +300,43 @@ export function getTablesGroupRect(
 /** A group and the rect a placement gives it. */
 export type TableGroupWrap = Rect & { id: string };
 
+/** An entity, a table or a memo, and the point a placement puts it at. */
+export type PlacedPoint = Point & { id: string };
+
 /**
- * The rect each listed group with a member takes once every table named stands
- * at its point: its members' bounds and the padding, what an automatic
- * placement writes. A group with no member keeps its rect and is left out.
+ * Grows each box by the shown memos of its group, a memo named in memoPoints
+ * at its point, so the rect a placement writes holds what the group draws once
+ * its memos land. A hidden memo grows none, as it grows no drawn box.
+ */
+export function growTableGroupBoxesByMemos(
+  state: RootState,
+  boxes: Map<string, Rect>,
+  memoPoints: ReadonlyArray<PlacedPoint> = []
+): void {
+  if (!boxes.size || !isMemoShown(state)) return;
+
+  const placed = new Map(memoPoints.map(point => [point.id, point]));
+  query(state.collections)
+    .collection('memoEntities')
+    .selectByIds(state.doc.memoIds)
+    .forEach(memo => {
+      const { x, y } = placed.get(memo.id) ?? memo.ui;
+      growTableGroupBox(boxes, memo, { ...getMemoRect(memo), x, y });
+    });
+}
+
+/**
+ * The rect each listed group with a member table takes once every table and memo named stands at
+ * its point: its member tables' and shown member memos' bounds and the padding, what an automatic
+ * placement writes. A group with no member table keeps its rect and is left out.
  *
  * @example
  * const resizes = getTableGroupWraps(state, points).map(resizeTableGroupAction);
  */
 export function getTableGroupWraps(
   state: RootState,
-  points: ReadonlyArray<Point & { id: string }> = []
+  points: ReadonlyArray<PlacedPoint> = [],
+  memoPoints: ReadonlyArray<PlacedPoint> = []
 ): TableGroupWrap[] {
   const { doc, collections } = state;
   const placed = new Map(points.map(point => [point.id, point]));
@@ -329,10 +355,79 @@ export function getTableGroupWraps(
       rects ? rects.push(rect) : rectsByGroup.set(groupId, [rect]);
     });
 
-  return doc.tableGroupIds.flatMap(id => {
-    const rects = rectsByGroup.get(id);
-    return rects ? [{ ...padRect(rects.reduce(unionRect)), id }] : [];
-  });
+  const boxes = new Map(
+    doc.tableGroupIds.flatMap((id): Array<[string, Rect]> => {
+      const rects = rectsByGroup.get(id);
+      return rects ? [[id, padRect(rects.reduce(unionRect))]] : [];
+    })
+  );
+  growTableGroupBoxesByMemos(state, boxes, memoPoints);
+
+  return [...boxes].map(([id, rect]) => ({ ...rect, id }));
+}
+
+/**
+ * How far the corner of a group's member tables moves, their least x and least
+ * y, from the points they stand at to the points they go to; null for no
+ * table. A member memo rides by it, kept where it stood from that corner.
+ */
+export function getCornerShift(
+  from: ReadonlyArray<Point>,
+  to: ReadonlyArray<Point>
+): Point | null {
+  if (!from.length || !to.length) return null;
+
+  return {
+    x: Math.min(...to.map(({ x }) => x)) - Math.min(...from.map(({ x }) => x)),
+    y: Math.min(...to.map(({ y }) => y)) - Math.min(...from.map(({ y }) => y)),
+  };
+}
+
+/**
+ * Where each member memo of a group whose member tables move to the points
+ * named goes, hidden ones too: it rides by the shift of their corner. A memo in
+ * placedMemoIds, one of a group with no member table and a zero shift are left out.
+ *
+ * @example
+ * const memoMoves = getTableGroupMemoMoves(state, tablePoints);
+ */
+export function getTableGroupMemoMoves(
+  state: RootState,
+  points: ReadonlyArray<PlacedPoint>,
+  placedMemoIds: ReadonlyArray<string> = []
+): PlacedPoint[] {
+  const { doc, collections } = state;
+  const placed = new Map(points.map(point => [point.id, point]));
+  const corners = new Map<string, { from: Point[]; to: Point[] }>();
+
+  query(collections)
+    .collection('tableEntities')
+    .selectByIds(doc.tableIds)
+    .forEach(table => {
+      const groupId = getTableGroupId(state, table);
+      if (!groupId) return;
+
+      const corner = corners.get(groupId) ?? { from: [], to: [] };
+      corner.from.push(table.ui);
+      corner.to.push(placed.get(table.id) ?? table.ui);
+      corners.set(groupId, corner);
+    });
+  if (!corners.size) return [];
+
+  const shifts = new Map(
+    [...corners].map(([id, { from, to }]) => [id, getCornerShift(from, to)!])
+  );
+  const skipped = new Set(placedMemoIds);
+
+  return query(collections)
+    .collection('memoEntities')
+    .selectByIds(doc.memoIds)
+    .flatMap(memo => {
+      const shift = shifts.get(memo.groupId);
+      if (!shift || skipped.has(memo.id) || (!shift.x && !shift.y)) return [];
+
+      return [{ id: memo.id, x: memo.ui.x + shift.x, y: memo.ui.y + shift.y }];
+    });
 }
 
 const centerOf = ({ x, y, width, height }: Rect): Point => ({

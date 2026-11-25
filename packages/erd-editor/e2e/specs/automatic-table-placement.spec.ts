@@ -46,7 +46,7 @@ const relate = (id: string, start: string, end: string, endColumn: string) => ({
  * of the chain sits left of its middle, so a spec that never reached ELK cannot
  * pass by accident.
  */
-const chainedTables = (): ErdDocument =>
+const chainedTables = (groupId?: string): ErdDocument =>
   createSchema({
     tables: [
       {
@@ -54,6 +54,7 @@ const chainedTables = (): ErdDocument =>
         name: 'users',
         x: 700,
         y: 100,
+        groupId,
         columns: [column('users_id', 'id', true)],
       },
       {
@@ -61,6 +62,7 @@ const chainedTables = (): ErdDocument =>
         name: 'posts',
         x: 1_300,
         y: 600,
+        groupId,
         columns: [column('posts_id', 'id', true), column('posts_user', 'user')],
       },
       {
@@ -78,6 +80,24 @@ const chainedTables = (): ErdDocument =>
       relate('users_posts', 'users', 'posts', 'posts_user'),
       relate('posts_comments', 'posts', 'comments', 'comments_post'),
     ],
+    ...(groupId
+      ? {
+          tableGroups: [
+            { id: groupId, name: 'accounts', x: 600, y: 0, width: 1_200 },
+          ],
+          memos: [
+            {
+              id: 'note',
+              value: 'accounts note',
+              x: 2_000,
+              y: 900,
+              width: 240,
+              height: 120,
+              groupId,
+            },
+          ],
+        }
+      : {}),
   });
 
 /**
@@ -222,6 +242,35 @@ test.describe('automatic table placement through the elk worker', () => {
 
     await expect.poll(() => cornersOf(erd)).toEqual(before);
     expect(await erd.tableIds()).toEqual(['users', 'posts', 'comments']);
+  });
+
+  test("lays a group's memo out inside its box with its tables, and one undo puts it back", async ({
+    erd,
+  }) => {
+    await erd.seed(chainedTables('accounts'));
+    const before = await cornersOf(erd);
+    const noteOf = async () => {
+      const { collections } = await erd.value();
+      return {
+        note: collections.memoEntities.note.ui,
+        group: collections.tableGroupEntities!.accounts.ui,
+      };
+    };
+    const start = await noteOf();
+
+    await place(erd, 'Flow');
+    await placed(erd, before);
+
+    const { note, group } = await noteOf();
+    expect([note.x, note.y]).not.toEqual([start.note.x, start.note.y]);
+    expect(note.x).toBeGreaterThanOrEqual(group.x);
+    expect(note.y).toBeGreaterThanOrEqual(group.y);
+    expect(note.x + note.width).toBeLessThanOrEqual(group.x + group.width);
+    expect(note.y + note.height).toBeLessThanOrEqual(group.y + group.height);
+
+    await erd.press(Shortcut.undo);
+
+    await expect.poll(async () => (await noteOf()).note).toEqual(start.note);
   });
 
   // The frame after an undo keystroke runs before any timer, so a sort that

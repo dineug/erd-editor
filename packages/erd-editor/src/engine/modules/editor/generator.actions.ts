@@ -85,6 +85,7 @@ import {
   toClipboardRelationships,
 } from '@/utils/table-clipboard/copy';
 import {
+  getCornerShift,
   getTableGroupRects,
   isTableGroupShown,
   nextTableGroupZIndex,
@@ -530,14 +531,14 @@ export function withGridPoints(
 }
 
 /**
- * Each table and memo of the document read in, at the point the layout gives
- * it. The grid is the sort an import lands in, run on the document's own copy,
+ * Each table and memo of the document read in, at the point the layout gives it, a group's memo
+ * riding with its tables. The grid is the sort an import lands in, run on the document's own copy,
  * so its rows wrap at the width its own table count gives, as a replace's do.
  */
 function toLayoutPoints(
   state: RootState,
   schema: ERDEditorSchemaV3,
-  { tables, memos }: CreateEntityInput,
+  { tables, memos, tableGroups = [] }: CreateEntityInput,
   layout: AppendLayout,
   ctx: EngineContext
 ): Map<string, Point> {
@@ -550,23 +551,54 @@ function toLayoutPoints(
       ? []
       : layout.map(({ id, x, y }) => [id, { x, y }])
   );
-
-  return new Map([
-    ...tables.map(({ sourceId }): [string, Point] => {
+  const tablePoints = new Map(
+    tables.map(({ sourceId }): [string, Point] => {
       const { x, y } = tableEntities[sourceId].ui;
       return [sourceId, answered.get(sourceId) ?? { x, y }];
+    })
+  );
+  const shifts =
+    layout === 'file'
+      ? new Map<string, Point>()
+      : toMemoShifts(tables, tableGroups, tablePoints);
+
+  return new Map([
+    ...tablePoints,
+    ...memos.map(({ sourceId, ui: { x, y } }): [string, Point] => {
+      const shift = shifts.get(sourceId);
+      return [sourceId, shift ? { x: x + shift.x, y: y + shift.y } : { x, y }];
     }),
-    ...memos.map(({ sourceId, ui: { x, y } }): [string, Point] => [
-      sourceId,
-      { x, y },
-    ]),
   ]);
 }
 
 /**
- * The rects the groups of an append take in the layout, before the block
- * moves: a file's as it has them, and for a grid or a placement each group's
- * members wrapped where they stand, which is where the block starts too.
+ * The shift each member memo of an append's groups rides by once a layout moves
+ * the tables: the shift of the corner of its group's tables, from the points
+ * the file gives them to the points the layout does (getCornerShift).
+ */
+function toMemoShifts(
+  tables: CreateEntityInput['tables'],
+  tableGroups: CreateEntityTableGroup[],
+  points: Map<string, Point>
+): Map<string, Point> {
+  const filed = new Map(tables.map(({ sourceId, ui }) => [sourceId, ui]));
+
+  return new Map(
+    tableGroups.flatMap(({ tableIds, memoIds = [] }) => {
+      const ids = tableIds.filter(id => filed.has(id));
+      const shift = getCornerShift(
+        ids.map(id => filed.get(id)!),
+        ids.map(id => points.get(id)!)
+      );
+      return shift ? memoIds.map((id): [string, Point] => [id, shift]) : [];
+    })
+  );
+}
+
+/**
+ * The rects the groups of an append take in the layout, before the block moves: a file's as it has
+ * them, and for a grid or a placement each group with member tables wrapped round them and the memos
+ * sized, the shown ones, where they stand, which is where the block starts too.
  */
 function toLayoutGroupRects(
   { tableGroups = [] }: CreateEntityInput,
@@ -576,13 +608,18 @@ function toLayoutGroupRects(
 ): Rect[] {
   if (layout === 'file') return tableGroups.map(({ ui }) => ui);
 
-  return tableGroups.flatMap(({ tableIds }) => {
-    const rects = tableIds.flatMap(id => {
+  const rectsOf = (ids: string[]) =>
+    ids.flatMap(id => {
       const point = points.get(id);
       const size = sizes.get(id);
       return point && size ? [{ ...point, ...size }] : [];
     });
-    return rects.length ? [padRect(rects.reduce(unionRect))] : [];
+
+  return tableGroups.flatMap(({ tableIds, memoIds = [] }) => {
+    const rects = rectsOf(tableIds);
+    return rects.length
+      ? [padRect([...rects, ...rectsOf(memoIds)].reduce(unionRect))]
+      : [];
   });
 }
 
@@ -656,11 +693,27 @@ export function toSchemaAppend(
       .selectByIds(doc.tableIds)
       .map(table => [table.id, measureTableSize(table, appended, ctx.toWidth)])
   );
+  // A shown memo sizes its group's box as a table does; a hidden one sizes none.
+  const memosShown = isMemoShown(state);
+  const memoSizes = new Map(
+    (memosShown
+      ? query(collections).collection('memoEntities').selectByIds(doc.memoIds)
+      : []
+    ).map(memo => [
+      memo.id,
+      { width: calcMemoWidth(memo), height: calcMemoHeight(memo) },
+    ])
+  );
   let minX = Infinity;
   let minY = Infinity;
   for (const { x, y } of [
     ...points.values(),
-    ...toLayoutGroupRects(input, layout, points, sizes),
+    ...toLayoutGroupRects(
+      input,
+      layout,
+      points,
+      new Map([...sizes, ...memoSizes])
+    ),
   ]) {
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
@@ -700,17 +753,26 @@ export function toSchemaAppend(
         return [table.id, { x, y, ...sizes.get(table.id)! }];
       })
   );
-  const memoRects = query(collections)
-    .collection('memoEntities')
-    .selectByIds(doc.memoIds)
-    .map(memo =>
-      getMemoRect({ ...memo, ui: { ...memo.ui, ...placement.get(memo.id)! } })
-    );
+  const memoRects = new Map(
+    query(collections)
+      .collection('memoEntities')
+      .selectByIds(doc.memoIds)
+      .map((memo): [string, Rect] => [
+        memo.id,
+        getMemoRect({
+          ...memo,
+          ui: { ...memo.ui, ...placement.get(memo.id)! },
+        }),
+      ])
+  );
 
-  const tableGroups = toAppendTableGroups(state, input, layout, tableRects, {
-    x: origin.x - minX,
-    y: origin.y - minY,
-  });
+  const tableGroups = toAppendTableGroups(
+    state,
+    input,
+    layout,
+    { tables: tableRects, memos: memosShown ? memoRects : new Map() },
+    { x: origin.x - minX, y: origin.y - minY }
+  );
 
   return {
     ...toCreateEntityActions({ ...input, tableGroups }, placement, {
@@ -718,7 +780,7 @@ export function toSchemaAppend(
     }),
     rect: [
       ...tableRects.values(),
-      ...memoRects,
+      ...memoRects.values(),
       ...tableGroups.map(({ ui: { x, y, width, height } }) => ({
         x,
         y,
@@ -730,15 +792,15 @@ export function toSchemaAppend(
 }
 
 /**
- * The groups an append brings, stacked over the groups already there: a file
- * keeps each rect where the block moves it, while a layout that moved the
- * tables gives a group with members their bounds and the padding instead.
+ * The groups an append brings, stacked over the groups already there: a file keeps each rect where
+ * the block moves it, while a layout that moved the tables gives a group with member tables their
+ * bounds and its shown memos' (memberRects.memos) and the padding instead.
  */
 function toAppendTableGroups(
   state: RootState,
   { tableGroups = [] }: CreateEntityInput,
   layout: AppendLayout,
-  tableRects: Map<string, Rect>,
+  memberRects: { tables: Map<string, Rect>; memos: Map<string, Rect> },
   offset: Point
 ): CreateEntityTableGroup[] {
   const baseZIndex = nextTableGroupZIndex(
@@ -750,9 +812,11 @@ function toAppendTableGroups(
   return [...tableGroups]
     .sort((a, b) => a.ui.zIndex - b.ui.zIndex)
     .map((group, index) => {
-      const members = group.tableIds
-        .map(id => tableRects.get(id))
-        .filter((rect): rect is Rect => Boolean(rect));
+      const rectsOf = (ids: string[], rects: Map<string, Rect>) =>
+        ids
+          .map(id => rects.get(id))
+          .filter((rect): rect is Rect => Boolean(rect));
+      const members = rectsOf(group.tableIds, memberRects.tables);
       const { x, y, width, height } =
         layout === 'file' || !members.length
           ? {
@@ -760,7 +824,12 @@ function toAppendTableGroups(
               x: round(group.ui.x + offset.x, 4),
               y: round(group.ui.y + offset.y, 4),
             }
-          : padRect(members.reduce(unionRect));
+          : padRect(
+              [
+                ...members,
+                ...rectsOf(group.memoIds ?? [], memberRects.memos),
+              ].reduce(unionRect)
+            );
 
       return {
         ...group,

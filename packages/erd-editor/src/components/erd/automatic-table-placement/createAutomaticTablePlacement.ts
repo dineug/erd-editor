@@ -10,12 +10,17 @@ import {
 import { clamp } from 'es-toolkit';
 
 import { RootState } from '@/engine/state';
-import { Table, TableGroup } from '@/internal-types';
+import { Memo, Table, TableGroup } from '@/internal-types';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { type Rect, unionRect } from '@/konva/scene/metrics';
+import { getMemoRect, type Rect, unionRect } from '@/konva/scene/metrics';
 import { calcTableHeight, calcTableWidths } from '@/utils/calcTable';
 import { relationshipSort } from '@/utils/draw-relationship/sort';
-import { getTableGroupId, padRect } from '@/utils/tableGroup';
+import { isMemoShown } from '@/utils/memo';
+import {
+  getTableGroupId,
+  getTableGroupMemberMemos,
+  padRect,
+} from '@/utils/tableGroup';
 
 /** A table in no group, put at the node less its radius, as it always was. */
 type TableNode = {
@@ -30,13 +35,13 @@ type TableNode = {
   height: number;
 };
 
-/** A member, and where it stands from the corner of its group's box. */
-type Member = { ref: Table; dx: number; dy: number };
+/** A member, a table or a memo, and where it stands from the corner of its group's box. */
+type Member = { ref: Table | Memo; dx: number; dy: number };
 
 /**
- * A group with members, moved as one box centred on the node: the members keep
- * where they stand inside it, and the box, their bounds and the padding, is
- * the rect the group is drawn at, so a preview shows the group where it goes.
+ * A group with member tables, moved as one box centred on the node: its tables
+ * and memos keep where they stand, and the box, their bounds and the padding,
+ * is the rect the group is drawn at, so a preview shows the group where it goes.
  */
 type GroupNode = {
   id: string;
@@ -90,11 +95,17 @@ function createGroupNode(
   state: RootState,
   group: TableGroup,
   tables: Table[],
+  memos: Memo[],
   x: number,
   y: number
 ): GroupNode {
+  // A hidden memo rides with the box but sizes none of it, as it draws none.
+  const shownMemos = isMemoShown(state) ? memos : [];
   const box = padRect(
-    tables.map(table => tableRect(state, table)).reduce(unionRect)
+    [
+      ...tables.map(table => tableRect(state, table)),
+      ...shownMemos.map(getMemoRect),
+    ].reduce(unionRect)
   );
 
   return {
@@ -107,7 +118,7 @@ function createGroupNode(
     group,
     width: box.width,
     height: box.height,
-    members: tables.map(ref => ({
+    members: [...tables, ...memos].map(ref => ({
       ref,
       dx: ref.ui.x - box.x,
       dy: ref.ui.y - box.y,
@@ -134,6 +145,7 @@ function createNodes(
   const links: Link[] = [];
   const linkIdSet = new Set<string>();
   const membersByGroup = new Map<string, Table[]>();
+  const memosByGroup = getTableGroupMemberMemos(state);
   const nodeIdByTable = new Map<string, string>();
   // A group's node stands where its first member would, so the order the
   // simulation reads stays the document's.
@@ -160,6 +172,7 @@ function createNodes(
           state,
           collections.tableGroupEntities[entry],
           membersByGroup.get(entry)!,
+          memosByGroup.get(entry) ?? [],
           x,
           y
         )
@@ -181,7 +194,7 @@ function createNodes(
   return [nodes, links];
 }
 
-/** Puts a node's table, or its group's box and members, where the node stands. */
+/** Puts a node's table, or its group's box, tables and memos, where the node stands. */
 function placeNode(node: Node): void {
   if ('ref' in node) {
     node.ref.ui.x = node.x - node.r;

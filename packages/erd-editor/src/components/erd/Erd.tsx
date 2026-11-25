@@ -570,15 +570,18 @@ const Erd: FC<ErdProps> = (props, ctx) => {
   /**
    * The moves, the groups wrapped round them and the view centred on where they
    * land go out as one dispatch, so the history holds them as one entry and a
-   * single undo puts the tables, the groups and the view back together.
+   * single undo puts the tables, the memos, the groups and the view back together.
    */
-  const handleChangeAutomaticTablePlacement = (tables: TablePoint[]) => {
+  const handleChangeAutomaticTablePlacement = (
+    tables: TablePoint[],
+    memos: TablePoint[] = []
+  ) => {
     const { store } = app.value;
     // The readonly filter would drop the moves but apply the scroll, a screen
     // write, and move the reader's view to a placement that never landed.
     if (store.getReadonly()) return;
 
-    store.dispatch(toPlacementActions(store.state, tables, SOURCE));
+    store.dispatch(toPlacementActions(store.state, tables, SOURCE, memos));
   };
 
   const handleChangeTableProperties = (tableId: string) => {

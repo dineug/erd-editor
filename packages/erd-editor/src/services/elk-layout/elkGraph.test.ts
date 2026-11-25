@@ -7,12 +7,17 @@ import {
   TABLE_GROUP_PADDING,
   TABLE_GROUP_TITLE_HEIGHT,
 } from '@/constants/layout';
+import { Show } from '@/constants/schema';
 import { TablePlacement } from '@/constants/tablePlacement';
 import { ViewKind } from '@/engine/modules/editor/state';
 import {
   viewOpenAction,
   viewSetLayoutAction,
 } from '@/engine/modules/editor/view.actions';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
 import { addRelationshipAction } from '@/engine/modules/relationship/atom.actions';
 import {
   addTableAction,
@@ -24,7 +29,7 @@ import { addTableGroupAction } from '@/engine/modules/table-group/atom.actions';
 import { RootState } from '@/engine/state';
 import { Point } from '@/internal-types';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { getTableRect, type Rect } from '@/konva/scene/metrics';
+import { getMemoRect, getTableRect, type Rect } from '@/konva/scene/metrics';
 import { getVisibleColumnIds } from '@/konva/scene/viewLayout';
 import {
   createElkLayoutRequest,
@@ -32,7 +37,7 @@ import {
   type ElkLayoutPoint,
   type ElkLayoutRequest,
   flattenElkNodes,
-  toTablePoints,
+  toPlacementPoints,
   toViewPoints,
 } from '@/services/elk-layout/elkGraph';
 import {
@@ -234,7 +239,7 @@ describe('createElkLayoutRequest rows', () => {
   });
 });
 
-describe('toTablePoints', () => {
+describe('toPlacementPoints', () => {
   const horizontal = (state: RootState) =>
     createElkLayoutRequest(state, TablePlacement.layeredHorizontal);
 
@@ -244,10 +249,10 @@ describe('toTablePoints', () => {
     addTable(app, 't2', 'posts', { x: 30, y: 40 });
     const state = app.store.state;
 
-    const [first, second] = toTablePoints(state, horizontal(state), [
+    const [first, second] = toPlacementPoints(state, horizontal(state), [
       { id: 't1', x: 0, y: 0 },
       { id: 't2', x: 500, y: 0 },
-    ]);
+    ]).tables;
 
     expect(second.x - first.x).toBe(500);
     expect(second.y).toBe(first.y);
@@ -260,10 +265,10 @@ describe('toTablePoints', () => {
     const state = app.store.state;
     const center = contentCenter(state);
 
-    const placed = toTablePoints(state, horizontal(state), [
+    const placed = toPlacementPoints(state, horizontal(state), [
       { id: 't1', x: 0, y: 0 },
       { id: 't2', x: 1_000, y: 0 },
-    ]);
+    ]).tables;
     const width = calcTableWidths(
       query(state.collections).collection('tableEntities').selectById('t1')!,
       state
@@ -286,8 +291,8 @@ describe('toTablePoints', () => {
       { id: 't2', x: 700, y: 0 },
     ];
 
-    const once = toTablePoints(state, horizontal(state), points);
-    const twice = toTablePoints(state, horizontal(state), points);
+    const once = toPlacementPoints(state, horizontal(state), points);
+    const twice = toPlacementPoints(state, horizontal(state), points);
 
     expect(twice).toEqual(once);
   });
@@ -298,8 +303,10 @@ describe('toTablePoints', () => {
     const state = app.store.state;
 
     expect(
-      toTablePoints(state, horizontal(state), [{ id: 'gone', x: 900, y: 900 }])
-    ).toEqual([]);
+      toPlacementPoints(state, horizontal(state), [
+        { id: 'gone', x: 900, y: 900 },
+      ])
+    ).toEqual({ tables: [], memos: [] });
   });
 
   it('answers an empty layout with no points at all', () => {
@@ -307,7 +314,10 @@ describe('toTablePoints', () => {
     addTable(app, 't1', 'users', { x: 10, y: 20 });
     const state = app.store.state;
 
-    expect(toTablePoints(state, horizontal(state), [])).toEqual([]);
+    expect(toPlacementPoints(state, horizontal(state), [])).toEqual({
+      tables: [],
+      memos: [],
+    });
   });
 });
 
@@ -847,7 +857,10 @@ describe('the points of a layout with table groups', () => {
     const center = contentCenter(state);
 
     const placed = new Map(
-      toTablePoints(state, request, points).map(point => [point.id, point])
+      toPlacementPoints(state, request, points).tables.map(point => [
+        point.id,
+        point,
+      ])
     );
     const left = placed.get('a')!.x - TABLE_GROUP_PADDING;
     const right = placed.get('b')!.x + NODE.width;
@@ -856,5 +869,111 @@ describe('the points of a layout with table groups', () => {
 
     expect((left + right) / 2).toBeCloseTo(center.x, 6);
     expect((top + bottom) / 2).toBeCloseTo(center.y, 6);
+  });
+});
+
+describe('createElkLayoutRequest member memos', () => {
+  const horizontal = (state: RootState) =>
+    createElkLayoutRequest(state, TablePlacement.layeredHorizontal);
+
+  function addMemo(app: AppContext, id: string, groupId = '') {
+    app.store.dispatchSync(
+      addMemoAction({ id, ui: { x: 0, y: 0, zIndex: 3 } }),
+      changeMemoGroupAction({ id, value: groupId })
+    );
+  }
+
+  it("puts a group's shown memos in its node after its tables, each a memo leaf at the size it draws", () => {
+    const app = createApp();
+    ['t1', 't2', 't3'].forEach(id => addTable(app, id, id));
+    addGroup(app, 'g1', ['t2']);
+    addGroup(app, 'memos', []);
+    addMemo(app, 'm1', 'g1');
+    addMemo(app, 'loose');
+    addMemo(app, 'alone', 'memos');
+    const state = app.store.state;
+    const { width, height } = getMemoRect(state.collections.memoEntities.m1);
+
+    const { nodes, edges } = horizontal(state);
+
+    expect(shapeOf(nodes)).toEqual([
+      't1',
+      { id: 'g1', kind: 'tableGroup', children: ['t2', 'm1'] },
+      't3',
+    ]);
+    expect(nodes[1].children![1]).toEqual({
+      id: 'm1',
+      width,
+      height,
+      memo: true,
+    });
+    expect(edges).toEqual([]);
+  });
+
+  it('sends no memo while memos are hidden, nor to the views preset', () => {
+    const app = createApp();
+    ['t1', 't2'].forEach(id => addTable(app, id, id));
+    addGroup(app, 'g1', ['t1', 't2']);
+    addMemo(app, 'm1', 'g1');
+    const state = app.store.state;
+
+    expect(
+      shapeOf(
+        createElkLayoutRequest(state, TablePlacement.viewLayered, {
+          source: 'flow',
+        }).nodes
+      )
+    ).toEqual(['t1', 't2']);
+
+    state.settings.show |= Show.hideMemo;
+    expect(shapeOf(horizontal(state).nodes)).toEqual([
+      { id: 'g1', kind: 'tableGroup', children: ['t1', 't2'] },
+    ]);
+  });
+});
+
+describe('the points of a layout with member memos', () => {
+  const request: ElkLayoutRequest = {
+    placement: TablePlacement.layeredHorizontal,
+    nodes: [
+      {
+        id: 'g1',
+        width: 0,
+        height: 0,
+        kind: 'tableGroup',
+        children: [
+          { id: 'a', width: 100, height: 50 },
+          { id: 'm', width: 200, height: 300, memo: true },
+        ],
+      },
+    ],
+    edges: [],
+  };
+  const points: ElkLayoutPoint[] = [
+    { id: 'a', x: 0, y: 0 },
+    { id: 'm', x: -300, y: 100 },
+  ];
+
+  it('hands the memos apart from the tables, both moved by the one offset', () => {
+    const app = createApp();
+    addTable(app, 'a', 'a', { x: -2_000, y: 500 });
+
+    const { tables, memos } = toPlacementPoints(
+      app.store.state,
+      request,
+      points
+    );
+
+    expect(tables.map(({ id }) => id)).toEqual(['a']);
+    expect(memos.map(({ id }) => id)).toEqual(['m']);
+    expect([memos[0].x - tables[0].x, memos[0].y - tables[0].y]).toEqual([
+      -300, 100,
+    ]);
+  });
+
+  it("counts a memo in its group's box and hands a view the tables alone", () => {
+    expect(toViewPoints(request, points)).toEqual([
+      { id: 'a', x: 300 + TABLE_GROUP_PADDING, y: TOP },
+    ]);
   });
 });

@@ -3,8 +3,14 @@ import { query } from '@dineug/erd-editor-schema';
 import { RootState } from '@/engine/state';
 import { Table } from '@/internal-types';
 import { getContentRect } from '@/konva/scene/contentBounds';
-import { getTableRect, type Rect, unionRect } from '@/konva/scene/metrics';
+import {
+  getMemoRect,
+  getTableRect,
+  type Rect,
+  unionRect,
+} from '@/konva/scene/metrics';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
+import { isMemoShown } from '@/utils/memo';
 import { getTableGroupId, padRect } from '@/utils/tableGroup';
 
 import {
@@ -29,6 +35,8 @@ export type ElkLayoutNode = {
   children?: ElkLayoutNode[];
   /** What a node holding children stands for, left out for the box of unrelated tables. */
   kind?: ElkCompoundKind;
+  /** Whether this leaf is a memo of the group holding it rather than a table. */
+  memo?: boolean;
 };
 
 /**
@@ -64,7 +72,7 @@ export type ElkLayoutRequest = {
   edges: ElkLayoutEdge[];
 };
 
-/** Where one table's top left corner ended up, in scene units. */
+/** Where one table's or memo's top left corner ended up, in scene units. */
 export type ElkLayoutPoint = {
   id: string;
   x: number;
@@ -124,7 +132,7 @@ function toHints(nodes: ElkLayoutNode[], rects: Rect[]): void {
 /**
  * What ELK is asked to place, at the sizes the source draws, with a hint where
  * the placement reads one. A document placement keeps each table group in a
- * node, and grouping folds the tables no relationship reaches into one box.
+ * node, its shown memos too, and grouping folds the tables no relationship reaches into one box.
  *
  * @example
  * createElkLayoutRequest(state, TablePlacement.viewLayered, { source: 'flow' });
@@ -257,6 +265,8 @@ function withTableGroups(
 
   if (!groups.size) return nodes;
 
+  withMemberMemos(state, groups);
+
   const blockOf = (tableId: string) => groupIds.get(tableId) || tableId;
   const links = edges
     .map(({ source, target }): [string, string] => [
@@ -300,6 +310,29 @@ function withTableGroups(
 }
 
 /**
+ * Each shown memo of a group that holds a table, a leaf after its tables at the
+ * size it draws, which ELK packs beside them since nothing joins it. A hidden
+ * memo claims no room and rides with its group's tables once they land.
+ */
+function withMemberMemos(
+  state: RootState,
+  groups: Map<string, ElkLayoutNode>
+): void {
+  if (!isMemoShown(state)) return;
+
+  query(state.collections)
+    .collection('memoEntities')
+    .selectByIds(state.doc.memoIds)
+    .forEach(memo => {
+      const group = groups.get(memo.groupId);
+      if (!group) return;
+
+      const { width, height } = getMemoRect(memo);
+      group.children!.push({ id: memo.id, width, height, memo: true });
+    });
+}
+
+/**
  * The tables no edge reaches, moved inside one group node at the end of the
  * list, a node holding children left where it is. ELK places the box like any
  * node, and what comes back is flat, so nothing downstream learns of it.
@@ -325,7 +358,7 @@ function withUnrelatedGroup(
   ];
 }
 
-/** Every table in a node list, which is every node the group nodes do not hold. */
+/** Every leaf in a node list, a table or a memo, which is every node holding no other. */
 export function flattenElkNodes(nodes: ElkLayoutNode[]): ElkLayoutNode[] {
   return nodes.flatMap(node =>
     node.children?.length ? flattenElkNodes(node.children) : [node]
@@ -333,8 +366,8 @@ export function flattenElkNodes(nodes: ElkLayoutNode[]): ElkLayoutNode[] {
 }
 
 /**
- * The boxes a layout draws: each placed table, and round the members of each
- * table group the box the editor draws for it, its padding and title bar.
+ * The boxes a layout draws: each placed table and memo, and round the members
+ * of each table group the box the editor draws for it, its padding and title bar.
  */
 function layoutRects(
   nodes: ElkLayoutNode[],
@@ -374,21 +407,27 @@ function boundsOfLayout(
   };
 }
 
+/** Where a document placement puts each table, and each memo it laid out beside its group's tables. */
+export type ElkPlacementPoints = {
+  tables: ElkLayoutPoint[];
+  memos: ElkLayoutPoint[];
+};
+
 /**
- * Where each table lands, over the middle of what the document already draws.
- * ELK lays every graph out from its own origin, so a document placed twice
- * would otherwise walk away from where it was read.
+ * Where each table and memo lands, over the middle of what the document already
+ * draws. ELK lays every graph out from its own origin, so a document placed
+ * twice would otherwise walk away from where it was read.
  *
  * @example
- * onChange(toTablePoints(store.state, request, await createElkLayout(request)));
+ * const { tables, memos } = toPlacementPoints(store.state, request, points);
  */
-export function toTablePoints(
+export function toPlacementPoints(
   state: RootState,
   { nodes }: ElkLayoutRequest,
   points: ElkLayoutPoint[]
-): ElkLayoutPoint[] {
+): ElkPlacementPoints {
   const bounds = boundsOfLayout(nodes, points);
-  if (!bounds) return [];
+  if (!bounds) return { tables: [], memos: [] };
 
   const content = getContentRect(state) ?? EMPTY_RECT;
   const offsetX =
@@ -414,19 +453,25 @@ export function toViewPoints(
   const bounds = boundsOfLayout(nodes, points);
   if (!bounds) return [];
 
-  return offsetBy(nodes, points, -bounds.minX, -bounds.minY);
+  return offsetBy(nodes, points, -bounds.minX, -bounds.minY).tables;
 }
 
-/** The points of the tables the request asked for, moved by the offset given. */
+/** The points of the tables and memos the request asked for, moved by the offset given. */
 function offsetBy(
   nodes: ElkLayoutNode[],
   points: ElkLayoutPoint[],
   offsetX: number,
   offsetY: number
-): ElkLayoutPoint[] {
-  const placed = new Set(flattenElkNodes(nodes).map(node => node.id));
-
-  return points
-    .filter(({ id }) => placed.has(id))
+): ElkPlacementPoints {
+  const leaves = new Map(
+    flattenElkNodes(nodes).map(node => [node.id, Boolean(node.memo)])
+  );
+  const placed = points
+    .filter(({ id }) => leaves.has(id))
     .map(({ id, x, y }) => ({ id, x: x + offsetX, y: y + offsetY }));
+
+  return {
+    tables: placed.filter(({ id }) => !leaves.get(id)),
+    memos: placed.filter(({ id }) => leaves.get(id)),
+  };
 }

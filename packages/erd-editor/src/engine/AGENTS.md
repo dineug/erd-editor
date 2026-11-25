@@ -242,7 +242,7 @@
   - Select all never takes a group. Delete (`removeSelectedAction$`, and `getRemovableColumns` reading a selected group as a selection beside the table) and the color picker reach it.
 - **A paste or duplicate carries no `groupId`**, a table's or a memo's. An append carries its document's groups under new ids, its tables and memos put in them by their new ids (`toAppendTableGroups`, `CreateEntityTableGroup`'s `memoIds`).
   - A file's rects move with the block, which starts at their corners too.
-  - A grid or placed layout wraps each group with member tables round where they land, the block starting at the wrapped corners as well (`toLayoutGroupRects`); its memos keep the file's points in the block.
+  - A grid or placed layout wraps each group with member tables round where they and its shown memos land, the block starting at the wrapped corners as well (`toLayoutGroupRects`). A group's memos ride with its tables, kept where they stood from their corner (`getCornerShift`); every other memo keeps the file's point in the block.
   - Duplicates and the clipboard: `src/utils/AGENTS.md`. Automatic placement, which keeps table groups together: `src/services/AGENTS.md`.
 - **A resize is one undo entry per write.** `tableGroup.resize` is undone to the rect the group stored before it. A sash drag writes it once, at its end (`src/components/erd/AGENTS.md`).
 - **A drop's regroup undoes with the drag.** A drop's `table.changeGroup` or `memo.changeGroup` carries the `groupId` it replaces as `prevValue`, and `Tag.drag`. The `@@move` regroup in `rx-store.ts` takes it in by tag (`groupByStreamActions`), so its undo closes into the drag's entry. The undo builder reads `prevValue`, since that entry is built once the reducer has run.
@@ -404,7 +404,7 @@ The peer entry's Node and import rules and its key set spec: `src/peer/AGENTS.md
   - The peer passes false and first dispatches `changeViewportAction({ width: 0, height: 0 })`, so a load never reaches the pull's view lookup.
   - `RxStoreOptions` is not public surface.
 - **A replicated sort sends `table.moveTo`, never `table.sort`.** `sortTable` places by each replica's own `toWidth`, so replaying it lands tables apart.
-  - `sortTablesToMoveAction$` runs the reducer on copies of the live tables and groups. It sends the absolute points, and for each group with members its `tableGroup.resize`, in one undoable batch.
+  - `sortTablesToMoveAction$` runs the reducer on copies of the live tables and groups. It sends the absolute points, each memo of a group with member tables as a `memo.moveTo` that keeps it where it stood from their corner (`getTableGroupMemoMoves`), and for each such group its `tableGroup.resize`, grown by its shown memos, in one undoable batch. The reducer places no memo, so an older editor's `table.sort` replays as it did.
   - An import sends no `table.sort` either. `withGridPoints` (`editor/generator.actions.ts`) runs the reducer on a copy of the parsed document, its widths measured as the sender's store measures them, in the name view it shows, since a locked file holds the lock's.
   - `withGridPoints` writes each table's point and each group's rect into the `loadJson` value, which every peer loads as it is. The load reducer measures widths again with its own fonts.
   - `toLayoutPoints` sorts an append's grid on its copy the same way.

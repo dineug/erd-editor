@@ -366,6 +366,23 @@ describe('getContentRects', () => {
     expect(getTableGroupRect(state, group).width).toBeGreaterThan(3_000);
   });
 
+  it('reads a moved memo at its point, left out of its group box as a moved table is', () => {
+    const state = createState();
+    const memo = addMemo(state, 'm', 3_000, 3_000, 200, 100);
+    memo.groupId = 'g';
+    addGroup(state, 'g', 0, 0);
+    const move = { id: 'm', x: -900, y: 40 };
+
+    const [placed, box] = getContentRects(state, [], 'document', [], [move]);
+
+    expect(placed).toEqual({ ...getMemoRect(memo), x: -900, y: 40 });
+    expect(box).toEqual({ x: 0, y: 0, width: 100, height: 100 });
+    expect(getContentRectAfter(state, [], 'document', [], [move])).toEqual(
+      unionRect(placed, box)
+    );
+    expect([memo.ui.x, memo.ui.y]).toEqual([3_000, 3_000]);
+  });
+
   it('reads a group named with a rect at that rect, as a placement will write it', () => {
     const state = createState();
     const table = addTable(state, 't', 3_000, 3_000);
