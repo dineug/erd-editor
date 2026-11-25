@@ -65,12 +65,43 @@ export async function toSvg(
   const { renderDocumentSvg } = await import('./renderSvg');
 
   const svg = Promise.resolve(lastDrawing).then(() =>
-    renderDocumentSvg({
-      doc,
-      theme: createPresetExportTheme({ darkMode, background }),
-      toWidth: tableToWidth,
-    })
+    rejectingLoggedErrors(() =>
+      renderDocumentSvg({
+        doc,
+        theme: createPresetExportTheme({ darkMode, background }),
+        toWidth: tableToWidth,
+      })
+    )
   );
   lastDrawing = svg.catch(() => undefined);
   return svg;
+}
+
+/**
+ * Runs a drawing and rejects with the first error r-html logged meanwhile: a
+ * hook that throws is logged, one Error alone, never thrown, and the svg would
+ * come out without what it draws. Every line still reaches the log.
+ */
+async function rejectingLoggedErrors(
+  draw: () => Promise<string>
+): Promise<string> {
+  const log = console.error;
+  const thrown: Error[] = [];
+  console.error = (...args: unknown[]) => {
+    if (args.length === 1 && args[0] instanceof Error) thrown.push(args[0]);
+    Reflect.apply(log, console, args);
+  };
+
+  try {
+    const svg = await draw();
+    const [first] = thrown;
+    if (first) {
+      throw new Error(`toSvg: the scene threw as it drew: ${first.message}`, {
+        cause: first,
+      });
+    }
+    return svg;
+  } finally {
+    console.error = log;
+  }
 }

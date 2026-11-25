@@ -196,3 +196,54 @@ describe('what toSvg refuses before it draws', () => {
     }
   });
 });
+
+describe('what toSvg rejects once it draws', () => {
+  it('an error a hook of the scene threw, which r-html logs, rather than an svg without it', async () => {
+    const realm = Reflect.get(globalThis, 'document') as object;
+    // Pretext lays an emoji out in a page whose body it finds, and the stub's
+    // span takes no style, so the memo's hook throws as it measures.
+    Reflect.deleteProperty(realm, 'body');
+    const drawing = memoDocument('ship it 🚀').then(value => toSvg(value));
+
+    try {
+      await expect(drawing).rejects.toThrow(
+        /^toSvg: the scene threw as it drew: .*cssText/
+      );
+      expect(consoleErrors).toHaveBeenCalledWith(expect.any(TypeError));
+    } finally {
+      Reflect.set(realm, 'body', null);
+      consoleErrors.mockClear();
+    }
+    expect(await toSvg(SMALL)).toBe(small);
+  });
+
+  it('no other line logged as it draws, which reaches the log alone', async () => {
+    const realm = Reflect.get(globalThis, 'document') as {
+      createElement: (tagName: string) => unknown;
+    };
+    const { createElement } = realm;
+    // The container the scene mounts in is made in the middle of the drawing.
+    realm.createElement = tagName => {
+      if (tagName === 'div') {
+        console.error('erd-editor-mcp', 'a line of the process’s own');
+        console.error(new Error('logged'), 'with what it was about');
+      }
+      return createElement(tagName);
+    };
+
+    try {
+      expect(await toSvg(SMALL)).toBe(small);
+      expect(consoleErrors).toHaveBeenCalledWith(
+        'erd-editor-mcp',
+        'a line of the process’s own'
+      );
+      expect(consoleErrors).toHaveBeenCalledWith(
+        expect.any(Error),
+        'with what it was about'
+      );
+    } finally {
+      realm.createElement = createElement;
+      consoleErrors.mockClear();
+    }
+  });
+});
