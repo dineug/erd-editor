@@ -17,6 +17,13 @@ export type ToSvgOptions = {
 };
 
 /**
+ * The drawing the next call waits for. Every scene in the realm shares the
+ * connector routes' sort, and a sort in one drawing retires the routes another
+ * reads its box from, so two drawn at once come out in boxes too large.
+ */
+let lastDrawing: Promise<unknown> | undefined;
+
+/**
  * Draws a document as an svg where there is no document, in Node say, at 100%
  * and in toImage's preset, measuring text off a width table rather than a font
  * engine. A page draws with toImage instead; this one refuses a realm that has a document.
@@ -57,9 +64,13 @@ export async function toSvg(
   installNodeRealm();
   const { renderDocumentSvg } = await import('./renderSvg');
 
-  return renderDocumentSvg({
-    doc,
-    theme: createPresetExportTheme({ darkMode, background }),
-    toWidth: tableToWidth,
-  });
+  const svg = Promise.resolve(lastDrawing).then(() =>
+    renderDocumentSvg({
+      doc,
+      theme: createPresetExportTheme({ darkMode, background }),
+      toWidth: tableToWidth,
+    })
+  );
+  lastDrawing = svg.catch(() => undefined);
+  return svg;
 }

@@ -78,6 +78,14 @@ describe('toSvg in a realm with no document', () => {
     expect(await toSvg(BOOKSTORE)).toBe(await toSvg(BOOKSTORE));
   });
 
+  it('draws calls made together as it draws each alone', async () => {
+    const values = [SMALL, BOOKSTORE, SMALL, BOOKSTORE];
+    const alone: string[] = [];
+    for (const value of values) alone.push(await toSvg(value));
+
+    expect(await Promise.all(values.map(value => toSvg(value)))).toEqual(alone);
+  });
+
   it('draws the table groups, a box and a title each', async () => {
     const svg = await toSvg(BOOKSTORE);
 
