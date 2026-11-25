@@ -22,7 +22,7 @@ export type ToSvgOptions = {
  * connector routes' sort, and a sort in one drawing retires the routes another
  * reads its box from, so two drawn at once come out in boxes too large.
  */
-let lastDrawing: Promise<unknown> | undefined;
+let lastDrawing: Promise<unknown> = Promise.resolve();
 
 /**
  * Draws a document as an svg at 100% in toImage's preset, text measured off a width table, where
@@ -65,7 +65,7 @@ export async function toSvg(
   installNodeRealm();
   const { renderDocumentSvg } = await import('./renderSvg');
 
-  const svg = Promise.resolve(lastDrawing).then(() =>
+  const svg = lastDrawing.then(() =>
     rejectingCaughtErrors(() =>
       renderDocumentSvg({
         doc,
