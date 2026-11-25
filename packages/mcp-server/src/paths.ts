@@ -15,9 +15,16 @@ export const ERD_EXTENSIONS: readonly string[] = [
 /** What a new document gets when its name has no extension at all. */
 export const DEFAULT_EXTENSION = '.erd.json';
 
+/** The extension of the file an svg export writes, in any case. */
+const SVG_EXTENSION = '.svg';
+
 export function isErdPath(path: string): boolean {
   const name = path.toLowerCase();
   return ERD_EXTENSIONS.some(extension => name.endsWith(`.${extension}`));
+}
+
+export function isSvgPath(path: string): boolean {
+  return path.toLowerCase().endsWith(SVG_EXTENSION);
 }
 
 /** One key per document: win32 and darwin compare paths case-insensitively, as paths.ts does. */
@@ -96,5 +103,72 @@ export const resolveDocumentPath = Effect.fn('resolveDocumentPath')(function* (
   yield* refuseUnsafeName(absolute, platform);
   const real = yield* realPath(absolute);
   yield* refuseUnsafeName(real, platform);
+  return real;
+});
+
+/**
+ * The absolute real path of the svg file an export writes, resolved as a
+ * document's is. Its folder must exist; a name or a link target that is not
+ * .svg, one Windows alters, one naming a folder or a link to nothing is refused.
+ */
+export const resolveSvgPath = Effect.fn('resolveSvgPath')(function* (
+  input: string
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const paths = yield* Path.Path;
+  const { cwd, platform } = yield* ProcessInfo;
+  if (input.trim() === '') {
+    return yield* new SessionError(
+      SessionErrorCode.invalidPath,
+      'output is empty'
+    );
+  }
+
+  const absolute = paths.resolve(cwd, input);
+  if (!isSvgPath(absolute)) {
+    return yield* new SessionError(
+      SessionErrorCode.invalidPath,
+      `${absolute} is not an svg file; name a file ending in ${SVG_EXTENSION}`
+    );
+  }
+  yield* refuseUnsafeName(absolute, platform);
+  const real = yield* realPath(absolute);
+  yield* refuseUnsafeName(real, platform);
+  // A rename lands on the link's target, which may be a document.
+  if (!isSvgPath(real)) {
+    return yield* new SessionError(
+      SessionErrorCode.invalidPath,
+      `${absolute} leads to ${real}, which is not an svg file; name a file ending in ${SVG_EXTENSION}, or a link to one`
+    );
+  }
+
+  const typeOf = (path: string) =>
+    fs.stat(path).pipe(
+      Effect.map(info => info.type),
+      Effect.orElseSucceed(() => null)
+    );
+  if ((yield* typeOf(paths.dirname(real))) !== 'Directory') {
+    return yield* new SessionError(
+      'notFound',
+      `The folder of ${real} does not exist; make it first, or name a file in a folder that does`
+    );
+  }
+  const type = yield* typeOf(real);
+  if (type !== null && type !== 'File') {
+    return yield* new SessionError(
+      SessionErrorCode.invalidPath,
+      `${real} is a folder or another kind of entry, not a file; name an svg file`
+    );
+  }
+  // A link the climb stopped at leads nowhere, which the exclusive create refuses.
+  if (type === null) {
+    const link = yield* Effect.orElseSucceed(fs.readLink(real), () => null);
+    if (link !== null) {
+      return yield* new SessionError(
+        SessionErrorCode.invalidPath,
+        `${real} is a link to ${link}, which leads to no file; name the file it should lead to as output, or another path`
+      );
+    }
+  }
   return real;
 });

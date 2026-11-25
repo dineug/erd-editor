@@ -1,6 +1,6 @@
 import { createPeerStore } from '@dineug/erd-editor/peer.js';
 import { type DocumentInfo, unsafeSegment } from '@dineug/erd-editor-agent-hub';
-import { Effect, FileSystem, Path } from 'effect';
+import { Effect, FileSystem, Path, Schedule } from 'effect';
 
 import {
   isPlatformReason,
@@ -8,6 +8,7 @@ import {
   SessionError,
   SessionErrorCode,
 } from '@/errors';
+import { FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import { isErdPath } from '@/paths';
 import type { DocumentReader } from '@/tools/read';
@@ -40,6 +41,64 @@ export const MAX_LIST_DEPTH = 8;
 export function isReadonlyMode(mode: number): boolean {
   return (mode & 0o200) === 0;
 }
+
+/**
+ * What Windows answers a rename over a file any process holds open: libuv's
+ * EPERM, which platform-node folds into Unknown, or EACCES or EBUSY. The tag
+ * alone decides, as in its twin, agent-hub-host's lock write.
+ */
+const isBusyReplace = (error: unknown): boolean =>
+  isPlatformReason(error, 'Unknown') ||
+  isPlatformReason(error, 'PermissionDenied') ||
+  isPlatformReason(error, 'Busy');
+
+/** 10 ms doubling to 100 ms apart, for 2 s in all: a reader holds a file for milliseconds. */
+const SWAP_RETRY = Schedule.min([
+  Schedule.exponential('10 millis'),
+  Schedule.spaced('100 millis'),
+]).pipe(Schedule.upTo({ duration: '2 seconds' }));
+
+/**
+ * A swap as the platform runs it: Windows refuses a rename over a file another
+ * process has open, so there it is retried on SWAP_RETRY while isBusyReplace.
+ */
+export const retryHeldSwap = <A, E, R>(
+  platform: string,
+  swap: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> =>
+  platform === 'win32'
+    ? swap.pipe(Effect.retry({ schedule: SWAP_RETRY, while: isBusyReplace }))
+    : swap;
+
+/** The temp file a swap writes beside path and renames over it, hidden and named for one call. */
+export const swapTempPath = (
+  paths: Path.Path,
+  path: string,
+  id: string
+): string =>
+  paths.join(paths.dirname(path), `.${paths.basename(path)}.${id}.tmp`);
+
+/**
+ * An exclusive create of path holding text: true once written, false where a
+ * file is already there, which it keeps; a missing folder is notFound.
+ */
+export const createExclusive = (
+  fs: FileSystem.FileSystem,
+  path: string,
+  text: string
+) =>
+  fs.writeFileString(path, text, { flag: 'wx' }).pipe(
+    Effect.as(true),
+    Effect.catch(error => {
+      if (isPlatformReason(error, 'AlreadyExists'))
+        return Effect.succeed(false);
+      return Effect.fail(
+        isPlatformReason(error, 'NotFound')
+          ? new SessionError('notFound', `The folder of ${path} does not exist`)
+          : error
+      );
+    })
+  );
 
 /** The editor drops a byte order mark when it reads a file; so do the sessions. */
 export function stripBom(text: string): string {
@@ -119,6 +178,49 @@ export const readDocumentFile = Effect.fn('readDocumentFile')(function* (
   const text = stripBom(yield* fs.readFileString(path).pipe(orNotFound(path)));
   yield* assertDocumentText(path, text);
   return text;
+});
+
+/**
+ * Writes a file that is no document, such as an exported svg: a new one with
+ * an exclusive create, one already there through a temp file renamed over it,
+ * retried on Windows while another program holds it open. A read-only one is refused.
+ */
+export const writeFileReplacing = Effect.fn('writeFileReplacing')(function* (
+  path: string,
+  text: string
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const paths = yield* Path.Path;
+  const { stat } = yield* FileStats;
+  const { platform, randomId } = yield* ProcessInfo;
+
+  if (yield* createExclusive(fs, path, text)) return;
+
+  const { mode } = yield* stat(path).pipe(
+    Effect.mapError(error =>
+      isPlatformReason(error, 'NotFound')
+        ? new SessionError(
+            'notFound',
+            `${path} is there but leads to no file, a link to a missing one say, so it was not written; name another file`
+          )
+        : error
+    )
+  );
+  if (isReadonlyMode(mode)) {
+    return yield* new SessionError(
+      'readonly',
+      `${path} is read-only, so it was not written; make it writable or name another file, then call again`
+    );
+  }
+  const temp = swapTempPath(paths, path, yield* randomId);
+  // Each attempt renames anew, however the file system builds its effect.
+  const rename = Effect.suspend(() => fs.rename(temp, path));
+  yield* fs.writeFileString(temp, text, { mode }).pipe(
+    // A new file's mode passes through the umask, which drops a group's write bit.
+    Effect.andThen(Effect.suspend(() => fs.chmod(temp, mode))),
+    Effect.andThen(retryHeldSwap(platform, rename)),
+    Effect.onError(() => Effect.ignore(fs.remove(temp)))
+  );
 });
 
 /** Serializes the file on disk without keeping a session, for a window whose hub is off. */

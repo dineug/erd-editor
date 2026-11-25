@@ -5,16 +5,19 @@ import {
   PeerStoreErrorCode,
   type RevertResult,
 } from '@dineug/erd-editor/peer.js';
-import { Effect, FileSystem, Path, Schedule } from 'effect';
+import { Effect, FileSystem, Path } from 'effect';
 
-import { isPlatformReason, SessionError, SessionErrorCode } from '@/errors';
+import { SessionError, SessionErrorCode } from '@/errors';
 import { FileAccess, type FileStat, FileStats } from '@/io/fileSystem';
 import { ProcessInfo } from '@/io/process';
 import {
   createEmptyDocument,
+  createExclusive,
   isReadonlyMode,
   orNotFound,
   readDocumentFile,
+  retryHeldSwap,
+  swapTempPath,
 } from '@/session/disk';
 import {
   type DocumentSession,
@@ -48,35 +51,6 @@ const sameStat = (a: FileStat, b: FileStat) =>
   a.size === b.size && a.mtimeMs === b.mtimeMs;
 
 /**
- * What Windows answers a rename over a file any process holds open: libuv's
- * EPERM, which platform-node folds into Unknown, or EACCES or EBUSY. The tag
- * alone decides, as in its twin, agent-hub-host's lock write.
- */
-const isBusyReplace = (error: unknown): boolean =>
-  isPlatformReason(error, 'Unknown') ||
-  isPlatformReason(error, 'PermissionDenied') ||
-  isPlatformReason(error, 'Busy');
-
-/** 10 ms doubling to 100 ms apart, for 2 s in all: a reader holds a file for milliseconds. */
-const SWAP_RETRY = Schedule.min([
-  Schedule.exponential('10 millis'),
-  Schedule.spaced('100 millis'),
-]).pipe(Schedule.upTo({ duration: '2 seconds' }));
-
-/** An exclusive create: a file already there is kept, a missing folder refused. */
-const createIfMissing = (fs: FileSystem.FileSystem, path: string) =>
-  fs.writeFileString(path, createEmptyDocument(), { flag: 'wx' }).pipe(
-    Effect.catch(error => {
-      if (isPlatformReason(error, 'AlreadyExists')) return Effect.void;
-      return Effect.fail(
-        isPlatformReason(error, 'NotFound')
-          ? new SessionError('notFound', `The folder of ${path} does not exist`)
-          : error
-      );
-    })
-  );
-
-/**
  * Edits the file with no editor in between: each call loads what is on disk
  * if it changed, runs on a peer that sends no presence, and replaces the file,
  * refusing when it changed during the call or is read-only.
@@ -92,7 +66,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
   const access = yield* FileAccess;
   const paths = yield* Path.Path;
   const { platform, randomId } = yield* ProcessInfo;
-  if (create) yield* createIfMissing(fs, path);
+  if (create) yield* createExclusive(fs, path, createEmptyDocument());
 
   const peer: PeerStore = createPeerStore({ nickname, presence: false });
   const run = <A>(evaluate: () => A) =>
@@ -139,10 +113,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
     // it derives there too are never saved.
     yield* Effect.yieldNow;
     const text = peer.value;
-    const temp = paths.join(
-      paths.dirname(path),
-      `.${paths.basename(path)}.${yield* randomId}.tmp`
-    );
+    const temp = swapTempPath(paths, path, yield* randomId);
     const removeTemp = Effect.ignore(fs.remove(temp));
     const refuse = (error: SessionError) =>
       removeTemp.pipe(
@@ -188,12 +159,7 @@ export const openHeadlessSession = Effect.fn('openHeadlessSession')(function* ({
         return inPlace;
       });
 
-      // Windows refuses a rename over a file another process has open.
-      loaded = yield* platform === 'win32'
-        ? swap.pipe(
-            Effect.retry({ schedule: SWAP_RETRY, while: isBusyReplace })
-          )
-        : swap;
+      loaded = yield* retryHeldSwap(platform, swap);
     }).pipe(
       Effect.catch(error =>
         (error instanceof SessionError

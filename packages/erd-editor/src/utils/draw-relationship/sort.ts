@@ -140,10 +140,10 @@ export function relationshipSort(
   source: GeometrySource = 'document',
   { route = true }: { route?: boolean } = {}
 ) {
-  // Every route box the last sort left behind answers for a route this one is
-  // about to replace, and the connectors it skips over - self relationships,
-  // and any whose end table left the document - never reach setRoute at all.
-  nextSortEpoch(source);
+  // A sort that routes opens an epoch, retiring every route box the last one
+  // wrote, a self loop's and a gone table's too. One that routes nothing leaves
+  // it be: the epoch is module-wide, so it would retire another store's routes.
+  if (route || source !== 'document') nextSortEpoch(source);
 
   // The whole document, or what the view shows: the tables it places and the
   // connectors between two of them. Everything below is read at the source's

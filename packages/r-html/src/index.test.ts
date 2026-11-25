@@ -21,6 +21,7 @@ import {
   NoopComponent,
   observable,
   observer,
+  onCaughtError,
   onMounted,
   queryShadowSelector,
   queryShadowSelectorAll,
@@ -73,6 +74,7 @@ describe('public surface', () => {
       nextTick,
       observable,
       observer,
+      onCaughtError,
       onMounted,
       queryShadowSelector,
       queryShadowSelectorAll,
@@ -264,6 +266,28 @@ describe('observable + observer + watch', () => {
     await nextTick(() => {});
 
     expect(container.textContent).toBe('two');
+  });
+
+  it('hands onCaughtError what an observer threw as it ran again, which it logs', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const caught: unknown[] = [];
+    const off = onCaughtError(error => caught.push(error));
+    const state = observable({ count: 0 });
+    const error = new Error('effect broke');
+
+    observer(() => {
+      if (state.count === 1) throw error;
+    });
+    state.count = 1;
+    await nextTick(() => {});
+    off();
+
+    try {
+      expect(caught).toEqual([error]);
+      expect(log).toHaveBeenCalledWith(error);
+    } finally {
+      log.mockRestore();
+    }
   });
 });
 

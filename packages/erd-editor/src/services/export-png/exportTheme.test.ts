@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { createTestTheme } from '@/__test-utils__';
 import {
   createExportTheme,
+  createPresetExportTheme,
   TRANSPARENT_BACKGROUND,
 } from '@/services/export-png/exportTheme';
 import {
@@ -85,4 +86,37 @@ describe('createExportTheme', () => {
         .tableBackground
     );
   });
+});
+
+describe('createPresetExportTheme', () => {
+  const presetOf = (appearance: Appearance) =>
+    createTheme({
+      grayColor: GrayColor.slate,
+      accentColor: AccentColor.indigo,
+      appearance,
+    });
+
+  it('draws the light preset of the element’s own slate and indigo', () => {
+    expect(
+      createPresetExportTheme({ darkMode: false, background: true })
+    ).toEqual(presetOf(Appearance.light));
+  });
+
+  it('draws the dark preset of the same gray and accent in dark mode', () => {
+    expect(
+      createPresetExportTheme({ darkMode: true, background: true })
+    ).toEqual(presetOf(Appearance.dark));
+  });
+
+  it.each([false, true])(
+    'takes the canvas colour away and nothing else with the background off, dark %s',
+    darkMode => {
+      const preset = presetOf(darkMode ? Appearance.dark : Appearance.light);
+
+      expect(createPresetExportTheme({ darkMode, background: false })).toEqual({
+        ...preset,
+        canvasBackground: TRANSPARENT_BACKGROUND,
+      });
+    }
+  );
 });

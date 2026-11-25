@@ -1,17 +1,11 @@
 import { parser } from '@dineug/erd-editor-schema';
 import { isString } from 'es-toolkit';
 
-import {
-  AccentColor,
-  Appearance,
-  createTheme,
-  GrayColor,
-} from '@/themes/radix-ui-theme';
-import type { Theme } from '@/themes/tokens';
 import { toLoadValue } from '@/utils/loadValue';
 import { createText } from '@/utils/text';
 
-import { TRANSPARENT_BACKGROUND } from './exportTheme';
+import { assertExportOption } from './exportOptions';
+import { createPresetExportTheme } from './exportTheme';
 import { createDocumentPng, createDocumentSvg } from './index';
 
 /** The Export image dialog's options, which open as the dialog does but light. */
@@ -28,28 +22,6 @@ export type ToImageOptions = {
 const SCALES: ReadonlyArray<unknown> = [1, 2, 3];
 
 const DEFAULT_SCALE = 2;
-
-/** Throws, naming the option, for a value the dialog does not offer; other keys are never read. */
-function assertOption(valid: boolean, name: string, value: unknown) {
-  if (!valid) {
-    throw new TypeError(`toImage: ${name} cannot be ${String(value)}`);
-  }
-}
-
-/** The preset of the element's own gray and accent, its background taken away when it is off. */
-function toTheme(darkMode: boolean, background: boolean): Theme {
-  const theme = createTheme({
-    grayColor: GrayColor.slate,
-    accentColor: AccentColor.indigo,
-    appearance: darkMode ? Appearance.dark : Appearance.light,
-  });
-
-  // The background rect and the box under a referential action label both
-  // paint this colour, so one token takes both away, as the dialog's switch does.
-  return background
-    ? theme
-    : { ...theme, canvasBackground: TRANSPARENT_BACKGROUND };
-}
 
 /**
  * Draws a document as a png or an svg, with the Export image dialog's options
@@ -87,10 +59,25 @@ export async function toImage(
   if (!isString(value)) {
     throw new TypeError("toImage: value is a document's JSON text");
   }
-  assertOption(format === 'png' || format === 'svg', 'format', format);
-  assertOption(typeof background === 'boolean', 'background', background);
-  assertOption(typeof darkMode === 'boolean', 'darkMode', darkMode);
-  assertOption(SCALES.includes(scale), 'scale', scale);
+  assertExportOption(
+    'toImage',
+    format === 'png' || format === 'svg',
+    'format',
+    format
+  );
+  assertExportOption(
+    'toImage',
+    typeof background === 'boolean',
+    'background',
+    background
+  );
+  assertExportOption(
+    'toImage',
+    typeof darkMode === 'boolean',
+    'darkMode',
+    darkMode
+  );
+  assertExportOption('toImage', SCALES.includes(scale), 'scale', scale);
 
   const doc = toLoadValue(value);
   // Thrown here, before anything is drawn, for text the parser cannot read.
@@ -98,7 +85,7 @@ export async function toImage(
 
   const request = {
     doc,
-    theme: toTheme(darkMode, background),
+    theme: createPresetExportTheme({ darkMode, background }),
     toWidth: createText().toWidth,
   };
 

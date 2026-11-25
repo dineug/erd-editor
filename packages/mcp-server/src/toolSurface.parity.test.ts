@@ -14,14 +14,15 @@ import {
 const fixture = readToolSurfaceFixture();
 
 /**
- * The tools that advertise no result schema: the read tools answer plain
- * text, added by hand. The toolkit tools declare theirs; the recording has none.
+ * The tools that advertise no result schema: the read tools and the svg
+ * export may answer plain text, so they are added by hand. The toolkit tools declare theirs; the recording has none.
  */
 const PLAIN_TEXT_TOOLS: ReadonlySet<string> = new Set([
   'erd_read',
   'erd_list',
   'erd_get',
   'erd_list_checks',
+  'erd_export_svg',
 ]);
 
 /** The tools the server gained after the recording was made. */
@@ -36,6 +37,7 @@ const ADDED_TOOLS: readonly string[] = [
   'erd_change_table_group_color',
   'erd_change_table_group_name',
   'erd_derive_physical_names',
+  'erd_export_svg',
   'erd_get',
   'erd_list',
   'erd_list_checks',
@@ -150,7 +152,7 @@ const kept = () => fixture.filter(({ name }) => !REMOVED_TOOLS.includes(name));
 describe('the tool surface against the SDK-based server recording', () => {
   it('holds the 59 recorded tools less the 10 removed, and the 29 added since', () => {
     expect(fixture).toHaveLength(59);
-    expect(tools).toHaveLength(78);
+    expect(tools).toHaveLength(79);
     expect(namesIn(fixture, ADDED_TOOLS)).toEqual([]);
     expect(namesIn(live, ADDED_TOOLS)).toEqual(ADDED_TOOLS);
     expect(namesIn(fixture, REMOVED_TOOLS)).toEqual(REMOVED_TOOLS);

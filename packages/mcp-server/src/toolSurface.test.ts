@@ -60,7 +60,7 @@ const hints = (readOnlyHint: boolean, destructiveHint: boolean) => ({
 });
 
 describe('the tool surface (AC-M8)', () => {
-  it('is the nine session tools, every registry tool and erd_batch: 78 in all', () => {
+  it('is the ten session tools, every registry tool and erd_batch: 79 in all', () => {
     expect(tools.map(({ name }) => name).sort()).toEqual(
       [
         ...SESSION_TOOL_NAMES,
@@ -68,12 +68,12 @@ describe('the tool surface (AC-M8)', () => {
         'erd_batch',
       ].sort()
     );
-    expect(SESSION_TOOL_NAMES).toHaveLength(9);
+    expect(SESSION_TOOL_NAMES).toHaveLength(10);
     expect(actionTools).toHaveLength(68);
-    expect(tools).toHaveLength(78);
+    expect(tools).toHaveLength(79);
   });
 
-  it('lists the session toolkit, then the read tools, then the registry, in its order, then erd_batch', () => {
+  it('lists the session toolkit, then the read tools, the svg export, the registry, in its order, then erd_batch', () => {
     expect(tools.map(({ name }) => name)).toEqual([
       'erd_list_documents',
       'erd_open_document',
@@ -84,6 +84,7 @@ describe('the tool surface (AC-M8)', () => {
       'erd_list',
       'erd_get',
       'erd_list_checks',
+      'erd_export_svg',
       ...actionTools.map(({ name }) => name),
       'erd_batch',
     ]);
@@ -209,7 +210,7 @@ describe('the tool surface (AC-M8)', () => {
     }
   });
 
-  it('marks reads read-only and removals, imports and batches destructive, the other hints at their defaults', () => {
+  it('marks reads read-only and removals, imports, batches and the svg export destructive, the other hints at their defaults', () => {
     expect(tool('erd_read').annotations).toEqual(hints(true, true));
     expect(tool('erd_list').annotations).toEqual(hints(true, true));
     expect(tool('erd_get').annotations).toEqual(hints(true, true));
@@ -225,6 +226,7 @@ describe('the tool surface (AC-M8)', () => {
       )
       .map(({ name }) => name);
     expect(destructive).toEqual([
+      'erd_export_svg',
       'erd_remove_table',
       'erd_remove_columns',
       'erd_remove_relationship',
@@ -242,7 +244,28 @@ describe('the tool surface (AC-M8)', () => {
       'erd_import_json',
       'erd_batch',
     ]);
-    expect(destructive.every(isDestructive)).toBe(true);
+    expect(destructive.slice(1).every(isDestructive)).toBe(true);
+    // It writes no document, but may write over an svg file, and the same
+    // call writes the same file again.
+    expect(tool('erd_export_svg').annotations).toEqual({
+      ...hints(false, true),
+      idempotentHint: true,
+    });
+  });
+
+  it('gives erd_export_svg a path, an optional output and the two switches of Export image', () => {
+    const { properties, required } = tool('erd_export_svg').inputSchema as any;
+
+    expect(Object.keys(properties)).toEqual([
+      'path',
+      'output',
+      'darkMode',
+      'background',
+    ]);
+    expect(required).toEqual(['path']);
+    expect(properties.output).toMatchObject({ type: 'string' });
+    expect(properties.darkMode).toMatchObject({ type: 'boolean' });
+    expect(properties.background).toMatchObject({ type: 'boolean' });
   });
 
   it('describes every tool and every property', () => {
@@ -254,7 +277,7 @@ describe('the tool surface (AC-M8)', () => {
     }
   });
 
-  it('closes the arguments of every edit tool, read tool and erd_batch, and of no other session tool', () => {
+  it('closes the arguments of every edit tool, read tool, the svg export and erd_batch, and of no other session tool', () => {
     const closed = tools
       .filter(({ inputSchema }) => inputSchema.additionalProperties === false)
       .map(({ name }) => name);
@@ -264,6 +287,7 @@ describe('the tool surface (AC-M8)', () => {
       'erd_list',
       'erd_get',
       'erd_list_checks',
+      'erd_export_svg',
       ...actionTools.map(({ name }) => name),
       'erd_batch',
     ]);
@@ -348,6 +372,24 @@ describe('tool arguments', () => {
     expect(format.message).toMatch(/\["format"\]/);
     expect(statements.message).toMatch(/\["statements"\]/);
     expect(header.message).toMatch(/\["header"\]/);
+    expect(mcp.manager.paths()).toEqual([]);
+  });
+
+  it('refuses an unknown or malformed argument of erd_export_svg with -32602 before a session is touched', async () => {
+    const unknown = await rpcError('erd_export_svg', {
+      path: DOCUMENT,
+      format: 'png',
+    });
+    const darkMode = await rpcError('erd_export_svg', {
+      path: DOCUMENT,
+      darkMode: 'yes',
+    });
+
+    expect([unknown.code, darkMode.code]).toEqual([-32602, -32602]);
+    expect(unknown.message).toMatch(
+      /^Invalid parameters for tool 'erd_export_svg'.*\n.*\["format"\]/
+    );
+    expect(darkMode.message).toMatch(/\["darkMode"\]/);
     expect(mcp.manager.paths()).toEqual([]);
   });
 

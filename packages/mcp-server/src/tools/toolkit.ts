@@ -15,6 +15,7 @@ export const SESSION_TOOL_NAMES = Object.freeze([
   'erd_list',
   'erd_get',
   'erd_list_checks',
+  'erd_export_svg',
   'erd_save',
   'erd_undo',
   'erd_redo',

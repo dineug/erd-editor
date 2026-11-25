@@ -22,6 +22,7 @@ export function stubSessions(
       runTool: () => unused('runTool'),
       runBatch: () => unused('runBatch'),
       read: () => unused('read'),
+      exportSvg: () => unused('exportSvg'),
       save: () => unused('save'),
       undo: () => unused('undo'),
       redo: () => unused('redo'),

@@ -38,6 +38,13 @@
       "budgetGzip": null,
       "budgetNote": null
     },
+    "./svg.js": {
+      "bytes": 43884,
+      "gzip": 15453,
+      "lazyGzip": 136718,
+      "budgetGzip": null,
+      "budgetNote": null
+    },
     "umd:erd-editor": {
       "bytes": 5871394,
       "gzip": 1533623,

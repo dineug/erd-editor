@@ -117,9 +117,9 @@ entry for its effect instead, or call `defineErdEditor()`:
 
 ### Server-side rendering
 
-Every entry but [`engine.js` and `peer.js`](#headless-replica) needs a DOM, the package root too,
-since evaluating it builds both element classes. So in Next.js, Nuxt, SvelteKit or Astro import
-the element on the client:
+Every entry this page describes but [`engine.js` and `peer.js`](#headless-replica) needs a DOM,
+the package root too, since evaluating it builds both element classes. So in Next.js, Nuxt,
+SvelteKit or Astro import the element on the client:
 
 ```js
 useEffect(() => {

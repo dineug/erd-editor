@@ -42,6 +42,7 @@ export default defineConfig({
         'erd-viewer': './src/erd-viewer.ts',
         'engine/index': './src/engine/index.ts',
         'peer/index': './src/peer/index.ts',
+        svg: './src/svg.ts',
       },
       formats: ['es'],
     },

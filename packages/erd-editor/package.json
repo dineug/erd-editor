@@ -19,6 +19,9 @@
       ],
       "peer.js": [
         "./dist/peer/index.d.ts"
+      ],
+      "svg.js": [
+        "./dist/svg.d.ts"
       ]
     }
   },
@@ -42,6 +45,10 @@
     "./peer.js": {
       "types": "./dist/peer/index.d.ts",
       "default": "./dist/peer/index.js"
+    },
+    "./svg.js": {
+      "types": "./dist/svg.d.ts",
+      "default": "./dist/svg.js"
     }
   },
   "unpkg": "./dist/erd-editor.umd.js",
