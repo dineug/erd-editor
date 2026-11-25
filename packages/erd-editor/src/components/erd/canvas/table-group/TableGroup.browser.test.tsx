@@ -43,11 +43,18 @@ import {
   TABLE_GROUP_TITLE_HEIGHT,
   TABLE_HEADER_ICON_GAP,
 } from '@/constants/layout';
+import { Show } from '@/constants/schema';
 import {
   selectAction,
   sharedSelectionTrackerAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+  moveMemoAction,
+} from '@/engine/modules/memo/atom.actions';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
   changeTableGroupAction,
@@ -65,7 +72,7 @@ import {
 } from '@/engine/modules/table-group/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { I18n } from '@/i18n/translate';
-import { getTableRect } from '@/konva/scene/metrics';
+import { getMemoRect, getTableRect } from '@/konva/scene/metrics';
 import { renderScene } from '@/konva/scene/renderScene';
 import type { Theme } from '@/themes/tokens';
 import { toSharedColor } from '@/utils/sharedColor';
@@ -189,6 +196,15 @@ const hoverRemove = async (stage: Stage) => {
   );
   await settle();
 };
+
+/** Puts a memo at the point given in the group, the way a drop or a command does. */
+function addMemoMember(app: AppContext, id: string, x: number, y: number) {
+  app.store.dispatchSync(
+    addMemoAction({ id, ui: { x, y, zIndex: 3 } }),
+    changeMemoGroupAction({ id, value: GROUP_ID })
+  );
+  return app.store.state.collections.memoEntities[id];
+}
 
 /** Puts a table at the point given in the group, the way a drop or a command does. */
 function addMember(app: AppContext, id: string, x: number, y: number) {
@@ -404,6 +420,79 @@ describe('the table group scene', () => {
 
     expect(nodeNamed(stage, 'table-group-border').width()).toBe(stretched);
     endEntityDrag(app.store.state);
+  });
+
+  it('reaches around a member memo past the stored rect, and leaves it out while memos are hidden', async () => {
+    const app = createTestAppContext();
+    const memo = addMemoMember(app, 'note', 600, 400);
+    const { stage } = await mountGroup({ app });
+    const rect = getMemoRect(memo);
+    const width = () => nodeNamed(stage, 'table-group-border').width() + 1;
+    const height = () => nodeNamed(stage, 'table-group-border').height() + 1;
+
+    expect(width()).toBe(rect.x + rect.width + TABLE_GROUP_PADDING - STORED.x);
+    expect(height()).toBe(
+      rect.y + rect.height + TABLE_GROUP_PADDING - STORED.y
+    );
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await settle();
+    expect({ width: width(), height: height() }).toEqual({
+      width: STORED.width,
+      height: STORED.height,
+    });
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: false })
+    );
+    await settle();
+    expect(width()).toBe(rect.x + rect.width + TABLE_GROUP_PADDING - STORED.x);
+  });
+
+  it('grows over the first memo a group with no member gains, and lets it go as it leaves', async () => {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { x: 600, y: 100, zIndex: 2 } })
+    );
+    const { stage } = await mountGroup({ app });
+    const rect = getMemoRect(app.store.state.collections.memoEntities.note);
+    const width = () => nodeNamed(stage, 'table-group-border').width() + 1;
+    const join = async (value: string) => {
+      app.store.dispatchSync(changeMemoGroupAction({ id: 'note', value }));
+      await settle();
+    };
+
+    expect(width()).toBe(STORED.width);
+
+    await join(GROUP_ID);
+    expect(width()).toBe(rect.x + rect.width + TABLE_GROUP_PADDING - STORED.x);
+
+    await join('');
+    expect(width()).toBe(STORED.width);
+  });
+
+  it('holds the box a drag began with while a member memo is lifted out, neither shrinking nor stretching', async () => {
+    const app = createTestAppContext();
+    addMemoMember(app, 'note', 900, 500);
+    const { stage } = await mountGroup({ app });
+    const border = () => nodeNamed(stage, 'table-group-border');
+    const stretched = border().width();
+
+    expect(stretched).toBeGreaterThan(STORED.width);
+
+    app.store.dispatchSync(selectAction({ note: SelectType.memo }));
+    beginEntityDrag(app.store.state);
+    app.store.dispatchSync(
+      moveMemoAction({ ids: ['note'], movementX: 400, movementY: 0 })
+    );
+    await settle();
+    expect(border().width()).toBe(stretched);
+
+    endEntityDrag(app.store.state);
+    await settle();
+    expect(border().width()).toBe(stretched + 400);
   });
 
   it('paints a group with no color in the theme group colors, the body at its own alpha', async () => {

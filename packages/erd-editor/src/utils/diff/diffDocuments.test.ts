@@ -330,6 +330,26 @@ describe('diffDocuments', () => {
     ]);
   });
 
+  it('marks a memo regrouped as M in an outline of both panes, by the group it moved to', () => {
+    const result = diff(
+      {
+        memos: [{ id: 'm', value: 'note' }],
+        groups: [{ id: 'g', name: 'Billing' }],
+      },
+      {
+        memos: [{ id: 'm', value: 'note', group: 'g' }],
+        groups: [{ id: 'g', name: 'Billing' }],
+      }
+    );
+
+    expect(all(result)).toEqual(['memo M note']);
+    expect(result.entries.memos[0].changes).toEqual([
+      { field: DiffField.tableGroup, before: '', after: 'Billing' },
+    ]);
+    expect(flags(result.prev, 'm')).toEqual({ [ENTITY_PATH]: Diff.modify });
+    expect(flags(result.next, 'm')).toEqual({ [ENTITY_PATH]: Diff.modify });
+  });
+
   it('marks only the columns outside the longest run both orders share as moved (AC-D6)', () => {
     const columns = [
       { id: 'a', name: 'a' },

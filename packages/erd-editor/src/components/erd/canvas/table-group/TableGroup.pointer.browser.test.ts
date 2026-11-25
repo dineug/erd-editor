@@ -37,6 +37,10 @@ import {
   selectAction,
 } from '@/engine/modules/editor/atom.actions';
 import { SelectType } from '@/engine/modules/editor/state';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+} from '@/engine/modules/memo/atom.actions';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
   addTableAction,
@@ -47,8 +51,8 @@ import {
   addTableGroupAction,
   removeTableGroupAction,
 } from '@/engine/modules/table-group/atom.actions';
-import { getTableRect } from '@/konva/scene/metrics';
-import { getTableGroupRect, padRect } from '@/utils/tableGroup';
+import { getMemoRect, getTableRect } from '@/konva/scene/metrics';
+import { getMemoCenter, getTableGroupRect, padRect } from '@/utils/tableGroup';
 
 const VIEWPORT = { width: 1200, height: 800 };
 
@@ -247,6 +251,9 @@ const groupUi = (editor: Editor, id: string) =>
 
 const tableOf = (editor: Editor, id: string) =>
   stateOf(editor).collections.tableEntities[id];
+
+const memoOf = (editor: Editor, id: string) =>
+  stateOf(editor).collections.memoEntities[id];
 
 const zoomOf = (editor: Editor) => stateOf(editor).settings.zoomLevel;
 
@@ -909,5 +916,217 @@ describe('the drop of a table drag', () => {
     await drop();
 
     expect(tableOf(editor, 'loose').groupId).toBe('');
+  });
+});
+
+describe("a group's memos", () => {
+  /** A memo inside the first group's stored rect, clear of its table. */
+  const NOTE = { x: 360, y: 300 };
+  const LOOSE_NOTE = { x: 260, y: 560 };
+  const G2_MIDDLE = { x: G2.x + G2.width / 2, y: G2.y + G2.height / 2 };
+  const BARE = { x: 400, y: 700 };
+
+  /** The editor over the two groups, with a memo in the first and one in none. */
+  async function mountWithMemos(): Promise<Editor> {
+    const editor = await mountEditor();
+    editor.app.store.dispatchSync(
+      addMemoAction({ id: 'note', ui: { ...NOTE, zIndex: 5 } }),
+      addMemoAction({ id: 'loose-note', ui: { ...LOOSE_NOTE, zIndex: 6 } }),
+      changeMemoGroupAction({ id: 'note', value: 'g1' })
+    );
+    editor.app.store.flushStreamBuffers();
+    await settle();
+    return editor;
+  }
+
+  /** A point on a memo's header, clear of its colour bar and its remove button. */
+  const headerOf = (editor: Editor, id: string): Point => {
+    const rect = rectOf(editor.stage.findOne(`#memo-${id}`)!);
+    const zoom = zoomOf(editor);
+    return { x: rect.x + 30 * zoom, y: rect.y + 14 * zoom };
+  };
+
+  /** The travel that takes a memo's centre to a point, in screen pixels. */
+  const travelTo = (editor: Editor, id: string, point: Point): Point => {
+    const center = getMemoCenter(memoOf(editor, id));
+    const zoom = zoomOf(editor);
+    return {
+      x: (point.x - center.x) * zoom,
+      y: (point.y - center.y) * zoom,
+    };
+  };
+
+  it('carries a member memo with the group in the drag layer, and one undo takes both back', async () => {
+    const editor = await mountWithMemos();
+    const before = editor.app.store.history.size;
+    const zoom = zoomOf(editor);
+
+    await pressAndMove(editor, titleOf(editor, 'g1'), { x: 120, y: 60 });
+    await settle(1);
+
+    expect(
+      layerNamed(editor, 'drag-entity').findOne('#memo-note')
+    ).toBeTruthy();
+    expect(layerNamed(editor, 'scene').findOne('#memo-note')).toBeFalsy();
+    expect(
+      layerNamed(editor, 'scene').findOne('#memo-loose-note')
+    ).toBeTruthy();
+
+    await drop();
+
+    expect(memoOf(editor, 'note').ui).toMatchObject({
+      x: NOTE.x + 120 / zoom,
+      y: NOTE.y + 60 / zoom,
+    });
+    expect(memoOf(editor, 'note').groupId).toBe('g1');
+    expect(memoOf(editor, 'loose-note').ui).toMatchObject(LOOSE_NOTE);
+    expect(entriesSince(editor, before)).toBe(1);
+
+    editor.app.store.undo();
+
+    expect(groupUi(editor, 'g1')).toMatchObject({ x: G1.x, y: G1.y });
+    expect(memoOf(editor, 'note').ui).toMatchObject(NOTE);
+  });
+
+  it('carries a hidden member memo too, drawing it nowhere', async () => {
+    const editor = await mountWithMemos();
+    editor.app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    await settle();
+    const zoom = zoomOf(editor);
+
+    await pressAndMove(editor, titleOf(editor, 'g1'), { x: 80, y: 40 });
+    await settle(1);
+    expect(editor.stage.findOne('#memo-note')).toBeFalsy();
+    await drop();
+
+    expect(memoOf(editor, 'note').ui).toMatchObject({
+      x: NOTE.x + 80 / zoom,
+      y: NOTE.y + 40 / zoom,
+    });
+    expect(memoOf(editor, 'note').groupId).toBe('g1');
+  });
+
+  it('stops an edge at the padded box of a member memo as well as of the tables', async () => {
+    const editor = await mountWithMemos();
+    editor.app.store.dispatchSync(selectAction({ g1: SelectType.tableGroup }));
+    await settle();
+    const memo = padRect(getMemoRect(memoOf(editor, 'note')));
+    const table = padRect(
+      getTableRect(stateOf(editor), tableOf(editor, 'member'))
+    );
+
+    const box = boxOf(editor, 'g1');
+
+    expect(memo.y + memo.height).toBeGreaterThan(table.y + table.height);
+
+    await pressAndMove(editor, sashOf(editor, 'g1', 'bottom'), {
+      x: 0,
+      y: -900,
+    });
+    await drop();
+
+    expect(groupUi(editor, 'g1')).toMatchObject({
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: memo.y + memo.height - box.y,
+    });
+  });
+
+  it('stops an edge at the tables alone while memos are hidden', async () => {
+    const editor = await mountWithMemos();
+    editor.app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true }),
+      selectAction({ g1: SelectType.tableGroup })
+    );
+    await settle();
+    const table = padRect(
+      getTableRect(stateOf(editor), tableOf(editor, 'member'))
+    );
+    const bottom = Math.max(
+      table.y + table.height,
+      G1.y + TABLE_GROUP_MIN_HEIGHT
+    );
+
+    await pressAndMove(editor, sashOf(editor, 'g1', 'bottom'), {
+      x: 0,
+      y: -900,
+    });
+    await drop();
+
+    expect(groupUi(editor, 'g1').height).toBe(bottom - G1.y);
+  });
+
+  it('puts a memo dropped in a group in it, outlining the group meanwhile, and one undo takes back both', async () => {
+    const editor = await mountWithMemos();
+    const before = editor.app.store.history.size;
+
+    await pressAndMove(
+      editor,
+      headerOf(editor, 'loose-note'),
+      travelTo(editor, 'loose-note', G2_MIDDLE)
+    );
+    await settle(1);
+
+    const targets = dropTargets(editor);
+    const box = boxOf(editor, 'g2');
+    expect(targets).toHaveLength(1);
+    expect(targets[0].attrs).toMatchObject({ x: box.x - 1, y: box.y - 1 });
+
+    await drop();
+
+    expect(memoOf(editor, 'loose-note').groupId).toBe('g2');
+    expect(dropTargets(editor)).toHaveLength(0);
+    expect(entriesSince(editor, before)).toBe(1);
+
+    editor.app.store.undo();
+
+    expect(memoOf(editor, 'loose-note').groupId).toBe('');
+    expect(memoOf(editor, 'loose-note').ui).toMatchObject(LOOSE_NOTE);
+  });
+
+  it('takes a member memo dropped out of every group out of its own', async () => {
+    const editor = await mountWithMemos();
+
+    await pressAndMove(
+      editor,
+      headerOf(editor, 'note'),
+      travelTo(editor, 'note', BARE)
+    );
+    await settle(1);
+    expect(dropTargets(editor)).toHaveLength(0);
+    await drop();
+
+    expect(memoOf(editor, 'note').groupId).toBe('');
+  });
+
+  it('adopts no loose memo a group is carried or resized over', async () => {
+    const editor = await mountWithMemos();
+    const middle = getMemoCenter(memoOf(editor, 'loose-note'));
+    const zoom = zoomOf(editor);
+    const title = titleOf(editor, 'g2');
+
+    await pressAndMove(editor, title, {
+      x: (middle.x - (G2.x + G2.width / 2)) * zoom,
+      y: (middle.y - (G2.y + G2.height / 2)) * zoom,
+    });
+    await drop();
+    expect(memoOf(editor, 'loose-note').groupId).toBe('');
+
+    // The second group goes back, so the first's bottom sash stands clear of its bar.
+    editor.app.store.flushStreamBuffers();
+    editor.app.store.undo();
+    editor.app.store.dispatchSync(selectAction({ g1: SelectType.tableGroup }));
+    await settle();
+    await pressAndMove(editor, sashOf(editor, 'g1', 'bottom'), {
+      x: 0,
+      y: 400,
+    });
+    await drop();
+
+    expect(groupUi(editor, 'g1').height).toBeGreaterThan(G1.height);
+    expect(memoOf(editor, 'loose-note').groupId).toBe('');
   });
 });

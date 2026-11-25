@@ -455,7 +455,7 @@ export function diffDocuments(prev: RootState, next: RootState): DocumentDiff {
     live.prev.memos,
     live.next.memos,
     memos,
-    compareMemos,
+    (prevMemo, nextMemo) => compareMemos(ctx, prevMemo, nextMemo),
     memo => ({ id: memo.id, name: firstLine(memo.value) })
   );
 

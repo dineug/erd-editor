@@ -61,6 +61,7 @@ import { diffOutline, diffTextColor, MEMO_VALUE_PATH } from '@/utils/diff/diff';
 import { openColorPickerAction } from '@/utils/emitter';
 import { isMod } from '@/utils/keyboard-shortcut';
 import { isPinchWheel } from '@/utils/pinch';
+import { getMemoHeaderTint, getTableGroupTint } from '@/utils/tableGroup';
 
 /** The radius the memo box is rounded with. */
 const MEMO_CORNER_RADIUS = 6;
@@ -70,8 +71,13 @@ const MEMO_HEADER_COLOR_HEIGHT = 4;
 
 export type MemoProps = {
   memo: Memo;
-  /** A drawn copy rather than the memo itself, so nothing in it takes an id. */
+  /** A drawn copy rather than the memo itself, so nothing in it takes an id or a group color. */
   preview?: boolean;
+  /**
+   * The group whose color the header band wears, '' for none, named by a scene that reads the
+   * group list once for every memo; a memo drawn alone reads its own.
+   */
+  tableGroupId?: string;
 };
 
 const Memo: FC<MemoProps> = (props, ctx) => {
@@ -212,6 +218,14 @@ const Memo: FC<MemoProps> = (props, ctx) => {
     // A read scene draws no remove button and no sash, and its colour bar
     // opens nothing.
     const read = interaction() === 'read';
+    // A member of a colored group wears the color across its header band, its
+    // remove button in the black or white that reads best there, and keeps its
+    // own color on the bar above it, as a member table's header does.
+    const tint = props.preview
+      ? null
+      : props.tableGroupId === undefined
+        ? getMemoHeaderTint(store.state, memo, sourceRef.value)
+        : getTableGroupTint(store.state, props.tableGroupId, sourceRef.value);
 
     return (
       <k-group
@@ -270,6 +284,18 @@ const Memo: FC<MemoProps> = (props, ctx) => {
           x={MEMO_BORDER}
           y={MEMO_BORDER}
         >
+          {tint ? (
+            <k-rect
+              name="memo-header-band"
+              x={0}
+              y={0}
+              width={width - MEMO_BORDER * 2}
+              height={MEMO_PADDING + MEMO_HEADER_HEIGHT}
+              cornerRadius={[MEMO_CORNER_RADIUS, MEMO_CORNER_RADIUS, 0, 0]}
+              fill={tint.background}
+              listening={false}
+            />
+          ) : null}
           <k-rect
             name="memo-header-color"
             kind="memo-header-color"
@@ -296,9 +322,8 @@ const Memo: FC<MemoProps> = (props, ctx) => {
                 kind: 'icon',
                 size: HEADER_ICON_HEIGHT,
                 color: state.hover
-                  ? state.removeHover
-                    ? theme.active
-                    : theme.foreground
+                  ? (tint?.foreground ??
+                    (state.removeHover ? theme.active : theme.foreground))
                   : TRANSPARENT,
                 x: MEMO_PADDING + memo.ui.width - HEADER_ICON_HEIGHT,
                 y: MEMO_PADDING,

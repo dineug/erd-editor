@@ -8,7 +8,11 @@ import {
   type TreeNode,
 } from '@/components/primitives/tree/treeModel';
 import { Show } from '@/constants/schema';
-import { changeMemoValueAction } from '@/engine/modules/memo/atom.actions';
+import {
+  addMemoAction,
+  changeMemoGroupAction,
+  changeMemoValueAction,
+} from '@/engine/modules/memo/atom.actions';
 import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import {
   changeTableCommentAction,
@@ -149,6 +153,53 @@ describe('buildExplorerTree', () => {
       memoId: 'note',
       text: 'Order states',
     });
+  });
+
+  it('lists the memos of a group after its tables, as the document has them, each by its first line', () => {
+    app.store.dispatchSync(
+      addMemoAction({ id: 'later', ui: { x: 0, y: 0, zIndex: 5 } }),
+      changeMemoValueAction({ id: 'later', value: 'Aardvark' }),
+      changeMemoGroupAction({ id: 'later', value: 'billing' }),
+      changeMemoGroupAction({ id: 'note', value: 'billing' })
+    );
+
+    expect(ids().filter(id => id.startsWith('g:billing'))).toEqual([
+      'g:billing',
+      'g:billing/t:orders',
+      'g:billing/m:note',
+      'g:billing/m:later',
+    ]);
+    expect(nodeOf('g:billing/m:note')).toEqual({
+      kind: 'groupMemo',
+      tableGroupId: 'billing',
+      memoId: 'note',
+      text: 'Order states',
+    });
+    expect(ids()).toContain('m:note');
+  });
+
+  it('opens a group holding memos alone, and lists no hidden memo under it', () => {
+    app.store.dispatchSync(
+      changeMemoGroupAction({ id: 'note', value: 'empty' })
+    );
+    const group = () =>
+      buildExplorerTree(app.store.state)
+        .find(node => node.id === 'f:tableGroups')!
+        .children()
+        .find(node => node.id === 'g:empty')!;
+
+    expect(group().hasChildren).toBe(true);
+    expect(
+      group()
+        .children()
+        .map(node => node.id)
+    ).toEqual(['g:empty/m:note']);
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideMemo, value: true })
+    );
+    expect(group().hasChildren).toBe(false);
+    expect(group().children()).toEqual([]);
   });
 
   it('carries the logical names a label shows, and orders the tables by their names alone', () => {

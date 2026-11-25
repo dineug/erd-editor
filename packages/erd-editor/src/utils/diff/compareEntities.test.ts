@@ -198,6 +198,55 @@ describe('compareForeignKeys', () => {
 });
 
 describe('compareMemos and compareTableGroups', () => {
+  it('reads a memo moved from one group to another by the groups it is in, a group no longer listed as none', () => {
+    const ctx = contextOf(
+      {
+        memos: [
+          { id: 'm', value: 'note', group: 'g' },
+          { id: 'n', value: 'gone', group: 'g' },
+        ],
+        groups: [{ id: 'g', name: 'Billing' }],
+      },
+      {
+        memos: [
+          { id: 'm', value: 'note', group: 'h' },
+          { id: 'n', value: 'gone', group: 'g' },
+        ],
+        groups: [{ id: 'h', name: 'Sales' }],
+      }
+    );
+    const memo = (side: 'prev' | 'next', id: string) =>
+      ctx[side].collections.memoEntities[id];
+
+    expect(compareMemos(ctx, memo('prev', 'm'), memo('next', 'm'))).toEqual([
+      { field: DiffField.tableGroup, before: 'Billing', after: 'Sales' },
+    ]);
+    expect(compareMemos(ctx, memo('prev', 'n'), memo('next', 'n'))).toEqual([
+      { field: DiffField.tableGroup, before: 'Billing', after: '' },
+    ]);
+  });
+
+  it('reads no change for a memo that stays in the group its renamed group pairs with', () => {
+    const ctx = contextOf(
+      {
+        memos: [{ id: 'm', value: 'note', group: 'g' }],
+        groups: [{ id: 'g', name: 'Billing' }],
+      },
+      {
+        memos: [{ id: 'm', value: 'note', group: 'g' }],
+        groups: [{ id: 'g', name: 'Invoices' }],
+      }
+    );
+
+    expect(
+      compareMemos(
+        ctx,
+        ctx.prev.collections.memoEntities.m,
+        ctx.next.collections.memoEntities.m
+      )
+    ).toEqual([]);
+  });
+
   it('reads a memo recoloured, and a group recoloured, moved and grown', () => {
     const ctx = contextOf(
       {
@@ -212,6 +261,7 @@ describe('compareMemos and compareTableGroups', () => {
 
     expect(
       compareMemos(
+        ctx,
         ctx.prev.collections.memoEntities.m,
         ctx.next.collections.memoEntities.m
       )

@@ -9,17 +9,30 @@ import {
   type DoubleClickGuard,
 } from '@/components/erd/canvas/table/doubleClick';
 import { RootState } from '@/engine/state';
-import type { Table, TableGroup } from '@/internal-types';
+import type { Memo, Table, TableGroup } from '@/internal-types';
 import { type Rect, unionRect } from '@/konva/scene/metrics';
 import { trackTableWidths } from '@/utils/calcTable';
 import type { GeometrySource } from '@/utils/draw-relationship/geometrySource';
-import { getTableGroupMembers, getTableGroupRect } from '@/utils/tableGroup';
+import {
+  getTableGroupMemberMemos,
+  getTableGroupMembers,
+  getTableGroupRect,
+} from '@/utils/tableGroup';
+
+/** A group's member tables and member memos, hidden memos too, each in document order. */
+export type TableGroupMemberLists = {
+  tables: ReadonlyArray<Table>;
+  memos: ReadonlyArray<Memo>;
+};
 
 /**
- * The members of a group with none, one list every such group shares, left unfrozen: r-html tracks
- * no read of a frozen value, so a group handed its first member would never draw it in its box.
+ * The members of a group with none, one pair of lists every such group shares, left unfrozen: r-html
+ * tracks no read of a frozen value, so a group handed its first member would never draw it in its box.
  */
-const NO_MEMBERS: ReadonlyArray<Table> = [];
+export const NO_TABLE_GROUP_MEMBERS: TableGroupMemberLists = {
+  tables: [],
+  memos: [],
+};
 
 /**
  * The box a group is drawn in, on the canvas and the minimap: getTableGroupRect's, and while a drag
@@ -33,7 +46,7 @@ export function getDrawnTableGroupRect(
   state: RootState,
   group: TableGroup,
   source: GeometrySource,
-  members: ReadonlyArray<Table>
+  members: TableGroupMemberLists
 ): Rect {
   // A member widened by a column edit or a remeasure changes no field the size
   // cache keys on, so the box asks to be drawn again on every such change.
@@ -41,9 +54,12 @@ export function getDrawnTableGroupRect(
   const { selectedMap } = state.editor;
   // A group dragged itself moves with its members and keeps them all.
   const standing = isEntityDragActive(state, source) && !selectedMap[group.id];
+  const dragged = standing ? Object.keys(selectedMap) : [];
   const box = getTableGroupRect(state, group, {
-    members,
-    excludeTableIds: standing ? Object.keys(selectedMap) : [],
+    members: members.tables,
+    memberMemos: members.memos,
+    excludeTableIds: dragged,
+    excludeMemoIds: dragged,
   });
   const held = standing
     ? getHeldTableGroupBoxes(state, source)?.get(group.id)
@@ -100,13 +116,13 @@ export function createTableGroupLinks(): TableGroupLinks {
   };
 }
 
-const isSameList = (a: ReadonlyArray<Table>, b: ReadonlyArray<Table>) =>
-  a.length === b.length && a.every((table, index) => table === b[index]);
+const isSameList = <T>(a: ReadonlyArray<T>, b: ReadonlyArray<T>) =>
+  a.length === b.length && a.every((member, index) => member === b[index]);
 
 /**
- * Reads each group's members off one walk over the tables, handing a group the
- * list it had last time while no member came or went, so a scene render that
- * moved no membership leaves every group component's props as they were.
+ * Reads each group's members off one walk over the tables and one over the memos, handing a group
+ * the lists it had last time while no member came or went, so a scene render that moved no
+ * membership leaves every group component's props as they were.
  *
  * @example
  * const membersOf = memberLists(state);
@@ -114,21 +130,29 @@ const isSameList = (a: ReadonlyArray<Table>, b: ReadonlyArray<Table>) =>
  */
 export function createTableGroupMemberLists(): (
   state: RootState
-) => (groupId: string) => ReadonlyArray<Table> {
-  let last = new Map<string, ReadonlyArray<Table>>();
+) => (groupId: string) => TableGroupMemberLists {
+  let last = new Map<string, TableGroupMemberLists>();
 
   return (state: RootState) => {
-    const next = new Map<string, ReadonlyArray<Table>>();
+    const next = new Map<string, TableGroupMemberLists>();
+    const tablesOf = getTableGroupMembers(state);
+    const memosOf = getTableGroupMemberMemos(state);
 
-    getTableGroupMembers(state).forEach((members, groupId) => {
+    new Set([...tablesOf.keys(), ...memosOf.keys()]).forEach(groupId => {
+      const tables = tablesOf.get(groupId) ?? NO_TABLE_GROUP_MEMBERS.tables;
+      const memos = memosOf.get(groupId) ?? NO_TABLE_GROUP_MEMBERS.memos;
       const before = last.get(groupId);
       next.set(
         groupId,
-        before && isSameList(before, members) ? before : members
+        before &&
+          isSameList(before.tables, tables) &&
+          isSameList(before.memos, memos)
+          ? before
+          : { tables, memos }
       );
     });
     last = next;
 
-    return (groupId: string) => next.get(groupId) ?? NO_MEMBERS;
+    return (groupId: string) => next.get(groupId) ?? NO_TABLE_GROUP_MEMBERS;
   };
 }

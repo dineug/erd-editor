@@ -21,7 +21,7 @@ import {
   whenPainted,
 } from '@/__test-utils__';
 import type { AppContext } from '@/components/appContext';
-import Memo from '@/components/erd/canvas/memo/Memo';
+import Memo, { type MemoProps } from '@/components/erd/canvas/memo/Memo';
 import {
   memoCaretOffsetAt,
   takeMemoCaret,
@@ -36,6 +36,7 @@ import {
   DOCUMENT_CARD_SHADOW_BLUR,
   DOCUMENT_CARD_SHADOW_OFFSET_Y,
 } from '@/components/erd/canvas/sceneTokens';
+import { Show } from '@/constants/schema';
 import {
   editMemoAction,
   editMemoEndAction,
@@ -49,7 +50,12 @@ import {
   changeMemoValueAction,
   resizeMemoAction,
 } from '@/engine/modules/memo/atom.actions';
+import { changeShowAction } from '@/engine/modules/settings/atom.actions';
 import { addTableAction } from '@/engine/modules/table/atom.actions';
+import {
+  addTableGroupAction,
+  changeTableGroupColorAction,
+} from '@/engine/modules/table-group/atom.actions';
 import { Tag } from '@/engine/tag';
 import type { Memo as MemoType } from '@/internal-types';
 import { type RenderedScene, renderScene } from '@/konva/scene/renderScene';
@@ -61,6 +67,7 @@ import {
 } from '@/themes/radix-ui-theme';
 import type { Theme } from '@/themes/tokens';
 import { createMemo } from '@/utils/collection/memo.entity';
+import { CONTRAST_BLACK, CONTRAST_WHITE } from '@/utils/contrastText';
 import { toSharedColor } from '@/utils/sharedColor';
 
 const MEMO_ID = 'memo-1';
@@ -112,7 +119,8 @@ const apps = new Set<AppContext>();
 async function mountMemo(
   memo: MemoType = createProps(),
   app: AppContext = createTestAppContext(),
-  sceneTheme: Theme = theme
+  sceneTheme: Theme = theme,
+  { preview, tableGroupId }: Omit<MemoProps, 'memo'> = {}
 ): Promise<Stage> {
   const container = document.createElement('div');
   document.body.append(container);
@@ -123,7 +131,7 @@ async function mountMemo(
     container,
     scene: (
       <k-layer name="scene">
-        <Memo memo={memo} />
+        <Memo memo={memo} preview={preview} tableGroupId={tableGroupId} />
       </k-layer>
     ),
     width: 800,
@@ -664,6 +672,136 @@ const settle = async () => {
   await flush();
   await whenDrawn();
 };
+
+describe('the color a memo takes from its group', () => {
+  const GROUP_ID = 'group-1';
+  const DARK_BLUE = '#1e3a8a';
+  const LIGHT_YELLOW = '#fde047';
+
+  /** A store listing a group of the color given, '' for none. */
+  function groupApp(color: string) {
+    const app = createTestAppContext();
+    app.store.dispatchSync(
+      addTableGroupAction({
+        id: GROUP_ID,
+        ui: { x: 0, y: 0, width: 600, height: 400, zIndex: 1 },
+      }),
+      ...(color
+        ? [changeTableGroupColorAction({ id: GROUP_ID, color, prevColor: '' })]
+        : [])
+    );
+    return app;
+  }
+
+  const member = () => createProps({ groupId: GROUP_ID });
+
+  const hover = async (stage: Stage) => {
+    nodeNamed(stage, 'memo').fire('mouseenter');
+    nodeNamed(stage, 'memo-remove').fire('mouseenter');
+    await settle();
+  };
+
+  it('wears the group color across its header band, under its own color bar', async () => {
+    const stage = await mountMemo(member(), groupApp(DARK_BLUE));
+    const band = nodeNamed(stage, 'memo-header-band');
+
+    expect(childNames(stage, 'memo-container').slice(0, 3)).toEqual([
+      'memo-header-band',
+      'memo-header-color',
+      'memo-remove',
+    ]);
+    expect(band.getClassName()).toBe('Rect');
+    expect(band.attrs).toMatchObject({
+      x: 0,
+      y: 0,
+      width: MEMO_BOX.width - 2,
+      height: CONTENT_ORIGIN + 16,
+      fill: DARK_BLUE,
+    });
+    expect(band.attrs.cornerRadius).toEqual([6, 6, 0, 0]);
+    expect(band.listening()).toBe(false);
+    expect(nodeNamed(stage, 'memo-header-color').getAttr('fill')).toBe(
+      '#ff0000'
+    );
+  });
+
+  it('paints the remove button in the black or white that reads on the band, in either theme', async () => {
+    const lightTheme = createTheme({
+      appearance: Appearance.light,
+      grayColor: GrayColor.slate,
+      accentColor: AccentColor.indigo,
+    });
+
+    for (const sceneTheme of [theme, lightTheme]) {
+      const dark = await mountMemo(member(), groupApp(DARK_BLUE), sceneTheme);
+      await hover(dark);
+      expect(nodeNamed(dark, 'memo-header-band').getAttr('fill')).toBe(
+        DARK_BLUE
+      );
+      expect(removeStrokes(dark)).toEqual([CONTRAST_WHITE, CONTRAST_WHITE]);
+
+      const light = await mountMemo(
+        member(),
+        groupApp(LIGHT_YELLOW),
+        sceneTheme
+      );
+      await hover(light);
+      expect(removeStrokes(light)).toEqual([CONTRAST_BLACK, CONTRAST_BLACK]);
+    }
+  });
+
+  it('keeps the remove button unpainted at rest on the band', async () => {
+    const stage = await mountMemo(member(), groupApp(DARK_BLUE));
+
+    expect(removeStrokes(stage)).toEqual(['transparent', 'transparent']);
+  });
+
+  it('draws no band out of a group, in a group with no color, or for a preview copy', async () => {
+    const loose = await mountMemo(createProps(), groupApp(DARK_BLUE));
+    expect(loose.findOne('.memo-header-band')).toBeUndefined();
+
+    const uncolored = await mountMemo(member(), groupApp(''));
+    expect(uncolored.findOne('.memo-header-band')).toBeUndefined();
+
+    const copy = await mountMemo(member(), groupApp(DARK_BLUE), theme, {
+      preview: true,
+    });
+    expect(copy.findOne('.memo-header-band')).toBeUndefined();
+  });
+
+  it('takes the band away while groups are hidden, and back as they show', async () => {
+    const app = groupApp(DARK_BLUE);
+    const stage = await mountMemo(member(), app);
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: true })
+    );
+    await settle();
+    expect(stage.findOne('.memo-header-band')).toBeUndefined();
+
+    app.store.dispatchSync(
+      changeShowAction({ show: Show.hideTableGroup, value: false })
+    );
+    await settle();
+    expect(nodeNamed(stage, 'memo-header-band').getAttr('fill')).toBe(
+      DARK_BLUE
+    );
+  });
+
+  it('reads the group the scene names in place of its own', async () => {
+    const named = await mountMemo(createProps(), groupApp(DARK_BLUE), theme, {
+      tableGroupId: GROUP_ID,
+    });
+    expect(nodeNamed(named, 'memo-header-band').getAttr('fill')).toBe(
+      DARK_BLUE
+    );
+
+    const none = await mountMemo(member(), groupApp(DARK_BLUE), theme, {
+      tableGroupId: '',
+    });
+    expect(none.findOne('.memo-header-band')).toBeUndefined();
+  });
+});
 
 describe('the move a memo pointer start owns', () => {
   it('selects the memo on mousedown and drags every selected memo', async () => {

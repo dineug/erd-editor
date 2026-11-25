@@ -62,6 +62,35 @@ const grouped = (): ErdDocument =>
     tableGroups: [{ id: GROUP, name: GROUP, color: COLOR, ...GROUP_RECT }],
   });
 
+/** The grouped tables with a memo in the group under them and one in none to its right. */
+const groupedWithMemos = (): ErdDocument =>
+  createSchema({
+    tables: [
+      table('users', 160, 160, GROUP),
+      table('posts', 520, 160, GROUP),
+      table('tags', 1000, 420),
+    ],
+    memos: [
+      { id: 'note', value: 'Accounts', x: 300, y: 420, groupId: GROUP },
+      { id: 'stray', value: 'Later', x: 1000, y: 180 },
+    ],
+    tableGroups: [{ id: GROUP, name: GROUP, color: COLOR, ...GROUP_RECT }],
+  });
+
+/** The group a memo is in, as the document saves it: '' for none. */
+const memoGroupOf = async (erd: ErdEditorPage, memoId: string) =>
+  (await erd.memo(memoId)).groupId ?? '';
+
+/** The fill of a memo's header band, which shows only while its group colours it. */
+const memoBandFill = (erd: ErdEditorPage, memoId: string) =>
+  erd.sceneAttr([`#memo-${memoId}`, '.memo-header-band'], 'fill');
+
+/** A point on a memo's header, clear of its colour bar and its remove button. */
+async function memoHeaderPoint(erd: ErdEditorPage, id: string): Promise<Point> {
+  const box = await erd.sceneBox([`#memo-${id}`]);
+  return { x: box.x + 30, y: box.y + 14 };
+}
+
 /** The group a table is in, as the document saves it: '' for none. */
 const groupOf = async (erd: ErdEditorPage, tableId: string) =>
   (await erd.table(tableId)).groupId ?? '';
@@ -319,6 +348,39 @@ test.describe('table groups', () => {
     await erd.undo();
 
     await expect.poll(() => positions(erd)).toEqual(before);
+  });
+
+  test('a memo in a group wears its colour and rides the title, and one dropped outside leaves it', async ({
+    erd,
+  }) => {
+    await erd.seed(groupedWithMemos());
+    await expect.poll(() => memoBandFill(erd, 'note')).toBe(COLOR);
+    expect(await memoBandFill(erd, 'stray')).toBeNull();
+
+    const note = (await erd.memo('note')).ui;
+    const stray = (await erd.memo('stray')).ui;
+    const from = await titlePoint(erd, GROUP);
+    await erd.drag(from, { x: from.x + 120, y: from.y + 80 });
+
+    await expect
+      .poll(async () => {
+        const { x, y } = (await erd.memo('note')).ui;
+        return { x, y };
+      })
+      .toEqual({ x: note.x + 120, y: note.y + 80 });
+    expect((await erd.memo('stray')).ui).toMatchObject({
+      x: stray.x,
+      y: stray.y,
+    });
+
+    await erd.undo();
+    await expect.poll(async () => (await erd.memo('note')).ui.x).toBe(note.x);
+
+    const header = await memoHeaderPoint(erd, 'note');
+    await erd.drag(header, { x: header.x + 600, y: header.y });
+
+    await expect.poll(() => memoGroupOf(erd, 'note')).toBe('');
+    await expect.poll(() => memoBandFill(erd, 'note')).toBeNull();
   });
 
   test('View Option hides the groups and their colour, and a table dragged meanwhile keeps its group', async ({

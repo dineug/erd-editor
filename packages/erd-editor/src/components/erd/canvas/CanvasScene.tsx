@@ -19,7 +19,11 @@ import { Show } from '@/constants/schema';
 import type { DrawRelationship } from '@/engine/modules/editor/state';
 import { getSelectTypeIds } from '@/engine/modules/editor/utils/selection';
 import { useUnmounted } from '@/hooks/useUnmounted';
-import type { Relationship, Table as TableEntity } from '@/internal-types';
+import type {
+  Memo as MemoEntity,
+  Relationship,
+  Table as TableEntity,
+} from '@/internal-types';
 import {
   type StackedEntity,
   stackedKey,
@@ -38,7 +42,11 @@ import {
   isTableVisible,
 } from '@/konva/scene/viewport';
 import { bHas } from '@/utils/bit';
-import { getTableGroupMemberIds, isTableGroupShown } from '@/utils/tableGroup';
+import {
+  getTableGroupMemberIds,
+  getTableGroupMemberMemoIds,
+  isTableGroupShown,
+} from '@/utils/tableGroup';
 import { isHighLevelTable } from '@/utils/validation';
 
 /**
@@ -51,7 +59,7 @@ export type CanvasLayers = {
   beneath?: FC;
   /** In the scene layer over the connectors, a relationship draw's preview once it has a start. */
   relationshipDraw?: FC<{ root: Ref<HTMLDivElement>; draw: DrawRelationship }>;
-  /** In the drag layer under what a drag carries, where it would drop tables into groups. */
+  /** In the drag layer under what a drag carries, where it would drop tables and memos into groups. */
   dropTarget?: FC;
   /** A layer of its own in screen space, measured against the root: the marquee. */
   marquee?: FC<{ root: Ref<HTMLDivElement> }>;
@@ -119,14 +127,17 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     const cullingRect = getCullingRect(state, source);
 
     // Read only while a drag runs, or the scene would re-render on a selection
-    // that moves nothing. What moves is what moveAllAction$ moves: the
-    // selection, and in the document the members of a selected group too.
+    // that moves nothing. What moves is what moveAllAction$ moves: the selection,
+    // and in the document the member tables and memos of a selected group too.
     const dragIds = isEntityDragActive(state, source)
       ? new Set([
           ...Object.keys(state.editor.selectedMap),
           ...(source === 'document'
             ? getSelectTypeIds(state.editor.selectedMap).tableGroupIds.flatMap(
-                id => getTableGroupMemberIds(state, id)
+                id => [
+                  ...getTableGroupMemberIds(state, id),
+                  ...getTableGroupMemberMemoIds(state, id),
+                ]
               )
             : []),
         ])
@@ -164,12 +175,13 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     const groupShown =
       Boolean(tableGroupIds.length) && isTableGroupShown(state);
 
-    // The group each table's header takes its color from, named off one read
-    // of the list, so a group coming or going re-renders no other table.
+    // The group each table's header and each memo's band take their color
+    // from, named off one read of the list, so a group coming or going
+    // re-renders no other table or memo.
     const liveGroupIds =
       groupShown && source === 'document' ? new Set(tableGroupIds) : null;
-    const groupIdOf = (table: TableEntity) =>
-      liveGroupIds?.has(table.groupId) ? table.groupId : '';
+    const groupIdOf = ({ groupId }: TableEntity | MemoEntity) =>
+      liveGroupIds?.has(groupId) ? groupId : '';
 
     const isMoving = ({ start, end }: Relationship) =>
       Boolean(dragIds?.has(start.tableId) || dragIds?.has(end.tableId));
@@ -203,7 +215,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
     const groupDrag =
       groupShown && dragging && tableGroupIds.some(id => dragIds?.has(id));
 
-    // The groups a table drag would drop into, outlined over the static scene.
+    // The groups a drag would drop a table or a memo into, outlined over the static scene.
     const dropTarget =
       dragging && groupShown && source === 'document' && !store.getReadonly();
 
@@ -256,7 +268,7 @@ const CanvasScene: FC<CanvasSceneProps> = (props, ctx) => {
         item.kind === 'table' ? (
           <>{tableShape(item.entity)}</>
         ) : (
-          <Memo memo={item.entity} />
+          <Memo memo={item.entity} tableGroupId={groupIdOf(item.entity)} />
         )
       );
 

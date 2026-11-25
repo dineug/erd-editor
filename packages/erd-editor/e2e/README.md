@@ -313,6 +313,8 @@ then G does, and Remove from group takes one table out; a table dropped inside
 a group joins it, the group outlined while the table is held over it, and wears
 the group's colour on its header band, and one dropped outside leaves it; a
 drag on the title carries the group and its tables, which one undo puts back;
+a memo in a group wears its colour on its header band and rides the title's
+drag, and one dropped outside leaves the group and its colour;
 View Option hides the boxes and the colour, a table dragged meanwhile keeping
 its group, and the box grows round it once shown; and the Schema SQL tab's
 Tables leaves out the tables of an unchecked group, writes nothing under its

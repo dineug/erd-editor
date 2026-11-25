@@ -79,6 +79,14 @@ describe('targetOf', () => {
     ).toEqual({ kind: 'table', tableId: 'orders' });
     expect(
       targetOf({
+        kind: 'groupMemo',
+        tableGroupId: 'billing',
+        memoId: 'note',
+        text: 'Order states',
+      })
+    ).toEqual({ kind: 'memo', memoId: 'note' });
+    expect(
+      targetOf({
         kind: 'column',
         tableId: 'orders',
         columnId: 'orders.id',
@@ -160,6 +168,19 @@ describe('activateNode', () => {
     expect(isRelationshipHighlighted(app.store.state.editor.id, 'rel')).toBe(
       false
     );
+    expect(selected()).toEqual({ note: SelectType.memo });
+  });
+
+  it('selects a memo alone from its row under a group, as from the Memos folder', () => {
+    activateNode(app.store, table('users'));
+
+    activateNode(app.store, {
+      kind: 'groupMemo',
+      tableGroupId: 'billing',
+      memoId: 'note',
+      text: 'Order states',
+    });
+
     expect(selected()).toEqual({ note: SelectType.memo });
   });
 
