@@ -1,6 +1,8 @@
 import {
+  AccentColor,
   Appearance,
   createTheme,
+  GrayColor,
   type ThemeOptions,
 } from '@/themes/radix-ui-theme';
 import type { Theme } from '@/themes/tokens';
@@ -45,6 +47,31 @@ export function createExportTheme({
           appearance: darkMode ? Appearance.dark : Appearance.light,
         });
 
+  return withBackground(theme, background);
+}
+
+/**
+ * The preset of the element's own slate and indigo, which a document drawn from
+ * outside the element takes: it names no palette, so every machine draws it alike.
+ *
+ * @example
+ * const theme = createPresetExportTheme({ darkMode: false, background: true });
+ */
+export function createPresetExportTheme({
+  darkMode,
+  background,
+}: Pick<ExportThemeOptions, 'darkMode' | 'background'>): Theme {
+  const theme = createTheme({
+    grayColor: GrayColor.slate,
+    accentColor: AccentColor.indigo,
+    appearance: darkMode ? Appearance.dark : Appearance.light,
+  });
+
+  return withBackground(theme, background);
+}
+
+/** The palette as it stands, or with the canvas colour taken away once the background is off. */
+function withBackground(theme: Theme, background: boolean): Theme {
   // The background rect and the box under a referential action label both
   // paint this colour, so one token takes both away.
   return background

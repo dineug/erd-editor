@@ -29,7 +29,8 @@
 | `export-png/ExportScene.tsx` | The scene an export draws: the whole document on one layer, the groups behind it, no culling, no check marked |
 | `export-png/exportBox.ts` | `EXPORT_ZOOM_LEVEL`, `getExportRect`, `getExportScale`, `getExportSize`, `getStageSize` |
 | `export-png/pixelRatio.ts` | The canvas ceilings `CANVAS_AREA_MAX` and `CANVAS_SIDE_MAX`, `fitPixelRatio` |
-| `export-png/exportTheme.ts` | `createExportTheme`, the dialog's palette for the appearance picked (`src/components/export-image/AGENTS.md`), and `TRANSPARENT_BACKGROUND`, which `toImage` paints with the background off |
+| `export-png/exportTheme.ts` | `createExportTheme`, the dialog's palette for the appearance picked (`src/components/export-image/AGENTS.md`), `createPresetExportTheme`, the slate and indigo preset `toImage` draws with, and `TRANSPARENT_BACKGROUND`, which both paint with the background off |
+| `export-png/exportOptions.ts` | `assertExportOption`, the `TypeError` naming the option that `toImage` throws for a value it does not take |
 | `export-png/toImage.ts` | `toImage` and `ToImageOptions`, which the package root exports: a document's png or svg with the Export image dialog's options |
 | `export-png/exportPngService.ts`, `exportPng.shared-worker.ts` | `ExportPngService`, which draws off the thread that asked, and the worker's entry |
 | `export-png/renderPng.ts`, `renderSvg.ts`, `sceneSvg.ts` | The png and the svg; the svg's rules are in `src/components/export-image/AGENTS.md` |
