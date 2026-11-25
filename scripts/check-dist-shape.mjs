@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Dist shape gate for @dineug/erd-editor, wired as pnpm dist-shape after pnpm
-// build: the file-level layout, the declarations, the umd files, the worker
-// stubs and urls, the viewer's graph, and what Obsidian's plugin takes of it.
+// build: the file-level layout, the declarations, the umd files, the svg entry
+// in plain Node, the worker stubs and urls, the viewer's graph and Obsidian's.
 import fs from 'node:fs';
 import { builtinModules } from 'node:module';
 import path from 'node:path';
@@ -9,6 +9,7 @@ import { pathToFileURL } from 'node:url';
 
 import { edgesOf } from './check-peer-graph.mjs';
 import { evaluateInHappyDom } from './happy-dom-realm.mjs';
+import { drawInNode } from './node-svg-realm.mjs';
 import {
   forbiddenIn,
   INLINED_LIBRARIES,
@@ -25,14 +26,20 @@ const obsidianDir = path.join(root, 'packages', 'obsidian-plugin');
 const MISSING_OUTPUT =
   'Run: pnpm exec vp run --filter @dineug/erd-editor --fail-if-no-match build';
 
-/** The scripts at the top of dist/: the three entries that need a DOM and the two umd builds. */
+/** The scripts at the top of dist/: the three entries that need a DOM, the svg entry, which needs none, and the two umd builds. */
 const TOP_LEVEL_SCRIPTS = [
   'erd-editor.js',
   'erd-editor.umd.js',
   'erd-viewer.js',
   'erd-viewer.umd.js',
   'index.js',
+  'svg.js',
 ];
+
+/** The documents the svg entry draws in plain Node, the two docs.erd-editor.io embeds. */
+const SVG_DOCUMENTS = ['embed-small.erd.json', 'bookstore.erd.json'].map(name =>
+  path.join(root, 'data', name)
+);
 
 /**
  * The scripts of dist/ that are no module of src/: Rolldown's helpers, the
@@ -308,6 +315,41 @@ async function viewerLocaleProblems(code, scenario) {
 }
 
 /**
+ * The built svg entry in a plain Node child with no happy-dom: its import
+ * defines none of the globals its first call installs, and each document is
+ * drawn twice to one svg element and the same text, with no error logged.
+ */
+async function checkSvgInNode() {
+  const entry = path.join(distDir, 'svg.js');
+  read(entry);
+  const result = await drawInNode(entry, SVG_DOCUMENTS);
+  const problems = [
+    ...result.errors.map(error => `threw ${error}`),
+    ...result.consoleErrors.map(
+      message => `console.error: ${message.split('\n')[0]}`
+    ),
+    ...result.globalsBeforeCall.map(
+      name => `defines ${name} as it is imported, before toSvg is first called`
+    ),
+  ];
+  for (const file of SVG_DOCUMENTS) {
+    const name = path.relative(root, file);
+    const drawing = result.drawings.find(drawn => drawn.file === file);
+    if (!drawing) {
+      problems.push(`drew nothing of ${name}`);
+      continue;
+    }
+    if (!drawing.svg) problems.push(`${name} is not drawn as one <svg> element`);
+    if (!drawing.same) problems.push(`${name} drawn twice gives two texts`);
+  }
+
+  const drawn = result.drawings
+    .map(drawing => `${path.basename(drawing.file)} ${drawing.length} chars`)
+    .join(', ');
+  check(`svg.js in plain Node (${drawn || 'nothing drawn'})`, problems);
+}
+
+/**
  * The worker files that need a document stub carry it; where is not checked.
  * The export worker imports Konva as a package, which runs before its own
  * code, and the ELK worker imports comlink alone and elkjs later by import().
@@ -402,7 +444,7 @@ const scriptsUnder = dir =>
     .sort();
 
 /**
- * One file per module: the top of dist/ holds the three entries and the umd
+ * One file per module: the top of dist/ holds the four entries and the umd
  * builds, each exports target exists and typesVersions mirrors their types,
  * and every other script is a module of src/ at the same path.
  */
@@ -686,7 +728,7 @@ async function main(argv) {
   Reads packages/erd-editor/dist after pnpm build and exits 1 when a check
   fails: one file per module, the declarations of both elements, both umd
   builds run on happy-dom, the viewer's switched to Korean with no request,
-  the document stubs of the two workers that need one, the url workers, the
+  the svg entry drawing two documents twice each in plain Node, the document stubs of the two workers that need one, the url workers, the
   graph of erd-viewer.js against scripts/viewer-boundary.json, English static
   and every other dictionary behind import(), and Obsidian's loader rebundled
   from packages/obsidian-plugin with the workers it names and its plugin folder.`);
@@ -700,6 +742,7 @@ async function main(argv) {
   checkLayout();
   checkDeclarations();
   await checkUmd();
+  await checkSvgInNode();
   checkStubs();
   checkWorkerUrls();
   checkViewerBoundary();

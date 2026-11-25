@@ -37,7 +37,7 @@
 
 - **Every image export the editor offers goes through one dialog.** `ExportImage.tsx` is that dialog (owner decisions of 2026-10-04). Export ▸ Image in the canvas menu and in the palette emit `openExportImage`. `ErdEditor` mounts it beside the theme builder under `Open.exportImage`, reader-only like every `openMap` key.
 - Reader-only state and the `openMap` keys: `src/engine/AGENTS.md`.
-- **`toImage` takes the dialog's options from outside.** The package root's `toImage` writes the same files with Background, Dark mode and Scale and no other option, so a control added here or taken away changes what it takes too (`src/services/AGENTS.md`, The Export from Outside).
+- **`toImage` and `toSvg` take the dialog's options from outside.** The package root's `toImage` writes the same files with Background, Dark mode and Scale and no other option, and `svg.js`'s `toSvg` the svg with Background and Dark mode, so a control added here or taken away changes what they take too (`src/services/AGENTS.md`, The Export from Outside).
 - **The dialog holds a fixed set of controls.** It holds a preview, a close button, Background, Dark mode, Scale (1x, 2x, 3x), PNG, SVG and Copy to clipboard, and nothing else (owner decisions of 2026-10-04). `ExportImage.test.ts` checks that set.
 - **No export embeds the diagram or writes PDF.** No export embeds the diagram in the image so it can be reopened, which the owner left for later work together with image import, and PDF export was declined (owner decisions of 2026-10-05).
 - **The options last for the element's life.** They are never kept in storage. They open on Background on, Dark mode seeded once from `hasDarkMode()`, and 2x.
