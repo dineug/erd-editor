@@ -178,6 +178,33 @@ describe('a batch of edit tools', () => {
     expect(tableNamed(peer, 'reviews')!.columns).toHaveLength(2);
   });
 
+  it('puts a memo it adds and a table it adds in a new group by their names', () => {
+    const peer = seeded();
+
+    runBatch(peer, [
+      { tool: 'erd_add_table', as: 't' },
+      { tool: 'erd_add_memo', as: 'm' },
+      {
+        tool: 'erd_add_table_group',
+        as: 'g',
+        args: { name: 'notes', tableIds: ['$t'], memoIds: ['$m'] },
+      },
+      { tool: 'erd_add_memo', as: 'loose' },
+      {
+        tool: 'erd_set_memo_group',
+        args: { memoIds: ['$loose'], groupId: '$g' },
+      },
+    ]);
+
+    const { tables, memos, tableGroups } = toAgentSnapshot(peer.state);
+    const group = tableGroups.at(-1)!;
+    expect(group).toMatchObject({
+      name: 'notes',
+      tableIds: [tables.at(-1)!.id],
+      memoIds: memos.slice(-2).map(({ id }) => id),
+    });
+  });
+
   it('takes a value that looks like a reference as the value it is', () => {
     const peer = seeded();
 

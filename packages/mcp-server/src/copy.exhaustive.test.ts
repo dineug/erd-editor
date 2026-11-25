@@ -198,9 +198,9 @@ describe('the words on a table group', () => {
   ];
   const OLDER =
     'An ERD Editor extension or plugin released before table groups ignores this edit and drops every group when it saves, so the user should update it.';
-  // A group move also sends table.move, which an older editor still applies.
+  // A group move also sends table.move and memo.move, which an older editor still applies.
   const OLDER_MOVE =
-    'An ERD Editor extension or plugin released before table groups moves only the tables of the group and drops every group when it saves, so the user should update it.';
+    'An ERD Editor extension or plugin released before table groups moves only the tables and memos of the group and drops every group when it saves, so the user should update it.';
 
   it('reach every group tool the registry has', () => {
     expect(
@@ -220,6 +220,35 @@ describe('the words on a table group', () => {
   it('name no release, which the next one would make wrong', () => {
     for (const name of GROUP_TOOLS) {
       expect(describeTool(name)).not.toMatch(/\d+\.\d+/);
+    }
+  });
+});
+
+describe('the words on a memo in a table group', () => {
+  const OLDER =
+    'An ERD Editor extension or plugin released before memos joined table groups ignores which group a memo is in and leaves it out when it saves, so the user should update it.';
+  const texts = [
+    describeTool('erd_set_memo_group'),
+    describeArg('erd_add_table_group', 'memoIds'),
+  ];
+
+  it('reach every tool that takes memoIds to put memos in a group', () => {
+    expect(
+      actionTools
+        .filter(({ args }) => args.some(({ name }) => name === 'memoIds'))
+        .map(({ name }) => name)
+    ).toEqual(['erd_add_table_group', 'erd_set_memo_group']);
+  });
+
+  it('end on an editor released before memos joined groups dropping it, so the user updates it', () => {
+    for (const text of texts) {
+      expect(text.endsWith(OLDER), text).toBe(true);
+    }
+  });
+
+  it('name no release, which the next one would make wrong', () => {
+    for (const text of texts) {
+      expect(text).not.toMatch(/\d+\.\d+/);
     }
   });
 });

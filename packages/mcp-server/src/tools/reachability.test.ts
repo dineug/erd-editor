@@ -31,7 +31,7 @@ describe('every change type is reachable or excluded with a reason', () => {
   it('counts the change types the engine lists', () => {
     expect(ChangeActionTypes).toHaveLength(77);
     expect(new Set(ChangeActionTypes).size).toBe(77);
-    expect(NOT_EMITTED).toHaveLength(20);
+    expect(NOT_EMITTED).toHaveLength(18);
     expect(NO_DEDICATED_TOOL).toEqual(['editor.clear']);
   });
 
@@ -46,7 +46,7 @@ describe('every change type is reachable or excluded with a reason', () => {
       type => !NOT_EMITTED.includes(type) && !PENDING_COVERAGE.includes(type)
     );
 
-    expect(reachable).toHaveLength(57);
+    expect(reachable).toHaveLength(59);
     expect(PENDING_COVERAGE).toHaveLength(0);
     expect(declared()).toEqual(sorted(reachable));
   });

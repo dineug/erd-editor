@@ -101,8 +101,9 @@ describe('the agent snapshot', () => {
         id: SEED.memo,
         value: '',
         color: '',
-        x: 900,
-        y: 100,
+        groupId: SEED.group,
+        x: 120,
+        y: 190,
         width: MEMO_MIN_WIDTH,
         height: MEMO_MIN_HEIGHT,
       },
@@ -406,7 +407,7 @@ describe('the agent snapshot', () => {
 });
 
 describe('the table groups a snapshot lists', () => {
-  it('gives each group its stored rect and its tables, and each table its group', () => {
+  it('gives each group its stored rect, its tables and memos, and each table and memo its group', () => {
     const snapshot = toAgentSnapshot(peer.state);
 
     expect(snapshot.tableGroups).toEqual([
@@ -419,12 +420,16 @@ describe('the table groups a snapshot lists', () => {
         width: 560,
         height: 300,
         tableIds: [SEED.users],
+        memoIds: [SEED.memo],
       },
     ]);
     expect(snapshot.tables.map(({ id, groupId }) => [id, groupId])).toEqual([
       [SEED.users, SEED.group],
       [SEED.orders, ''],
       [SEED.empty, ''],
+    ]);
+    expect(snapshot.memos.map(({ id, groupId }) => [id, groupId])).toEqual([
+      [SEED.memo, SEED.group],
     ]);
   });
 
@@ -441,17 +446,20 @@ describe('the table groups a snapshot lists', () => {
     ).toBeDefined();
     expect(snapshot.tableGroups).toEqual([]);
     expect(snapshot.tables.map(({ groupId }) => groupId)).toEqual(['', '', '']);
+    expect(snapshot.memos.map(({ groupId }) => groupId)).toEqual(['']);
 
     other.destroy();
   });
 
-  it('hands out a copy of the tables a group holds', () => {
+  it('hands out a copy of the tables and memos a group holds', () => {
     const copy = toAgentSnapshot(peer.state);
     copy.tableGroups[0].tableIds.push('intruder');
+    copy.tableGroups[0].memoIds.push('intruder');
 
-    expect(toAgentSnapshot(peer.state).tableGroups[0].tableIds).toEqual([
-      SEED.users,
-    ]);
+    expect(toAgentSnapshot(peer.state).tableGroups[0]).toMatchObject({
+      tableIds: [SEED.users],
+      memoIds: [SEED.memo],
+    });
   });
 });
 
