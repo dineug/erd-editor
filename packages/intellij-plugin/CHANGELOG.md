@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-11-26
+
+### Added
+
+- Memos can join table groups. Draw a group around them, drop a memo in or out, choose Group
+  selected tables with memos selected beside the tables, or take one out with Remove from group in
+  its menu. A memo in a group moves with it, its header takes the group's color, and Auto Layout
+  keeps it with the group. The Explorer lists a group's memos under it, Select tables selects them
+  too, and the Diff Viewer shows a memo joining or leaving a group. Memos hidden from the canvas
+  stay in their groups.
+- A coding agent can put memos in table groups and export the diagram as an SVG, with
+  `@dineug/erd-editor-mcp` updated to this release.
+
+### Changed
+
+- An earlier release, or an earlier `@dineug/erd-editor-mcp` editing a file on its own, saves a
+  diagram without its memos' table groups, so update both wherever you share diagrams.
+
 ## [1.3.0] - 2026-11-03
 
 ### Changed
